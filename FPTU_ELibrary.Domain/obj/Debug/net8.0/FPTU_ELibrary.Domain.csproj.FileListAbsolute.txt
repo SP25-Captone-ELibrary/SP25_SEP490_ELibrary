@@ -1,0 +1,12 @@
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\bin\Debug\net8.0\FPTU_ELibrary.Domain.deps.json
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\bin\Debug\net8.0\FPTU_ELibrary.Domain.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\bin\Debug\net8.0\FPTU_ELibrary.Domain.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.csproj.AssemblyReference.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.GeneratedMSBuildEditorConfig.editorconfig
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.AssemblyInfoInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.AssemblyInfo.cs
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.csproj.CoreCompileInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\refint\FPTU_ELibrary.Domain.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\FPTU_ELibrary.Domain.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Domain\obj\Debug\net8.0\ref\FPTU_ELibrary.Domain.dll

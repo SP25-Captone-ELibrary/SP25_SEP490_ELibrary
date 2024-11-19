@@ -1,0 +1,113 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using FPTU_ELibrary.Application.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services;
+using Mapster;
+using MapsterMapper;
+using System.Reflection;
+using System.Text;
+using Microsoft.Extensions.Configuration;
+using Elasticsearch.Net;
+using Nest;
+using FPTU_ELibrary.Application.Services.Base;
+using FPTU_ELibrary.Application.Services.IServices;
+
+namespace FPTU_ELibrary.Application
+{
+	public static class DependencyInjection
+    {
+		//	Summary:
+		//		This class is to configure services for application layer
+        public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
+        {
+			// Register DI 
+			services.AddScoped<IBookService, BookService>();
+			services.AddScoped<ISearchService, SearchService>();
+			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
+			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
+			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
+
+			services
+				.ConfigureMapster() // Add mapster
+				.ConfigureCloudinary() // Add cloudinary
+				.ConfigureElastic(configuration); // Add elastic
+            
+			return services;
+        }
+
+		public static IServiceCollection ConfigureMapster(this IServiceCollection services)
+		{
+			TypeAdapterConfig.GlobalSettings.Default
+				.MapToConstructor(true)
+				.PreserveReference(true);
+			// Get Mapster GlobalSettings
+			var typeAdapterConfig = TypeAdapterConfig.GlobalSettings;
+			// Scans the assembly and gets the IRegister, adding the registration to the TypeAdapterConfig
+			typeAdapterConfig.Scan(Assembly.GetExecutingAssembly());
+
+			// Register the mapper as Singleton service for my application
+			var mapperConfig = new Mapper(typeAdapterConfig);
+			services.AddSingleton<IMapper>(mapperConfig);
+
+			return services;
+		}
+
+		public static IServiceCollection ConfigureCloudinary(this IServiceCollection services)
+		{
+			// Configure this later...
+
+			return services;
+		}
+
+		public static IServiceCollection ConfigureElastic(this IServiceCollection services, IConfiguration configuration)
+		{ 
+			var elasticConfiguration = configuration.GetSection("ElasticSettings");
+
+			// Access default configuration props
+			var url = elasticConfiguration["Url"];
+			var index = elasticConfiguration["DefaultIndex"];
+			var username = elasticConfiguration["Username"];
+			var password = elasticConfiguration["Password"];
+
+			// Add elastic client settings
+			var settings = new ConnectionSettings(new Uri(url!))
+			   .DefaultIndex(index)
+			   .ServerCertificateValidationCallback(CertificateValidations.AllowAll)
+			   .BasicAuthentication(username, password);
+
+			// Specifies how field name are inferred from CLR property names
+			settings.DefaultFieldNameInferrer(p => ToSnakeCase(p));
+
+			// Register DI for elastic search client 
+			services.AddSingleton<IElasticClient>(
+				// Initialize elastic client 
+				new ElasticClient(settings));
+
+			return services;
+		}
+
+		public static string ToSnakeCase(string s)
+		{
+			var builder = new StringBuilder(s.Length);
+			for (int i = 0; i < s.Length; i++)
+			{
+				var c = s[i];
+				if (char.IsUpper(c))
+				{
+					if (i == 0)
+						builder.Append(char.ToLowerInvariant(c));
+					else if (char.IsUpper(s[i - 1]))
+						builder.Append(char.ToLowerInvariant(c));
+					else
+					{
+						builder.Append("_");
+						builder.Append(char.ToLowerInvariant(c));
+					}
+				}
+				else
+					builder.Append(c);
+			}
+
+			return builder.ToString();
+		}
+	}
+}

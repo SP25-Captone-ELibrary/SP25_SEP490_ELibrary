@@ -1,0 +1,15 @@
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.csproj.AssemblyReference.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.GeneratedMSBuildEditorConfig.editorconfig
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.AssemblyInfoInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.AssemblyInfo.cs
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.csproj.CoreCompileInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\bin\Debug\net8.0\FPTU_ELibrary.Application.deps.json
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\bin\Debug\net8.0\FPTU_ELibrary.Application.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\bin\Debug\net8.0\FPTU_ELibrary.Application.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\bin\Debug\net8.0\FPTU_ELibrary.Domain.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\bin\Debug\net8.0\FPTU_ELibrary.Domain.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELi.09D40E99.Up2Date
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\refint\FPTU_ELibrary.Application.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\FPTU_ELibrary.Application.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Application\obj\Debug\net8.0\ref\FPTU_ELibrary.Application.dll

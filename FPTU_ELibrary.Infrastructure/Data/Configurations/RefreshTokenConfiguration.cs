@@ -1,0 +1,30 @@
+﻿using FPTU_ELibrary.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace FPTU_ELibrary.Infrastructure.Data.Configurations
+{
+    public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
+    {
+        public void Configure(EntityTypeBuilder<RefreshToken> builder)
+        {
+            builder.HasKey(e => e.Id).HasName("Pk_RefreshToken_Id");
+
+            builder.ToTable("Refresh_Token");
+
+            builder.Property(e => e.Id).HasColumnName("id");
+            builder.Property(e => e.CreateDate)
+                .HasColumnType("datetime")
+                .HasColumnName("create_date");
+            builder.Property(e => e.ExpiryDate)
+                .HasColumnType("datetime")
+                .HasColumnName("expiry_date");
+            builder.Property(e => e.RefreshTokenId).HasColumnName("refresh_token_id");
+            builder.Property(e => e.UserId).HasColumnName("user_id");
+
+            builder.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_User_UserId");
+        }
+    }
+}

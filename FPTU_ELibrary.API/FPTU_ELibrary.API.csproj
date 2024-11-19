@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FPTU_ELibrary.Application\FPTU_ELibrary.Application.csproj" />
+    <ProjectReference Include="..\FPTU_ELibrary.Domain\FPTU_ELibrary.Domain.csproj" />
+    <ProjectReference Include="..\FPTU_ELibrary.Infrastructure\FPTU_ELibrary.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Payloads\Requests\" />
+  </ItemGroup>
+
+</Project>

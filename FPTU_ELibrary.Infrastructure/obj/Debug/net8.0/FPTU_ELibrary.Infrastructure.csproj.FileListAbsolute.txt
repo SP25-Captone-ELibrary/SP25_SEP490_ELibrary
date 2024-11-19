@@ -1,0 +1,17 @@
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Infrastructure.deps.json
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Infrastructure.runtimeconfig.json
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Infrastructure.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Infrastructure.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.csproj.AssemblyReference.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.AssemblyInfoInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.AssemblyInfo.cs
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.csproj.CoreCompileInputs.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\refint\FPTU_ELibrary.Infrastructure.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELibrary.Infrastructure.genruntimeconfig.cache
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\ref\FPTU_ELibrary.Infrastructure.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Domain.dll
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\bin\Debug\net8.0\FPTU_ELibrary.Domain.pdb
+E:\SE171957-Phuoclx-FPTHCM\Capstone Project\Source\FPTU_ELibrarySystem\FPTU_ELibrary.Infrastructure\obj\Debug\net8.0\FPTU_ELi.58FD918B.Up2Date

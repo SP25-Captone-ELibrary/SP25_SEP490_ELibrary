@@ -1,0 +1,6 @@
+@FPTU_ELibrary.API_HostAddress = http://localhost:5064
+
+GET {{FPTU_ELibrary.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
