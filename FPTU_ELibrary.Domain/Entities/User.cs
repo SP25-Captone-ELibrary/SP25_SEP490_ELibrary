@@ -11,8 +11,8 @@ public class User
     public string? UserCode { get; set; }
     public string Email { get; set; } = null!;
     public string PasswordHash { get; set; } = null!;
-    public string FirstName { get; set; } = null!;
-    public string LastName { get; set; } = null!;
+    public string? FirstName { get; set; } = null!;
+    public string? LastName { get; set; } = null!;
     public DateTime? Dob { get; set; }
     public string? Phone { get; set; }
     public string? Avatar { get; set; }
@@ -30,6 +30,7 @@ public class User
     public string? TwoFactorSecretKey { get; set; }
     public string? TwoFactorBackupCodes { get; set; }
     public string? PhoneVerificationCode { get; set; }
+    public string? EmailVerificationCode { get; set; }
     public DateTime? PhoneVerificationExpiry { get; set; }
 
     // Role in the system

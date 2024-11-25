@@ -1,17 +1,18 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Services.Base;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 
 namespace FPTU_ELibrary.Application.Services
 {
-    public class BookService : GenericService<Book, BookDto, int>, IBookService
+	public class BookService : GenericService<Book, BookDto, int>, IBookService<BookDto>
 	{
-		public BookService(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper)
+		public BookService(IUnitOfWork unitOfWork, IMapper mapper) 
+			: base(unitOfWork, mapper)
 		{
 		}
 

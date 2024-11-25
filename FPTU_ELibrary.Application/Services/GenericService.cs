@@ -1,8 +1,8 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Services.Base;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Interfaces;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using MapsterMapper;
 using Nest;
 
@@ -45,11 +45,13 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					serviceResult.Status = ResultConst.SUCCESS_INSERT_CODE;
 					serviceResult.Message = ResultConst.SUCCESS_INSERT_MSG;
+					serviceResult.Data = true;
 				}
 				else
 				{
 					serviceResult.Status = ResultConst.FAIL_INSERT_CODE;
 					serviceResult.Message = ResultConst.FAIL_INSERT_MSG;
+					serviceResult.Data = false;
 				}
 			}
 			catch(Exception)
@@ -81,11 +83,13 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					serviceResult.Status = ResultConst.SUCCESS_REMOVE_CODE;
 					serviceResult.Message = ResultConst.SUCCESS_REMOVE_MSG;
+					serviceResult.Data = true;
 				}
 				else
 				{
 					serviceResult.Status = ResultConst.FAIL_REMOVE_CODE;
 					serviceResult.Message = ResultConst.FAIL_REMOVE_MSG;
+					serviceResult.Data = false;
 				}
 			}
 			catch (Exception)
@@ -129,14 +133,12 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					serviceResult.Status = ResultConst.SUCCESS_UPDATE_CODE;
 					serviceResult.Message = ResultConst.SUCCESS_UPDATE_MSG;
+					serviceResult.Data = true;
 					return serviceResult;
 				}
 
 				// Progress update when all require passed
 				await _unitOfWork.Repository<TEntity, TKey>().UpdateAsync(existingEntity);
-
-				// Save to DB
-				await _unitOfWork.SaveChangesAsync();
 
 				// Save changes to DB
 				var rowsAffected = await _unitOfWork.SaveChangesAsync();
@@ -144,12 +146,14 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					serviceResult.Status = ResultConst.FAIL_UPDATE_CODE;
 					serviceResult.Message = ResultConst.FAIL_UPDATE_MSG;
+					serviceResult.Data = false;
 					return serviceResult;
 				}
 
 				// Mark as update success
 				serviceResult.Status = ResultConst.SUCCESS_UPDATE_CODE;
 				serviceResult.Message = ResultConst.SUCCESS_UPDATE_MSG;
+				serviceResult.Data = true;
 			}
 			catch (Exception)
 			{

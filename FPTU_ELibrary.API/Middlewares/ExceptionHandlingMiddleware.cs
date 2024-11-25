@@ -72,6 +72,14 @@ namespace FPTU_ELibrary.API.Middlewares
 						problem.Extensions.Add(validationResult.Key, validationResult.Value);
 					}
 					break;
+				// UnauthorizedException
+				case UnauthorizedException unauthorizedException:
+					problem.Status = (int)HttpStatusCode.Unauthorized;
+					break;
+				// ForbiddenException
+				case ForbiddenException forbiddenException:
+					problem.Status = (int)HttpStatusCode.Forbidden;
+					break;
 				// Default 
 				default:
 					problem.Status = (int)HttpStatusCode.InternalServerError;
@@ -97,6 +105,8 @@ namespace FPTU_ELibrary.API.Middlewares
 
 			// Serialize result object to str
 			var response = JsonConvert.SerializeObject(result.Value);
+			// Response Status Code
+			httpContext.Response.StatusCode = (int)result.StatusCode;
 			// Response Content-Type
 			httpContext.Response.ContentType = "application/problem+json";
 			// Write to response body

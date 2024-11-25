@@ -2,16 +2,19 @@
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Infrastructure.Data.Context;
-using FPTU_ELibrary.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
 using BookCategoryEntity = FPTU_ELibrary.Domain.Entities.BookCategory;
+using System.ComponentModel;
+using System.Reflection;
 
 namespace FPTU_ELibrary.Infrastructure.Data
 {
-    public class DatabaseInitializer : IDatabaseInitializer
+	//	Summary:
+	//		This class is to initialize database and seeding default data for the application
+	public class DatabaseInitializer : IDatabaseInitializer
     {
         private readonly FptuElibraryDbContext _context;
         private readonly ILogger<DatabaseInitializer> _logger;
@@ -109,27 +112,27 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		private async Task SeedSystemRoleAsync()
 		{
 			// Initialize system role
-			List<SystemRole> roles = new()
+			List<Domain.Entities.SystemRole> roles = new()
 			{
 				new()
 				{
-					EnglishName = nameof(Role.Administration).ToString(),
-					VietnameseName = Role.Administration.GetDescription()
+					EnglishName = nameof(Domain.Common.Enums.Role.Administration).ToString(),
+					VietnameseName = Domain.Common.Enums.Role.Administration.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(Role.Teacher).ToString(),
-					VietnameseName = Role.Teacher.GetDescription()
+					EnglishName = nameof(Domain.Common.Enums.Role.Teacher).ToString(),
+					VietnameseName = Domain.Common.Enums.Role.Teacher.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(Role.Student).ToString(),
-					VietnameseName = Role.Student.GetDescription()
+					EnglishName = nameof(Domain.Common.Enums.Role.Student).ToString(),
+					VietnameseName = Domain.Common.Enums.Role.Student.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(Role.GeneralMember).ToString(),
-					VietnameseName = Role.GeneralMember.GetDescription()
+					EnglishName = nameof(Domain.Common.Enums.Role.GeneralMember).ToString(),
+					VietnameseName = Domain.Common.Enums.Role.GeneralMember.GetDescription()
 				}
 			};
 		
@@ -404,7 +407,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EmployeeCode = "EM270925",
 					Email = "librian@gmail.com",
-					PasswordHash = "123456",
+					PasswordHash = "$2y$10$b53oQweICAgJnyIKawNmV.x7LKLdsWSd5/ZuSy8l4Za6jt1rnHJrS",
 					FirstName = "Nguyen Van",
 					LastName = "A",
 					Dob = new DateTime(1995, 02, 10),
@@ -425,6 +428,21 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
 			if (saveSucc) _logger.LogInformation("Seed employees successfully.");
+		}
+
+	}
+
+	//	Summary:
+	//		Extensions procedures for DatabaseInitializer
+	public static class DatabaseInitializerExtensions
+	{
+		// Enum extensions
+		public static string GetDescription(this System.Enum value)
+		{
+			var field = value.GetType().GetField(value.ToString());
+			var attribute = field?.GetCustomAttribute<DescriptionAttribute>();
+
+			return attribute?.Description ?? value.ToString();
 		}
 	}
 }

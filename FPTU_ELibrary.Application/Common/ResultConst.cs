@@ -8,13 +8,13 @@ namespace FPTU_ELibrary.Application.Common
 {
 	public class ResultConst
 	{
-		#region Error Codes
-
-		public static int ERROR_EXCEPTION_CODE = 4;
-
-		#endregion
-
 		#region Success Codes
+
+		public static int SUCCESS_SIGNIN_CODE = 1;
+		public static string SUCCESS_SIGNIN_MSG = "Sign in successfully";
+
+		public static int SUCCESS_SIGNUP_CODE = 1;
+		public static string SUCCESS_SIGNUP_MSG = "Sign up successfully";
 
 		public static int SUCCESS_INSERT_CODE = 1;
 		public static string SUCCESS_INSERT_MSG = "Save data success";

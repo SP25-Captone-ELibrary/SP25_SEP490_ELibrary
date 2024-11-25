@@ -65,9 +65,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.LearningMaterialId)
                 .HasConstraintName("FK_BorrowRecord_LearningMaterialId");
 
-            /// Additional fields
-            /// Update at: 11-10-2024 by Le Xuan Phuoc
-            builder.Property(e => e.RequestDate)
+			#region Update at: 11-10-2024 by Le Xuan Phuoc
+			builder.Property(e => e.RequestDate)
                 .HasColumnType("datetime")
                 .HasColumnName("request_date");
 			builder.Property(e => e.ProcessedDate)
@@ -80,6 +79,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.BorrowRecords)
                 .HasForeignKey(d => d.ProcessedBy)
                 .HasConstraintName("FK_BorrowRecord_ProcessedBy");
+
+			builder.ToTable(b => b.HasCheckConstraint("CK_BorrowRecord_BookOrMaterial",
+			   "(book_edition_copy_id IS NOT NULL AND learning_material_id IS NULL) OR " +
+			   "(book_edition_copy_id IS NULL AND learning_material_id IS NOT NULL)"));
+			#endregion
 		}
-    }
+	}
 }

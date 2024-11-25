@@ -5,19 +5,31 @@ using FPTU_ELibrary.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHealthChecks()
+builder.Services
+	// Add system health checks
+	.AddHealthChecks() 
+    // For SQL
     .AddSqlServerHealthCheck();
 
-// Configure application services
 builder.Services
+    // Configure system services
     .ConfigureServices(builder.Configuration)
+    // Configure Serilog
     .ConfigureSerilog(builder)
+    // Configure appSettings
     .ConfigureAppSettings(builder.Configuration, builder.Environment);
 
-// Configure infrastructure services
 builder.Services
-    .AddApplication(builder.Configuration)
-    .AddInfrastructure(builder.Configuration);
+	// Configure for application layer
+	.AddApplication(builder.Configuration)
+	// Configure for infrastructure layer
+	.AddInfrastructure(builder.Configuration);
+
+builder.Services
+    // Add swagger
+    .AddSwagger()
+    // Add authentication
+    .AddAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -36,10 +48,14 @@ if (app.Environment.IsDevelopment())
     app.WithSwagger();
 }
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
-app.UseRouting();
+app.UseRouting(); 
 app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
+app.UseAuthorization(); 
+
+// Custom Middlewares
+app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware
+app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
+
+app.MapControllers(); // Maps controller endpoints after middleware pipeline
 app.Run();
