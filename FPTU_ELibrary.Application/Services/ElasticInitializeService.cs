@@ -2,7 +2,6 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Elastic.Models;
-using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -13,14 +12,14 @@ using Nest;
 
 namespace FPTU_ELibrary.Application.Services
 {
-    public class ElasticInitializeService : IElasticInitializeService
+	public class ElasticInitializeService : IElasticInitializeService
 	{
-		private readonly IBookService _bookService;
+		private readonly IBookService<BookDto> _bookService;
 		private readonly IElasticClient _elasticClient;
 		private readonly IConfiguration _configuration;
 		private readonly ILogger<ElasticInitializeService> _logger;
 
-		public ElasticInitializeService(IBookService bookService, 
+		public ElasticInitializeService(IBookService<BookDto> bookService, 
 			IElasticClient elasticClient,
 			IConfiguration configuration,
 			ILogger<ElasticInitializeService> logger)

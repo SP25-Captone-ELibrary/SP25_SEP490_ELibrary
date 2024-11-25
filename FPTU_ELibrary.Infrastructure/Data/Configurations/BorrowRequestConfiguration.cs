@@ -61,6 +61,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BorrowRequest_UserId");
-        }
-    }
+
+			#region Update at: 11-10-2024 by Le Xuan Phuoc
+			builder.ToTable(b => b.HasCheckConstraint("CK_BorrowRequest_BookOrMaterial",
+			   "(book_edition_id IS NOT NULL AND learning_material_id IS NULL) OR " +
+			   "(book_edition_id IS NULL AND learning_material_id IS NOT NULL)"));
+			#endregion
+		}
+	}
 }

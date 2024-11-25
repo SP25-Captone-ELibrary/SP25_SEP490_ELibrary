@@ -8,23 +8,33 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Elasticsearch.Net;
 using Nest;
-using FPTU_ELibrary.Application.Services.Base;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Auth;
 
 namespace FPTU_ELibrary.Application
 {
-	public static class DependencyInjection
+    public static class DependencyInjection
     {
 		//	Summary:
 		//		This class is to configure services for application layer
         public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
         {
-			// Register DI 
-			services.AddScoped<IBookService, BookService>();
+			// Register external services 
+			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<ISearchService, SearchService>();
 			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
+			
+			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
 			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
+			services.AddScoped<IAuthenticationService<AuthenticatedUserDto>, AuthenticationService>();
+			services.AddScoped<IBookService<BookDto>, BookService>();
+			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
+			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
+			services.AddScoped<IUserService<UserDto>, UserService>();
+			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
 
 			services
 				.ConfigureMapster() // Add mapster

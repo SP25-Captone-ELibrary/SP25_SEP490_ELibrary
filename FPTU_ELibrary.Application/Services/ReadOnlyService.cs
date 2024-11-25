@@ -1,8 +1,11 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Services.Base;
 using FPTU_ELibrary.Domain.Interfaces;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Nest;
+using System.Linq.Expressions;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -19,54 +22,116 @@ namespace FPTU_ELibrary.Application.Services
             _mapper = mapper;
         }
 
-        public virtual async Task<IServiceResult> GetAllAsync(bool tracked = true)
+		public virtual async Task<IServiceResult> GetAllAsync(bool tracked = true)
         {
             try
             {
-                var result = await _unitOfWork.Repository<TEntity, TKey>().GetAllAsync();
+                var entities = await _unitOfWork.Repository<TEntity, TKey>().GetAllAsync();
 
-                if (!result.Any())
+                if (!entities.Any())
                 {
-                    return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG, 
-                        _mapper.Map<IEnumerable<TDto>>(result));
+                    return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG, 
+                        _mapper.Map<IEnumerable<TDto>>(entities));
                 }
 
                 return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
-                    _mapper.Map<IEnumerable<TDto>>(result));
+                    _mapper.Map<IEnumerable<TDto>>(entities));
             }
-            catch (EntityNotFoundException)
+            catch(Exception)
             {
-                var message = $"Error retrieving all {typeof(TDto).Name}s";
-                return new ServiceResult(ResultConst.ERROR_EXCEPTION_CODE, message);
-            }
-            catch(Exception e)
-            {
-                return new ServiceResult(ResultConst.ERROR_EXCEPTION_CODE, e.Message);
+                throw;
             }
         }
 
-        public virtual async Task<IServiceResult> GetByIdAsync(TKey id)
+		public virtual async Task<IServiceResult> GetByIdAsync(TKey id)
         {
             try
             {
-                var result = await _unitOfWork.Repository<TEntity, TKey>().GetByIdAsync(id);
+                var entity = await _unitOfWork.Repository<TEntity, TKey>().GetByIdAsync(id);
 
-				if (result == null)
+				if (entity == null)
 				{
-					return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, _mapper.Map<TDto>(result));
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, _mapper.Map<TDto>(entity));
 			}
-			catch (EntityNotFoundException)
+			catch (Exception)
 			{
-				var message = $"Error retrieving all {typeof(TDto).Name}s";
-				return new ServiceResult(ResultConst.ERROR_EXCEPTION_CODE, message);
-			}
-			catch (Exception e)
-			{
-				return new ServiceResult(ResultConst.ERROR_EXCEPTION_CODE, e.Message);
+                throw;
 			}
 		}
-    }
+
+		public virtual async Task<IServiceResult> GetWithSpecAsync(ISpecification<TEntity> specification)
+		{
+			try
+			{
+				var entity = await _unitOfWork.Repository<TEntity, TKey>().GetWithSpecAsync(specification);
+
+				if (entity == null)
+				{
+					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+				}
+
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, _mapper.Map<TDto>(entity));
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
+		
+		public async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
+		{
+			try
+			{
+				var entities = await _unitOfWork.Repository<TEntity, TKey>().GetAllWithSpecAsync(specification, tracked);
+
+				if (!entities.Any())
+				{
+					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG,
+						_mapper.Map<IEnumerable<TDto>>(entities));
+				}
+
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+					_mapper.Map<IEnumerable<TDto>>(entities));
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
+
+		public virtual async Task<IServiceResult> AnyAsync(Expression<Func<TEntity, bool>> predicate)
+		{
+			try
+			{
+				var hasAny = await _unitOfWork.Repository<TEntity, TKey>().AnyAsync(predicate);
+
+				if (!hasAny)
+				{
+					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG, false);
+				}
+
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, true);
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
+
+		public async Task<IServiceResult> CountAsync(ISpecification<TEntity> specification)
+		{
+			try
+			{
+				var totalEntity = await _unitOfWork.Repository<TEntity, TKey>().CountAsync(specification);
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, totalEntity);
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
+	}
 }

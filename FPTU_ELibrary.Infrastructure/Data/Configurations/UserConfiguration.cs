@@ -29,7 +29,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(255)
                 .HasColumnName("email");
             builder.Property(e => e.EmailConfirmed).HasColumnName("email_confirmed");
-            builder.Property(e => e.FirstName)
+			builder.Property(e => e.EmailVerificationCode)
+				.HasMaxLength(20)
+				.HasColumnName("email_verification_code");
+			builder.Property(e => e.FirstName)
                 .HasMaxLength(100)
                 .HasColumnName("first_name");
             builder.Property(e => e.IsActive)

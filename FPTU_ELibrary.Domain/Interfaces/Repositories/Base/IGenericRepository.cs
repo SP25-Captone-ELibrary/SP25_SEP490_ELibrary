@@ -1,4 +1,5 @@
 ﻿using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using System.Linq.Expressions;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
 {
@@ -35,6 +36,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
         #endregion
 
         #region OTHERS
+        Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
         bool HasChanges(TEntity original, TEntity modified);
         bool HasChanges(TEntity entity);
         #endregion

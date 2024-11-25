@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using FluentValidation.Results;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Auth;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,12 +10,15 @@ using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Application.Validations
 {
-	public static class ValidatorExtensions
+    public static class ValidatorExtensions
 	{
 		// Define a dictionary to hold validators for each type.
 		private static readonly Dictionary<Type, IValidator> Validators = new()
 		{
 			{ typeof(BookDto), new BookDtoValidator() },
+			{ typeof(UserDto), new UserDtoValidator() },
+			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
+			{ typeof(AuthenticatedUserDto), new AuthenticatedUserDtoValidator() },
 			// Add other Validator pairs here.
 		};
 

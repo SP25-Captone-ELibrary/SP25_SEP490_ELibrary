@@ -597,7 +597,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.HasIndex("ProcessedBy");
 
-                    b.ToTable("Borrow_Record", (string)null);
+                    b.ToTable("Borrow_Record", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BorrowRecord_BookOrMaterial", "(book_edition_copy_id IS NOT NULL AND learning_material_id IS NULL) OR (book_edition_copy_id IS NULL AND learning_material_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequest", b =>
@@ -669,7 +672,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Borrow_Request", (string)null);
+                    b.ToTable("Borrow_Request", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BorrowRequest_BookOrMaterial", "(book_edition_id IS NOT NULL AND learning_material_id IS NULL) OR (book_edition_id IS NULL AND learning_material_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.CopyConditionHistory", b =>
@@ -745,6 +751,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit")
                         .HasColumnName("email_confirmed");
+
+                    b.Property<string>("EmailVerificationCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("email_verification_code");
 
                     b.Property<string>("EmployeeCode")
                         .HasMaxLength(20)
@@ -1357,24 +1368,36 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
 
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("employee_id");
+
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime")
                         .HasColumnName("expiry_date");
+
+                    b.Property<int>("RefreshCount")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("RefreshTokenId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("refresh_token_id");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("Pk_RefreshToken_Id");
 
+                    b.HasIndex("EmployeeId");
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("Refresh_Token", (string)null);
+                    b.ToTable("Refresh_Token", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RefreshToken_UserOrEmployee", "(user_id IS NOT NULL AND employee_id IS NULL) OR (user_id IS NULL AND employee_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.ReservationQueue", b =>
@@ -1491,8 +1514,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("email_confirmed");
 
+                    b.Property<string>("EmailVerificationCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("email_verification_code");
+
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("first_name");
@@ -1504,7 +1531,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("last_name");
@@ -1961,12 +1987,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.RefreshToken", b =>
                 {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "Employee")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("EmployeeId")
+                        .HasConstraintName("FK_RefreshToken_EmployeeId");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK_User_UserId");
+                        .HasConstraintName("FK_RefreshToken_UserId");
+
+                    b.Navigation("Employee");
 
                     b.Navigation("User");
                 });
@@ -2092,6 +2123,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("LearningMaterialCreateByNavigations");
 
                     b.Navigation("Notifications");
+
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.FinePolicy", b =>

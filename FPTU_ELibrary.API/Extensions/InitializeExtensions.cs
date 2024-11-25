@@ -1,9 +1,9 @@
-﻿using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Domain.Interfaces;
+﻿using FPTU_ELibrary.Domain.Interfaces;
+using FPTU_ELibrary.Domain.Interfaces.Services;
 
 namespace FPTU_ELibrary.API.Extensions
 {
-    public static class InitializeExtensions
+	public static class InitializeExtensions
     {
         // Summary:
         //      Progress initialize database (Migrate, Seed Data)

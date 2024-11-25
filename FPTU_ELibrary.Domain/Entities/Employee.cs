@@ -38,6 +38,7 @@ public class Employee
     public string? TwoFactorSecretKey { get; set; }
     public string? TwoFactorBackupCodes { get; set; }
     public string? PhoneVerificationCode { get; set; }
+    public string? EmailVerificationCode { get; set; }
     public DateTime? PhoneVerificationExpiry { get; set; }
 
     // Role in the system
@@ -75,4 +76,7 @@ public class Employee
 
     [JsonIgnore]
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+	[JsonIgnore]
+	public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

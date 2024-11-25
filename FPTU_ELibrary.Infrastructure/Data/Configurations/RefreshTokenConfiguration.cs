@@ -24,7 +24,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_User_UserId");
-        }
-    }
+                .HasConstraintName("FK_RefreshToken_UserId");
+
+			#region Update at: 23-11-2024 by Le Xuan Phuoc
+			builder.Property(e => e.EmployeeId).HasColumnName("employee_id");
+			builder.HasOne(d => d.Employee).WithMany(p => p.RefreshTokens)
+				.HasForeignKey(d => d.EmployeeId)
+				.HasConstraintName("FK_RefreshToken_EmployeeId");
+			
+            builder.ToTable(b => b.HasCheckConstraint("CK_RefreshToken_UserOrEmployee", 
+               "(user_id IS NOT NULL AND employee_id IS NULL) OR " +
+			   "(user_id IS NULL AND employee_id IS NOT NULL)"));
+			#endregion
+		}
+	}
 }

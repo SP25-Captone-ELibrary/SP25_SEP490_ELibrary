@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\buildMultiTargeting\FPTU_ELibrary.API.props" />
-</Project>

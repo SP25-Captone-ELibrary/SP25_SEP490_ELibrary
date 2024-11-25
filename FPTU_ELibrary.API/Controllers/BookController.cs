@@ -10,10 +10,11 @@ namespace FPTU_ELibrary.API.Controllers
 	[ApiController]
 	public class BookController : ControllerBase
 	{
-		private readonly IBookService _bookService;
+		private readonly IBookService<BookDto> _bookService;
 		private readonly ISearchService _searchService;
 
-		public BookController(IBookService bookService, ISearchService searchService)
+		public BookController(IBookService<BookDto> bookService, 
+			ISearchService searchService)
         {
             _bookService = bookService;
 			_searchService = searchService;

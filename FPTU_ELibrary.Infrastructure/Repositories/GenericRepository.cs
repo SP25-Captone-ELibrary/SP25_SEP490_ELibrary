@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -123,6 +124,11 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
 		#endregion
 
 		#region OTHERS
+		public async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> expression)
+		{
+			return await _dbSet.AnyAsync(expression);
+		}
+
 		public bool HasChanges(TEntity original, TEntity modified)
 		{
 			if (original == null || modified == null)
@@ -197,5 +203,6 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
         {
             return SpecificationEvaluator<TEntity>.GetQuery(query, specification);
         }
+
 	}
 }

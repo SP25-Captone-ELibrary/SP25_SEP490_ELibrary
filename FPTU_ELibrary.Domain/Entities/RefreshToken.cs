@@ -8,15 +8,24 @@ public class RefreshToken
     public int Id { get; set; }
 
     // Refresh token ID
-    public Guid RefreshTokenId { get; set; }
+    public string RefreshTokenId { get; set; } = null!;
 
     // Creation and expiration datetime
     public DateTime CreateDate { get; set; }
     public DateTime ExpiryDate { get; set; }
 
     // For specific user
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
+
+	// For specific employee
+	public Guid? EmployeeId { get; set; }
+
+    // Refresh Count
+    public int RefreshCount { get; set; }
 
     [JsonIgnore]
     public User User { get; set; } = null!;
+
+	[JsonIgnore]
+	public Employee Employee { get; set; } = null!;
 }
