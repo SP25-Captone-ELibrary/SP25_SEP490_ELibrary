@@ -6,8 +6,10 @@ using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
+using FPTU_ELibrary.Domain.Common.Constants;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Entities.Base;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
@@ -18,7 +20,7 @@ using Org.BouncyCastle.Ocsp;
 
 namespace FPTU_ELibrary.Application.Services
 {
-    public class AuthenticationService : IAuthenticationService<AuthenticatedUserDto>
+    public class AuthenticationService : IAuthenticationService<AuthenticateUserDto>
 	{
 		private readonly ILogger<AuthenticationService> _logger;
 		private readonly IEmailService _emailService;
@@ -87,15 +89,17 @@ namespace FPTU_ELibrary.Application.Services
 			throw new BadRequestException("Email verification code not match, please check again or resend the code.");
 		}
 
-		public async Task<IServiceResult> RefreshTokenAsync(string email, string refreshToken)
+		public async Task<IServiceResult> RefreshTokenAsync(
+			string email, string userType, string name,
+			string roleName, string tokenId, string refreshTokenId)
 		{
-			// Check exist user email
-			var getRefreshTokenResult = await _refreshTokenService.GetByEmailAsync(email);
+			// Check exist refresh token by tokenId and refreshTokenId
+			var getRefreshTokenResult = await _refreshTokenService.GetByTokenIdAndRefreshTokenIdAsync(
+				tokenId, refreshTokenId);
 			if (getRefreshTokenResult.Data != null) // Exist refresh token
 			{
 				// Map to RefreshTokenDto
-				var refreshTokenDto = getRefreshTokenResult.Data as RefreshTokenDto;
-				if (refreshTokenDto == null) throw new NotFoundException("Refresh token not found.");
+				var refreshTokenDto = (getRefreshTokenResult.Data as RefreshTokenDto)!;
 				// Retrieve refresh token limit
 				var maxRefreshTokenLifeSpan = _appSettings.MaxRefreshTokenLifeSpan;
 				// Check whether valid refresh token limit
@@ -103,205 +107,76 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					throw new ForbiddenException("Refresh token limit reached.");
 				}
-								
+				
+				// Generate new tokenId
+				tokenId = Guid.NewGuid().ToString();
 				// Update refresh token 
-				refreshTokenDto.RefreshTokenId = new JwtUtils().GenerateRefreshToken();
+				refreshTokenDto.TokenId = tokenId;
+				// refreshTokenDto.RefreshTokenId = new JwtUtils().GenerateRefreshToken();
 				refreshTokenDto.RefreshCount += 1;
 				
 				// Progress update
 				var updateResult = await _refreshTokenService.UpdateAsync(refreshTokenDto.Id, refreshTokenDto);
-			}
-			else // Not exist refresh token
-			{
-				// Generate new refresh token
-			}
-			
-			// Generate new refresh token 
-			var refreshTokenId = new JwtUtils().GenerateRefreshToken();
-			// Update
-			return null!;
-		}
-
-		public async Task<IServiceResult> SignInAsync(AuthenticatedUserDto user)
-		{
-			// Validation
-			var authenValidationResult = await ValidatorExtensions.ValidateAsync(user);
-			if (authenValidationResult != null && !authenValidationResult.IsValid)
-			{
-				throw new UnprocessableEntityException("Invalid credentials", 
-					authenValidationResult.ToProblemDetails().Errors);
-			}
-
-			// Try to authenticate with user
-			var getUserResult = await _userService.GetByEmailAndPasswordAsync(
-							user.Email, user.Password);
-			if (getUserResult.Status == ResultConst.SUCCESS_READ_CODE)
-			{
-				var userDto = (getUserResult.Data as UserDto)!;
-
-				// Initialize new authenticated user
-				user = new AuthenticatedUserDto()
+				if (updateResult.Status == ResultConst.SUCCESS_UPDATE_CODE) // Update success
 				{
-					Id = userDto.UserId,
-					Email = userDto.Email,
-					FirstName = userDto.FirstName ?? string.Empty,
-					LastName = userDto.LastName ?? string.Empty,
-					RoleId = userDto.RoleId,
-					RoleName = userDto.Role.EnglishName,
-					IsEmployee = false,
-					IsActive = userDto.IsActive,
-					Password = string.Empty
-				};
-			}
-
-			// Try to authenticate with employee
-			var getemployeeResult = await _employeeService.GetByEmailAndPasswordAsync(
-							user.Email, user.Password);
-			if (getemployeeResult.Status == ResultConst.SUCCESS_READ_CODE)
-			{
-				var employee = (getUserResult.Data as EmployeeDto)!;
-
-				// Initialize new authenticated user
-				user = new AuthenticatedUserDto()
-				{
-					Id = employee.EmployeeId,
-					FirstName = employee.FirstName,
-					LastName = employee.LastName,
-					Email = employee.Email,
-					RoleId = employee.JobRole.JobRoleId,
-					RoleName = employee.JobRole.EnglishName,
-					IsEmployee = true,
-					IsActive = employee.IsActive,
-					Password = string.Empty
-				};
-			}
-
-			// Check whether authentication success
-			if (user.Id != Guid.Empty && !string.IsNullOrEmpty(user.RoleName)) // Is exist user/emloyee infor
-			{
-				// Check user status
-				if (!user.IsActive) throw new ForbiddenException("You don’t have permission to access");
-
-				// Generate authentication resp
-				var resp = await new JwtUtils(_webTokenSettings).GenerateJWTTokenAsync(user);
-
-				if (!string.IsNullOrEmpty(resp.AccessToken) // Exist access token
-					&& resp.ValidTo > DateTime.UtcNow) // Valid token expiration date
-				{
-					// Check exist user refresh token 
-					var getTokenResult = !user.IsEmployee
-						? await _refreshTokenService.GetByUserIdAsync(user.Id)
-						: await _refreshTokenService.GetByEmployeeIdAsync(user.Id);
-
-					// Initialize RefreshTokenDto
-					var refreshTokenDto = new RefreshTokenDto();
-					// Progress add refresh token whenever user refresh token not exist
-					if(getTokenResult.Data is null)
+					// Generate authenticated user
+					var authenticatedUserDto = new AuthenticateUserDto()
 					{
-						// Current local datetime
-						var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-							// SE Asia timezone
-							TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-						// Generate refresh token id
-						var refreshTokenId = new JwtUtils().GenerateRefreshToken();
-						// Assign properties
-						refreshTokenDto = new RefreshTokenDto()
-						{
-							CreateDate = currentLocalDateTime,
-							ExpiryDate = DateTime.UtcNow.AddMinutes(_webTokenSettings.RefreshTokenLifeTimeInMinutes),
-							RefreshTokenId = refreshTokenId,
-							RefreshCount = 0
-						};
-
-						// Check whether is User or Employee
-						if (user.IsEmployee) // Is employee
-						{
-							refreshTokenDto.EmployeeId = user.Id;
-						}
-						else // Is user
-						{
-							refreshTokenDto.UserId = user.Id;
-						}
-
-						// Add & Save refresh token
-						var serviceResult = await _refreshTokenService.CreateAsync(refreshTokenDto);
-						if (serviceResult.Status != ResultConst.SUCCESS_INSERT_CODE)
-						{
-							_logger.LogError("Something went wrong while add create refresh token");
-							throw new Exception("Something went wrong while add create refresh token");
-						}
-					}
-					else
-					{
-						refreshTokenDto = (getTokenResult.Data as RefreshTokenDto)!;
-					}
-
-					// Response success
-					return new ServiceResult(ResultConst.SUCCESS_SIGNIN_CODE, ResultConst.SUCCESS_SIGNIN_MSG,
+						Email = email, 
+						FirstName = name,
+						LastName = string.Empty,
+						RoleName = roleName,
+						IsEmployee = userType.Equals(ClaimValues.EMPLOYEE_CLAIMVALUE),
+						IsActive = true
+					};
+					
+					// Generate access token
+					var generateResult = await new JwtUtils(_webTokenSettings)
+						.GenerateJwtTokenAsync(tokenId: tokenId, user: authenticatedUserDto);
+					
+					return new ServiceResult(ResultConst.SUCCESS_SIGNIN_CODE, "Refresh token successfully",
 						new AuthenticateResultDto
-						{
-							AccessToken = resp.AccessToken,
-							RefreshToken = refreshTokenDto.RefreshTokenId.ToString(),
-							ValidTo = resp.ValidTo
-						});
+							{
+								AccessToken = generateResult.AccessToken,
+								RefreshToken = refreshTokenDto.RefreshTokenId,
+								ValidTo = generateResult.ValidTo
+							});
+				}
+				else // Fail to update
+				{
+					_logger.LogError("Fail to save new refresh token");
+					throw new Exception("Fail to save new refresh token");
 				}
 			}
 			
-			throw new UnauthorizedException("Wrong email or password.");
+			// Resp not found 
+			throw new NotFoundException("Not found refresh token");
 		}
 
-		public async Task<IServiceResult> SignUpAsync(AuthenticatedUserDto user, bool isSignUpFromExternal = false)
+		public async Task<IServiceResult> SignUpAsync(AuthenticateUserDto user)
 		{
-			// Validations 
-			var validationResult = await ValidatorExtensions.ValidateAsync(user);
-			if (validationResult != null 
-				&& !validationResult.IsValid
-				// Validate only from internal sign-up
-				&& !isSignUpFromExternal) // Invoke validation errors
-			{
-				// Throw exception to middleware pipeline
-				throw new UnprocessableEntityException("Validation errors", validationResult.ToProblemDetails().Errors);
-			}
+			// Validate user input
+			await ValidateUserInputAsync(user);
 
 			// Check exist email
 			var checkAnyResult = await _userService.AnyAsync(u => u.Email.Equals(user.Email));
 			if (checkAnyResult.Data is true) throw new BadRequestException("Email already exist");
 
-			// Check exist & valid for user code
-			// TODO: Check exist for user code within the student management system
-			if (!string.IsNullOrEmpty(user.UserCode)) // Create as student
+			// Set default as general member role
+			var result = await _roleService.GetByNameAsync(Role.GeneralMember);
+			if (result.Status == ResultConst.SUCCESS_READ_CODE)
 			{
-				// Get student role
-				var result = await _roleService.GetByNameAsync(Role.Student);
-				if (result.Status == ResultConst.SUCCESS_READ_CODE)
-				{
-					// Assign role
-					user.RoleId = (result.Data as SystemRoleDto)!.RoleId;
-				}
-				else
-				{
-					_logger.LogError("Not found any role with nameof Student");
-					throw new NotFoundException("Role", "Student");
-				}
+				// Assign role
+				user.RoleId = (result.Data as SystemRoleDto)!.RoleId;
 			}
-			else // Create as general member
+			else
 			{
-				// Get general member role
-				var result = await _roleService.GetByNameAsync(Role.GeneralMember);
-				if (result.Status == ResultConst.SUCCESS_READ_CODE)
-				{
-					// Assign role
-					user.RoleId = (result.Data as SystemRoleDto)!.RoleId;
-				}
-				else
-				{
-					_logger.LogError("Not found any role with nameof GeneralMember");
-					throw new NotFoundException("Role", "GeneralMember");
-				}
+				_logger.LogError("Not found any role with nameof GeneralMember");
+				throw new NotFoundException("Role", "GeneralMember");
 			}
 
-			// Hash password (if any)
-			if(!isSignUpFromExternal) user.Password = HashUtils.HashPassword(user.Password);
+			// Hash password
+			user.Password = HashUtils.HashPassword(user.Password!);
 			// Progress create new user
 			var createdResult = await _userService.CreateAsync(user.ToUserDto());
 			if (createdResult.Data is true)
@@ -310,8 +185,7 @@ namespace FPTU_ELibrary.Application.Services
 				var confirmationCode = StringUtils.GenerateCode();
 
 				// Progress send confirmation email
-				// Define email message
-				var emailMessageDto = new EmailMessageDto(
+				var emailMessageDto = new EmailMessageDto( // Define email message
 					// Define Recipient
 					to: new List<string>() { user.Email },
 					// Define subject
@@ -329,13 +203,14 @@ namespace FPTU_ELibrary.Application.Services
 						</div>"
 				);
 				// Send email
-				var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+				await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
 
 				// Get created user by email
 				var getWithSpecResult = await _userService.GetWithSpecAsync(
 					new BaseSpecification<User>(u => u.Email.Equals(user.Email)));
 				if (getWithSpecResult.Data is null) throw new NotFoundException("User", user.Email);
 
+				// Retrieve data object and map to UserDto
 				var userDto = (getWithSpecResult.Data as UserDto)!;
 				// Update confirmation code
 				userDto.EmailVerificationCode = confirmationCode;
@@ -354,6 +229,234 @@ namespace FPTU_ELibrary.Application.Services
 				_logger.LogError("Something went wrong, fail to create new user");
 				throw new Exception("Something went wrong, fail to create new user");
 			}
+		}
+		
+		public async Task<IServiceResult> SignInAsync(AuthenticateUserDto user, 
+			bool isSignInFromExternalProvider = false)
+		{
+			// Validation
+			await ValidateUserInputAsync(user, skipValidation: isSignInFromExternalProvider);
+			
+			// Determine sign-in type
+			if (isSignInFromExternalProvider) // Is from external provider
+			{
+				// Is exist user 
+				var userDto = (await _userService.GetByEmailAsync(user.Email)).Data as UserDto;
+				if (userDto == null) // Add new 
+				{
+					// General member role
+					var role = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
+					if (role == null) throw new NotFoundException("GeneralMember role is not found to create new user");
+					
+					// User id 
+					var userId = Guid.NewGuid();
+					// User role
+					user.RoleId = role.RoleId;
+					user.RoleName = role.EnglishName;
+
+					// Progress create new user
+					var createResult = await _userService.CreateAsync(user.ToUserDto(
+						// Create with specific ID and mark as external provider register
+						userId: userId, isSignUpFromExternalProvider: true)); 
+					
+					// Assign ID and set to active if success to mark as authenticate success
+					if (createResult.Status == ResultConst.SUCCESS_INSERT_CODE)
+					{
+						user.Id = userId;
+						user.IsActive = true;
+						user.IsEmployee = false;
+					}
+				}
+				else // Add user details
+				{
+					user = new AuthenticateUserDto()
+					{
+						Id = userDto.UserId,
+						Email = userDto.Email,
+						FirstName = userDto.FirstName ?? string.Empty,
+						LastName = userDto.LastName ?? string.Empty,
+						RoleId = userDto.RoleId,
+						RoleName = userDto.Role.EnglishName,
+						IsEmployee = false,
+						IsActive = userDto.IsActive,
+						Password = string.Empty
+					};
+				}
+			}
+			else // With user credentials (email, password)
+			{
+				// Concurrently query both User and Employee services
+				var userResult = await _userService.GetByEmailAsync(user.Email);
+				var employeeResult = await _employeeService.GetByEmailAsync(user.Email);
+
+				// Handle User authentication
+                if (userResult.Status == ResultConst.SUCCESS_READ_CODE 
+                    && userResult.Data is UserDto userDto)
+                {
+                    if (ValidatePassword(user.Password, userDto.PasswordHash))
+                    {
+                        user = new AuthenticateUserDto
+                        {
+                            Id = userDto.UserId,
+                            Email = userDto.Email,
+                            FirstName = userDto.FirstName ?? string.Empty,
+                            LastName = userDto.LastName ?? string.Empty,
+                            RoleId = userDto.RoleId,
+                            RoleName = userDto.Role.EnglishName,
+                            IsEmployee = false,
+                            IsActive = userDto.IsActive,
+                            Password = string.Empty
+                        };
+                    }
+                }
+				
+                // Handle Employee authentication
+                if (employeeResult.Status == ResultConst.SUCCESS_READ_CODE 
+                    && employeeResult.Data is EmployeeDto employeeDto)
+                {
+	                if (ValidatePassword(user.Password, employeeDto.PasswordHash))
+	                {
+		                user = new AuthenticateUserDto
+		                {
+			                Id = employeeDto.EmployeeId,
+			                Email = employeeDto.Email,
+			                FirstName = employeeDto.FirstName,
+			                LastName = employeeDto.LastName,
+			                RoleId = employeeDto.JobRole.JobRoleId,
+			                RoleName = employeeDto.JobRole.EnglishName,
+			                IsEmployee = true,
+			                IsActive = employeeDto.IsActive,
+			                Password = string.Empty
+		                };
+	                }
+                }
+			} 
+			
+			// Handle authenticate user
+			return await AuthenticateUserAsync(user);
+		}
+		
+		// Authenticate user
+		private async Task<ServiceResult> AuthenticateUserAsync(AuthenticateUserDto user)
+		{
+			// Validate user status
+			if (user.Id == Guid.Empty || string.IsNullOrEmpty(user.RoleName))
+				throw new UnauthorizedAccessException("Invalid user information");
+
+			if (!user.IsActive)
+				throw new ForbiddenException("You don’t have permission to access");
+			
+			// Generate token
+			var tokenId = Guid.NewGuid().ToString();
+			var jwtResponse = await new JwtUtils(_webTokenSettings).GenerateJwtTokenAsync(
+				tokenId:tokenId, user:user);
+			
+			if (string.IsNullOrEmpty(jwtResponse.AccessToken) || jwtResponse.ValidTo <= DateTime.UtcNow)
+				throw new Exception("Invalid JWT token generated");
+			
+			// Handle refresh token
+			var refreshTokenDto = await HandleRefreshTokenAsync(user, tokenId);
+
+			// Return success result
+			return new ServiceResult(
+				ResultConst.SUCCESS_SIGNIN_CODE,
+				ResultConst.SUCCESS_SIGNIN_MSG,
+				new AuthenticateResultDto
+				{
+					AccessToken = jwtResponse.AccessToken,
+					RefreshToken = refreshTokenDto.RefreshTokenId,
+					ValidTo = jwtResponse.ValidTo
+				});
+		}
+		
+		// Handle refresh token
+		private async Task<RefreshTokenDto> HandleRefreshTokenAsync(AuthenticateUserDto user, string tokenId)
+		{
+			var getTokenResult = user.IsEmployee
+				? await _refreshTokenService.GetByEmployeeIdAsync(user.Id)
+				: await _refreshTokenService.GetByUserIdAsync(user.Id);
+
+			if (getTokenResult.Data is null)
+			{
+				return await CreateNewRefreshTokenAsync(user, tokenId);
+			}
+
+			return await UpdateExistingRefreshTokenAsync((RefreshTokenDto)getTokenResult.Data, tokenId);
+		}
+		
+		// Create new refresh token 
+		private async Task<RefreshTokenDto> CreateNewRefreshTokenAsync(AuthenticateUserDto user, string tokenId)
+		{
+			var refreshTokenId = new JwtUtils().GenerateRefreshToken();
+
+			var refreshTokenDto = new RefreshTokenDto
+			{
+				CreateDate = DateTime.UtcNow,
+				ExpiryDate = DateTime.UtcNow.AddMinutes(_webTokenSettings.RefreshTokenLifeTimeInMinutes),
+				RefreshTokenId = refreshTokenId,
+				RefreshCount = 0,
+				TokenId = tokenId,
+				UserId = user.IsEmployee ? null : user.Id,
+				EmployeeId = user.IsEmployee ? user.Id : null
+			};
+
+			var result = await _refreshTokenService.CreateAsync(refreshTokenDto);
+			if (result.Status != ResultConst.SUCCESS_INSERT_CODE)
+				ThrowServiceException("creating refresh token");
+
+			return refreshTokenDto;
+		}
+		
+		// Update existing refresh token
+		private async Task<RefreshTokenDto> UpdateExistingRefreshTokenAsync(RefreshTokenDto refreshTokenDto, string tokenId)
+		{
+			refreshTokenDto.CreateDate = DateTime.UtcNow;
+			refreshTokenDto.RefreshTokenId = new JwtUtils().GenerateRefreshToken();
+			refreshTokenDto.TokenId = tokenId;
+			refreshTokenDto.RefreshCount = 0;
+
+			var result = await _refreshTokenService.UpdateAsync(refreshTokenDto.Id, refreshTokenDto);
+			if (result.Status != ResultConst.SUCCESS_INSERT_CODE)
+				ThrowServiceException("updating refresh token");
+
+			return refreshTokenDto;
+		}
+		
+		// Validate user input fields
+		private async Task ValidateUserInputAsync(AuthenticateUserDto user, bool skipValidation = false)
+		{
+			if (!skipValidation)
+			{
+				var validationResult = await ValidatorExtensions.ValidateAsync(user);
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					throw new UnprocessableEntityException("Invalid credentials", validationResult.ToProblemDetails().Errors);
+				}
+			}
+		}
+		
+		// Validate password
+		private bool ValidatePassword(string? inputPassword, string? storedHash)
+		{
+			if (string.IsNullOrEmpty(storedHash))
+			{
+				throw new UnauthorizedException("Your password is not set. Please sign in with an external provider to update it.");
+			}
+
+			if (!HashUtils.VerifyPassword(inputPassword ?? string.Empty, storedHash))
+			{
+				throw new UnauthorizedException("Wrong email or password.");
+			}
+
+			return true;
+		}
+
+		// Service exception (log & throw exception)
+		private void ThrowServiceException(string operation)
+		{
+			var errorMessage = $"Something went wrong while {operation}.";
+			_logger.LogError(errorMessage);
+			throw new Exception(errorMessage);
 		}
 	}
 }

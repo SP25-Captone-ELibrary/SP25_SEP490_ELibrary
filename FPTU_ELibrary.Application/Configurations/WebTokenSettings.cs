@@ -9,7 +9,7 @@
         public bool ValidateAudience { get; set; }
         public string ValidAudience { get; set; } = string.Empty;
         public bool RequireExpirationTime { get; set; }
-        public bool ValidateLifeTime { get; set; }
+        public bool ValidateLifetime { get; set; }
         public int TokenLifeTimeInMinutes { get; set; }
         public int RefreshTokenLifeTimeInMinutes { get; set; }
     }

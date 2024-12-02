@@ -16,9 +16,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.EnglishName)
                 .HasMaxLength(100)
                 .HasColumnName("english_name");
-			builder.Property(e => e.VietnameseName)
-				.HasMaxLength(100)
-				.HasColumnName("vietnamese_name");
+            builder.Property(e => e.VietnameseName)
+                .HasMaxLength(100)
+                .HasColumnName("vietnamese_name");
         }
     }
 }

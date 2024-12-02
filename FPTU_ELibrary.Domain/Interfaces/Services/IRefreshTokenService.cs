@@ -9,5 +9,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 		Task<IServiceResult> GetByUserIdAsync(Guid userId);
 		Task<IServiceResult> GetByEmployeeIdAsync(Guid employeeId);
 		Task<IServiceResult> GetByEmailAsync(string email);
+		Task<IServiceResult> GetByTokenIdAndRefreshTokenIdAsync(string tokenId, string refreshTokenId);
 	}
 }

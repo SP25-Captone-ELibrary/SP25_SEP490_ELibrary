@@ -70,8 +70,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     job_role_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                    vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -114,17 +114,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     employee_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     employee_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    job_role_id = table.Column<int>(type: "int", nullable: false),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
+                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
                     address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
@@ -135,8 +136,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     two_factor_backup_codes = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true),
-                    job_role_id = table.Column<int>(type: "int", nullable: false)
+                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -179,15 +179,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     user_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    role_id = table.Column<int>(type: "int", nullable: false),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
+                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
+                    address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     email_confirmed = table.Column<bool>(type: "bit", nullable: false),
@@ -195,8 +199,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     two_factor_backup_codes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true),
-                    role_id = table.Column<int>(type: "int", nullable: false)
+                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -325,7 +328,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    refresh_token_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    refresh_token_id = table.Column<string>(type: "nvarchar(100)", nullable: false),
+                    token_id = table.Column<string>(type: "nvarchar(36)", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),

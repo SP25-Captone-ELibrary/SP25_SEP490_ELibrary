@@ -1,15 +1,12 @@
 ﻿using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Entities.Base;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class SystemRole
+public class SystemRole : BaseRole
 {
     // Key
     public int RoleId { get; set; }
-    
-    // Role detail
-    public string VietnameseName { get; set; } = null!;
-    public string EnglishName { get; set; } = null!;
 
     // Mapping entities
     [JsonIgnore]

@@ -19,7 +19,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.ExpiryDate)
                 .HasColumnType("datetime")
                 .HasColumnName("expiry_date");
-            builder.Property(e => e.RefreshTokenId).HasColumnName("refresh_token_id");
+            builder.Property(e => e.RefreshTokenId)
+	            .HasColumnType("nvarchar(100)")
+	            .HasColumnName("refresh_token_id");
             builder.Property(e => e.UserId).HasColumnName("user_id");
 
             builder.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
@@ -36,6 +38,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                "(user_id IS NOT NULL AND employee_id IS NULL) OR " +
 			   "(user_id IS NULL AND employee_id IS NOT NULL)"));
 			#endregion
-		}
+			
+			#region Update at: 26-11-2024 by Le Xuan Phuoc
+			builder.Property(e => e.TokenId)
+				.HasColumnType("nvarchar(36)")
+				.HasColumnName("token_id");
+			#endregion
+        }
 	}
 }

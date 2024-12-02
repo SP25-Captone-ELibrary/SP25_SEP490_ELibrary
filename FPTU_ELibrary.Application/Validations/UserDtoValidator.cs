@@ -21,12 +21,12 @@ namespace FPTU_ELibrary.Application.Validations
 			RuleFor(u => u.FirstName)
 				//.NotEmpty()
 				.Matches(@"^([A-Z][a-z]*)(\s[A-Z][a-z]*)*$").WithMessage("'{PropertyName}' should start with an uppercase letter for each word.")
-				.Length(3, 15);
+				.Length(1, 15);
 			// LastName
 			RuleFor(u => u.LastName)
 				//.NotEmpty()
 				.Matches(@"^([A-Z][a-z]*)(\s[A-Z][a-z]*)*$").WithMessage("'{PropertyName}' should start with an uppercase letter for each word.")
-				.Length(3, 15);
+				.Length(1, 15);
 			// Dob
 			RuleFor(u => u.Dob)
 				.Must(dob => !dob.HasValue || DateTimeUtils.IsValidAge(dob.Value))

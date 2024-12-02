@@ -29,7 +29,7 @@ namespace FPTU_ELibrary.Application
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
 			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
-			services.AddScoped<IAuthenticationService<AuthenticatedUserDto>, AuthenticationService>();
+			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IBookService<BookDto>, BookService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
 			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();

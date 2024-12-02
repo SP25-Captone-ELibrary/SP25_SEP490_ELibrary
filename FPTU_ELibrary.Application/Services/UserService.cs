@@ -34,6 +34,37 @@ namespace FPTU_ELibrary.Application.Services
 			_logger = logger;
 		}
 
+		public override async Task<IServiceResult> CreateAsync(UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Process add new entity
+				await _unitOfWork.Repository<User, Guid>().AddAsync(_mapper.Map<User>(dto));
+				// Save to DB
+				if (await _unitOfWork.SaveChangesAsync() > 0)
+				{
+					serviceResult.Status = ResultConst.SUCCESS_INSERT_CODE;
+					serviceResult.Message = ResultConst.SUCCESS_INSERT_MSG;
+					serviceResult.Data = true;
+				}
+				else
+				{
+					serviceResult.Status = ResultConst.FAIL_INSERT_CODE;
+					serviceResult.Message = ResultConst.FAIL_INSERT_MSG;
+					serviceResult.Data = false;
+				}
+			}
+			catch(Exception)
+			{
+				throw;
+			}
+			
+			return serviceResult;
+		}
+
 		public async Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password)
 		{
 			// Query specification

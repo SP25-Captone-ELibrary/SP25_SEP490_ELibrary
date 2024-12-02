@@ -18,7 +18,7 @@ namespace FPTU_ELibrary.Application.Validations
 			{ typeof(BookDto), new BookDtoValidator() },
 			{ typeof(UserDto), new UserDtoValidator() },
 			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
-			{ typeof(AuthenticatedUserDto), new AuthenticatedUserDtoValidator() },
+			{ typeof(AuthenticateUserDto), new AuthenticatedUserDtoValidator() },
 			// Add other Validator pairs here.
 		};
 

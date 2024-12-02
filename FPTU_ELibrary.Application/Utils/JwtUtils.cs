@@ -5,14 +5,15 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Domain.Common.Constants;
 
 namespace FPTU_ELibrary.Application.Utils
 {
     //	Summary:
     //		This class is to provide procedures in order to generate JWT token
     public class JwtUtils
-	{
-		private readonly WebTokenSettings _webTokenSettings;
+    {
+	    private readonly WebTokenSettings _webTokenSettings;
 
 		public JwtUtils() {}
 		public JwtUtils(WebTokenSettings webTokenSettings)
@@ -21,7 +22,8 @@ namespace FPTU_ELibrary.Application.Utils
 		}
 
 		// Generate JWT token 
-		public async Task<(string AccessToken, DateTime ValidTo)> GenerateJWTTokenAsync(AuthenticatedUserDto user)
+		public async Task<(string AccessToken, DateTime ValidTo)> GenerateJwtTokenAsync(
+			string tokenId, AuthenticateUserDto user)
 		{
 			// Get secret key
 			var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_webTokenSettings.IssuerSigningKey));
@@ -32,10 +34,13 @@ namespace FPTU_ELibrary.Application.Utils
 			// Token claims 
 			List<Claim> authClaims = new()
 			{
-				new Claim(ClaimTypes.Email, user.Email),
 				new Claim(ClaimTypes.Role, user.RoleName),
-				new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName} {user.LastName}"),
-				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
+					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
+					: ClaimValues.USER_CLAIMVALUE), // Is user
+				new Claim(JwtRegisteredClaimNames.Email, user.Email),
+				new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName} {user.LastName}".Trim()),
+				new Claim(JwtRegisteredClaimNames.Jti, tokenId),
 			};
 
 			// Token descriptor 
@@ -44,6 +49,8 @@ namespace FPTU_ELibrary.Application.Utils
 				// Token claims (email, role, username, id...)
 				Subject = new ClaimsIdentity(authClaims),
 				Expires = DateTime.UtcNow.AddMinutes(_webTokenSettings.TokenLifeTimeInMinutes),
+				Issuer = _webTokenSettings.ValidIssuer,
+				Audience = _webTokenSettings.ValidAudience,
 				SigningCredentials = new SigningCredentials(
 					authSigningKey, SecurityAlgorithms.HmacSha256)
 			};

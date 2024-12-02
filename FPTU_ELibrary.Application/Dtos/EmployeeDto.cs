@@ -11,7 +11,7 @@ namespace FPTU_ELibrary.Application.Dtos
 		// Employee detail information
 		public string? EmployeeCode { get; set; }
 		public string Email { get; set; } = null!;
-		public string PasswordHash { get; set; } = null!;
+		public string? PasswordHash { get; set; } = null!;
 		public string FirstName { get; set; } = null!;
 		public string LastName { get; set; } = null!;
 		public DateTime? Dob { get; set; }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241124111224_Initial Database")]
+    [Migration("20241127101821_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -801,7 +801,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("modified_date");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("password_hash");
@@ -1382,9 +1381,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("RefreshCount")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("RefreshTokenId")
-                        .HasColumnType("uniqueidentifier")
+                    b.Property<string>("RefreshTokenId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(100)")
                         .HasColumnName("refresh_token_id");
+
+                    b.Property<string>("TokenId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(36)")
+                        .HasColumnName("token_id");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier")
@@ -1493,6 +1498,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("user_id")
                         .HasDefaultValueSql("(newsequentialid())");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("address");
+
                     b.Property<string>("Avatar")
                         .HasMaxLength(2048)
                         .IsUnicode(false)
@@ -1523,9 +1533,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("email_verification_code");
 
                     b.Property<string>("FirstName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("first_name");
+
+                    b.Property<string>("Gender")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("gender");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -1534,12 +1550,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<string>("LastName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("modified_date");
+
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("password_hash");

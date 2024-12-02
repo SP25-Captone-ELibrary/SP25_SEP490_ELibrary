@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Security.Claims;
 using System.Text;
+using FPTU_ELibrary.Domain.Common.Constants;
 
 namespace FPTU_ELibrary.API.Extensions
 {

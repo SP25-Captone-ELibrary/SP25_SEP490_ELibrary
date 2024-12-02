@@ -123,5 +123,27 @@ namespace FPTU_ELibrary.Application.Services
 				throw;
 			}
 		}
+
+		public async Task<IServiceResult> GetByTokenIdAndRefreshTokenIdAsync(string tokenId, string refreshTokenId)
+		{
+			try
+			{
+				var refreshToken = await _unitOfWork.Repository<RefreshToken, int>().GetWithSpecAsync(
+					new BaseSpecification<RefreshToken>(r => r.TokenId == tokenId 
+					                                         && r.RefreshTokenId == refreshTokenId));
+
+				if(refreshToken is null)
+				{
+					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+				}
+
+				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+					_mapper.Map<RefreshTokenDto>(refreshToken));
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
 	}
 }

@@ -11,18 +11,21 @@ namespace FPTU_ELibrary.Application.Dtos
 		// User detail and credentials information
 		public string? UserCode { get; set; }
 		public string Email { get; set; } = null!;
-		public string PasswordHash { get; set; } = null!;
-		public string? FirstName { get; set; } = null!;
-		public string? LastName { get; set; } = null!;
+		public string? PasswordHash { get; set; } 
+		public string? FirstName { get; set; } 
+		public string? LastName { get; set; } 
 		public DateTime? Dob { get; set; }
 		public string? Phone { get; set; }
 		public string? Avatar { get; set; }
+		public string? Address { get; set; }
+		public string? Gender { get; set; }
 
 		// Mark as active user or not 
 		public bool IsActive { get; set; }
 
 		// Creation datetime
 		public DateTime CreateDate { get; set; }
+		public DateTime? ModifiedDate { get; set; }
 
 		// Multi-factor authentication
 		public bool TwoFactorEnabled { get; set; }
