@@ -20,7 +20,9 @@ namespace FPTU_ELibrary.Application.Dtos
 
 		// Mark as active user or not 
 		public bool IsActive { get; set; }
-
+		
+		//Field for checking logic
+		public string? ModifiedBy { get; set; }
 		// Creation datetime
 		public DateTime CreateDate { get; set; }
 

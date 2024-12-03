@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -187,6 +187,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    modified_by = table.Column<string>(type: "nvarchar(max)", nullable: true, defaultValue: "True"),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
@@ -325,7 +326,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    refresh_token_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    refresh_token_id = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),

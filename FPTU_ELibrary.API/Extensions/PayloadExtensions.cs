@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using Org.BouncyCastle.Ocsp;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -28,5 +29,30 @@ namespace FPTU_ELibrary.API.Extensions
 				Password = req.Password,
 				IsEmployee = false
 			};
+
+		public static UserDto ToUser(this CreateUserRequest req)
+			=> new UserDto
+			{
+				Email = req.Email,
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+			};
+
+		public static UserDto ToUserForUpdate(this UpdateUserRequest req)
+			=> new UserDto()
+			{
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Dob = req.Dob,
+				Phone = req.Phone,
+			};
+
+		public static UserDto ToUpdateRoleUser(this UpdateUserRequest req)
+			=> new UserDto()
+			{ 
+				UserCode = req.UserCode,
+				RoleId = req.RoleId??4,
+			};
+
 	}
 }
