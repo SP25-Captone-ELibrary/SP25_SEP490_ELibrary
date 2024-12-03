@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241124111224_Initial Database")]
+    [Migration("20241202073923_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1382,8 +1382,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("RefreshCount")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("RefreshTokenId")
-                        .HasColumnType("uniqueidentifier")
+                    b.Property<string>("RefreshTokenId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("refresh_token_id");
 
                     b.Property<Guid?>("UserId")
@@ -1537,6 +1538,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("last_name");
+
+                    b.Property<string>("ModifiedBy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("True")
+                        .HasColumnName("modified_by");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

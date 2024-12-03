@@ -35,6 +35,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 			builder.Property(e => e.FirstName)
                 .HasMaxLength(100)
                 .HasColumnName("first_name");
+
+            #region Update at: 2-12-2024 by Nguyen Vu Quang Huy
+            builder.Property(e => e.ModifiedBy)
+                .HasDefaultValue(true)
+                .HasColumnName("modified_by");
+            #endregion
             builder.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");

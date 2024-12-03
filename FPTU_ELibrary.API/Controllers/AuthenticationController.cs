@@ -32,8 +32,8 @@ namespace FPTU_ELibrary.API.Controllers
 		/// <response code="200">Returns the authentication response with a JWT token.</response>
 		/// <response code="401">Unauthorized: Invalid credentials.</response>
 		/// <response code="422">Unprocessable Entity: Validation errors.</response>
-		[AllowAnonymous]
 		[HttpPost(APIRoute.Authentication.SignIn, Name = nameof(SignInAsync))]
+		[AllowAnonymous]
 		public async Task<IActionResult> SignInAsync([FromBody] AuthenticationRequest req)
 		{
 			return Ok(await _authenticationService.SignInAsync(req.ToAuthenticatedUser()));

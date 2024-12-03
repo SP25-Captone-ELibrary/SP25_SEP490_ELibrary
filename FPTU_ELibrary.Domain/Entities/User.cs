@@ -19,12 +19,15 @@ public class User
     
     // Mark as active user or not 
     public bool IsActive { get; set; }
-
+    
+    //Identify the account's maker
+    public string? ModifiedBy { get; set; }
+    
     // Creation datetime
     public DateTime CreateDate { get; set; }
 
     // Multi-factor authentication
-    public bool TwoFactorEnabled { get; set; }
+    public bool TwoFactorEnabled { get; set; }  
     public bool PhoneNumberConfirmed { get; set; }
     public bool EmailConfirmed { get; set; }
     public string? TwoFactorSecretKey { get; set; }
