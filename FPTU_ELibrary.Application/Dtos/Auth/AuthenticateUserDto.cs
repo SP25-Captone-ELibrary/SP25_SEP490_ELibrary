@@ -15,32 +15,23 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
     public static class AuthenticateUserDtoExtensions
     {
         public static UserDto ToUserDto(
-            this AuthenticateUserDto authenticateUser,
-            Guid? userId = null,
-            bool? isSignUpFromExternalProvider = false)
+            this AuthenticateUserDto authenticateUser)
         {
-			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-				// Vietnam timezone
-				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-
 			return new UserDto()
             {
-                UserId = userId ?? Guid.NewGuid(),
+                UserId = authenticateUser.Id,
                 UserCode = authenticateUser.UserCode,
                 FirstName = authenticateUser.FirstName,
                 LastName = authenticateUser.LastName,
                 Email = authenticateUser.Email,
                 Avatar = authenticateUser.Avatar,
-                PasswordHash = authenticateUser.Password ?? null!,
+                PasswordHash = authenticateUser.Password,
                 RoleId = authenticateUser.RoleId,
-                CreateDate = currentLocalDateTime,
-                EmailConfirmed = isSignUpFromExternalProvider ?? false,
-                PhoneNumberConfirmed = false,
-                TwoFactorEnabled = false,
-
-				// Default is inactive, active as when user perform email confirmed success
-                // Default is active if sign up with external provider
-				IsActive = isSignUpFromExternalProvider ?? false,
+                CreateDate = authenticateUser.CreateDate,
+                EmailConfirmed = authenticateUser.EmailConfirmed,
+                PhoneNumberConfirmed = authenticateUser.PhoneNumberConfirmed,
+                TwoFactorEnabled = authenticateUser.TwoFactorEnabled,
+				IsActive = authenticateUser.IsActive,
             };
         }
     }

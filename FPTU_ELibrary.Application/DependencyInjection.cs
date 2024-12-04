@@ -24,6 +24,8 @@ namespace FPTU_ELibrary.Application
 			// Register external services 
 			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<ISearchService, SearchService>();
+			services.AddScoped<ICacheService, CacheService>();
+			services.AddScoped<ISystemMessageService, SystemMessageService>();	
 			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			
 			// Register application services

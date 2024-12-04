@@ -12,5 +12,6 @@
         public bool ValidateLifetime { get; set; }
         public int TokenLifeTimeInMinutes { get; set; }
         public int RefreshTokenLifeTimeInMinutes { get; set; }
+        public int RecoveryPasswordLifeTimeInMinutes { get; set; }
     }
 }

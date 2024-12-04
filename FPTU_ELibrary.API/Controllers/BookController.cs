@@ -2,7 +2,10 @@
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Specifications;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FPTU_ELibrary.API.Controllers
@@ -22,10 +25,21 @@ namespace FPTU_ELibrary.API.Controllers
 
 		//	Summary:
 		//		Get all book
+		[AllowAnonymous]
 		[HttpGet(APIRoute.Book.GetAll, Name = nameof(GetAllBookAsync))]
 		public async Task<IActionResult> GetAllBookAsync()
 		{
-			return Ok(await _bookService.GetAllAsync());
+			// Create book filtering specification
+			BaseSpecification<Book> spec = new();
+			// Add includes 
+			spec.AddInclude(b => b.Category);
+			spec.AddInclude(b => b.BookEditions);
+			spec.AddInclude(b => b.BookAuthors);
+
+			// Get all books with specification
+			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);
+			
+			return Ok(getBookResp);
 		}
 
 		[HttpGet(APIRoute.Book.Search, Name = nameof(SearchBookAsync))]

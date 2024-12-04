@@ -1,5 +1,6 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -12,8 +13,11 @@ namespace FPTU_ELibrary.Application.Services
 	public class SystemRoleService : GenericService<SystemRole, SystemRoleDto, int>, 
 		ISystemRoleService<SystemRoleDto>
 	{
-        public SystemRoleService(IUnitOfWork unitOfWork, IMapper mapper) 
-			: base(unitOfWork, mapper) 
+        public SystemRoleService(
+	        IUnitOfWork unitOfWork,
+	        IMapper mapper,
+	        ICacheService cacheService) 
+			: base(unitOfWork, mapper, cacheService) 
         {
             
         }
@@ -48,12 +52,14 @@ namespace FPTU_ELibrary.Application.Services
 			// Is not found
 			if (systemRoleEntity == null)
 			{
-				return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG,
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
 					new SystemRoleDto());
 			}
 
 			// Is get success <- map to Dto
-			return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
 				_mapper.Map<SystemRoleDto>(systemRoleEntity));
 		}
 	}

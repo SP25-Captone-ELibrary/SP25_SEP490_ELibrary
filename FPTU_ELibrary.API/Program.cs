@@ -13,7 +13,7 @@ builder.Services
 
 builder.Services
     // Configure system services
-    .ConfigureServices(builder.Configuration)
+    .ConfigureServices(builder.Environment)
     // Configure Serilog
     .ConfigureSerilog(builder)
     // Configure appSettings
@@ -26,6 +26,8 @@ builder.Services
 	.AddInfrastructure(builder.Configuration);
 
 builder.Services
+    // Add HttpClient
+    .AddHttpClient()
     // Add swagger
     .AddSwagger()
     // Add authentication

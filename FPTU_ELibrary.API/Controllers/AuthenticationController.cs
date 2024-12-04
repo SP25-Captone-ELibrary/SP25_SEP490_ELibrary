@@ -7,13 +7,16 @@ using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
+using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authorization;
-using Nest;
+using Microsoft.AspNetCore.Identity.Data;
+
+using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
 
 namespace FPTU_ELibrary.API.Controllers
 {
@@ -32,59 +35,49 @@ namespace FPTU_ELibrary.API.Controllers
 		[HttpPost(APIRoute.Authentication.SignIn, Name = nameof(SignInAsync))]
 		public async Task<IActionResult> SignInAsync([FromBody] SignInRequest req)
 		{
-			return Ok(await _authenticationService.SignInAsync(req.ToAuthenticatedUser(), 
-				isSignInFromExternalProvider: false));
+			return Ok(await _authenticationService.SignInAsync(req.Email));
+		}
+		
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.SignInWithPassword, Name = nameof(SignInWithPasswordAsync))]
+		public async Task<IActionResult> SignInWithPasswordAsync([FromBody] SignInWithPasswordRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithPasswordAsync(req.ToAuthenticatedUser()));
+		}
+		
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.SignInWithOtp, Name = nameof(SignInWithOtpAsync))]
+		public async Task<IActionResult> SignInWithOtpAsync([FromBody] SignInWithOtpRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithOtpAsync(req.Otp, req.ToAuthenticatedUser()));
 		}
 
 		[AllowAnonymous]
-		[HttpGet(APIRoute.Authentication.SignInWithGoogle, Name = nameof(SignInWithGoogle))]
-		public IActionResult SignInWithGoogle()
+		[HttpPost(APIRoute.Authentication.OtpVerification, Name = nameof(OtpVerificationAsync))]
+		public async Task<IActionResult> OtpVerificationAsync([FromBody] OtpVerificationRequest req)
 		{
-			var properties = new AuthenticationProperties
-			{
-				RedirectUri = $"/{APIRoute.Authentication.GoogleCallback}"
-			};
-
-			// Create specified ChallengeResults based on specified scheme
-			return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+			return Ok(await _authenticationService.VerifyOtpAsync(req.Email, req.Otp));
+		}
+		
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.SignInAsEmployee, Name = nameof(SignInAsEmployeeAsync))]
+		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInRequest req)
+		{
+			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.ToAuthenticatedUser()));
+		}
+		
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.SignInWithGoogle, Name = nameof(SignInWithGoogleAsync))]
+		public async Task<IActionResult> SignInWithGoogleAsync([FromBody] GoogleAuthRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithGoogleAsync(req.Code));
 		}
 
 		[AllowAnonymous]
-		[HttpGet(APIRoute.Authentication.GoogleCallback, Name = nameof(GoogleCallbackAsync))]
-		public async Task<IActionResult> GoogleCallbackAsync()
+		[HttpPost(APIRoute.Authentication.SignInWithFacebook, Name = nameof(SignInWithFacebook))]
+		public async Task<IActionResult> SignInWithFacebook([FromBody] FacebookAuthRequest req)
 		{
-			// Authenticate current request based on specific scheme
-			var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-			if (!result.Succeeded) // Authenticate fail
-			{
-				return Unauthorized();
-			}
-
-			// Get claims identity
-			var claims = result.Principal.Identities.FirstOrDefault()?.Claims;
-			// User email
-			var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-			// User avatar
-			var profilePic = claims?.FirstOrDefault(c => c.Type == "profilePic")?.Value;
-			// User surname 
-			var surname = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value;
-			// User given name
-			var givenName = claims?.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value;
-
-			// Initialize userDto
-			var authenticatedUser = new AuthenticateUserDto()
-			{
-				Email = email!,
-				Avatar = profilePic,
-				// Reverse fullname based on vietnamese naming conventions rules
-				FirstName = givenName ?? string.Empty,
-				LastName = surname ?? string.Empty,
-			};
-
-			return Ok(await _authenticationService.SignInAsync(authenticatedUser, 
-					// Mark as sign-up with google
-					isSignInFromExternalProvider: true));
+			return Ok(await _authenticationService.SignInWithFacebookAsync(req.AccessToken, req.ExpiresIn));
 		}
 
 		[AllowAnonymous]
@@ -95,9 +88,9 @@ namespace FPTU_ELibrary.API.Controllers
 			var serviceResult = await _authenticationService.SignUpAsync(req.ToAuthenticatedUser());
 
 			// Progress response
-			return serviceResult.Status == ResultConst.SUCCESS_INSERT_CODE // Create successfully
+			return serviceResult.ResultCode == ResultCodeConst.SYS_Success0001 // Create successfully
 					? Created()
-					: StatusCode(StatusCodes.Status500InternalServerError);
+					: Ok(serviceResult);
 		}
 
 		[AllowAnonymous]
@@ -134,6 +127,27 @@ namespace FPTU_ELibrary.API.Controllers
 				roleName: roleName,
 				tokenId: tokenId,
 				refreshToken: req.RefreshToken));
+		}
+
+		[AllowAnonymous]
+		[HttpGet(APIRoute.Authentication.ForgotPassword, Name = nameof(ForgotPasswordAsync))]
+		public async Task<IActionResult> ForgotPasswordAsync([FromQuery] ForgotPasswordRequest req)
+		{
+			return Ok(await _authenticationService.ForgotPasswordAsync(req.Email));
+		}
+
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.ChangePassword, Name = nameof(ChangePasswordAsync))]
+		public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest req)
+		{
+			return Ok(await _authenticationService.ChangePasswordAsync(req.Email, req.Password, req.Token));
+		}
+		
+		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.ChangePasswordAsEmployee, Name = nameof(ChangePasswordAsEmployeeAsync))]
+		public async Task<IActionResult> ChangePasswordAsEmployeeAsync([FromBody] ChangePasswordRequest req)
+		{
+			return Ok(await _authenticationService.ChangePasswordAsEmployeeAsync(req.Email, req.Password, req.Token));
 		}
 	}
 }

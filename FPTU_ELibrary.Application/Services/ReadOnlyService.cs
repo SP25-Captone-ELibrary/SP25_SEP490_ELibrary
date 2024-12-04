@@ -6,6 +6,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Nest;
 using System.Linq.Expressions;
+using FPTU_ELibrary.Application.Services.IServices;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -15,11 +16,16 @@ namespace FPTU_ELibrary.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ICacheService _cacheService;
 
-        public ReadOnlyService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ReadOnlyService(
+	        IUnitOfWork unitOfWork, 
+	        IMapper mapper,
+	        ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _cacheService = cacheService;
         }
 
 		public virtual async Task<IServiceResult> GetAllAsync(bool tracked = true)
@@ -30,11 +36,13 @@ namespace FPTU_ELibrary.Application.Services
 
                 if (!entities.Any())
                 {
-                    return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG, 
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+	                    await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
                         _mapper.Map<IEnumerable<TDto>>(entities));
                 }
 
-                return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+	                await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
                     _mapper.Map<IEnumerable<TDto>>(entities));
             }
             catch(Exception)
@@ -51,10 +59,13 @@ namespace FPTU_ELibrary.Application.Services
 
 				if (entity == null)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, _mapper.Map<TDto>(entity));
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+					_mapper.Map<TDto>(entity));
 			}
 			catch (Exception)
 			{
@@ -70,10 +81,13 @@ namespace FPTU_ELibrary.Application.Services
 
 				if (entity == null)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, _mapper.Map<TDto>(entity));
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+					_mapper.Map<TDto>(entity));
 			}
 			catch (Exception)
 			{
@@ -89,11 +103,13 @@ namespace FPTU_ELibrary.Application.Services
 
 				if (!entities.Any())
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG,
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
 						_mapper.Map<IEnumerable<TDto>>(entities));
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 					_mapper.Map<IEnumerable<TDto>>(entities));
 			}
 			catch (Exception)
@@ -110,10 +126,12 @@ namespace FPTU_ELibrary.Application.Services
 
 				if (!hasAny)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG, false);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, true);
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
 			}
 			catch (Exception)
 			{
@@ -126,7 +144,8 @@ namespace FPTU_ELibrary.Application.Services
 			try
 			{
 				var totalEntity = await _unitOfWork.Repository<TEntity, TKey>().CountAsync(specification);
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, totalEntity);
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), totalEntity);
 			}
 			catch (Exception)
 			{

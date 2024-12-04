@@ -25,9 +25,10 @@ namespace FPTU_ELibrary.Application.Services
 			ILogger<UserService> logger,
 			ISystemRoleService<SystemRoleDto> roleService,
 			IEmailService emailService,
+			ICacheService cacheService,
 			IUnitOfWork unitOfWork, 
 			IMapper mapper) 
-			: base(unitOfWork, mapper)
+			: base(unitOfWork, mapper, cacheService)
 		{
 			_roleService = roleService;
 			_emailService = emailService;
@@ -46,14 +47,14 @@ namespace FPTU_ELibrary.Application.Services
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
-					serviceResult.Status = ResultConst.SUCCESS_INSERT_CODE;
-					serviceResult.Message = ResultConst.SUCCESS_INSERT_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
 					serviceResult.Data = true;
 				}
 				else
 				{
-					serviceResult.Status = ResultConst.FAIL_INSERT_CODE;
-					serviceResult.Message = ResultConst.FAIL_INSERT_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
 					serviceResult.Data = false;
 				}
 			}
@@ -62,6 +63,60 @@ namespace FPTU_ELibrary.Application.Services
 				throw;
 			}
 			
+			return serviceResult;
+		}
+
+		public async Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				if (existingEntity == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002));
+				}
+
+				// Process add update entity
+				// Map properties from dto to existingEntity
+				_mapper.Map(dto, existingEntity);
+
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+
 			return serviceResult;
 		}
 
@@ -77,9 +132,11 @@ namespace FPTU_ELibrary.Application.Services
 
 			// Verify whether the given password match password hash or not
 			if (user == null || !HashUtils.VerifyPassword(password, user.PasswordHash))
-				return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 
-			return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<UserDto?>(user));
 		}
 
@@ -95,10 +152,12 @@ namespace FPTU_ELibrary.Application.Services
 			
 			// Not exist user
 			if (user == null)
-				return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 
 			// Response read success
-			return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<UserDto?>(user));
 		}
 	}

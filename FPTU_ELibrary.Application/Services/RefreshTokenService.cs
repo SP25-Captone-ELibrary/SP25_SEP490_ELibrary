@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -20,8 +21,9 @@ namespace FPTU_ELibrary.Application.Services
 	        IUserService<UserDto> userService,
 	        IEmployeeService<EmployeeDto> employeeService,
 	        IUnitOfWork unitOfWork,
+	        ICacheService cacheService,
 	        IMapper mapper)
-            : base(unitOfWork, mapper)
+            : base(unitOfWork, mapper, cacheService)
         {
 	        _userService = userService;
 	        _employeeService = employeeService;
@@ -37,10 +39,10 @@ namespace FPTU_ELibrary.Application.Services
 
 				if(refreshToken is null)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty");
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
 			catch (Exception)
@@ -59,10 +61,10 @@ namespace FPTU_ELibrary.Application.Services
 
 				if (refreshToken is null)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty");
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully",
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
 			catch (Exception)
@@ -80,7 +82,7 @@ namespace FPTU_ELibrary.Application.Services
 				var employeeResult = await _employeeService.GetByEmailAsync(email);
 
 				// Is user
-				if (userResult.Status == ResultConst.SUCCESS_READ_CODE)
+				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002)
 				{
 					// Map data object to UserDto
 					var user = userResult.Data as UserDto;
@@ -91,14 +93,14 @@ namespace FPTU_ELibrary.Application.Services
 					var refreshToken = await _unitOfWork.Repository<RefreshToken, int>().GetWithSpecAsync(
 						new BaseSpecification<RefreshToken>(rft => rft.UserId == user.UserId));
 					// Not exist refresh token
-					if(refreshToken == null) return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+					if(refreshToken == null) return new ServiceResult(ResultCodeConst.SYS_Fail0002, "Fail to get data");
 					
 					// Response success
-					return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+					return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 						_mapper.Map<RefreshTokenDto>(refreshToken));
 				}
 				// Is Employee
-				else if(employeeResult.Status != ResultConst.SUCCESS_READ_CODE)
+				else if(employeeResult.ResultCode != ResultCodeConst.SYS_Success0002)
 				{
 					// Map data object to UserDto
 					var employee = employeeResult.Data as EmployeeDto;
@@ -109,14 +111,14 @@ namespace FPTU_ELibrary.Application.Services
 					var refreshToken = await _unitOfWork.Repository<RefreshToken, int>().GetWithSpecAsync(
 						new BaseSpecification<RefreshToken>(rft => rft.EmployeeId == employee.EmployeeId));
 					// Not exist refresh token
-					if(refreshToken == null) return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+					if(refreshToken == null) return new ServiceResult(ResultCodeConst.SYS_Fail0002, "Fail to get data");
 					
 					// Response success
-					return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+					return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 						_mapper.Map<RefreshTokenDto>(refreshToken));
 				}
 				
-				return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty");
 			}
 			catch (Exception)
 			{
@@ -134,10 +136,10 @@ namespace FPTU_ELibrary.Application.Services
 
 				if(refreshToken is null)
 				{
-					return new ServiceResult(ResultConst.WARNING_NO_DATA_CODE, ResultConst.WARNING_NO_DATA_MSG);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty or empty");
 				}
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
 			catch (Exception)

@@ -1,7 +1,6 @@
 ﻿using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application.Configurations;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -15,7 +14,7 @@ namespace FPTU_ELibrary.API.Extensions
 	//      This class is to configure services for presentation layer 
 	public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection ConfigureServices(this IServiceCollection services, IWebHostEnvironment env)
         {
 			// Add controllers
             services.AddControllers();
@@ -23,6 +22,13 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddEndpointsApiExplorer();
 			// Add swagger
 			services.AddSwaggerGen();
+			// Add Redis Cache
+			services.AddStackExchangeRedisCache(config =>
+			{
+				config.Configuration = env.IsDevelopment()
+					? "127.0.0.1:6379"
+					: Environment.GetEnvironmentVariable("REDIS_URL");
+			});
 
 			return services;
         }
@@ -54,7 +60,9 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
 			// Configure GoogleAuthSettings
 			services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-
+			// Configure FacebookAuthSettings
+			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
+			
 			#region Development stage
 			if (env.IsDevelopment()) // Is Development env
 			{
@@ -101,50 +109,16 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddAuthentication(options =>
 			{
 				// Define default scheme
-				options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme; // For API requests
-				options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme; // For login challenge
-				options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme; // For Google sign-in
-			})
-			// Enables JWT-bearer authentication
-			.AddJwtBearer(options =>
+				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
+				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
+				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme; 
+			}).AddJwtBearer(options => // Enables JWT-bearer authentication
 			{
 				// Disable Https required for the metadata address or authority
 				options.RequireHttpsMetadata = false;
 				// Define type and definitions required for validating a token
 				options.TokenValidationParameters = services.BuildServiceProvider()
 					.GetRequiredService<TokenValidationParameters>();
-			})
-			.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
-			// Add Google authentication
-			.AddGoogle(options => 
-			{
-				// OAuth2 ClientId
-				options.ClientId = configuration["GoogleAuthSettings:ClientId"]!;
-				// OAuth2 ClientSecret
-				options.ClientSecret = configuration["GoogleAuthSettings:ClientSecret"]!;
-				// SignIn Authentication Scheme
-				options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-				// Handle authentication event CreateTicket
-				options.Events.OnCreatingTicket = ctx =>
-				{
-					// Claim identity
-					var identity = (ClaimsIdentity)ctx.Principal?.Identity! ?? new ClaimsIdentity();
-					// User profile picture
-					var profilePic = ctx.User.GetProperty("picture").GetString();
-					// User email
-					var email = ctx.User.GetProperty("email").GetString();
-					// User name
-					var name = ctx.User.GetProperty("name").GetString();
-
-					// Add claims
-					identity.AddClaim(new Claim("profilePic", profilePic ?? string.Empty));
-					identity.AddClaim(new Claim(ClaimTypes.Email, email ?? string.Empty));
-					identity.AddClaim(new Claim(ClaimTypes.Name, name ?? string.Empty));
-
-					// Mark as completed task
-					return Task.CompletedTask;
-				};
-
 			});
 
 			return services;

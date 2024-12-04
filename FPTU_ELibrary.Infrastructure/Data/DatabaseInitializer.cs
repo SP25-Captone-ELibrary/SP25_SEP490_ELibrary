@@ -9,6 +9,7 @@ using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
 using BookCategoryEntity = FPTU_ELibrary.Domain.Entities.BookCategory;
 using System.ComponentModel;
 using System.Reflection;
+using FPTU_ELibrary.Domain.Interfaces.Services;
 
 namespace FPTU_ELibrary.Infrastructure.Data
 {

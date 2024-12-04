@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241127101821_Initial Database")]
+    [Migration("20241204040129_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1461,6 +1461,68 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("ReservedBy");
 
                     b.ToTable("Reservation_Queue", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemMessage", b =>
+                {
+                    b.Property<string>("MsgId")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("msg_id");
+
+                    b.Property<string>("CreateBy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("create_by");
+
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("create_date");
+
+                    b.Property<string>("En")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("EN");
+
+                    b.Property<string>("Ja")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("JA");
+
+                    b.Property<string>("Ko")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("KO");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("MsgContent")
+                        .IsRequired()
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("msg_content");
+
+                    b.Property<string>("Ru")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("RU");
+
+                    b.Property<string>("Vi")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("VI");
+
+                    b.HasKey("MsgId")
+                        .HasName("PK_SystemMessage_MsgId");
+
+                    b.ToTable("System_Message", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemRole", b =>

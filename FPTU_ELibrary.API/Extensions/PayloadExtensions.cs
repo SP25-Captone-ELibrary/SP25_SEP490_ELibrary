@@ -14,6 +14,22 @@ namespace FPTU_ELibrary.API.Extensions
 			=> new AuthenticateUserDto
 			{
 				Email = req.Email,
+				Password = null!
+			};
+		
+		// Mapping from typeof(SignInWithOtpRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithOtpRequest req)
+			=> new AuthenticateUserDto
+			{
+				Email = req.Email,
+				Password = null!
+			};
+		
+		// Mapping from typeof(SignInWithPasswordRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithPasswordRequest req)
+			=> new AuthenticateUserDto
+			{
+				Email = req.Email,
 				Password = req.Password
 			};
 

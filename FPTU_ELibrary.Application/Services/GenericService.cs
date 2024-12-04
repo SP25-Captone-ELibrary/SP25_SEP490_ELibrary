@@ -1,5 +1,6 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
@@ -14,11 +15,16 @@ namespace FPTU_ELibrary.Application.Services
     {
         protected readonly IUnitOfWork _unitOfWork;
         protected readonly IMapper _mapper;
+        protected readonly ICacheService _cacheService;
 
-        public GenericService(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper)
+        public GenericService(
+	        IUnitOfWork unitOfWork, 
+	        IMapper mapper,
+	        ICacheService cacheService) : base(unitOfWork, mapper, cacheService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _cacheService = cacheService;
         }
 
         public virtual async Task<IServiceResult> CreateAsync(TDto dto)
@@ -35,7 +41,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					// Convert ValidationResult to ValidationProblemsDetails.Errors
 					var errors = validationResult.ToProblemDetails().Errors;
-					throw new UnprocessableEntityException("Validation errors", errors);
+					throw new UnprocessableEntityException("Invalid Validations", errors);
 				}
 				
 				// Process add new entity
@@ -43,14 +49,14 @@ namespace FPTU_ELibrary.Application.Services
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
-					serviceResult.Status = ResultConst.SUCCESS_INSERT_CODE;
-					serviceResult.Message = ResultConst.SUCCESS_INSERT_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
 					serviceResult.Data = true;
 				}
 				else
 				{
-					serviceResult.Status = ResultConst.FAIL_INSERT_CODE;
-					serviceResult.Message = ResultConst.FAIL_INSERT_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
 					serviceResult.Data = false;
 				}
 			}
@@ -81,14 +87,14 @@ namespace FPTU_ELibrary.Application.Services
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
-					serviceResult.Status = ResultConst.SUCCESS_REMOVE_CODE;
-					serviceResult.Message = ResultConst.SUCCESS_REMOVE_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0004;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0004);
 					serviceResult.Data = true;
 				}
 				else
 				{
-					serviceResult.Status = ResultConst.FAIL_REMOVE_CODE;
-					serviceResult.Message = ResultConst.FAIL_REMOVE_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0004;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					serviceResult.Data = false;
 				}
 			}
@@ -114,7 +120,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					// Convert ValidationResult to ValidationProblemsDetails.Errors
 					var errors = validationResult.ToProblemDetails().Errors;
-					throw new UnprocessableEntityException("Validation errors", errors);
+					throw new UnprocessableEntityException("Invalid validations", errors);
 				}
 
 				// Retrieve the entity
@@ -131,8 +137,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Check if there are any differences between the original and the updated entity
 				if (!_unitOfWork.Repository<TEntity, TKey>().HasChanges(existingEntity))
 				{
-					serviceResult.Status = ResultConst.SUCCESS_UPDATE_CODE;
-					serviceResult.Message = ResultConst.SUCCESS_UPDATE_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 					serviceResult.Data = true;
 					return serviceResult;
 				}
@@ -144,15 +150,15 @@ namespace FPTU_ELibrary.Application.Services
 				var rowsAffected = await _unitOfWork.SaveChangesAsync();
 				if (rowsAffected == 0)
 				{
-					serviceResult.Status = ResultConst.FAIL_UPDATE_CODE;
-					serviceResult.Message = ResultConst.FAIL_UPDATE_MSG;
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
 					serviceResult.Data = false;
 					return serviceResult;
 				}
 
 				// Mark as update success
-				serviceResult.Status = ResultConst.SUCCESS_UPDATE_CODE;
-				serviceResult.Message = ResultConst.SUCCESS_UPDATE_MSG;
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 				serviceResult.Data = true;
 			}
 			catch (Exception)

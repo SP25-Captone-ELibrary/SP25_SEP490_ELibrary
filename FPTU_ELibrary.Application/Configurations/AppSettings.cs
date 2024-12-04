@@ -5,5 +5,6 @@
 	public class AppSettings
 	{
 		public int MaxRefreshTokenLifeSpan { get; set; }
+		public string RecoveryPasswordRedirectUri { get; set; } = string.Empty;
 	}
 }

@@ -4,19 +4,33 @@
 	{
 		private const string Base = "api";
 
+		/// <summary>
+		/// Authentication endpoints
+		/// </summary>
 		public static class Authentication
 		{
 			// [GET]
-			public const string SignInWithGoogle = Base + "/auth/sign-in-google";
-			public const string GoogleCallback = Base + "/auth/google-callback";
+			public const string FacebookCallback = Base + "/auth/facebook-callback";
+			public const string ForgotPassword = Base + "/auth/forgot-password";
+			public const string ChangePassword = Base + "/auth/change-password";
+			public const string ChangePasswordAsEmployee = Base + "/employee/auth/change-password";
 			// [POST]
 			public const string SignIn = Base + "/auth/sign-in";
+			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
+			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
+			public const string SignInAsEmployee = Base + "/employee/auth/sign-in";
+			public const string SignInWithGoogle = Base + "/auth/sign-in-google";
+			public const string SignInWithFacebook = Base + "/auth/sign-in-facebook";
 			public const string SignUp = Base + "/auth/sign-up";
 			public const string RefreshToken = Base + "/auth/refresh-token";
+			public const string OtpVerification = Base + "/auth/verify-otp";
 			// [PATCH]
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 		}
 
+		/// <summary>
+		/// Book endpoints
+		/// </summary>
 		public static class Book
 		{
 			// [GET]
@@ -28,6 +42,15 @@
 			public const string Update = Base + "/books";
 			// [PATCH]
 			// [DELETE]
+		}
+
+		/// <summary>
+		/// SystemMessage endpoints
+		/// </summary>
+		public static class SystemMessage
+		{
+			public const string ImportToExcel = Base + "/system-messages/import-excel";
+			public const string ExportToExcel = Base + "/system-messages/export-excel";
 		}
 	}
 }

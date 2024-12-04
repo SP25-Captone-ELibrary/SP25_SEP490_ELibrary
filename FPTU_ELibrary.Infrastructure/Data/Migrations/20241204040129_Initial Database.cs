@@ -95,6 +95,27 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "System_Message",
+                columns: table => new
+                {
+                    msg_id = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    msg_content = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: false),
+                    VI = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    EN = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    RU = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    JA = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    KO = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    create_by = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    modified_by = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SystemMessage_MsgId", x => x.msg_id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "System_Role",
                 columns: table => new
                 {
@@ -1099,6 +1120,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Reservation_Queue");
+
+            migrationBuilder.DropTable(
+                name: "System_Message");
 
             migrationBuilder.DropTable(
                 name: "User_Favorites");

@@ -139,7 +139,7 @@ namespace FPTU_ELibrary.Application.Services
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);
 		
 			// Check success result
-			if(getBookResp.Status == ResultConst.SUCCESS_READ_CODE)
+			if(getBookResp.ResultCode == ResultCodeConst.SYS_Success0002)
 			{
 				// Convert result data to List
 				var books = getBookResp.Data as List<BookDto>;

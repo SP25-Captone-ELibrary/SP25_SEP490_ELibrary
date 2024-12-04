@@ -12,6 +12,7 @@ namespace FPTU_ELibrary.API.Mappings
 			config.NewConfig<User, UserDto>();
 			config.NewConfig<Employee, EmployeeDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
+			config.NewConfig<SystemMessage, SystemMessageDto>();
 		}
 	}
 }
