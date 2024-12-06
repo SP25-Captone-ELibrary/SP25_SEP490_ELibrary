@@ -46,6 +46,30 @@
 		}
 
 		/// <summary>
+		/// User endpoints
+		/// </summary>
+		public static class User
+		{
+			// [Get]
+			public const string GetAll = Base + "/users";
+			public const string Search = Base + "/users/q";
+			// [POST]
+			public const string Create = Base + "/admin";
+
+			public const string CreateMany = Base + "/createMany";
+			// public const string CreateMany = Base + "/admin/createMany";
+			// [PATCH]
+			//users update their own account
+			public const string Update = Base + "/users/{id}";
+			//admin update role from general user(GU) to Student or Teacher role
+			public const string UpdateRole = Base + "/admin/{id}/role";
+			//[Put]
+			public const string ChangeAccountStatus = Base + "/admin/{id}/status";
+			//[Delete]
+			public const string HardDelete = Base + "/admin/{id}";
+		}
+
+		/// <summary>
 		/// SystemMessage endpoints
 		/// </summary>
 		public static class SystemMessage

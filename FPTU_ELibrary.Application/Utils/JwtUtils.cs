@@ -17,18 +17,24 @@ namespace FPTU_ELibrary.Application.Utils
 	    private readonly WebTokenSettings _webTokenSettings;
 	    private readonly TokenValidationParameters _tokenValidationParameters;
 
-	    public JwtUtils() {}
+	    public JwtUtils() 
+		{
+			_webTokenSettings = null!;
+			_tokenValidationParameters = null!;
+		}
 	    
 	    public JwtUtils(
 		    WebTokenSettings webTokenSettings)
 	    {
 		    _webTokenSettings = webTokenSettings;
-	    }
+			_tokenValidationParameters = null!;
+		}
 		
 	    public JwtUtils(
 		    TokenValidationParameters tokenValidationParameters)
 	    {
-		    _tokenValidationParameters = tokenValidationParameters;
+			_webTokenSettings = null!;
+			_tokenValidationParameters = tokenValidationParameters;
 	    }
 	    
 	    public JwtUtils(

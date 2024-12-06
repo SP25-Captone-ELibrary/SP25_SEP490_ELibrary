@@ -14,6 +14,8 @@ public class User : BaseUser
     // Role in the system
     public int RoleId { get; set; }
 
+    public string? ModifiedBy { get; set; }
+
     // Mapping entities
     public SystemRole Role { get; set; } = null!;
     public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();

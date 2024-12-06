@@ -1,15 +1,58 @@
-﻿namespace FPTU_ELibrary.Application.Utils
-{
-	// Summary:
-	//		Provide utility procedures to handle any logic related to encrypt/decrypt
-	public class HashUtils
-	{
-		public static bool VerifyPassword(string password, string storedHash)
-			// Verfifies that the hash of given text matches to provided hash
-			=> BC.EnhancedVerify(password, storedHash);
+﻿using System.Text;
 
-		public static string HashPassword(string password)
-			// Pre-hash a password with SHA384 then using the OpenBSD BCrypt scheme and a salt
-			=> BC.EnhancedHashPassword(password, 13);
-	}
+namespace FPTU_ELibrary.Application.Utils
+{
+    // Summary:
+    //		Provide utility procedures to handle any logic related to encrypt/decrypt
+    public class HashUtils
+    {
+        public static bool VerifyPassword(string password, string storedHash)
+            // Verfifies that the hash of given text matches to provided hash
+            => BC.EnhancedVerify(password, storedHash);
+
+        public static string HashPassword(string password)
+            // Pre-hash a password with SHA384 then using the OpenBSD BCrypt scheme and a salt
+            => BC.EnhancedHashPassword(password, 13);
+
+        public static string GenerateRandomPassword()
+        {
+            //Collection of password requirement 
+            const string upperCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string digits = "0123456789";
+            const string specialCharacters = "@$!%*?&";
+            const string allCharacters =
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
+
+            Random random = new Random();
+
+            char[] result = new char[8];
+
+            // Process randomly add value for blank value of default password
+            int upperCasePosition = random.Next(8);
+            int digitPosition;
+            int specialCharPosition;
+            do
+            {
+                digitPosition = random.Next(8);
+            } while (digitPosition == upperCasePosition);
+
+            do
+            {
+                specialCharPosition = random.Next(8);
+            } while (specialCharPosition == upperCasePosition || specialCharPosition == digitPosition);
+            
+            result[upperCasePosition] = upperCaseLetters[random.Next(upperCaseLetters.Length)];
+            result[digitPosition] = digits[random.Next(digits.Length)];
+            result[specialCharPosition] = specialCharacters[random.Next(specialCharacters.Length)];
+            
+            for (int i = 0; i < 8; i++)
+            {
+                if (result[i] == '\0') //only add value for the blank value
+                {
+                    result[i] = allCharacters[random.Next(allCharacters.Length)];
+                }
+            }
+            return new string(result);
+        }
+    }
 }
