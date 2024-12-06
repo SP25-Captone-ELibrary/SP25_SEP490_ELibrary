@@ -6,6 +6,7 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
 using SystemFeatureEnum = FPTU_ELibrary.Domain.Common.Enums.SystemFeature;
@@ -48,7 +49,8 @@ public class AuthorizationService : IAuthorizationService
                 rp => rp.Role.EnglishName.Equals(role) && // with specific role
                       rp.Feature.EnglishName.Equals(featureEnum.ToString())); // with specific feature
             // Include permission
-            baseSpec.AddInclude(rolePermission => rolePermission.Permission);
+            baseSpec.ApplyInclude(q => 
+                q.Include(rp => rp.Permission));
             
             // Get role permission with spec
             var rolePermissions = 

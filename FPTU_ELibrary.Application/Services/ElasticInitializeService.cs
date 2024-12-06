@@ -5,6 +5,7 @@ using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Nest;
 using Serilog;
@@ -129,10 +130,13 @@ namespace FPTU_ELibrary.Application.Services
 
 			// Create book filtering specification
 			BaseSpecification<Book> spec = new();
+			// Enables split query
+			spec.EnableSplitQuery();
 			// Add includes 
-			spec.AddInclude(b => b.Category);
-			spec.AddInclude(b => b.BookEditions);
-			spec.AddInclude(b => b.BookAuthors);
+			spec.ApplyInclude(q => q
+				.Include(b => b.Category)
+				.Include(b => b.BookEditions)
+				.Include(b => b.BookAuthors));
 
 			// Get all books with specification
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);

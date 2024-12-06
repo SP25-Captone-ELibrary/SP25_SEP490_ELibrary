@@ -11,6 +11,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using Mapster;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using MimeKit.Encodings;
 
@@ -130,7 +131,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Query specification
 				var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
 				// Include job role
-				baseSpec.AddInclude(u => u.Role);
+				baseSpec.ApplyInclude(q => 
+					q.Include(u => u.Role));
 
 				// Get user by query specification
 				var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
@@ -158,7 +160,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Query specification
 				var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
 				// Include job role
-				baseSpec.AddInclude(u => u.Role);
+				baseSpec.ApplyInclude(q => 
+					q.Include(u => u.Role));
 
 				// Get user by query specification
 				var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);

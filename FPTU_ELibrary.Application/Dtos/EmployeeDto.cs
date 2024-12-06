@@ -32,7 +32,8 @@ namespace FPTU_ELibrary.Application.Dtos
 		// Creation and modify date
 		public DateTime CreateDate { get; set; }
 		public DateTime? ModifiedDate { get; set; }
-
+		public string? ModifiedBy { get; set; }
+		
 		// Multi-factor authentication properties
 		public bool TwoFactorEnabled { get; set; }
 		public bool PhoneNumberConfirmed { get; set; }
@@ -101,6 +102,7 @@ namespace FPTU_ELibrary.Application.Dtos
 				RoleId = userDto.RoleId,
 				CreateDate = userDto.CreateDate,
 				ModifiedDate = userDto.ModifiedDate,
+				ModifiedBy = userDto.ModifiedBy,
 				EmailConfirmed = userDto.EmailConfirmed,
 				PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
 				EmailVerificationCode = userDto.EmailVerificationCode,

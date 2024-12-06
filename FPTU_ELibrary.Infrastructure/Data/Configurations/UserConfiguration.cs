@@ -47,7 +47,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             #region Update at: 2-12-2024 by Nguyen Vu Quang Huy
             builder.Property(e => e.ModifiedBy)
-                .HasDefaultValue(true)
+                .HasColumnType("nvarchar(100)")
                 .HasColumnName("modified_by");
             #endregion
            

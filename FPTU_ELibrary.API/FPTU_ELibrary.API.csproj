@@ -18,4 +18,8 @@
     <ProjectReference Include="..\FPTU_ELibrary.Infrastructure\FPTU_ELibrary.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Payloads\Requests\Role\" />
+  </ItemGroup>
+
 </Project>

@@ -19,6 +19,7 @@ public class BaseUser : IBaseUser
     // Creation and modify date
     public DateTime CreateDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
+    public string? ModifiedBy { get; set; }
     
     // Multi-factor authentication properties
     public bool TwoFactorEnabled { get; set; }
