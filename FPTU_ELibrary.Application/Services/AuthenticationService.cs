@@ -105,7 +105,7 @@ namespace FPTU_ELibrary.Application.Services
 	                // Mark as email confirmed
 	                userDto.EmailConfirmed = true;
                 	// Save change
-                	var isSaveResult = await _userService.UpdateAsync(userDto.UserId, userDto);
+                	var isSaveResult = await _userService.UpdateWithoutValidationAsync(userDto.UserId, userDto);
                 	if (isSaveResult.Data is true) // Save successfully
                 	{
                 		return new ServiceResult(ResultCodeConst.Auth_Success0007, 
@@ -521,7 +521,7 @@ namespace FPTU_ELibrary.Application.Services
                     // Update password field
                     userDto.PasswordHash = newPasswordHash;
                     // Progress update 
-                    var updateResult = await _userService.UpdateAsync(userDto.UserId, userDto);
+                    var updateResult = await _userService.UpdateWithoutValidationAsync(userDto.UserId, userDto);
                     if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
                         await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
                 }
@@ -567,7 +567,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Update password field
 					employeeDto.PasswordHash = newPasswordHash;
 					// Progress update 
-					var updateResult = await _employeeService.UpdateAsync(employeeDto.EmployeeId, employeeDto);
+					var updateResult = await _employeeService.UpdateWithoutValidationAsync(employeeDto.EmployeeId, employeeDto);
 					if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
 						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
 				}
@@ -828,6 +828,10 @@ namespace FPTU_ELibrary.Application.Services
                 
                 // Handle authenticate user
                 return await AuthenticateUserAsync(user);
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{
