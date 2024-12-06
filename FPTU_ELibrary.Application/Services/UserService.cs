@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
+using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Exceptions;
@@ -11,10 +13,13 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MimeKit.Encodings;
+using OfficeOpenXml.Packaging.Ionic.Zip;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -23,18 +28,22 @@ namespace FPTU_ELibrary.Application.Services
         private readonly ISystemRoleService<SystemRoleDto> _roleService;
         private readonly IEmailService _emailService;
         private readonly ILogger<UserService> _logger;
+        private readonly IServiceProvider _service;
 
         public UserService(
             ILogger<UserService> logger,
             ISystemRoleService<SystemRoleDto> roleService,
             IEmailService emailService,
             IUnitOfWork unitOfWork,
-            IMapper mapper)
+            IMapper mapper
+            , IServiceProvider service // to get the service and not depend on http lifecycle
+        )
             : base(unitOfWork, mapper)
         {
             _roleService = roleService;
             _emailService = emailService;
             _logger = logger;
+            _service = service;
         }
 
         public async Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password)
@@ -138,6 +147,7 @@ namespace FPTU_ELibrary.Application.Services
                 //           );
                 //           // Send email
                 //           var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+
                 #endregion
 
                 await SendUserEmail(newUser, password);
@@ -363,7 +373,133 @@ namespace FPTU_ELibrary.Application.Services
         }
 
         #endregion
-        
-        // public IServiceResult Send
+
+        public Task CreateManyAccountsWithSendEmail(IFormFile excelFile)
+        {
+            return Task.Run(async () =>
+            {
+                if (excelFile == null || excelFile.Length == 0)
+                {
+                    throw new BadRequestException("File is empty or null");
+                }
+
+                // Validate file format (e.g., only allow .xlsx files)
+                var allowedExtensions = new[] { ".xlsx" };
+                var fileExtension = Path.GetExtension(excelFile.FileName);
+                if (!allowedExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+                {
+                    throw new BadRequestException("Invalid file type. Only .xlsx files are allowed.");
+                }
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    await excelFile.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+
+                    using (var scope = _service.CreateScope())
+                    {
+                        var rolervice = scope.ServiceProvider.GetRequiredService<ISystemRoleService<SystemRoleDto>>();
+                        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                        var logger = scope.ServiceProvider.GetRequiredService<ILogger<UserService>>();
+                        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                        var genericService = scope.ServiceProvider.GetRequiredService<IGenericService<User, UserDto, Guid>>();
+                        try
+                        {
+                            var result = await rolervice.GetByNameAsync(Role.GeneralMember);
+                            if (result.Status != ResultConst.SUCCESS_READ_CODE)
+                            {
+                                logger.LogError("Role GeneralMember not found");
+                                return;
+                            }
+
+                            var users = new List<(string Email, string FirstName, string LastName)>();
+                            var failedEmails = new List<string>();
+                            var emailToSend = new List<EmailMessageDto>();
+
+                            // Đọc và xử lý file Excel
+                            using (var package = new OfficeOpenXml.ExcelPackage(memoryStream))
+                            {
+                                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                                if (worksheet == null)
+                                {
+                                    throw new BadRequestException("Excel file does not contain any worksheet");
+                                }
+
+                                int rowCount = worksheet.Dimension.Rows;
+
+                                for (int row = 2; row <= rowCount; row++)
+                                {
+                                    var email = worksheet.Cells[row, 1].Text;
+                                    var firstName = worksheet.Cells[row, 2].Text;
+                                    var lastName = worksheet.Cells[row, 3].Text;
+
+                                    if (Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                                    {
+                                        users.Add((email, firstName, lastName));
+                                    }
+                                    else
+                                    {
+                                        failedEmails.Add(email);
+                                    }
+                                }
+
+                                foreach (var user in users)
+                                {
+                                    var existingUser = await unitOfWork.Repository<User, Guid>()
+                                        .GetWithSpecAsync(new BaseSpecification<User>(u => u.Email == user.Email));
+
+                                    if (existingUser != null)
+                                    {
+                                        failedEmails.Add(user.Email);
+                                        continue;
+                                    }
+
+                                    var password = Utils.HashUtils.GenerateRandomPassword();
+                                    var role = (SystemRoleDto)result.Data!; 
+                                    var newUser = new UserDto
+                                    {
+                                        Email = user.Email,
+                                        PasswordHash = Utils.HashUtils.HashPassword(password),
+                                        FirstName = user.FirstName,
+                                        LastName = user.LastName,
+                                        CreateDate = DateTime.Now,
+                                        RoleId = role.RoleId
+                                    };
+
+                                    await genericService.CreateAsync(newUser);
+
+                                    var emailMessageDto = new EmailMessageDto(
+                                        new List<string> { newUser.Email },
+                                        "ELibrary - Change password notification",
+                                        $@"
+                            <h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
+                            <p>Your account has been created. Your password is:</p>
+                            <h1>{password}</h1>");
+
+                                    emailToSend.Add(emailMessageDto);
+                                }
+
+                                foreach (var emailMessage in emailToSend)
+                                {
+                                    try
+                                    {
+                                        await emailService.SendEmailAsync(emailMessage, true);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger.LogError(ex, "Failed to send email to {Email}",
+                                            emailMessage.To.FirstOrDefault());
+                                    } 
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "An error occurred while processing accounts");
+                        }
+                    }
+                }
+            });
+        }
     }
 }

@@ -23,7 +23,6 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             _context = context;
             _dbSet = context.Set<TEntity>();
         }
-
         #region READ DATA
         
         public async Task<IEnumerable<TEntity>> GetAllAsync(bool tracked = true)

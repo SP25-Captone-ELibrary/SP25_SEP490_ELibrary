@@ -37,7 +37,7 @@
 			public const string Search = Base + "/users/q";
 			// [POST]
 			public const string Create = Base + "/admin";
-
+			public const string CreateManyWithSendEmail = Base + "/createManyAndMail";
 			public const string CreateMany = Base + "/createMany";
 			// public const string CreateMany = Base + "/admin/createMany";
 			// [PATCH]

@@ -11,6 +11,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -35,15 +36,15 @@ public class UserController:ControllerBase
         if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return NotFound("There is no user");
         return Ok(result);
     }
-    [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
-    [AllowAnonymous]
-    public async Task<IActionResult> SearchUserAsync([FromQuery] 
-        string searchString)
-    {
-        var result = await _userService.SearchAccount(searchString);
-        if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
-        return Ok(result);
-    }
+    // [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
+    // [AllowAnonymous]
+    // public async Task<IActionResult> SearchUserAsync([FromQuery] 
+    //     string searchString)
+    // {
+    //     var result = await _userService.SearchAccount(searchString);
+    //     if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
+    //     return Ok(result);
+    // }
 
     [HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
     [AllowAnonymous]
@@ -86,5 +87,13 @@ public class UserController:ControllerBase
     {
         return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
     }
-    
+    [HttpPost(APIRoute.User.CreateManyWithSendEmail, Name = nameof(CreateManyAccountByAdminWithSendEmail))]
+    [AllowAnonymous]
+    public IActionResult CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
+    {
+        // Bắt đầu tác vụ nền
+        _ = _userService.CreateManyAccountsWithSendEmail(req.File);
+
+        return Ok("Account creation and email sending process has started");
+    }
 }
