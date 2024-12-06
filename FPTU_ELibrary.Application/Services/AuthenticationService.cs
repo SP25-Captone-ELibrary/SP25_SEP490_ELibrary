@@ -282,7 +282,24 @@ namespace FPTU_ELibrary.Application.Services
 						RoleName = userDto.Role.EnglishName,
 						IsEmployee = false,
 						IsActive = userDto.IsActive,
-						Password = string.Empty
+						Password = string.Empty,
+						CreateDate = userDto.CreateDate,
+						ModifiedDate = userDto.ModifiedDate,
+						Gender = userDto.Gender,
+						Address = userDto.Address,
+						Avatar = userDto.Avatar,
+						EmailVerificationCode = userDto.EmailVerificationCode,
+						TwoFactorEnabled = userDto.TwoFactorEnabled,
+						TwoFactorSecretKey = userDto.TwoFactorSecretKey,
+						TwoFactorBackupCodes = userDto.TwoFactorBackupCodes,
+						PhoneVerificationCode = userDto.PhoneVerificationCode,
+						PhoneVerificationExpiry = userDto.PhoneVerificationExpiry,
+						EmailConfirmed = userDto.EmailConfirmed,
+						PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
+						PasswordHash = userDto.PasswordHash,
+						UserCode = userDto.UserCode,
+						Dob = userDto.Dob,
+						Phone = userDto.Phone,
 					};
 				} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
 				           && employeeResult.Data is EmployeeDto employeeDto)
@@ -297,7 +314,24 @@ namespace FPTU_ELibrary.Application.Services
 						RoleName = employeeDto.Role.EnglishName,
 						IsEmployee = true,
 						IsActive = employeeDto.IsActive,
-						Password = string.Empty
+						Password = string.Empty,
+						CreateDate = employeeDto.CreateDate,
+						ModifiedDate = employeeDto.ModifiedDate,
+						Gender = employeeDto.Gender,
+						Address = employeeDto.Address,
+						Avatar = employeeDto.Avatar,
+						EmailVerificationCode = employeeDto.EmailVerificationCode,
+						TwoFactorEnabled = employeeDto.TwoFactorEnabled,
+						TwoFactorSecretKey = employeeDto.TwoFactorSecretKey,
+						TwoFactorBackupCodes = employeeDto.TwoFactorBackupCodes,
+						PhoneVerificationCode = employeeDto.PhoneVerificationCode,
+						PhoneVerificationExpiry = employeeDto.PhoneVerificationExpiry,
+						EmailConfirmed = employeeDto.EmailConfirmed,
+						PhoneNumberConfirmed = employeeDto.PhoneNumberConfirmed,
+						PasswordHash = employeeDto.PasswordHash,
+						UserCode = employeeDto.EmployeeCode,
+						Dob = employeeDto.Dob,
+						Phone = employeeDto.Phone,
 					};
 				}
 				
@@ -365,7 +399,24 @@ namespace FPTU_ELibrary.Application.Services
 						RoleName = userDto.Role.EnglishName,
 						IsEmployee = false,
 						IsActive = userDto.IsActive,
-						Password = string.Empty
+						Password = string.Empty,
+						CreateDate = userDto.CreateDate,
+						ModifiedDate = userDto.ModifiedDate,
+						Gender = userDto.Gender,
+						Address = userDto.Address,
+						Avatar = userDto.Avatar,
+						EmailVerificationCode = userDto.EmailVerificationCode,
+						TwoFactorEnabled = userDto.TwoFactorEnabled,
+						TwoFactorSecretKey = userDto.TwoFactorSecretKey,
+						TwoFactorBackupCodes = userDto.TwoFactorBackupCodes,
+						PhoneVerificationCode = userDto.PhoneVerificationCode,
+						PhoneVerificationExpiry = userDto.PhoneVerificationExpiry,
+						EmailConfirmed = userDto.EmailConfirmed,
+						PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
+						PasswordHash = userDto.PasswordHash,
+						UserCode = userDto.UserCode,
+						Dob = userDto.Dob,
+						Phone = userDto.Phone,
 					};
 				} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
 				           && employeeResult.Data is EmployeeDto employeeDto)
@@ -380,7 +431,24 @@ namespace FPTU_ELibrary.Application.Services
 						RoleName = employeeDto.Role.EnglishName,
 						IsEmployee = true,
 						IsActive = employeeDto.IsActive,
-						Password = string.Empty
+						Password = string.Empty,
+						CreateDate = employeeDto.CreateDate,
+						ModifiedDate = employeeDto.ModifiedDate,
+						Gender = employeeDto.Gender,
+						Address = employeeDto.Address,
+						Avatar = employeeDto.Avatar,
+						EmailVerificationCode = employeeDto.EmailVerificationCode,
+						TwoFactorEnabled = employeeDto.TwoFactorEnabled,
+						TwoFactorSecretKey = employeeDto.TwoFactorSecretKey,
+						TwoFactorBackupCodes = employeeDto.TwoFactorBackupCodes,
+						PhoneVerificationCode = employeeDto.PhoneVerificationCode,
+						PhoneVerificationExpiry = employeeDto.PhoneVerificationExpiry,
+						EmailConfirmed = employeeDto.EmailConfirmed,
+						PhoneNumberConfirmed = employeeDto.PhoneNumberConfirmed,
+						PasswordHash = employeeDto.PasswordHash,
+						UserCode = employeeDto.EmployeeCode,
+						Dob = employeeDto.Dob,
+						Phone = employeeDto.Phone,
 					};
 				}
 				
@@ -528,12 +596,12 @@ namespace FPTU_ELibrary.Application.Services
 					return new ServiceResult(ResultCodeConst.Auth_Warning0006,
 						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
 				}
-				
+
 				// Hash password
 				user.Password = HashUtils.HashPassword(user.Password!);
 				// Progress create new user
 				user = await CreateNewUserAsync(user) ?? null!;
-				
+
 				if (user != null!) // Create user successfully
 				{
 					// Generate confirmation code
@@ -555,18 +623,22 @@ namespace FPTU_ELibrary.Application.Services
 					var isOtpSent = await SendAndSaveOtpAsync(otpCode, user, emailSubject, emailContent);
 					if (isOtpSent) // Email sent
 					{
-						return new ServiceResult(ResultCodeConst.Auth_Success0005, 
+						return new ServiceResult(ResultCodeConst.Auth_Success0005,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
 					}
-					else 
+					else
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Fail0002,
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));				
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));
 					}
 				}
-				
+
 				return new ServiceResult(ResultCodeConst.SYS_Fail0001,
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -645,18 +717,18 @@ namespace FPTU_ELibrary.Application.Services
 				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
 				    && userResult.Data is UserDto userDto)
 				{
-					// User is not yet in-active
-					if (!userDto.IsActive)
-					{
-						return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-					}
-					
 					// Check email confirmation
 					if (!userDto.EmailConfirmed)
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0008,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0008));
+					}
+					
+					// User is not yet in-active
+					if (!userDto.IsActive)
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Warning0001,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
 					}
 					
 					// Response to keep on sign-in with username/password
@@ -704,6 +776,10 @@ namespace FPTU_ELibrary.Application.Services
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
 					StringUtils.Format(message, "email"));
 			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
@@ -713,123 +789,147 @@ namespace FPTU_ELibrary.Application.Services
 
 		public async Task<IServiceResult> SignInWithPasswordAsync(AuthenticateUserDto user)
 		{
-			// Get user by email 
-			var userResult = await _userService.GetByEmailAsync(user.Email);
-				
-			// Handle User authentication
-			if (userResult.ResultCode == ResultCodeConst.SYS_Success0002
-			    && userResult.Data is UserDto userDto)
+			try
 			{
-				if (ValidatePassword(user.Password, userDto.PasswordHash))
-				{
-					user = new AuthenticateUserDto
-					{
-						Id = userDto.UserId,
-						Email = userDto.Email,
-						FirstName = userDto.FirstName ?? string.Empty,
-						LastName = userDto.LastName ?? string.Empty,
-						RoleId = userDto.RoleId,
-						RoleName = userDto.Role.EnglishName,
-						IsEmployee = false,
-						IsActive = userDto.IsActive,
-						Password = string.Empty
-					};
-				}
-				else // Password not match
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0007, 
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
-				}
+				// Get user by email 
+                var userResult = await _userService.GetByEmailAsync(user.Email);
+                	
+                // Handle User authentication
+                if (userResult.ResultCode == ResultCodeConst.SYS_Success0002
+                    && userResult.Data is UserDto userDto)
+                {
+                	if (ValidatePassword(user.Password, userDto.PasswordHash))
+                	{
+                		user = new AuthenticateUserDto
+                		{
+                			Id = userDto.UserId,
+                			Email = userDto.Email,
+                			FirstName = userDto.FirstName ?? string.Empty,
+                			LastName = userDto.LastName ?? string.Empty,
+                			RoleId = userDto.RoleId,
+                			RoleName = userDto.Role.EnglishName,
+                			IsEmployee = false,
+                			IsActive = userDto.IsActive,
+                			Password = string.Empty
+                		};
+                	}
+                	else // Password not match
+                	{
+                		return new ServiceResult(ResultCodeConst.Auth_Warning0007, 
+                			await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
+                	}
+                }
+                else
+                {
+                	var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                	return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                		StringUtils.Format(message, "email"));
+                }
+                
+                // Handle authenticate user
+                return await AuthenticateUserAsync(user);
 			}
-			else
+			catch (Exception ex)
 			{
-				var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-					StringUtils.Format(message, "email"));
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress sign-in");
 			}
-			
-			// Handle authenticate user
-			return await AuthenticateUserAsync(user);
 		}
 
 		public async Task<IServiceResult> SignInWithOtpAsync(string otp, AuthenticateUserDto user)
 		{
-			// Get user by email 
-			var userResult = await _userService.GetByEmailAsync(user.Email);
-				
-			// Handle User authentication
-			if (userResult.ResultCode == ResultCodeConst.SYS_Success0002
-			    && userResult.Data is UserDto userDto)
+			try
 			{
-				// Check match confirmation code 
-				if (userDto.EmailVerificationCode == otp) // Match
-				{
-					user = new AuthenticateUserDto
-					{
-						Id = userDto.UserId,
-						Email = userDto.Email,
-						FirstName = userDto.FirstName ?? string.Empty,
-						LastName = userDto.LastName ?? string.Empty,
-						RoleId = userDto.RoleId,
-						RoleName = userDto.Role.EnglishName,
-						IsEmployee = false,
-						IsActive = userDto.IsActive,
-						Password = string.Empty
-					};
-				}
-				else // Not match
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
-				}
+				// Get user by email 
+                var userResult = await _userService.GetByEmailAsync(user.Email);
+                	
+                // Handle User authentication
+                if (userResult.ResultCode == ResultCodeConst.SYS_Success0002
+                    && userResult.Data is UserDto userDto)
+                {
+                	// Check match confirmation code 
+                	if (userDto.EmailVerificationCode == otp) // Match
+                	{
+                		user = new AuthenticateUserDto
+                		{
+                			Id = userDto.UserId,
+                			Email = userDto.Email,
+                			FirstName = userDto.FirstName ?? string.Empty,
+                			LastName = userDto.LastName ?? string.Empty,
+                			RoleId = userDto.RoleId,
+                			RoleName = userDto.Role.EnglishName,
+                			IsEmployee = false,
+                			IsActive = userDto.IsActive,
+                			Password = string.Empty
+                		};
+                	}
+                	else // Not match
+                	{
+                		return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
+                			await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
+                	}
+                }
+                else
+                {
+                	var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                	return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                		StringUtils.Format(message, "email"));
+                }
+                
+                // Handle authenticate user
+                return await AuthenticateUserAsync(user);
 			}
-			else
+			catch (Exception ex)
 			{
-				var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-					StringUtils.Format(message, "email"));
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress sign-in");
 			}
-			
-			// Handle authenticate user
-			return await AuthenticateUserAsync(user);
 		}
 		
 		public async Task<IServiceResult> SignInAsEmployeeAsync(AuthenticateUserDto user)
 		{
-			// Validation
-			await ValidateUserInputAsync(user);
-			
-			// Get employee by email
-			var employeeResult = await _employeeService.GetByEmailAsync(user.Email);
-			
-			// Handle Employee authentication
-			if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002 
-			    && employeeResult.Data is EmployeeDto employeeDto)
+			try
 			{
-				if (ValidatePassword(user.Password, employeeDto.PasswordHash))
-				{
-					user = new AuthenticateUserDto
-					{
-						Id = employeeDto.EmployeeId,
-						Email = employeeDto.Email,
-						FirstName = employeeDto.FirstName,
-						LastName = employeeDto.LastName,
-						RoleId = employeeDto.Role.RoleId,
-						RoleName = employeeDto.Role.EnglishName,
-						IsEmployee = true,
-						IsActive = employeeDto.IsActive,
-						Password = string.Empty
-					};
-				}
-				else
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0007,
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
-				}
+				// Validation
+                await ValidateUserInputAsync(user);
+                
+                // Get employee by email
+                var employeeResult = await _employeeService.GetByEmailAsync(user.Email);
+                
+                // Handle Employee authentication
+                if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002 
+                    && employeeResult.Data is EmployeeDto employeeDto)
+                {
+                	if (ValidatePassword(user.Password, employeeDto.PasswordHash))
+                	{
+                		user = new AuthenticateUserDto
+                		{
+                			Id = employeeDto.EmployeeId,
+                			Email = employeeDto.Email,
+                			FirstName = employeeDto.FirstName,
+                			LastName = employeeDto.LastName,
+                			RoleId = employeeDto.Role.RoleId,
+                			RoleName = employeeDto.Role.EnglishName,
+                			IsEmployee = true,
+                			IsActive = employeeDto.IsActive,
+                			Password = string.Empty
+                		};
+                	}
+                	else
+                	{
+                		return new ServiceResult(ResultCodeConst.Auth_Warning0007,
+                			await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
+                	}
+                }
+                
+                // Handle authenticate user
+                return await AuthenticateUserAsync(user);
 			}
-			
-			// Handle authenticate user
-			return await AuthenticateUserAsync(user);
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress sign-in");
+			}
 		}
 
 		public async Task<IServiceResult> SignInWithGoogleAsync(string code)
@@ -907,6 +1007,10 @@ namespace FPTU_ELibrary.Application.Services
 				
 				// Try to authenticate user
 				return await AuthenticateUserAsync(authenticateUser);
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
 			}
 			catch (InvalidJwtException ex)
 			{
@@ -997,6 +1101,10 @@ namespace FPTU_ELibrary.Application.Services
 				
 				// Fail to get user information 
 				throw new Exception("Fail to get user information from Facebook.");
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1178,7 +1286,7 @@ namespace FPTU_ELibrary.Application.Services
 					content: emailContent
 				);
 
-				// // Send email
+				// Send email
 				await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
 				
 				// Update confirmation code
