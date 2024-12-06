@@ -1,19 +1,25 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Serilog;
 using SystemRole = FPTU_ELibrary.Domain.Entities.SystemRole;
 namespace FPTU_ELibrary.Application.Services
 {
 	public class SystemRoleService : GenericService<SystemRole, SystemRoleDto, int>, 
 		ISystemRoleService<SystemRoleDto>
 	{
-        public SystemRoleService(IUnitOfWork unitOfWork, IMapper mapper) 
-			: base(unitOfWork, mapper) 
+        public SystemRoleService(
+			ISystemMessageService msgService,
+	        IUnitOfWork unitOfWork,
+	        IMapper mapper,
+	        ILogger logger) 
+			: base(msgService, unitOfWork, mapper, logger) 
         {
             
         }
@@ -48,12 +54,14 @@ namespace FPTU_ELibrary.Application.Services
 			// Is not found
 			if (systemRoleEntity == null)
 			{
-				return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG,
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
 					new SystemRoleDto());
 			}
 
 			// Is get success <- map to Dto
-			return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG, 
+			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
 				_mapper.Map<SystemRoleDto>(systemRoleEntity));
 		}
 	}

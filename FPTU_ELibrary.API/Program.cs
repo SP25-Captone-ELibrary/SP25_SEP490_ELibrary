@@ -1,23 +1,38 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Middlewares;
+using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application;
 using FPTU_ELibrary.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-	// Add system health checks
-	.AddHealthChecks() 
-    // For SQL
-    .AddSqlServerHealthCheck();
+    // Add HttpClient
+    .AddHttpClient()
+    // Add CORS
+    .AddCors("Cors")
+    // Add system health checks
+    .AddHealthChecks()
+        // For SQL
+        .AddSqlServerHealthCheck()
+        // For API
+        .AddApiHealthCheck()
+        // For memory cache
+        .AddCacheHealthCheck();
 
 builder.Services
-    // Configure system services
-    .ConfigureServices(builder.Configuration)
+    // Configure endpoints, swagger
+    .ConfigureEndpoints()
     // Configure Serilog
     .ConfigureSerilog(builder)
+    // Configure CamelCase for validation
+    .ConfigureCamelCaseForValidation()
     // Configure appSettings
-    .ConfigureAppSettings(builder.Configuration, builder.Environment);
+    .ConfigureAppSettings(builder.Configuration, builder.Environment)
+    // Configure Redis
+    .ConfigureRedis(builder.Configuration, builder.Environment)
+    // Configure healthcheck 
+    .ConfigureHealthCheckServices(builder.Configuration);
 
 builder.Services
 	// Configure for application layer
@@ -33,7 +48,7 @@ builder.Services
 
 var app = builder.Build();
 
-//app.UseHealthChecks();
+// app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
 
 // Register database initializer
 app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
@@ -50,12 +65,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
+app.UseCors("Cors");
 app.UseAuthentication();
 app.UseAuthorization(); 
 
 // Custom Middlewares
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware
-app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
+app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
+app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
+// app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
 
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
 app.Run();

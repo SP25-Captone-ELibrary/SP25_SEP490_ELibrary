@@ -68,5 +68,22 @@ namespace FPTU_ELibrary.Application.Utils
 				throw new InvalidOperationException("Error validating token.", ex);
 			}
 		}
+		
+		// Formats a string by replacing placeholders like <0>, <1>, etc., with the provided arguments.
+		public static string Format(string input, params string[]? args)
+		{
+			if (string.IsNullOrEmpty(input))
+				return null!; 
+
+			if (args == null || args.Length == 0)
+				return input; // Return original string if no args provided.
+
+			for (int i = 0; i < args.Length; i++)
+			{
+				input = input.Replace($"<{i}>", args[i]);
+			}
+
+			return input;
+		}
 	}
 }

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace FPTU_ELibrary.Domain.Specifications
 {
     //  Summary:
-    //      Thisclass is to handle query with conditions, filter, order, pagination data 
+    //      This class is to handle query with conditions, filter, order, pagination data 
     public class BaseSpecification<TEntity> : ISpecification<TEntity> where TEntity :class
     {
         // Default constructor
@@ -40,6 +40,8 @@ namespace FPTU_ELibrary.Domain.Specifications
 
         public bool IsPagingEnabled { get; private set; }
 
+        public bool AsSplitQuery { get; private set; } = false;
+
         #endregion
 
         #region Add specification properties
@@ -64,6 +66,14 @@ namespace FPTU_ELibrary.Domain.Specifications
             Skip = skip;
             IsPagingEnabled = true;
         }
+        #endregion
+
+        #region Split Query
+
+        public void AddAsSplitQuery()
+        {
+            AsSplitQuery = true;
+        }        
         #endregion
     }
 }

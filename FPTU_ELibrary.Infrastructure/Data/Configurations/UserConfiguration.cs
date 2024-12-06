@@ -15,6 +15,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.UserId)
                 .HasDefaultValueSql("(newsequentialid())")
                 .HasColumnName("user_id");
+            builder.Property(e => e.Address)
+                .HasMaxLength(255)
+                .HasColumnName("address");
             builder.Property(e => e.Avatar)
                 .HasMaxLength(2048)
                 .IsUnicode(false)
@@ -22,9 +25,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.CreateDate)
                 .HasColumnType("datetime")
                 .HasColumnName("create_date");
+            builder.Property(e => e.ModifiedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("modified_date");
             builder.Property(e => e.Dob)
                 .HasColumnType("datetime")
                 .HasColumnName("dob");
+            builder.Property(e => e.Gender)
+                .HasMaxLength(50)
+                .HasColumnName("gender");
             builder.Property(e => e.Email)
                 .HasMaxLength(255)
                 .HasColumnName("email");
@@ -41,6 +50,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasDefaultValue(true)
                 .HasColumnName("modified_by");
             #endregion
+           
             builder.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
@@ -72,7 +82,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Restrict) // Restrict delete when SystemRole has associated employees
                 .HasConstraintName("FK_SystemRole_RoleId");
         }
     }

@@ -8,15 +8,15 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
     public interface IUserService<TDto> : IGenericService<User, TDto, Guid>
         where TDto : class
     {
+        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
         Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
         Task<IServiceResult> GetByEmailAsync(string email);
-        Task<IServiceResult> CreateAccountByAdmin(TDto user);
-        Task<IServiceResult> SearchAccount(string searchString);
-        Task<IServiceResult> ChangeAccountStatus(Guid userId);
-        Task<IServiceResult> UpdateAccount(Guid userId, TDto userUpdateDetail,string roleName);
-        Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile);
-        // This delete feature support not opening database to delete;
-        Task<IServiceResult> DeleteAccount(Guid id);
-
+        //Task<IServiceResult> CreateAccountByAdmin(TDto user);
+        //Task<IServiceResult> SearchAccount(string searchString);
+        //Task<IServiceResult> ChangeAccountStatus(Guid userId);
+        //Task<IServiceResult> UpdateAccount(Guid userId, TDto userUpdateDetail,string roleName);
+        //Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile);
+        //// This delete feature support not opening database to delete;
+        //Task<IServiceResult> DeleteAccount(Guid id);
     }
 }

@@ -9,25 +9,45 @@ namespace FPTU_ELibrary.Application.Services
 {
 	public class ServiceResult : IServiceResult
     {
-        public int Status { get; set; }
+        public string ResultCode { get; set; }
         public string? Message { get; set; }
         public object? Data { get; set; }
 
         public ServiceResult()
         {
-            Status = -1;
-            Message = "Action fail";
+            ResultCode = string.Empty;
+            Message = string.Empty;
         }
-
-        public ServiceResult(int status, string message)
+        
+        public ServiceResult(string resultCode, string message)
         {
-            Status = status;
+            ResultCode = resultCode;
             Message = message;
         }
 
-        public ServiceResult(int status, string message, object? data)
+        public ServiceResult(string resultCode, string message, object? data)
         {
-            Status = status;
+            ResultCode = resultCode;
+            Message = message;
+            Data = data;
+        }
+    }
+
+    public class ServiceResult<T> : IServiceResult<T>
+    {
+        public string ResultCode { get; set; }
+        public string? Message { get; set; }
+        public T? Data { get; set; }
+        
+        public ServiceResult(string resultCode, string message)
+        {
+            ResultCode = resultCode;
+            Message = message;
+        }
+
+        public ServiceResult(string resultCode, string message, T? data)
+        {
+            ResultCode = resultCode;
             Message = message;
             Data = data;
         }

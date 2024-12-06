@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Application.Validations
 {
@@ -15,10 +16,11 @@ namespace FPTU_ELibrary.Application.Validations
 		// Define a dictionary to hold validators for each type.
 		private static readonly Dictionary<Type, IValidator> Validators = new()
 		{
+			{ typeof(IFormFile), new ExcelValidator() },
 			{ typeof(BookDto), new BookDtoValidator() },
 			{ typeof(UserDto), new UserDtoValidator() },
 			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
-			{ typeof(AuthenticatedUserDto), new AuthenticatedUserDtoValidator() },
+			{ typeof(AuthenticateUserDto), new AuthenticatedUserDtoValidator() },
 			// Add other Validator pairs here.
 		};
 

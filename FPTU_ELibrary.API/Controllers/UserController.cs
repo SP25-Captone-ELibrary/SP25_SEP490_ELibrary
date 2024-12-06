@@ -27,64 +27,64 @@ public class UserController:ControllerBase
         _searchService = searchService;
     }
 
-    [HttpGet(APIRoute.User.GetAll, Name = nameof(GetAllUserAsync))]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetAllUserAsync()
-    {
-        var result = await _userService.GetAllAsync();
-        if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return NotFound("There is no user");
-        return Ok(result);
-    }
-    [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
-    [AllowAnonymous]
-    public async Task<IActionResult> SearchUserAsync([FromQuery] 
-        string searchString)
-    {
-        var result = await _userService.SearchAccount(searchString);
-        if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
-        return Ok(result);
-    }
+    //[HttpGet(APIRoute.User.GetAll, Name = nameof(GetAllUserAsync))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> GetAllUserAsync()
+    //{
+    //    var result = await _userService.GetAllAsync();
+    //    if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return NotFound("There is no user");
+    //    return Ok(result);
+    //}
+    //[HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> SearchUserAsync([FromQuery] 
+    //    string searchString)
+    //{
+    //    var result = await _userService.SearchAccount(searchString);
+    //    if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
+    //    return Ok(result);
+    //}
 
-    [HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
-    [AllowAnonymous]
-    public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserRequest req)
-    {   
-        return Ok(await _userService.CreateAccountByAdmin(req.ToUser()));
-    }
+    //[HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserRequest req)
+    //{   
+    //    return Ok(await _userService.CreateAccountByAdmin(req.ToUser()));
+    //}
 
-    [HttpPut(APIRoute.User.ChangeAccountStatus,Name=nameof(ChangeAccountStatus))]
-    [AllowAnonymous]
-    public async Task<IActionResult> ChangeAccountStatus([FromRoute] Guid id)
-    {  
-        return Ok(await _userService.ChangeAccountStatus(id));
-    }
+    //[HttpPut(APIRoute.User.ChangeAccountStatus,Name=nameof(ChangeAccountStatus))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> ChangeAccountStatus([FromRoute] Guid id)
+    //{  
+    //    return Ok(await _userService.ChangeAccountStatus(id));
+    //}
 
-    [HttpPatch(APIRoute.User.Update, Name = nameof(UpdateUserAsync))]
-    [AllowAnonymous]
-        public async Task<IActionResult> UpdateUserAsync([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
-    {
-        return Ok(await _userService.UpdateAccount(id, dto.ToUserForUpdate(),dto.ModifyBy));
-    }
+    //[HttpPatch(APIRoute.User.Update, Name = nameof(UpdateUserAsync))]
+    //[AllowAnonymous]
+    //    public async Task<IActionResult> UpdateUserAsync([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
+    //{
+    //    return Ok(await _userService.UpdateAccount(id, dto.ToUserForUpdate(),dto.ModifyBy));
+    //}
 
-    [HttpPatch(APIRoute.User.UpdateRole,Name = nameof(UpdateRoleForGeneralUser))]
-    [AllowAnonymous]
-    public async Task<IActionResult> UpdateRoleForGeneralUser([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
-    {
-        return Ok(await _userService.UpdateAccount(id, dto.ToUpdateRoleUser(),dto.ModifyBy));
-    }
+    //[HttpPatch(APIRoute.User.UpdateRole,Name = nameof(UpdateRoleForGeneralUser))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> UpdateRoleForGeneralUser([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
+    //{
+    //    return Ok(await _userService.UpdateAccount(id, dto.ToUpdateRoleUser(),dto.ModifyBy));
+    //}
     
-    [HttpDelete(APIRoute.User.HardDelete,Name = nameof(DeleteUser))]
-    [AllowAnonymous]
-    public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
-    {
-        return Ok(await _userService.DeleteAccount(id));
-    }
+    //[HttpDelete(APIRoute.User.HardDelete,Name = nameof(DeleteUser))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
+    //{
+    //    return Ok(await _userService.DeleteAccount(id));
+    //}
     
-    [HttpPost(APIRoute.User.CreateMany,Name = nameof(CreateManyAccountByAdmin))]
-    [AllowAnonymous]
-    public async Task<IActionResult> CreateManyAccountByAdmin([FromForm] CreateManyUsersRequest req)
-    {
-        return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
-    }
+    //[HttpPost(APIRoute.User.CreateMany,Name = nameof(CreateManyAccountByAdmin))]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> CreateManyAccountByAdmin([FromForm] CreateManyUsersRequest req)
+    //{
+    //    return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
+    //}
     
 }

@@ -1,10 +1,5 @@
 ﻿using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Infrastructure.Data
 {
@@ -20,6 +15,9 @@ namespace FPTU_ELibrary.Infrastructure.Data
             // Initialize queryable 
             var query = inputQuery.AsQueryable();
 
+            // Mark as split query
+            if (spec.AsSplitQuery) query = query.AsSplitQuery();
+            
             // Query with criteria 
             if(spec.Criteria != null) query = query.Where(spec.Criteria);
             
@@ -34,7 +32,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
             
             // Accumulate queryable allowing to include multiple relation entity
             query = spec.Includes?.Aggregate(query, (current, include) => current.Include(include)) ?? query;  
-
+            
             return query;
         } 
     }

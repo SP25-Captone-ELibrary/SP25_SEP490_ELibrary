@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Application.Validations
 {
-    public class AuthenticatedUserDtoValidator : AbstractValidator<AuthenticatedUserDto>
+    public class AuthenticatedUserDtoValidator : AbstractValidator<AuthenticateUserDto>
 	{
         public AuthenticatedUserDtoValidator()
         {
@@ -17,6 +17,7 @@ namespace FPTU_ELibrary.Application.Validations
                 .NotNull();
 
 			RuleFor(u => u.Password)
+				.NotNull()
 				.Matches(@"^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")
 				.WithMessage("Password must be at least 8 characters long, contain at least 1 uppercase letter, " +
 					"1 number, and 1 special character.");

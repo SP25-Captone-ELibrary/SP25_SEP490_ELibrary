@@ -14,6 +14,9 @@ namespace FPTU_ELibrary.Application.Dtos
 
 		// Refresh token ID
 		public string RefreshTokenId { get; set; } = null!;
+		
+		// Token ID
+		public string TokenId { get; set; } = null!;
 
 		// Creation and expiration datetime
 		public DateTime CreateDate { get; set; }

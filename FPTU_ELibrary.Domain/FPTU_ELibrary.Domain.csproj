@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentValidation" Version="11.10.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />
   </ItemGroup>

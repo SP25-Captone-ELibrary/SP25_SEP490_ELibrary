@@ -1,20 +1,18 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Services.IServices;
 using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using MimeKit;
-
+using Serilog;
 using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 namespace FPTU_ELibrary.Application.Services
 {
 	public class EmailService : IEmailService
 	{
 		private readonly IConfiguration _configuration;
-		private readonly ILogger<EmailService> _logger;
+		private readonly ILogger _logger;
 
-		public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+		public EmailService(IConfiguration configuration, ILogger logger)
 		{
 			_configuration = configuration;
 			_logger = logger;
@@ -89,7 +87,7 @@ namespace FPTU_ELibrary.Application.Services
 				// Asynchronously send specified message
 				await client.SendAsync(mailMessage);
 
-				_logger.LogInformation("Email sent successfully to {Recipients}.",
+				_logger.Information("Email sent successfully to {Recipients}.",
 					string.Join(", ", mailMessage.To.Select(r => r.ToString())));
 
 				return true;
@@ -97,21 +95,21 @@ namespace FPTU_ELibrary.Application.Services
 			catch (SmtpCommandException ex)
 			{
 				// Log command-specific errors
-				_logger.LogError("SMTP command error: {ErrorCode}, {Message}",
+				_logger.Error("SMTP command error: {ErrorCode}, {Message}",
 					ex.StatusCode, ex.Message);
-				throw;
+				throw new Exception("Error invoke when progress send email");
 			}
 			catch (SmtpProtocolException ex)
 			{
 				// Log protocol-specific errors
-				_logger.LogError("SMTP protocol error: {Message}", ex.Message);
-				throw;
+				_logger.Error("SMTP protocol error: {Message}", ex.Message);
+				throw new Exception("Error invoke when progress send email");
 			}
 			catch (Exception ex)
 			{
 				// Catch-all for unexpected exceptions
-				_logger.LogError(ex, "Unexpected error while sending email: {Message}", ex.Message);
-				throw;
+				_logger.Error(ex, "Unexpected error while sending email: {Message}", ex.Message);
+				throw new Exception("Error invoke when progress send email");
 			}
 			finally
 			{
