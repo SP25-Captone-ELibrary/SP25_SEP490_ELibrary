@@ -7,6 +7,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FPTU_ELibrary.API.Controllers
 {
@@ -31,10 +32,13 @@ namespace FPTU_ELibrary.API.Controllers
 		{
 			// Create book filtering specification
 			BaseSpecification<Book> spec = new();
+			// Enables split query
+			spec.EnableSplitQuery();
 			// Add includes 
-			spec.AddInclude(b => b.Category);
-			spec.AddInclude(b => b.BookEditions);
-			spec.AddInclude(b => b.BookAuthors);
+			spec.ApplyInclude(q => q
+					.Include(b => b.Category)
+					.Include(b => b.BookEditions)
+					.Include(b => b.BookAuthors));
 
 			// Get all books with specification
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);

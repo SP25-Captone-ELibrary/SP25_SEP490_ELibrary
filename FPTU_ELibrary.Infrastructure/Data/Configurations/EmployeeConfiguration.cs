@@ -85,6 +85,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.Restrict) // Restrict delete when SystemRole has associated employees
                 .HasConstraintName("FK_Employee_RoleId");
+
+            #region Update at 12/06/2024 by Le Xuan Phuoc
+            builder.Property(e => e.ModifiedBy)
+                .HasColumnType("nvarchar(100)")
+                .HasColumnName("modified_by");
+            #endregion
         }
     }
 }

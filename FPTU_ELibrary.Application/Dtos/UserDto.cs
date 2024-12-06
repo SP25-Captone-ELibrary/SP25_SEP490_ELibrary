@@ -24,11 +24,10 @@ namespace FPTU_ELibrary.Application.Dtos
 		// Mark as active user or not 
 		public bool IsActive { get; set; }
 		
-		//Field for checking logic
-		public string? ModifiedBy { get; set; }
 		// Creation datetime
 		public DateTime CreateDate { get; set; }
 		public DateTime? ModifiedDate { get; set; }
+		public string? ModifiedBy { get; set; }
 
 		// Multi-factor authentication
 		public bool TwoFactorEnabled { get; set; }
@@ -78,6 +77,7 @@ namespace FPTU_ELibrary.Application.Dtos
 				RoleId = userDto.RoleId,
 				CreateDate = userDto.CreateDate,
 				ModifiedDate = userDto.ModifiedDate,
+				ModifiedBy = userDto.ModifiedBy,
 				EmailConfirmed = userDto.EmailConfirmed,
 				PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
 				EmailVerificationCode = userDto.EmailVerificationCode,

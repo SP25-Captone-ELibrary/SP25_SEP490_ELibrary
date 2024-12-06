@@ -12,27 +12,34 @@ namespace FPTU_ELibrary.Infrastructure.Data
             IQueryable<TEntity> inputQuery,
             ISpecification<TEntity> spec)
         {
-            // Initialize queryable 
+            // Initialize queryable
             var query = inputQuery.AsQueryable();
 
-            // Mark as split query
+            // Apply split query if enabled
             if (spec.AsSplitQuery) query = query.AsSplitQuery();
-            
-            // Query with criteria 
-            if(spec.Criteria != null) query = query.Where(spec.Criteria);
-            
-            // Order 
-            if(spec.OrderBy != null) query = query.OrderBy(spec.OrderBy);
-            
-            // Order by decending
-            if(spec.OrderByDescending != null) query = query.OrderByDescending(spec.OrderByDescending);
-            
-            // Pagination
-            if(spec.IsPagingEnabled == true) query = query.Skip(spec.Skip).Take(spec.Take);
-            
-            // Accumulate queryable allowing to include multiple relation entity
-            query = spec.Includes?.Aggregate(query, (current, include) => current.Include(include)) ?? query;  
-            
+
+            // Apply criteria
+            if (spec.Criteria != null!) query = query.Where(spec.Criteria);
+
+            // Apply grouping
+            if (spec.GroupBy != null!) query = query.GroupBy(spec.GroupBy).SelectMany(x => x);
+
+            // Apply ordering
+            if (spec.OrderBy != null!) query = query.OrderBy(spec.OrderBy);
+            if (spec.OrderByDescending != null!) query = query.OrderByDescending(spec.OrderByDescending);
+
+            // Apply pagination
+            if (spec.IsPagingEnabled) query = query.Skip(spec.Skip).Take(spec.Take);
+
+            // Apply includes (with support for ThenInclude)
+            if (spec.Includes != null!)
+            {
+                foreach (var include in spec.Includes)
+                {
+                    query = include(query);
+                }
+            }
+
             return query;
         } 
     }
