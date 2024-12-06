@@ -53,10 +53,10 @@ namespace FPTU_ELibrary.Application.Utils
 			List<Claim> authClaims = new()
 			{
 				new Claim(ClaimTypes.Role, user.RoleName),
+				new Claim(ClaimTypes.Email, user.Email),
 				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
 					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
 					: ClaimValues.USER_CLAIMVALUE), // Is user
-				new Claim(JwtRegisteredClaimNames.Email, user.Email),
 				new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName} {user.LastName}".Trim()),
 				new Claim(JwtRegisteredClaimNames.Jti, tokenId),
 			};
@@ -93,7 +93,7 @@ namespace FPTU_ELibrary.Application.Utils
 				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
 					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
 					: ClaimValues.USER_CLAIMVALUE), // Is user
-				new Claim(JwtRegisteredClaimNames.Email, user.Email),
+				new Claim(ClaimTypes.Email, user.Email),
 				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 			};
 

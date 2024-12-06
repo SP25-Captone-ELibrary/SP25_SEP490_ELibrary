@@ -3,7 +3,6 @@ using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
@@ -18,23 +17,21 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Requests;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Util;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace FPTU_ELibrary.Application.Services
 {
     public class AuthenticationService : IAuthenticationService<AuthenticateUserDto>
 	{
 		private readonly HttpClient _httpClient;
-		private readonly ICacheService _cacheService;
 		private readonly IEmailService _emailService;
 		private readonly IUserService<UserDto> _userService;
 		private readonly IEmployeeService<EmployeeDto> _employeeService;
-		private readonly ILogger<AuthenticationService> _logger;
+		private readonly ILogger _logger;
 		private readonly ISystemRoleService<SystemRoleDto> _roleService;
 		private readonly IRefreshTokenService<RefreshTokenDto> _refreshTokenService;
 		private readonly TokenValidationParameters _tokenValidationParameters;
@@ -42,16 +39,17 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly AppSettings _appSettings;
 		private readonly GoogleAuthSettings _googleAuthSettings;
 		private readonly FacebookAuthSettings _facebookAuthSettings;
+		private readonly ISystemMessageService _msgService;
 
 		public AuthenticationService(
 			HttpClient httpClient,
-			ILogger<AuthenticationService> logger,
+			ILogger logger,
 			IEmailService emailService,
 			IUserService<UserDto> userService,
+			ISystemMessageService msgService,
 			ISystemRoleService<SystemRoleDto> roleService,
 			IEmployeeService<EmployeeDto> employeeService,
 			IRefreshTokenService<RefreshTokenDto> refreshTokenService,
-			ICacheService cacheService,
 			TokenValidationParameters tokenValidationParameters,
 			IOptionsMonitor<WebTokenSettings> monitor,
 			IOptionsMonitor<AppSettings> appSettingMonitor,
@@ -60,9 +58,9 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			_logger = logger;
 			_httpClient = httpClient;
-			_cacheService = cacheService;
 			_emailService = emailService;
 			_userService = userService;
+			_msgService = msgService;
 			_employeeService = employeeService;
 			_refreshTokenService = refreshTokenService;
 			_roleService = roleService;
@@ -73,51 +71,65 @@ namespace FPTU_ELibrary.Application.Services
 			_facebookAuthSettings = facebookAuthMonitor.CurrentValue;
 		}
 
-        public async Task<IServiceResult> ConfirmEmailAsync(string email, string emailVerificationCode)
+        public async Task<IServiceResult> ConfirmEmailForSignUpAsync(string email, string emailVerificationCode)
 		{
-			// Get created user by email
-			var getWithSpecResult = await _userService.GetWithSpecAsync(
-				new BaseSpecification<User>(u => u.Email.Equals(email)));
-			if (getWithSpecResult.Data is null)
+			try
 			{
-				var errorMSg = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				throw new NotFoundException(StringUtils.Format(errorMSg, "email"));
+				// Get created user by email
+                var getWithSpecResult = await _userService.GetWithSpecAsync(
+                	new BaseSpecification<User>(u => u.Email.Equals(email)));
+                if (getWithSpecResult.Data is null)
+                {
+                	var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                	return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                		StringUtils.Format(errorMSg, "email"));
+                }
+    
+                // Map service response data to UserDto
+                var userDto = (getWithSpecResult.Data as UserDto)!;
+                // Check if account already confirm
+                if (userDto.IsActive)
+                {
+                	return new ServiceResult(ResultCodeConst.Auth_Warning0004,
+                		await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0004));
+                };
+    
+                // Check if verification code match
+                var isMatched = userDto.EmailVerificationCode == emailVerificationCode;
+                if (isMatched) // Matched
+                {
+                	// Remove current confirm code
+                	userDto.EmailVerificationCode = null!;
+                	// Change to active account
+                	userDto.IsActive = true;
+	                // Mark as email confirmed
+	                userDto.EmailConfirmed = true;
+                	// Save change
+                	var isSaveResult = await _userService.UpdateAsync(userDto.UserId, userDto);
+                	if (isSaveResult.Data is true) // Save successfully
+                	{
+                		return new ServiceResult(ResultCodeConst.Auth_Success0007, 
+                			await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0007));
+                	}
+                	else
+                	{
+                		_logger.Error("Something went wrong while update email verification code");
+                		return new ServiceResult(ResultCodeConst.SYS_Fail0003, 
+                			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+                	}
+                }
+    
+                // BadRequest
+                _logger.Error("User with email {0} give wrong verification code", userDto.Email);
+                // Not match OTP
+                return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
+                	await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
 			}
-
-			// Map service response data to UserDto
-			var userDto = (getWithSpecResult.Data as UserDto)!;
-			// Check if account already confirm
-			if (userDto.IsActive)
+			catch (Exception ex)
 			{
-				throw new BadRequestException(
-					await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0004));
-			};
-
-			// Check if verification code match
-			var isMatched = userDto.EmailVerificationCode == emailVerificationCode;
-			if (isMatched) // Matched
-			{
-				// Remove current confirm code
-				userDto.EmailVerificationCode = null!;
-				// Change to active account
-				userDto.IsActive = true;
-				// Save change
-				var isSaveResult = await _userService.UpdateAsync(userDto.UserId, userDto);
-				if (isSaveResult.Data is true) // Save successfully
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Success0007, 
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0007));
-				}
-				else
-				{
-					_logger.LogError("Something went wrong while update email verification code");
-					throw new Exception(await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-				}
+				_logger.Error(ex, ex.Message);
+				throw new Exception("Error invoke when process confirm email");
 			}
-
-			// BadRequest
-			_logger.LogError("User with email {0} give wrong verification code", userDto.Email);
-			throw new BadRequestException(await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
 		}
 
 		public async Task<IServiceResult> RefreshTokenAsync(
@@ -125,355 +137,578 @@ namespace FPTU_ELibrary.Application.Services
 			string roleName, string tokenId, string refreshTokenId)
 		{
 			// Check exist refresh token by tokenId and refreshTokenId
-			var getRefreshTokenResult = await _refreshTokenService.GetByTokenIdAndRefreshTokenIdAsync(
-				tokenId, refreshTokenId);
-			if (getRefreshTokenResult.Data != null) // Exist refresh token
-			{
-				// Map to RefreshTokenDto
-				var refreshTokenDto = (getRefreshTokenResult.Data as RefreshTokenDto)!;
-				// Retrieve refresh token limit
-				var maxRefreshTokenLifeSpan = _appSettings.MaxRefreshTokenLifeSpan;
-				// Check whether valid refresh token limit
-				if (refreshTokenDto.RefreshCount + 1 > maxRefreshTokenLifeSpan)
-				{
-					throw new ForbiddenException(
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
-				}
-				
-				// Generate new tokenId
-				tokenId = Guid.NewGuid().ToString();
-				// Update refresh token 
-				refreshTokenDto.TokenId = tokenId;
-				// refreshTokenDto.RefreshTokenId = new JwtUtils().GenerateRefreshToken();
-				refreshTokenDto.RefreshCount += 1;
-				
-				// Progress update
-				var updateResult = await _refreshTokenService.UpdateAsync(refreshTokenDto.Id, refreshTokenDto);
-				if (updateResult.ResultCode == ResultCodeConst.SYS_Success0003) // Update success
-				{
-					// Generate authenticated user
-					var authenticatedUserDto = new AuthenticateUserDto()
-					{
-						Email = email, 
-						FirstName = name,
-						LastName = string.Empty,
-						RoleName = roleName,
-						IsEmployee = userType.Equals(ClaimValues.EMPLOYEE_CLAIMVALUE),
-						IsActive = true
-					};
-					
-					// Generate access token
-					var generateResult = await new JwtUtils(_webTokenSettings)
-						.GenerateJwtTokenAsync(tokenId: tokenId, user: authenticatedUserDto);
-					
-					return new ServiceResult(ResultCodeConst.Auth_Success0008, 
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0008),
-						new AuthenticateResultDto
-							{
-								AccessToken = generateResult.AccessToken,
-								RefreshToken = refreshTokenDto.RefreshTokenId,
-								ValidTo = generateResult.ValidTo
-							});
-				}
-			}
-			
-			// Resp not found 
-			_logger.LogError("Fail to save new refresh token");
-			throw new Exception(await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
+            var getRefreshTokenResult = await _refreshTokenService.GetByTokenIdAndRefreshTokenIdAsync(
+                tokenId, refreshTokenId);
+            if (getRefreshTokenResult.Data != null) // Exist refresh token
+            {
+                // Map to RefreshTokenDto
+                var refreshTokenDto = (getRefreshTokenResult.Data as RefreshTokenDto)!;
+                // Retrieve refresh token limit
+                var maxRefreshTokenLifeSpan = _appSettings.MaxRefreshTokenLifeSpan;
+                // Check whether valid refresh token limit
+                if (refreshTokenDto.RefreshCount + 1 > maxRefreshTokenLifeSpan)
+                {
+                	throw new ForbiddenException(
+                		await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
+                }
+                
+                // Generate new tokenId
+                tokenId = Guid.NewGuid().ToString();
+                // Update refresh token 
+                refreshTokenDto.TokenId = tokenId;
+                // refreshTokenDto.RefreshTokenId = new JwtUtils().GenerateRefreshToken();
+                refreshTokenDto.RefreshCount += 1;
+                
+                // Progress update
+                var updateResult = await _refreshTokenService.UpdateAsync(refreshTokenDto.Id, refreshTokenDto);
+                if (updateResult.ResultCode == ResultCodeConst.SYS_Success0003) // Update success
+                {
+                	// Generate authenticated user
+                	var authenticatedUserDto = new AuthenticateUserDto()
+                	{
+                		Email = email, 
+                		FirstName = name,
+                		LastName = string.Empty,
+                		RoleName = roleName,
+                		IsEmployee = userType.Equals(ClaimValues.EMPLOYEE_CLAIMVALUE),
+                		IsActive = true
+                	};
+                	
+                	// Generate access token
+                	var generateResult = await new JwtUtils(_webTokenSettings)
+                		.GenerateJwtTokenAsync(tokenId: tokenId, user: authenticatedUserDto);
+                	
+                	return new ServiceResult(ResultCodeConst.Auth_Success0008, 
+                		await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0008),
+                		new AuthenticateResultDto
+                			{
+                				AccessToken = generateResult.AccessToken,
+                				RefreshToken = refreshTokenDto.RefreshTokenId,
+                				ValidTo = generateResult.ValidTo
+                			});
+                }
+            }
+            
+            // Resp not found 
+            return new ServiceResult(ResultCodeConst.Auth_Warning0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
 		}
 
-		public async Task<IServiceResult> VerifyOtpAsync(string email, string otp)
+		public async Task<IServiceResult> VerifyChangePasswordOtpAsync(string email, string otp)
 		{
 			try
 			{
-				// Check exist user email
+				// Concurrently query both User and Employee services
+                var userResult = await _userService.GetByEmailAsync(email);
+                var employeeResult = await _employeeService.GetByEmailAsync(email);
+                if (userResult.Data == null && employeeResult.Data == null) // Not exist
+                {
+                	var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                	return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                		StringUtils.Format(errorMSg, "email"));
+                }
+                
+                // As user account
+                if (userResult.Data != null
+                    && userResult.Data is UserDto userDto && userDto.EmailVerificationCode == otp)
+                {
+	                // Generate password reset token (for user)
+                    var recoveryPasswordToken = await new JwtUtils(_webTokenSettings)
+                        .GeneratePasswordResetTokenAsync(userDto.ToAuthenticateUserDto());
+	                
+	                return new ServiceResult(ResultCodeConst.Auth_Success0009, 
+		                await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0009),
+		                new RecoveryPasswordResultDto()
+                        {
+                        	Token = recoveryPasswordToken,
+                        	Email = userDto.Email
+                        });
+                }
+				// As employee account
+				if (employeeResult.Data != null
+				    && employeeResult.Data is EmployeeDto employeeDto && employeeDto.EmailVerificationCode == otp)
+                {
+	                // Generate password reset token (for employee)
+                    var recoveryPasswordToken = await new JwtUtils(_webTokenSettings)
+                        .GeneratePasswordResetTokenAsync(employeeDto.ToAuthenticateUserDto());
+	                
+                    return new ServiceResult(ResultCodeConst.Auth_Success0009, 
+                        await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0009),
+                        new RecoveryPasswordResultDto()
+                        {
+	                        Token = recoveryPasswordToken,
+	                        Email = employeeDto.Email
+                        });
+                }
+                
+				// Not match OTP
+				return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress verify otp");
+			}
+		}
+
+		public async Task<IServiceResult> ResendOtpAsync(string email)
+		{
+			try
+			{
+				// Concurrently query both User and Employee services
 				var userResult = await _userService.GetByEmailAsync(email);
-				if (userResult.Data != null 
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				if (userResult.Data == null && employeeResult.Data == null) // Not exist
+				{
+					var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMSg, "email"));
+				}
+				
+				// Check whether email belongs to user or employee
+				var authenticatedUser = new AuthenticateUserDto();
+				// Initialize user, employee
+				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
 				    && userResult.Data is UserDto userDto)
 				{
-					// Progress otp verification
-					if (userDto.EmailVerificationCode == otp) // Match
+					authenticatedUser = new AuthenticateUserDto
 					{
-						return new ServiceResult(ResultCodeConst.Auth_Success0004, 
-							await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0004));
-					}
-					else // Not match
-					{
-						return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
-							await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
-					}
-				}
-				else
+						Id = userDto.UserId,
+						Email = userDto.Email,
+						FirstName = userDto.FirstName ?? string.Empty,
+						LastName = userDto.LastName ?? string.Empty,
+						RoleId = userDto.RoleId,
+						RoleName = userDto.Role.EnglishName,
+						IsEmployee = false,
+						IsActive = userDto.IsActive,
+						Password = string.Empty
+					};
+				} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
+				           && employeeResult.Data is EmployeeDto employeeDto)
 				{
-					var message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-						StringUtils.Format(message, "email"));
+					authenticatedUser = new AuthenticateUserDto
+					{
+						Id = employeeDto.EmployeeId,
+						Email = employeeDto.Email,
+						FirstName = employeeDto.FirstName,
+						LastName = employeeDto.LastName,
+						RoleId = employeeDto.Role.RoleId,
+						RoleName = employeeDto.Role.EnglishName,
+						IsEmployee = true,
+						IsActive = employeeDto.IsActive,
+						Password = string.Empty
+					};
+				}
+				
+				// Generate confirmation code
+				var otpCode = StringUtils.GenerateCode();
+				// Email subject
+				var emailSubject = "ELibrary - Resend confirmation email";
+				// Email content
+				var emailContent = $@"
+	                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+	                        <h3>Hi {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
+	                        <p>Here's your confirmation code:</p>
+	                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+	                        <p>Use this code to complete the process.</p>
+	                        <br />
+	                        <p style='font-size: 16px;'>Thanks,</p>
+	                        <p style='font-size: 16px;'>The ELibrary Team</p>
+	                    </div>";
+
+				var isOtpSent = await SendAndSaveOtpAsync(otpCode, authenticatedUser, emailSubject,emailContent);
+				if (isOtpSent) // Email sent
+				{
+					return new ServiceResult(ResultCodeConst.Auth_Success0005,
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
+				}
+				else // Fail to send email
+				{
+					return new ServiceResult(ResultCodeConst.Auth_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));				
 				}
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress resend otp");
 			}
 		}
 
 		public async Task<IServiceResult> ForgotPasswordAsync(string email)
 		{
-			// Concurrently query both User and Employee services
-			var userResult = await _userService.GetByEmailAsync(email);
-			var employeeResult = await _employeeService.GetByEmailAsync(email);
-			if (userResult.Data != null && employeeResult.Data != null) // Not exist
+			try
 			{
-				var errorMSg = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errorMSg, "email"));
-			}
-			
-			// Check whether email belongs to user or employee
-			var authenticatedUser = new AuthenticateUserDto();
-			if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
-			    && userResult.Data is UserDto userDto)
-			{
-				authenticatedUser = new AuthenticateUserDto
+				// Concurrently query both User and Employee services
+				var userResult = await _userService.GetByEmailAsync(email);
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				if (userResult.Data == null && employeeResult.Data == null) // Not exist
 				{
-					Id = userDto.UserId,
-					Email = userDto.Email,
-					FirstName = userDto.FirstName ?? string.Empty,
-					LastName = userDto.LastName ?? string.Empty,
-					RoleId = userDto.RoleId,
-					RoleName = userDto.Role.EnglishName,
-					IsEmployee = false,
-					IsActive = userDto.IsActive,
-					Password = string.Empty
-				};
-			} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
-			           && employeeResult.Data is EmployeeDto employeeDto)
-			{
-				authenticatedUser = new AuthenticateUserDto
+					var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMSg, "email"));
+				}
+				
+				// Check whether email belongs to user or employee
+				var authenticatedUser = new AuthenticateUserDto();
+				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
+				    && userResult.Data is UserDto userDto)
 				{
-					Id = employeeDto.EmployeeId,
-					Email = employeeDto.Email,
-					FirstName = employeeDto.FirstName,
-					LastName = employeeDto.LastName,
-					RoleId = employeeDto.JobRole.JobRoleId,
-					RoleName = employeeDto.JobRole.EnglishName,
-					IsEmployee = true,
-					IsActive = employeeDto.IsActive,
-					Password = string.Empty
-				};
-			}
-			
-			// Generate password reset token 
-			var recoveryPasswordToken = await new JwtUtils(_webTokenSettings)
-				.GeneratePasswordResetTokenAsync(authenticatedUser);
-			
-			// Generate confirmation code
-			var confirmationCode = StringUtils.GenerateCode();
-			// Send forgot password email
-			// Progress send confirmation email
-			var emailMessageDto = new EmailMessageDto( // Define email message
-				// Define Recipient
-				to: new List<string>() { authenticatedUser.Email },
-				// Define subject
-				subject: "ELibrary - recovery password",
-				// Add email body content
-				content: $@"
-                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-                        <h3>Hi {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
-                        <p>Here's sign-in confirmation code:</p>
-                        <h1 style='font-weight: bold; color: #2C3E50;'>{confirmationCode}</h1>
-                        <p>Use this code to complete sign-in.</p>
-                        <br />
-                        <p style='font-size: 16px;'>Thanks,</p>
-                        <p style='font-size: 16px;'>The ELibrary Team</p>
-                    </div>"
-			);
-			// Send email
-			await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+					authenticatedUser = new AuthenticateUserDto
+					{
+						Id = userDto.UserId,
+						Email = userDto.Email,
+						FirstName = userDto.FirstName ?? string.Empty,
+						LastName = userDto.LastName ?? string.Empty,
+						RoleId = userDto.RoleId,
+						RoleName = userDto.Role.EnglishName,
+						IsEmployee = false,
+						IsActive = userDto.IsActive,
+						Password = string.Empty
+					};
+				} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
+				           && employeeResult.Data is EmployeeDto employeeDto)
+				{
+					authenticatedUser = new AuthenticateUserDto
+					{
+						Id = employeeDto.EmployeeId,
+						Email = employeeDto.Email,
+						FirstName = employeeDto.FirstName,
+						LastName = employeeDto.LastName,
+						RoleId = employeeDto.Role.RoleId,
+						RoleName = employeeDto.Role.EnglishName,
+						IsEmployee = true,
+						IsActive = employeeDto.IsActive,
+						Password = string.Empty
+					};
+				}
+				
+				// Generate confirmation code
+				var otpCode = StringUtils.GenerateCode();
+				// Email subject
+				var emailSubject = "ELibrary - recovery password";
+				// Email content
+				var emailContent = $@"
+	                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+	                        <h3>Hi {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
+	                        <p>Here's recovery password confirmation code:</p>
+	                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+	                        <p>Use this code to complete recovery password.</p>
+	                        <br />
+	                        <p style='font-size: 16px;'>Thanks,</p>
+	                        <p style='font-size: 16px;'>The ELibrary Team</p>
+	                    </div>";
 
-			return new ServiceResult(ResultCodeConst.Auth_Success0009, 
-				await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0009),
-				new RecoveryPasswordResultDto()
+				var isOtpSent = await SendAndSaveOtpAsync(otpCode, authenticatedUser, emailSubject, emailContent);
+				if (isOtpSent) // Email sent
 				{
-					Token = recoveryPasswordToken,
-					Email = authenticatedUser.Email
-				});
+					return new ServiceResult(ResultCodeConst.Auth_Success0005,
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005),
+						new RecoveryPasswordResultDto()
+						{
+							Email = authenticatedUser.Email
+						});
+				}
+
+				// Fail to send email
+				return new ServiceResult(ResultCodeConst.Auth_Fail0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));	
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception(ex.Message);
+			}
 		}
-
+	
 		public async Task<IServiceResult> ChangePasswordAsync(
 			string email, string password, string? token = null)
 		{
-			// Validate token (if any)
-			if (!string.IsNullOrEmpty(token))
+			try
 			{
-				var jwtToken = await (new JwtUtils(_tokenValidationParameters).ValidateAccessTokenAsync(token));
-
-				if (jwtToken == null)
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Fail0001,
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Fail0001));
-				}
+				// Validate token (if any)
+                if (!string.IsNullOrEmpty(token))
+                {
+                	var jwtToken = await (new JwtUtils(_tokenValidationParameters).ValidateAccessTokenAsync(token));
+    
+                	if (jwtToken == null)
+                	{
+                		return new ServiceResult(ResultCodeConst.Auth_Fail0001,
+                			await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0001));
+                	}
+                }
+                
+                // Check exist email
+                var getUserResult = await _userService.GetByEmailAsync(email);
+                if (getUserResult.ResultCode != ResultCodeConst.SYS_Success0002) // Not exist
+                {
+                    var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMSg, "email"));
+                } else if (getUserResult.Data is UserDto userDto)
+                {
+                	// Hash password
+                    var newPasswordHash = HashUtils.HashPassword(password);
+                    // Update password field
+                    userDto.PasswordHash = newPasswordHash;
+                    // Progress update 
+                    var updateResult = await _userService.UpdateAsync(userDto.UserId, userDto);
+                    if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
+                        await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
+                }
+                
+                return new ServiceResult(ResultCodeConst.Auth_Fail0001, 
+                	await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0001), false);
 			}
-			
-			// Check exist email
-            var getUserResult = await _userService.GetByEmailAsync(email);
-            if (getUserResult.ResultCode != ResultCodeConst.SYS_Success0002) // Not exist
-            {
-	            var errorMSg = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-	            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-		            StringUtils.Format(errorMSg, "email"));
-            } else if (getUserResult.Data is UserDto userDto)
-            {
-				// Hash password
-	            var newPasswordHash = HashUtils.HashPassword(password);
-	            // Update password field
-	            userDto.PasswordHash = newPasswordHash;
-	            // Progress update 
-	            var updateResult = await _userService.UpdateAsync(userDto.UserId, userDto);
-	            if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
-		            await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
-            }
-			
-			return new ServiceResult(ResultCodeConst.Auth_Fail0001, 
-				await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Fail0001), false);
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception(ex.Message);	
+			}
 		}
 		
 		public async Task<IServiceResult> ChangePasswordAsEmployeeAsync(
 			string email, string password, string? token = null)
 		{
-			// Validate token (if any)
-			if (!string.IsNullOrEmpty(token))
+			try
 			{
-				var jwtToken = await (new JwtUtils(_tokenValidationParameters).ValidateAccessTokenAsync(token));
-
-				if (jwtToken == null)
+				// Validate token (if any)
+				if (!string.IsNullOrEmpty(token))
 				{
-					return new ServiceResult(ResultCodeConst.Auth_Fail0001,
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Fail0001));
+					var jwtToken = await (new JwtUtils(_tokenValidationParameters).ValidateAccessTokenAsync(token));
+
+					if (jwtToken == null)
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Fail0001,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0001));
+					}
 				}
-			}
 			
-			// Check exist email
-			var getEmployeeResult = await _employeeService.GetByEmailAsync(email);
-			if (getEmployeeResult.ResultCode != ResultCodeConst.SYS_Success0002) // Not exist
-			{
-				var errorMSg = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errorMSg, "email"));
-			} else if (getEmployeeResult.Data is EmployeeDto employeeDto)
-			{
-				// Hash password
-				var newPasswordHash = HashUtils.HashPassword(password);
-				// Update password field
-				employeeDto.PasswordHash = newPasswordHash;
-				// Progress update 
-				var updateResult = await _employeeService.UpdateAsync(employeeDto.EmployeeId, employeeDto);
-				if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
-					await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
-			}
+				// Check exist email
+				var getEmployeeResult = await _employeeService.GetByEmailAsync(email);
+				if (getEmployeeResult.ResultCode != ResultCodeConst.SYS_Success0002) // Not exist
+				{
+					var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMSg, "email"));
+				} else if (getEmployeeResult.Data is EmployeeDto employeeDto)
+				{
+					// Hash password
+					var newPasswordHash = HashUtils.HashPassword(password);
+					// Update password field
+					employeeDto.PasswordHash = newPasswordHash;
+					// Progress update 
+					var updateResult = await _employeeService.UpdateAsync(employeeDto.EmployeeId, employeeDto);
+					if (updateResult.Data is true) return new ServiceResult(ResultCodeConst.Auth_Success0006, 
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0006), true);
+				}
 			
-			return new ServiceResult(ResultCodeConst.Auth_Fail0001, 
-				await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Fail0001), false);
+				return new ServiceResult(ResultCodeConst.Auth_Fail0001, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0001), false);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception(ex.Message);
+			}
 		}
 
 		public async Task<IServiceResult> SignUpAsync(AuthenticateUserDto user)
 		{
-			// Validate user input
-			await ValidateUserInputAsync(user);
-
-			// Check exist email
-			var checkAnyResult = await _userService.AnyAsync(u => u.Email.Equals(user.Email));
-			if (checkAnyResult.Data is true)
+			try
 			{
-				return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-					await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+				// Validate user input
+				await ValidateUserInputAsync(user);
+
+				// Check exist email
+				var checkAnyResult = await _userService.AnyAsync(u => u.Email.Equals(user.Email));
+				if (checkAnyResult.Data is true)
+				{
+					return new ServiceResult(ResultCodeConst.Auth_Warning0006,
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+				}
+				
+				// Hash password
+				user.Password = HashUtils.HashPassword(user.Password!);
+				// Progress create new user
+				user = await CreateNewUserAsync(user) ?? null!;
+				
+				if (user != null!) // Create user successfully
+				{
+					// Generate confirmation code
+					var otpCode = StringUtils.GenerateCode();
+					// Email subject
+					var emailSubject = "ELibrary - Sign up confirmation email";
+					// Email content
+					var emailContent = $@"
+		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+		                        <h3>Hi {user.FirstName} {user.LastName},</h3>
+		                        <p>Here's your confirmation code:</p>
+		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+		                        <p>Use this code to complete sign-up.</p>
+		                        <br />
+		                        <p style='font-size: 16px;'>Thanks,</p>
+		                        <p style='font-size: 16px;'>The ELibrary Team</p>
+		                    </div>";
+
+					var isOtpSent = await SendAndSaveOtpAsync(otpCode, user, emailSubject, emailContent);
+					if (isOtpSent) // Email sent
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Success0005, 
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
+					}
+					else 
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Fail0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));				
+					}
+				}
+				
+				return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
 			}
-			
-			// Hash password
-			user.Password = HashUtils.HashPassword(user.Password!);
-			// Progress create new user
-			user = await CreateNewUserAsync(user) ?? null!;
-			
-			if (user != null!) // Create user successfully
+			catch (Exception ex)
 			{
-				// Generate random confirmation code
-				var confirmationCode = StringUtils.GenerateCode();
-
-				// Progress send confirmation email 
-				await SendConfirmationEmailAsync(confirmationCode, 
-					user.Email, user.FirstName, user.LastName);
-
-				// Get created user by email
-				var getWithSpecResult = await _userService.GetWithSpecAsync(
-					new BaseSpecification<User>(u => u.Email.Equals(user.Email)));
-				if (getWithSpecResult.Data is null)
-				{
-					_logger.LogError("Something went wrong, fail to create new user");
-					throw new Exception(await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
-				}
-
-				// Retrieve data object and map to UserDto
-				var userDto = (getWithSpecResult.Data as UserDto)!;
-				// Update confirmation code
-				userDto.EmailVerificationCode = confirmationCode;
-				// Save to DB
-				var saveResult = await _userService.UpdateAsync(userDto.UserId, userDto);
-				if (saveResult.Data is true) // Save success
-				{
-					return new ServiceResult(ResultCodeConst.SYS_Success0001, 
-						await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
-				}
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when create new user");
 			}
-			
-			_logger.LogError("Something went wrong, fail to create new user");
-			throw new Exception(await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
 		}
-		
+
+		public async Task<IServiceResult> GetCurrentUserAsync(string email)
+		{
+			try
+			{
+				// Concurrently query both User and Employee services
+				var userResult = await _userService.GetByEmailAsync(email);
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				if (userResult.Data == null && employeeResult.Data == null) // Not exist
+				{
+					var errorMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMSg, "email"));
+				}
+				
+				// Add user/employee detail to authenticate user
+				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
+				    && userResult.Data is UserDto userDto)
+				{
+					// Ignore fields
+					userDto.PasswordHash = null;
+					userDto.TwoFactorSecretKey = null;
+					userDto.TwoFactorBackupCodes = null;
+					userDto.PhoneVerificationCode = null;
+					userDto.PhoneVerificationExpiry = null;
+					userDto.UserId = Guid.Empty;
+					userDto.PasswordHash = null;
+					userDto.RoleId = 0;
+					userDto.Role.RoleId = 0;
+					
+					return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), userDto);
+				} else if (employeeResult.ResultCode == ResultCodeConst.SYS_Success0002
+				           && employeeResult.Data is EmployeeDto employeeDto)
+				{
+					// Ignore fields
+					employeeDto.PasswordHash = null;
+					employeeDto.TwoFactorSecretKey = null;
+					employeeDto.TwoFactorBackupCodes = null;
+					employeeDto.PhoneVerificationCode = null;
+					employeeDto.PhoneVerificationExpiry = null;
+					employeeDto.EmployeeId = Guid.Empty;
+					employeeDto.PasswordHash = null;
+					employeeDto.RoleId = 0;
+					employeeDto.Role.RoleId = 0;
+					
+					return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), employeeDto);
+				}
+
+				return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get current user");
+			}
+		}
+
 		public async Task<IServiceResult> SignInAsync(string email)
 		{
-			// Get user by email to determine user sign-up as username/password or from external provider
-			var userResult = await _userService.GetByEmailAsync(email);
-				
-			// Handle User authentication
-			if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
-			    && userResult.Data is UserDto userDto)
+			try
 			{
-				// Response to keep on sign-in with username/password
-				if (!string.IsNullOrEmpty(userDto.PasswordHash)) // Exist password
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Success0003,
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0003));
-				}
-				// Response to keep on sign-in with OTP
-				// since user sign-up with external provider
-				else 
-				{
-					// Progress sending OTP to user's email
-					// Generate random confirmation code
-					var confirmationCode = StringUtils.GenerateCode();
-					await SendOtpEmailAsync(confirmationCode, userDto.Email,
-						userDto.FirstName ?? string.Empty,
-						userDto.LastName ?? string.Empty);
+				// Get user by email to determine user sign-up as username/password or from external provider
+				var userResult = await _userService.GetByEmailAsync(email);
 					
-					// Update confirmation code
-					userDto.EmailVerificationCode = confirmationCode;
-					// Save to DB
-					var saveResult = await _userService.UpdateWithoutValidationAsync(userDto.UserId, userDto);
-					if (saveResult.Data is true) // Save success
+				// Handle User authentication
+				if (userResult.ResultCode == ResultCodeConst.SYS_Success0002 
+				    && userResult.Data is UserDto userDto)
+				{
+					// User is not yet in-active
+					if (!userDto.IsActive)
 					{
-						return new ServiceResult(ResultCodeConst.Auth_Success0004,
-							await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
+						return new ServiceResult(ResultCodeConst.Auth_Warning0001,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
 					}
-					else
+					
+					// Check email confirmation
+					if (!userDto.EmailConfirmed)
 					{
-						return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-							await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));				
+						return new ServiceResult(ResultCodeConst.Auth_Warning0008,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0008));
+					}
+					
+					// Response to keep on sign-in with username/password
+					if (!string.IsNullOrEmpty(userDto.PasswordHash)) // Exist password
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Success0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0003));
+					}
+					// Response to keep on sign-in with OTP
+					// since user sign-up with external provider
+					else 
+					{
+						// Progress sending OTP to user's email
+						// Generate confirmation code
+						var otpCode = StringUtils.GenerateCode();
+						// Email subject
+						var emailSubject = "ELibrary - Sign in confirmation email";
+						// Email content
+						var emailContent = $@"
+		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+		                        <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
+		                        <p>Here's your confirmation code:</p>
+		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+		                        <p>Use this code to complete sign-in.</p>
+		                        <br />
+		                        <p style='font-size: 16px;'>Thanks,</p>
+		                        <p style='font-size: 16px;'>The ELibrary Team</p>
+		                    </div>";
+
+						var isOtpSent = await SendAndSaveOtpAsync(otpCode, userDto.ToAuthenticateUserDto(), emailSubject, emailContent);
+						if (isOtpSent) // Email sent
+						{
+							return new ServiceResult(ResultCodeConst.Auth_Success0005,
+								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
+						}
+						else // Fail to send email
+						{
+							return new ServiceResult(ResultCodeConst.Auth_Fail0002,
+								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));				
+						}
 					}
 				}
+				
+				var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+					StringUtils.Format(message, "email"));
 			}
-			
-			var message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-			return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-				StringUtils.Format(message, "email"));
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress sign-in");
+			}
 		}
 
 		public async Task<IServiceResult> SignInWithPasswordAsync(AuthenticateUserDto user)
@@ -503,18 +738,18 @@ namespace FPTU_ELibrary.Application.Services
 				else // Password not match
 				{
 					return new ServiceResult(ResultCodeConst.Auth_Warning0007, 
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
 				}
 			}
 			else
 			{
-				var message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
 					StringUtils.Format(message, "email"));
 			}
 			
 			// Handle authenticate user
-            return await AuthenticateUserAsync(user);
+			return await AuthenticateUserAsync(user);
 		}
 
 		public async Task<IServiceResult> SignInWithOtpAsync(string otp, AuthenticateUserDto user)
@@ -545,12 +780,12 @@ namespace FPTU_ELibrary.Application.Services
 				else // Not match
 				{
 					return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
 				}
 			}
 			else
 			{
-				var message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
 					StringUtils.Format(message, "email"));
 			}
@@ -579,8 +814,8 @@ namespace FPTU_ELibrary.Application.Services
 						Email = employeeDto.Email,
 						FirstName = employeeDto.FirstName,
 						LastName = employeeDto.LastName,
-						RoleId = employeeDto.JobRole.JobRoleId,
-						RoleName = employeeDto.JobRole.EnglishName,
+						RoleId = employeeDto.Role.RoleId,
+						RoleName = employeeDto.Role.EnglishName,
 						IsEmployee = true,
 						IsActive = employeeDto.IsActive,
 						Password = string.Empty
@@ -589,7 +824,7 @@ namespace FPTU_ELibrary.Application.Services
 				else
 				{
 					return new ServiceResult(ResultCodeConst.Auth_Warning0007,
-						await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
 				}
 			}
 			
@@ -675,15 +910,18 @@ namespace FPTU_ELibrary.Application.Services
 			}
 			catch (InvalidJwtException ex)
 			{
+				_logger.Error(ex.Message);
 				// Invalid JWT exception handling
 				throw new UnauthorizedAccessException("Invalid token: invalid JWT.", ex);
 			}
 			catch (UnauthorizedAccessException ex)
 			{
+				_logger.Error(ex.Message);
 				throw;
 			}
 			catch (Exception ex)
 			{
+				_logger.Error(ex.Message);
 				throw new Exception("An error occurred during Google sign-in.", ex);
 			}
 		}
@@ -762,7 +1000,8 @@ namespace FPTU_ELibrary.Application.Services
 			}
 			catch (Exception ex)
 			{
-				throw new Exception("An error occurred during Google sign-in.", ex);
+				_logger.Error(ex.Message);
+				throw new Exception("An error occurred during Facebook sign-in.", ex);
 			}
 		}
 		
@@ -777,13 +1016,13 @@ namespace FPTU_ELibrary.Application.Services
 			if (user.Id == Guid.Empty || string.IsNullOrEmpty(user.RoleName))
 			{
 				return new ServiceResult(ResultCodeConst.Auth_Warning0007,
-					await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0007));
 			}
 
 			if (!user.IsActive)
 			{
 				return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-					await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
 			}
 			
 			// Generate token
@@ -799,7 +1038,7 @@ namespace FPTU_ELibrary.Application.Services
 
 			return new ServiceResult(
 				ResultCodeConst.Auth_Success0002,
-				await _cacheService.GetMessageAsync(ResultCodeConst.Auth_Success0002),
+				await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0002),
 				new AuthenticateResultDto
 				{
 					AccessToken = jwtResponse.AccessToken,
@@ -828,6 +1067,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 			
+			// Add UserId
+			user.Id = Guid.NewGuid();
 			// Update shared fields
 			user.CreateDate = currentLocalDateTime;
 			user.RoleId = role.RoleId;
@@ -884,7 +1125,7 @@ namespace FPTU_ELibrary.Application.Services
 			var result = await _refreshTokenService.CreateAsync(refreshTokenDto);
 			if (result.ResultCode != ResultCodeConst.SYS_Success0001)
 			{
-				var errMsg = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
 				throw new Exception(StringUtils.Format(errMsg, "refresh token"));
 			}
 
@@ -902,7 +1143,7 @@ namespace FPTU_ELibrary.Application.Services
 			var result = await _refreshTokenService.UpdateAsync(refreshTokenDto.Id, refreshTokenDto);
 			if (result.ResultCode != ResultCodeConst.SYS_Success0003)
 			{
-				throw new Exception(await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				throw new Exception(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
 			}
 
 			return refreshTokenDto;
@@ -921,74 +1162,49 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
-		// Send confirmation code 
-		private async Task SendConfirmationEmailAsync(string confirmationCode, string email,
-			string firstName, string lastName)
+		// Send email (confirmation/OTP)
+		private async Task<bool> SendAndSaveOtpAsync(string otpCode, AuthenticateUserDto user,
+			string subject, string emailContent)
 		{
 			try
 			{
 				// Progress send confirmation email
 				var emailMessageDto = new EmailMessageDto( // Define email message
 					// Define Recipient
-					to: new List<string>() { email },
+					to: new List<string>() { user.Email },
 					// Define subject
-					subject: "ELibrary - confirmation code",
+					subject: subject,
 					// Add email body content
-					content: $@"
-                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-                        <h3>Hi {firstName} {lastName},</h3>
-                        <p>Thank you for registering with <b>ELibrary</b>. Here's your confirmation code:</p>
-                        <h1 style='font-weight: bold; color: #2C3E50;'>{confirmationCode}</h1>
-                        <p>Use this code to complete your registration.</p>
-                        <br />
-                        <p style='font-size: 16px;'>Thanks,</p>
-                        <p style='font-size: 16px;'>The ELibrary Team</p>
-                    </div>"
+					content: emailContent
 				);
 
-				// Send email
+				// // Send email
 				await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+				
+				// Update confirmation code
+				user.EmailVerificationCode = otpCode;
+				
+				// Progress update email confirmation code to DB (either user, employeee)
+				IServiceResult saveResult;
+				if (!user.IsEmployee) // Is user
+				{
+					saveResult = await _userService.UpdateWithoutValidationAsync(user.Id, user.ToUserDto());
+				}
+				else // Is employee
+				{
+					saveResult = await _employeeService.UpdateWithoutValidationAsync(user.Id, user.ToEmployeeDto());
+				}
+			
+				// Save success
+				if (saveResult.Data is true) return true;
 			}
 			catch (Exception ex)
 			{
 				// Log the exception or handle errors
-				Console.WriteLine($"Failed to send confirmation email: {ex.Message}");
+				_logger.Error("Failed to send confirmation email: {msg}", ex.Message);
 			}
-		}
-		
-		// Send OTP code 
-		private async Task SendOtpEmailAsync(string confirmationCode, string email,
-			string firstName, string lastName)
-		{
-			try
-			{
-				// Progress send confirmation email
-				var emailMessageDto = new EmailMessageDto( // Define email message
-					// Define Recipient
-					to: new List<string>() { email },
-					// Define subject
-					subject: "ELibrary - Sign In OTP",
-					// Add email body content
-					content: $@"
-                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-                        <h3>Hi {firstName} {lastName},</h3>
-                        <p>Here's your confirmation code:</p>
-                        <h1 style='font-weight: bold; color: #2C3E50;'>{confirmationCode}</h1>
-                        <p>Use this code to complete sign-in.</p>
-                        <br />
-                        <p style='font-size: 16px;'>Thanks,</p>
-                        <p style='font-size: 16px;'>The ELibrary Team</p>
-                    </div>"
-				);
-
-				// Send email
-				await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
-			}
-			catch (Exception ex)
-			{
-				// Log the exception or handle errors
-				Console.WriteLine($"Failed to send confirmation email: {ex.Message}");
-			}
+			
+			return false;
 		}
 		
 		// Validate password

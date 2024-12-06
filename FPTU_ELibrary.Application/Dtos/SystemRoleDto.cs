@@ -1,4 +1,6 @@
-﻿namespace FPTU_ELibrary.Application.Dtos
+﻿using Newtonsoft.Json;
+
+namespace FPTU_ELibrary.Application.Dtos
 {
 	public class SystemRoleDto
 	{
@@ -8,5 +10,10 @@
 		// Role detail
 		public string VietnameseName { get; set; } = null!;
 		public string EnglishName { get; set; } = null!;
+		public string RoleType { get; set; } = null!;
+		
+		// Role Permissions
+		[JsonIgnore]
+		public ICollection<RolePermissionDto> RolePermissions { get; set; } = new List<RolePermissionDto>();
 	}
 }

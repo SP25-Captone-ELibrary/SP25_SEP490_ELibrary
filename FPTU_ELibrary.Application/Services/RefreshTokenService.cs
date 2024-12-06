@@ -8,6 +8,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Serilog;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -18,12 +19,13 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly IEmployeeService<EmployeeDto> _employeeService;
 
 		public RefreshTokenService(
+			ISystemMessageService msgService,
 	        IUserService<UserDto> userService,
 	        IEmployeeService<EmployeeDto> employeeService,
 	        IUnitOfWork unitOfWork,
-	        ICacheService cacheService,
-	        IMapper mapper)
-            : base(unitOfWork, mapper, cacheService)
+	        IMapper mapper,
+	        ILogger logger)
+            : base(msgService, unitOfWork, mapper, logger)
         {
 	        _userService = userService;
 	        _employeeService = employeeService;
@@ -45,9 +47,10 @@ namespace FPTU_ELibrary.Application.Services
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get user by id"); 
 			}
 		}
 
@@ -67,9 +70,10 @@ namespace FPTU_ELibrary.Application.Services
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully",
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get employee by id"); 
 			}
 		}
 
@@ -120,9 +124,10 @@ namespace FPTU_ELibrary.Application.Services
 				
 				return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty");
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get user by email"); 
 			}
 		}
 
@@ -142,9 +147,10 @@ namespace FPTU_ELibrary.Application.Services
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully", 
 					_mapper.Map<RefreshTokenDto>(refreshToken));
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get token and refresh token"); 
 			}
 		}
 	}

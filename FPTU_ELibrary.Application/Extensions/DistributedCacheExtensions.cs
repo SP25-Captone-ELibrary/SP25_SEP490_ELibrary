@@ -2,8 +2,9 @@ using FPTU_ELibrary.Application.Dtos.Cache;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
+using Serilog;
+using StackExchange.Redis;
 
 namespace FPTU_ELibrary.Application.Extensions;
 
@@ -24,37 +25,43 @@ public static class DistributedCacheExtensions
     public static async Task<GetCachedValueDto<T>> GetOrAddValueAsync<T, TKey>(
         this IDistributedCache cache,
         TKey anyKey,
-        Func<TKey, Task<IServiceResult>> factory
+        Func<TKey, Task<IServiceResult>> factory,
+        ILogger logger
     ) 
         where T : class
     {
+        // Convert any type of key to string
+        var key = ConvertKeyToString(anyKey);
+
         try
         {
-            var key = ConvertKeyToString(anyKey);
-        
-            // Get value by key
-            var value = await cache.GetAsync<T>(key);
+            // Try to get the value from the cache
+            var value = await cache.SafeGetAsync<T>(key, logger);
             if (value == null)
             {
-                // Get service result data, convert to generic type
-                value = (await factory(anyKey)).Data as T;
-                if (value == null) // Not exist 
-                    throw new NotFoundException("Error when add memory cache data:", "Key " + key);
-                
-                // Add JSON data to cache memory
-                await cache.SetStringAsync(key, JsonConvert.SerializeObject(value));
-                
-                // Return value and mark as not cached 
+                // Fetch data from the database or other source
+                var result = await factory(anyKey);
+                value = result.Data as T;
+
+                if (value == null) // Data not found
+                    throw new NotFoundException("Not found data with key: " + key);
+
+                // Cache the data for future use
+                await cache.SafeSetStringAsync(key, JsonConvert.SerializeObject(value));
+
+                // Return the newly fetched value
                 return new(false, value);
             }
 
-            // Return value and mark as cached 
+            // Return cached value
             return new(true, value);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw;
+            logger.Error("Error accessing distributed cache for key {key}: {ex}", key, ex.Message);
         }
+
+        return null!;
     }
 
     /// <summary>
@@ -78,24 +85,46 @@ public static class DistributedCacheExtensions
     }
     
     /// <summary>
-    /// Get value by key
+    /// Safe wrapper for GetStringAsync
     /// </summary>
-    /// <param name="cache"></param>
-    /// <param name="key"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    private static async Task<T?> GetAsync<T>(this IDistributedCache cache, string key)
+    private static async Task<string?> SafeGetStringAsync(this IDistributedCache cache, string key, ILogger logger)
+    {
+        try
+        {
+            return await cache.GetStringAsync(key);
+        }
+        catch (Exception ex)
+        {
+            // Log the cache access failure
+            logger.Error("Cache access failed for key {key}: {msg}", key, ex.Message);
+            return null; // Gracefully fall back
+        }
+    }
+    
+    /// <summary>
+    /// Safe wrapper for GetAsync
+    /// </summary>
+    private static async Task<T?> SafeGetAsync<T>(this IDistributedCache cache, string key, ILogger logger)
         where T : class
     {
-        // Get value string
-        var jsonValue = await cache.GetStringAsync(key);
-        if (string.IsNullOrEmpty(jsonValue)) // Not exist
+        var jsonValue = await cache.SafeGetStringAsync(key, logger);
+        return string.IsNullOrEmpty(jsonValue) ? null : JsonConvert.DeserializeObject<T>(jsonValue);
+    }
+    
+    /// <summary>
+    /// Safe wrapper for SetStringAsync
+    /// </summary>
+    private static async Task SafeSetStringAsync(this IDistributedCache cache, string key, string value)
+    {
+        try
         {
-            return null;
+            await cache.SetStringAsync(key, value);
         }
-
-        // Convert string value to generic object 
-        return JsonConvert.DeserializeObject<T>(jsonValue);
+        catch (Exception ex)
+        {
+            // Log the failure to set the cache
+            Console.Error.WriteLine($"Failed to set cache for key {key}: {ex.Message}");
+        }
     }
     
     /// <summary>
@@ -157,10 +186,23 @@ public static class DistributedCacheExtensions
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
     /// <returns></returns>
-    public static Task SetAsync<TKey, TValue>(this IDistributedCache cache, TKey anyKey, TValue value)
+    public static async Task SetAsync<TKey, TValue>(this IDistributedCache cache,
+        TKey anyKey, TValue value, ILogger logger
+    )
         where TValue : class
     {
-        var key = ConvertKeyToString(anyKey);
-        return cache.SetStringAsync(key, JsonConvert.SerializeObject(value));
+        try
+        {
+            var key = ConvertKeyToString(anyKey);
+            await cache.SetStringAsync(key, JsonConvert.SerializeObject(value));
+        }
+        catch (RedisConnectionException ex)
+        {
+            logger.Error("Failed to connect with memory cache server, please re-try");
+        }
+        catch (Exception ex)
+        {
+            logger.Error("Failed to set cache for key {anyKey}: {msg}", anyKey, ex.Message);
+        }
     }
 }

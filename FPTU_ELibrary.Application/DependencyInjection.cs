@@ -27,6 +27,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ICacheService, CacheService>();
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
 			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
+			services.AddScoped<IAuthorizationService, AuthorizationService>();
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
@@ -55,7 +56,7 @@ namespace FPTU_ELibrary.Application
 			var typeAdapterConfig = TypeAdapterConfig.GlobalSettings;
 			// Scans the assembly and gets the IRegister, adding the registration to the TypeAdapterConfig
 			typeAdapterConfig.Scan(Assembly.GetExecutingAssembly());
-
+			
 			// Register the mapper as Singleton service for my application
 			var mapperConfig = new Mapper(typeAdapterConfig);
 			services.AddSingleton<IMapper>(mapperConfig);
@@ -97,7 +98,7 @@ namespace FPTU_ELibrary.Application
 			return services;
 		}
 
-		public static string ToSnakeCase(string s)
+		private static string ToSnakeCase(string s)
 		{
 			var builder = new StringBuilder(s.Length);
 			for (int i = 0; i < s.Length; i++)

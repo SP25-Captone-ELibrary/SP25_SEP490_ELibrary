@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241204040129_Initial Database")]
+    [Migration("20241205180254_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -786,10 +786,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
-                    b.Property<int>("JobRoleId")
-                        .HasColumnType("int")
-                        .HasColumnName("job_role_id");
-
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -823,6 +819,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("phone_verification_expiry");
 
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int")
+                        .HasColumnName("role_id");
+
                     b.Property<DateTime?>("TerminationDate")
                         .HasColumnType("datetime")
                         .HasColumnName("termination_date");
@@ -844,7 +844,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasKey("EmployeeId")
                         .HasName("PK_Employee_EmployeeId");
 
-                    b.HasIndex("JobRoleId");
+                    b.HasIndex("RoleId");
 
                     b.ToTable("Employee", (string)null);
                 });
@@ -960,33 +960,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasName("PK_FinePolicy_FinePolicyId");
 
                     b.ToTable("Fine_Policy", (string)null);
-                });
-
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.JobRole", b =>
-                {
-                    b.Property<int>("JobRoleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("job_role_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobRoleId"));
-
-                    b.Property<string>("EnglishName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("english_name");
-
-                    b.Property<string>("VietnameseName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("vietnamese_name");
-
-                    b.HasKey("JobRoleId")
-                        .HasName("PK_JobRole_JobRoleId");
-
-                    b.ToTable("Job_Role", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LearningMaterial", b =>
@@ -1463,6 +1436,66 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Reservation_Queue", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RolePermissionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("role_permission_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RolePermissionId"));
+
+                    b.Property<int>("FeatureId")
+                        .HasColumnType("int")
+                        .HasColumnName("feature_id");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int")
+                        .HasColumnName("permission_id");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("RolePermissionId")
+                        .HasName("PK_RolePermission_RolePermissionId");
+
+                    b.HasIndex("FeatureId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("Role_Permission", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemFeature", b =>
+                {
+                    b.Property<int>("FeatureId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("feature_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FeatureId"));
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("english_name");
+
+                    b.Property<string>("VietnameseName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("vietnamese_name");
+
+                    b.HasKey("FeatureId")
+                        .HasName("PK_SystemFeature_FeatureId");
+
+                    b.ToTable("System_Feature", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemMessage", b =>
                 {
                     b.Property<string>("MsgId")
@@ -1525,6 +1558,37 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("System_Message", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemPermission", b =>
+                {
+                    b.Property<int>("PermissionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("permission_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PermissionId"));
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("english_name");
+
+                    b.Property<int>("PermissionLevel")
+                        .HasColumnType("int")
+                        .HasColumnName("permission_level");
+
+                    b.Property<string>("VietnameseName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("vietnamese_name");
+
+                    b.HasKey("PermissionId")
+                        .HasName("PK_SystemPermission_PermissionId");
+
+                    b.ToTable("System_Permission", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemRole", b =>
                 {
                     b.Property<int>("RoleId")
@@ -1539,6 +1603,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("english_name");
+
+                    b.Property<string>("RoleType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("role_type");
 
                     b.Property<string>("VietnameseName")
                         .IsRequired()
@@ -1924,13 +1994,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.JobRole", "JobRole")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.SystemRole", "Role")
                         .WithMany("Employees")
-                        .HasForeignKey("JobRoleId")
+                        .HasForeignKey("RoleId")
                         .IsRequired()
-                        .HasConstraintName("FK_JobRole_JobRoleId");
+                        .HasConstraintName("FK_Employee_RoleId");
 
-                    b.Navigation("JobRole");
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Fine", b =>
@@ -2106,6 +2176,36 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("ReservedByNavigation");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.SystemFeature", "Feature")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("FeatureId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_RolePermission_FeatureId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.SystemPermission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_RolePermission_PermissionId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.SystemRole", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_RolePermission_RoleId");
+
+                    b.Navigation("Feature");
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.User", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.SystemRole", "Role")
@@ -2217,11 +2317,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Fines");
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.JobRole", b =>
-                {
-                    b.Navigation("Employees");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LearningMaterial", b =>
                 {
                     b.Navigation("BorrowRecords");
@@ -2260,8 +2355,22 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("NotificationRecipients");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemFeature", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemPermission", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SystemRole", b =>
                 {
+                    b.Navigation("Employees");
+
+                    b.Navigation("RolePermissions");
+
                     b.Navigation("Users");
                 });
 

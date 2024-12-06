@@ -75,7 +75,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Restrict) // Restrict delete when SystemRole has associated employees
                 .HasConstraintName("FK_SystemRole_RoleId");
         }
     }

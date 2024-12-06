@@ -14,6 +14,7 @@ using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
 using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity.Data;
 
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
@@ -30,83 +31,77 @@ namespace FPTU_ELibrary.API.Controllers
         {
 			_authenticationService = authenticationService;
 		}
-
-		[AllowAnonymous]
+		
+		[Authorize]
+		[HttpGet(APIRoute.Authentication.CurrentUser, Name = nameof(GetCurrentUserAsync))]
+		public async Task<IActionResult> GetCurrentUserAsync()
+		{
+			// Retrieve user email from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.GetCurrentUserAsync(email ?? string.Empty));
+		}
+		
 		[HttpPost(APIRoute.Authentication.SignIn, Name = nameof(SignInAsync))]
 		public async Task<IActionResult> SignInAsync([FromBody] SignInRequest req)
 		{
 			return Ok(await _authenticationService.SignInAsync(req.Email));
 		}
 		
-		[AllowAnonymous]
-		[HttpPost(APIRoute.Authentication.SignInWithPassword, Name = nameof(SignInWithPasswordAsync))]
-		public async Task<IActionResult> SignInWithPasswordAsync([FromBody] SignInWithPasswordRequest req)
-		{
-			return Ok(await _authenticationService.SignInWithPasswordAsync(req.ToAuthenticatedUser()));
-		}
-		
-		[AllowAnonymous]
-		[HttpPost(APIRoute.Authentication.SignInWithOtp, Name = nameof(SignInWithOtpAsync))]
-		public async Task<IActionResult> SignInWithOtpAsync([FromBody] SignInWithOtpRequest req)
-		{
-			return Ok(await _authenticationService.SignInWithOtpAsync(req.Otp, req.ToAuthenticatedUser()));
-		}
-
-		[AllowAnonymous]
-		[HttpPost(APIRoute.Authentication.OtpVerification, Name = nameof(OtpVerificationAsync))]
-		public async Task<IActionResult> OtpVerificationAsync([FromBody] OtpVerificationRequest req)
-		{
-			return Ok(await _authenticationService.VerifyOtpAsync(req.Email, req.Otp));
-		}
-		
-		[AllowAnonymous]
 		[HttpPost(APIRoute.Authentication.SignInAsEmployee, Name = nameof(SignInAsEmployeeAsync))]
 		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInRequest req)
 		{
 			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.ToAuthenticatedUser()));
 		}
 		
-		[AllowAnonymous]
+		[HttpPost(APIRoute.Authentication.SignInWithPassword, Name = nameof(SignInWithPasswordAsync))]
+		public async Task<IActionResult> SignInWithPasswordAsync([FromBody] SignInWithPasswordRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithPasswordAsync(req.ToAuthenticatedUser()));
+		}
+		
+		[HttpPost(APIRoute.Authentication.SignInWithOtp, Name = nameof(SignInWithOtpAsync))]
+		public async Task<IActionResult> SignInWithOtpAsync([FromBody] SignInWithOtpRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithOtpAsync(req.Otp, req.ToAuthenticatedUser()));
+		}
+		
 		[HttpPost(APIRoute.Authentication.SignInWithGoogle, Name = nameof(SignInWithGoogleAsync))]
 		public async Task<IActionResult> SignInWithGoogleAsync([FromBody] GoogleAuthRequest req)
 		{
 			return Ok(await _authenticationService.SignInWithGoogleAsync(req.Code));
 		}
 
-		[AllowAnonymous]
 		[HttpPost(APIRoute.Authentication.SignInWithFacebook, Name = nameof(SignInWithFacebook))]
 		public async Task<IActionResult> SignInWithFacebook([FromBody] FacebookAuthRequest req)
 		{
 			return Ok(await _authenticationService.SignInWithFacebookAsync(req.AccessToken, req.ExpiresIn));
 		}
 
-		[AllowAnonymous]
 		[HttpPost(APIRoute.Authentication.SignUp, Name = nameof(SignUpAsync))]
 		public async Task<IActionResult> SignUpAsync([FromBody] SignUpRequest req)
 		{
-			// Progress create new user with in-active status
-			var serviceResult = await _authenticationService.SignUpAsync(req.ToAuthenticatedUser());
-
-			// Progress response
-			return serviceResult.ResultCode == ResultCodeConst.SYS_Success0001 // Create successfully
-					? Created()
-					: Ok(serviceResult);
+			return Ok(await _authenticationService.SignUpAsync(req.ToAuthenticatedUser()));
 		}
 
-		[AllowAnonymous]
 		[HttpPatch(APIRoute.Authentication.ConfirmRegistration, Name = nameof(ConfirmRegistrationAsync))]
 		public async Task<IActionResult> ConfirmRegistrationAsync([FromBody] ConfirmRegistrationRequest req)
 		{
-			return Ok(await _authenticationService.ConfirmEmailAsync(req.Email, req.EmailVerificationCode));
+			return Ok(await _authenticationService.ConfirmEmailForSignUpAsync(req.Email, req.EmailVerificationCode));
 		}
 
+		[HttpPost(APIRoute.Authentication.ResendOtp, Name = nameof(ResendOtpForSignUpAsync))]
+		public async Task<IActionResult> ResendOtpForSignUpAsync([FromBody] ResendOtpForSignUpRequest req)
+		{
+			return Ok(await _authenticationService.ResendOtpAsync(req.Email));
+		}
+		
 		[HttpPost(APIRoute.Authentication.RefreshToken, Name = nameof(RefreshTokenAsync))]
 		public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest req)
 		{
 			// Retrieve claims from the authenticated user's identity
-			var roleName = User.FindFirst("role")?.Value;
+			var roleName = User.FindFirst(ClaimTypes.Role)?.Value;
 			var userType = User.FindFirst(CustomClaimTypes.UserType)?.Value;
-			var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
 			var name = User.FindFirst(JwtRegisteredClaimNames.Name)?.Value;
 			var tokenId = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
 			if (string.IsNullOrEmpty(email) // Is not exist email claim
@@ -129,25 +124,28 @@ namespace FPTU_ELibrary.API.Controllers
 				refreshToken: req.RefreshToken));
 		}
 
-		[AllowAnonymous]
 		[HttpGet(APIRoute.Authentication.ForgotPassword, Name = nameof(ForgotPasswordAsync))]
 		public async Task<IActionResult> ForgotPasswordAsync([FromQuery] ForgotPasswordRequest req)
 		{
 			return Ok(await _authenticationService.ForgotPasswordAsync(req.Email));
 		}
 
-		[AllowAnonymous]
-		[HttpPost(APIRoute.Authentication.ChangePassword, Name = nameof(ChangePasswordAsync))]
+		[HttpPatch(APIRoute.Authentication.ChangePassword, Name = nameof(ChangePasswordAsync))]
 		public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest req)
 		{
 			return Ok(await _authenticationService.ChangePasswordAsync(req.Email, req.Password, req.Token));
 		}
 		
-		[AllowAnonymous]
-		[HttpPost(APIRoute.Authentication.ChangePasswordAsEmployee, Name = nameof(ChangePasswordAsEmployeeAsync))]
+		[HttpPost(APIRoute.Authentication.ChangePasswordOtpVerification, Name = nameof(ChangePasswordOtpVerificationAsync))]
+		public async Task<IActionResult> ChangePasswordOtpVerificationAsync([FromBody] OtpVerificationRequest req)
+		{
+			return Ok(await _authenticationService.VerifyChangePasswordOtpAsync(req.Email, req.Otp));
+		}
+		
+		[HttpPatch(APIRoute.Authentication.ChangePasswordAsEmployee, Name = nameof(ChangePasswordAsEmployeeAsync))]
 		public async Task<IActionResult> ChangePasswordAsEmployeeAsync([FromBody] ChangePasswordRequest req)
 		{
 			return Ok(await _authenticationService.ChangePasswordAsEmployeeAsync(req.Email, req.Password, req.Token));
-		}
+		} 
 	}
 }

@@ -27,7 +27,6 @@ public partial class FptuElibraryDbContext : DbContext
     public DbSet<Employee> Employees { get; set; }
     public DbSet<Fine> Fines { get; set; }
     public DbSet<FinePolicy> FinePolicies { get; set; }
-    public DbSet<JobRole> JobRoles { get; set; }
     public DbSet<LibraryFloor> LibraryFloors { get; set; }
     public DbSet<LibraryPath> LibraryPaths { get; set; }
     public DbSet<LibrarySection> LibrarySections { get; set; }
@@ -37,6 +36,9 @@ public partial class FptuElibraryDbContext : DbContext
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<SystemRole> SystemRoles { get; set; }
+    public DbSet<SystemFeature> SystemFeatures { get; set; }
+    public DbSet<SystemPermission> SystemPermissions { get; set; }
+    public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<UserFavorite> UserFavorites { get; set; }
 
@@ -48,7 +50,7 @@ public partial class FptuElibraryDbContext : DbContext
 	{
 		IConfigurationBuilder builder = new ConfigurationBuilder()
 			.SetBasePath(Directory.GetCurrentDirectory())
-			.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 			.AddEnvironmentVariables();
 
 		string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? null!;

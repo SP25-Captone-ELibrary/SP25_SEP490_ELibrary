@@ -16,10 +16,10 @@ public class Employee : BaseUser
     public DateTime? TerminationDate { get; set; }
     
     // Role in the system
-    public int JobRoleId { get; set; }
+    public int RoleId { get; set; }
 
     // Mapping entities
-    public JobRole JobRole { get; set; } = null!;
+    public SystemRole Role { get; set; } = null!;
 
     [JsonIgnore]
     public ICollection<Book> BookCreateByNavigations { get; set; } = new List<Book>();

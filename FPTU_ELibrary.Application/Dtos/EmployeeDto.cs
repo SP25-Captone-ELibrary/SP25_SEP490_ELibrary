@@ -1,5 +1,6 @@
 ﻿using FPTU_ELibrary.Domain.Entities;
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Auth;
 
 namespace FPTU_ELibrary.Application.Dtos
 {
@@ -43,10 +44,10 @@ namespace FPTU_ELibrary.Application.Dtos
 		public DateTime? PhoneVerificationExpiry { get; set; }
 
 		// Role in the system
-		public int JobRoleId { get; set; }
+		public int RoleId { get; set; }
 
 		// Mapping entities
-		public JobRoleDto JobRole { get; set; } = null!;
+		public SystemRoleDto Role { get; set; } = null!;
 
 		//[JsonIgnore]
 		//public ICollection<Book> BookCreateByNavigations { get; set; } = new List<Book>();
@@ -80,5 +81,37 @@ namespace FPTU_ELibrary.Application.Dtos
 
 		[JsonIgnore]
 		public ICollection<RefreshTokenDto> RefreshTokens { get; set; } = new List<RefreshTokenDto>();
+	}
+	
+	public static class EmployeeDtoExtensions
+	{
+		public static AuthenticateUserDto ToAuthenticateUserDto(this EmployeeDto userDto)
+		{
+			return new AuthenticateUserDto()
+			{
+				Id = userDto.EmployeeId,
+				UserCode = userDto.EmployeeCode,
+				FirstName = userDto.FirstName,
+				LastName = userDto.LastName,
+				Email = userDto.Email,
+				Avatar = userDto.Avatar,
+				Address = userDto.Address,
+				Gender = userDto.Gender,
+				PasswordHash = userDto.PasswordHash,
+				RoleId = userDto.RoleId,
+				CreateDate = userDto.CreateDate,
+				ModifiedDate = userDto.ModifiedDate,
+				EmailConfirmed = userDto.EmailConfirmed,
+				PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
+				EmailVerificationCode = userDto.EmailVerificationCode,
+				TwoFactorEnabled = userDto.TwoFactorEnabled,
+				TwoFactorSecretKey = userDto.TwoFactorSecretKey,
+				TwoFactorBackupCodes = userDto.TwoFactorBackupCodes,
+				PhoneVerificationCode = userDto.PhoneVerificationCode,
+				PhoneVerificationExpiry = userDto.PhoneVerificationExpiry,
+				IsActive = userDto.IsActive,
+				IsEmployee = true
+			};
+		}
 	}
 }

@@ -13,6 +13,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.ToTable("System_Role");
 
             builder.Property(e => e.RoleId).HasColumnName("role_id");
+            builder.Property(e => e.RoleType)
+                .HasMaxLength(50)
+                .HasColumnName("role_type");
             builder.Property(e => e.EnglishName)
                 .HasMaxLength(100)
                 .HasColumnName("english_name");

@@ -7,6 +7,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Serilog;
 using SystemRole = FPTU_ELibrary.Domain.Entities.SystemRole;
 namespace FPTU_ELibrary.Application.Services
 {
@@ -14,10 +15,11 @@ namespace FPTU_ELibrary.Application.Services
 		ISystemRoleService<SystemRoleDto>
 	{
         public SystemRoleService(
+			ISystemMessageService msgService,
 	        IUnitOfWork unitOfWork,
 	        IMapper mapper,
-	        ICacheService cacheService) 
-			: base(unitOfWork, mapper, cacheService) 
+	        ILogger logger) 
+			: base(msgService, unitOfWork, mapper, logger) 
         {
             
         }
@@ -53,13 +55,13 @@ namespace FPTU_ELibrary.Application.Services
 			if (systemRoleEntity == null)
 			{
 				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
-					await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
 					new SystemRoleDto());
 			}
 
 			// Is get success <- map to Dto
 			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
-				await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
 				_mapper.Map<SystemRoleDto>(systemRoleEntity));
 		}
 	}

@@ -11,4 +11,10 @@ public class SystemRole : BaseRole
     // Mapping entities
     [JsonIgnore]
     public ICollection<User> Users { get; set; } = new List<User>();
+    
+    [JsonIgnore]
+    public ICollection<Employee> Employees { get; set; } = new List<Employee>();
+    
+    [JsonIgnore]
+    public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }

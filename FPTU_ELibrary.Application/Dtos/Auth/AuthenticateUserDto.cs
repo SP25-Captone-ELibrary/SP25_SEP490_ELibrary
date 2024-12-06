@@ -25,13 +25,50 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
                 LastName = authenticateUser.LastName,
                 Email = authenticateUser.Email,
                 Avatar = authenticateUser.Avatar,
+                Address = authenticateUser.Address,
+                Gender = authenticateUser.Gender,
                 PasswordHash = authenticateUser.Password,
                 RoleId = authenticateUser.RoleId,
                 CreateDate = authenticateUser.CreateDate,
+                ModifiedDate = authenticateUser.ModifiedDate,
                 EmailConfirmed = authenticateUser.EmailConfirmed,
                 PhoneNumberConfirmed = authenticateUser.PhoneNumberConfirmed,
+                EmailVerificationCode = authenticateUser.EmailVerificationCode,
                 TwoFactorEnabled = authenticateUser.TwoFactorEnabled,
-				IsActive = authenticateUser.IsActive,
+                TwoFactorSecretKey = authenticateUser.TwoFactorSecretKey,
+                TwoFactorBackupCodes = authenticateUser.TwoFactorBackupCodes,
+                PhoneVerificationCode = authenticateUser.PhoneVerificationCode,
+                PhoneVerificationExpiry = authenticateUser.PhoneVerificationExpiry,
+				IsActive = authenticateUser.IsActive
+            };
+        }
+
+        public static EmployeeDto ToEmployeeDto(
+            this AuthenticateUserDto authenticateUser)
+        {
+            return new EmployeeDto()
+            {
+                EmployeeId = authenticateUser.Id,
+                EmployeeCode = authenticateUser.UserCode,
+                FirstName = authenticateUser.FirstName,
+                LastName = authenticateUser.LastName,
+                Email = authenticateUser.Email,
+                Avatar = authenticateUser.Avatar,
+                Address = authenticateUser.Address,
+                Gender = authenticateUser.Gender,
+                PasswordHash = authenticateUser.Password,
+                RoleId = authenticateUser.RoleId,
+                CreateDate = authenticateUser.CreateDate,
+                ModifiedDate = authenticateUser.ModifiedDate,
+                EmailConfirmed = authenticateUser.EmailConfirmed,
+                PhoneNumberConfirmed = authenticateUser.PhoneNumberConfirmed,
+                EmailVerificationCode = authenticateUser.EmailVerificationCode,
+                TwoFactorEnabled = authenticateUser.TwoFactorEnabled,
+                TwoFactorSecretKey = authenticateUser.TwoFactorSecretKey,
+                TwoFactorBackupCodes = authenticateUser.TwoFactorBackupCodes,
+                PhoneVerificationCode = authenticateUser.PhoneVerificationCode,
+                PhoneVerificationExpiry = authenticateUser.PhoneVerificationExpiry,
+                IsActive = authenticateUser.IsActive,
             };
         }
     }

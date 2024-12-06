@@ -1,12 +1,18 @@
-﻿using FPTU_ELibrary.API.Payloads;
+﻿using System.Data.Common;
+using System.Reflection;
 using FPTU_ELibrary.Application.Configurations;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
-using System.Security.Claims;
 using System.Text;
-using FPTU_ELibrary.Domain.Common.Constants;
+using FluentValidation;
+using FPTU_ELibrary.Application.HealthChecks;
+using Mapster;
+using MapsterMapper;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Serilog.Core;
+using StackExchange.Redis;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -14,7 +20,7 @@ namespace FPTU_ELibrary.API.Extensions
 	//      This class is to configure services for presentation layer 
 	public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection ConfigureServices(this IServiceCollection services, IWebHostEnvironment env)
+        public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
         {
 			// Add controllers
             services.AddControllers();
@@ -22,13 +28,6 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddEndpointsApiExplorer();
 			// Add swagger
 			services.AddSwaggerGen();
-			// Add Redis Cache
-			services.AddStackExchangeRedisCache(config =>
-			{
-				config.Configuration = env.IsDevelopment()
-					? "127.0.0.1:6379"
-					: Environment.GetEnvironmentVariable("REDIS_URL");
-			});
 
 			return services;
         }
@@ -44,6 +43,9 @@ namespace FPTU_ELibrary.API.Extensions
 	            .CreateLogger();
 
 			builder.Host.UseSerilog();
+			
+			// Register the Serilog logger
+			services.AddSingleton(Log.Logger);
 
 			return services;
 		}
@@ -81,6 +83,50 @@ namespace FPTU_ELibrary.API.Extensions
 
 			}
 			#endregion
+
+			return services;
+		}
+
+		public static IServiceCollection ConfigureRedis(this IServiceCollection services, 
+			IConfiguration configuration,
+			IWebHostEnvironment env)
+		{
+			// Define redis configuration
+			var redisConfig = env.IsDevelopment()
+				? $"{configuration["RedisSettings:Host"]}:{configuration["RedisSettings:Port"]},abortConnect=false"
+				: $"{Environment.GetEnvironmentVariable("REDIS_URL")},abortConnect=false";
+
+			// Add Redis distributed caching services
+			services.AddStackExchangeRedisCache(config =>
+			{
+				config.Configuration = redisConfig;
+			});
+
+			try
+			{
+				// Register IConnectionMultiplexer (used in CacheHealthCheck and custom Redis operations)
+				services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
+			}
+			catch (RedisConnectionException ex)
+			{
+				Logger.None.Error("Redis connection failed: {msg}", ex.Message);
+			}
+			
+			return services;
+		}
+		
+		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, IConfiguration configuration)
+		{
+			services.AddSingleton<AggregatedHealthCheckService>();
+			services.AddScoped<DbConnection>(sp => 
+				new SqlConnection(configuration.GetConnectionString("DefaultConnectionStr")));
+			
+			return services;
+		}
+
+		public static IServiceCollection ConfigureCamelCaseForValidation(this IServiceCollection services)
+		{
+			ValidatorOptions.Global.PropertyNameResolver = CamelCasePropertyNameResolver.ResolvePropertyName;
 
 			return services;
 		}
@@ -123,5 +169,19 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
-	}
+
+		public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+		{
+			// Configure CORS
+			services.AddCors(p => p.AddPolicy(policyName, policy =>
+			{
+				// allow all with any header, method
+				policy.WithOrigins("*")
+					.AllowAnyHeader()
+					.AllowAnyMethod();
+			}));
+
+			return services;
+		}
+    }
 }

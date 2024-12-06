@@ -153,11 +153,19 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Wrong username or password
 		/// </summary>
 		public static string Auth_Warning0007 = "Auth.Warning0007";
+		/// <summary>
+		/// [WARNING] Account email is not verify yet
+		/// </summary>
+		public static string Auth_Warning0008 = "Auth.Warning0008";
 		
 		/// <summary>
 		/// [FAIL] Fail to update password
 		/// </summary>
 		public static string Auth_Fail0001 = "Auth.Fail0001";
+		/// <summary>
+		/// [FAIL] Fail to send OTP 
+		/// </summary>
+		public static string Auth_Fail0002 = "Auth.Fail0002";
 		#endregion
 
 		#endregion

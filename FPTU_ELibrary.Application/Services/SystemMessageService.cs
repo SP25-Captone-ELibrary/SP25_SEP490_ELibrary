@@ -2,8 +2,6 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
-using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -14,23 +12,25 @@ using Microsoft.Extensions.Caching.Distributed;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;
+using Serilog;
+using Exception = System.Exception;
 
 namespace FPTU_ELibrary.Application.Services;
 
 public class SystemMessageService : ISystemMessageService
 {
-    private readonly IDistributedCache _cache;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ILogger _logger;
 
     public SystemMessageService(
         IUnitOfWork unitOfWork,
         IMapper mapper,
-        IDistributedCache cache) 
+        ILogger logger) 
     {
-        _cache = cache;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<IServiceResult> GetByIdAsync(string msgId)
@@ -47,6 +47,37 @@ public class SystemMessageService : ISystemMessageService
         return new ServiceResult(ResultCodeConst.SYS_Success0002, 
             "Get data successfully", 
             _mapper.Map<SystemMessageDto>(entity));
+    }
+    
+    public async Task<string> GetMessageAsync(string msgId)
+    {
+        try
+        {
+            // Try to get system message from memory cache, create new if not exist
+            var msgEntity = await _unitOfWork.Repository<SystemMessage, string>()
+                .GetByIdAsync(msgId);
+
+            // Retrieve global language
+            var langStr = LanguageContext.CurrentLanguage;
+            var langEnum = EnumExtensions.GetValueFromDescription<SystemLanguage>(langStr);
+            // Define message Language
+            var message = langEnum switch
+            {
+                SystemLanguage.Vietnamese => msgEntity?.Vi,
+                SystemLanguage.English => msgEntity?.En,
+                SystemLanguage.Russian => msgEntity?.Ru,
+                SystemLanguage.Japanese => msgEntity?.Ja,
+                SystemLanguage.Korean => msgEntity?.Ko,
+                _ => msgEntity?.En
+            };
+            
+            return message!;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get system message");
+        }
     }
     
     public async Task<IServiceResult> ImportToExcelAsync(IFormFile file)
@@ -132,8 +163,6 @@ public class SystemMessageService : ISystemMessageService
                 }
                 else
                 {
-                    // Add items to cache
-                    await _cache.SetAsync(systemMessage.MsgId, systemMessage);
                     // Increase total added items
                     totalAdded++;
                 }

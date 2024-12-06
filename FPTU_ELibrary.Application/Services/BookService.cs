@@ -9,16 +9,18 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.Extensions.Caching.Distributed;
+using Serilog;
 
 namespace FPTU_ELibrary.Application.Services
 {
 	public class BookService : GenericService<Book, BookDto, int>, IBookService<BookDto>
 	{
 		public BookService(
+			ISystemMessageService msgService,
 			IUnitOfWork unitOfWork,
 			IMapper mapper,
-			ICacheService cacheService) 
-			: base(unitOfWork, mapper, cacheService)
+			ILogger logger) 
+			: base(msgService,unitOfWork, mapper, logger)
 		{
 		}
 
@@ -26,7 +28,7 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			var bookEntities = await _unitOfWork.Repository<Book, int>().GetAllWithSpecAsync(spec);
 			return new ServiceResult(ResultCodeConst.SYS_Success0002, 
-				await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<List<BookDto>>(bookEntities));
 		}
 	}

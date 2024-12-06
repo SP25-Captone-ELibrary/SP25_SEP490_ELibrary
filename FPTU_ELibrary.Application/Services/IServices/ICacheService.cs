@@ -8,5 +8,4 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 /// </summary>
 public interface ICacheService
 {
-    Task<string> GetMessageAsync(string msgId);
 }

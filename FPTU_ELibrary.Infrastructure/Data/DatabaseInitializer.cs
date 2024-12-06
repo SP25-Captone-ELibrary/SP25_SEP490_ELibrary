@@ -3,13 +3,14 @@ using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-
-using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
-using BookCategoryEntity = FPTU_ELibrary.Domain.Entities.BookCategory;
 using System.ComponentModel;
 using System.Reflection;
-using FPTU_ELibrary.Domain.Interfaces.Services;
+using Serilog;
+
+using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
+using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
+using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
+using SystemFeatureEnum = FPTU_ELibrary.Domain.Common.Enums.SystemFeature;
 
 namespace FPTU_ELibrary.Infrastructure.Data
 {
@@ -18,9 +19,9 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	public class DatabaseInitializer : IDatabaseInitializer
     {
         private readonly FptuElibraryDbContext _context;
-        private readonly ILogger<DatabaseInitializer> _logger;
+        private readonly ILogger _logger;
 
-        public DatabaseInitializer(ILogger<DatabaseInitializer> logger,
+        public DatabaseInitializer(ILogger logger,
             FptuElibraryDbContext context)
         {
             _context = context;
@@ -40,23 +41,22 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     var appliedMigrations = await _context.Database.GetAppliedMigrationsAsync();
                     if (appliedMigrations.Any())
                     {
-                        _logger.LogInformation("Migrations have been applied.");
+                        _logger.Information("Migrations have been applied.");
                         return;
                     }
 
                     // Perform migration if necessary
                     await _context.Database.MigrateAsync();
-                    _logger.LogInformation("Database initialized successfully.");
+                    _logger.Information("Database initialized successfully.");
                 }
                 else
                 {
-                    _logger.LogInformation("Database cannot be connected to.");
+                    _logger.Information("Database cannot be connected to.");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while initializing the database.");
-                throw;
+                _logger.Error(ex, "An error occurred while initializing the database.");
             }
         }
 
@@ -70,8 +70,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while seeding the database.");
-                throw;
+                _logger.Error(ex, "An error occurred while seeding the database.");
             }
         }
 
@@ -83,28 +82,35 @@ namespace FPTU_ELibrary.Infrastructure.Data
             {
 				// [System Roles]
 				if (!await _context.SystemRoles.AnyAsync()) await SeedSystemRoleAsync();
-				else _logger.LogInformation("Already seed data for table {0}", "System_Role");
-
-				// [Job Roles]
-				if (!await _context.JobRoles.AnyAsync()) await SeedJobRoleAsync();
-				else _logger.LogInformation("Already seed data for table {0}", "Job_Role");
-
+				else _logger.Information("Already seed data for table {0}", "System_Role");
+		
+				// [System Features]
+				if (!await _context.SystemFeatures.AnyAsync()) await SeedSystemFeatureAsync();
+				else _logger.Information("Already seed data for table {0}", "System_Feature");
+				
+				// [System Permissions]
+				if (!await _context.SystemPermissions.AnyAsync()) await SeedSystemPermissionAsync();
+				else _logger.Information("Already seed data for table {0}", "System_Permission");
+				
+				// [Role Permissions]
+				if (!await _context.RolePermissions.AnyAsync()) await SeedRolePermissionAsync();
+				else _logger.Information("Already seed data for table {0}", "Role_Permission");
+				
 				// [Book Categories]
-				if (!await _context.BookCategories.AnyAsync()) await SeedBookCategory();
-				else _logger.LogInformation("Already seed data for table {0}", "Book_Category");
+				if (!await _context.BookCategories.AnyAsync()) await SeedBookCategoryAsync();
+				else _logger.Information("Already seed data for table {0}", "Book_Category");
 
 				// [Employees]
 				if (!await _context.Employees.AnyAsync()) await SeedEmployeeAsync();
-				else _logger.LogInformation("Already seed data for table {0}", "Employee");
+				else _logger.Information("Already seed data for table {0}", "Employee");
 
 				// [Books]
 				if (!await _context.Books.AnyAsync()) await SeedBookAsync();
-				else _logger.LogInformation("Already seed data for table {0}", "Book");
+				else _logger.Information("Already seed data for table {0}", "Book");
 			}
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while performing seed data.");
-                throw;
+                _logger.Error(ex, "An error occurred while performing seed data.");
             }
         }
 
@@ -112,194 +118,341 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		//      Seeding System role
 		private async Task SeedSystemRoleAsync()
 		{
-			// Initialize system role
-			List<Domain.Entities.SystemRole> roles = new()
+			// Initialize user roles
+			List<SystemRole> userRoles = new()
 			{
 				new()
 				{
-					EnglishName = nameof(Domain.Common.Enums.Role.Administration).ToString(),
-					VietnameseName = Domain.Common.Enums.Role.Administration.GetDescription()
+					EnglishName = nameof(Role.Administration),
+					VietnameseName = Role.Administration.GetDescription(),
+					RoleType = nameof(RoleType.User)
 				},
 				new()
 				{
-					EnglishName = nameof(Domain.Common.Enums.Role.Teacher).ToString(),
-					VietnameseName = Domain.Common.Enums.Role.Teacher.GetDescription()
+					EnglishName = nameof(Role.Teacher),
+					VietnameseName = Role.Teacher.GetDescription(),
+					RoleType = nameof(RoleType.User)
 				},
 				new()
 				{
-					EnglishName = nameof(Domain.Common.Enums.Role.Student).ToString(),
-					VietnameseName = Domain.Common.Enums.Role.Student.GetDescription()
+					EnglishName = nameof(Role.Student),
+					VietnameseName = Role.Student.GetDescription(),
+					RoleType = nameof(RoleType.User)
 				},
 				new()
 				{
-					EnglishName = nameof(Domain.Common.Enums.Role.GeneralMember).ToString(),
-					VietnameseName = Domain.Common.Enums.Role.GeneralMember.GetDescription()
+					EnglishName = nameof(Role.GeneralMember),
+					VietnameseName = Role.GeneralMember.GetDescription(),
+					RoleType = nameof(RoleType.User)
 				}
 			};
 		
-			// Add range
-			await _context.SystemRoles.AddRangeAsync(roles);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.LogInformation("Seed system role successfully.");
-		}
-
-		//  Summary:
-		//      Seeding Job role
-		private async Task SeedJobRoleAsync()
-		{
-			// Intialize job role 
-			List<JobRole> jobRoles = new()
+			// Initialize employee roles
+			List<SystemRole> employeeRoles = new()
 			{
 				new()
 				{
-					EnglishName = nameof(JobTitle.HeadLibrarian).ToString(),
-					VietnameseName = JobTitle.HeadLibrarian.GetDescription()
+					EnglishName = nameof(Role.HeadLibrarian),
+					VietnameseName = Role.HeadLibrarian.GetDescription(),
+					RoleType = nameof(RoleType.Employee)
 				},
 				new()
 				{
-					EnglishName = nameof(JobTitle.LibraryManager).ToString(),
-					VietnameseName = JobTitle.LibraryManager.GetDescription()
+					EnglishName = nameof(Role.LibraryManager),
+					VietnameseName = Role.LibraryManager.GetDescription(),
+					RoleType = nameof(RoleType.Employee)
 				},
 				new()
 				{
-					EnglishName = nameof(JobTitle.Librarian).ToString(),
-					VietnameseName = JobTitle.Librarian.GetDescription()
+					EnglishName = nameof(Role.Librarian),
+					VietnameseName = Role.Librarian.GetDescription(),
+					RoleType = nameof(RoleType.Employee)
 				},
 				new()
 				{
-					EnglishName = nameof(JobTitle.LibraryAssistant).ToString(),
-					VietnameseName = JobTitle.LibraryAssistant.GetDescription()
+					EnglishName = nameof(Role.LibraryAssistant),
+					VietnameseName = Role.LibraryAssistant.GetDescription(),
+					RoleType = nameof(RoleType.Employee)
 				},
 				new()
 				{
-					EnglishName = nameof(JobTitle.TemporaryWorker).ToString(),
-					VietnameseName = JobTitle.TemporaryWorker.GetDescription()
+					EnglishName = nameof(Role.TemporaryWorker),
+					VietnameseName = Role.TemporaryWorker.GetDescription(),
+					RoleType = nameof(RoleType.Employee)
 				}
 			};
-
-			// Add range
-			await _context.JobRoles.AddRangeAsync(jobRoles);
+			
+			// Add range user roles
+			await _context.SystemRoles.AddRangeAsync(userRoles);
+			// Add range employee roles
+			await _context.SystemRoles.AddRangeAsync(employeeRoles);	
+			
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
-			if (saveSucc) _logger.LogInformation("Seed job role successfully.");
+			if (saveSucc) _logger.Information("Seed system role successfully.");
 		}
 
+		//	Summary:
+		//		Seeding System Permission
+		private async Task SeedSystemPermissionAsync()
+		{
+			List<SystemPermission> systemPermissions = new()
+			{
+				new()
+				{
+					EnglishName = nameof(Permission.FullAccess),
+					VietnameseName = Permission.FullAccess.GetDescription(),
+					PermissionLevel = (int) PermissionLevel.FullAccess
+				},
+				new()
+				{
+					EnglishName = nameof(Permission.View),
+					VietnameseName = Permission.View.GetDescription(),
+					PermissionLevel = (int) PermissionLevel.View
+				},
+				new()
+				{
+					EnglishName = nameof(Permission.Create),
+					VietnameseName = Permission.Create.GetDescription(),
+					PermissionLevel = (int) PermissionLevel.Create
+				},
+				new()
+				{
+					EnglishName = nameof(Permission.Modify),
+					VietnameseName = Permission.Modify.GetDescription(),
+					PermissionLevel = (int) PermissionLevel.Modify
+				},
+				new()
+				{
+					EnglishName = nameof(Permission.AccessDenied),
+					VietnameseName = Permission.AccessDenied.GetDescription(),
+					PermissionLevel = (int) PermissionLevel.AccessDenied
+				}
+			};
+			
+			// Add range employee roles
+			await _context.SystemPermissions.AddRangeAsync(systemPermissions);	
+			
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed system permission successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding System Feature
+		private async Task SeedSystemFeatureAsync()
+		{
+			List<SystemFeature> systemFeatures = new()
+			{
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.UserManagement),
+					VietnameseName = "Quản lí người dùng"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.EmployeeManagement),
+					VietnameseName = "Quản lí nhân viên"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.RoleManagement),
+					VietnameseName = "Quản lí role"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.FineManagement),
+					VietnameseName = "Quản lí phí"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.BookManagement),
+					VietnameseName = "Quản lí sách"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.BorrowManagement),
+					VietnameseName = "Quản lí mượn trả sách"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.TransactionManagement),
+					VietnameseName = "Quản lí thanh toán"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.SystemConfigurationManagement),
+					VietnameseName = "Quản lí cấu hình hệ thống"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.SystemHealthManagement),
+					VietnameseName = "Quản lí tình trạng hệ thống"
+				}
+			};
+			
+			// Add range employee roles
+			await _context.SystemFeatures.AddRangeAsync(systemFeatures);	
+			
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed system feature successfully.");
+		}
+		
+	    //	Summary:
+	    //		Seeding Role Permission
+	    private async Task SeedRolePermissionAsync()
+	    {
+		    // Get all system features
+		    var features = await _context.SystemFeatures.ToListAsync();
+		    // Get all system roles
+		    var roles = await _context.SystemRoles.ToListAsync();
+		    // Get [FULL_ACCESS] permission
+		    var fullAccessPermission = await _context.SystemPermissions.
+				    FirstOrDefaultAsync(p => p.EnglishName == nameof(Permission.FullAccess));
+
+		    // Initialize list of permission
+		    List<RolePermission> rolePermissions = new();
+		    for (int i = 0; i < features.Count; ++i)
+		    {
+			    var feature = features[i];
+			    for (int j = 0; j < roles.Count; ++j)
+			    {
+				    var role = roles[j];
+				    
+				    // Add role permission
+				    rolePermissions.Add(new()
+				    {
+					    PermissionId = fullAccessPermission!.PermissionId,
+					    FeatureId = feature.FeatureId,
+					    RoleId = role.RoleId
+				    });
+			    }
+		    }
+		    
+		    // Add range employee roles
+		    await _context.RolePermissions.AddRangeAsync(rolePermissions);	
+			
+		    var saveSucc = await _context.SaveChangesAsync() > 0;
+
+		    if (saveSucc) _logger.Information("Seed role permissions successfully.");
+	    }
+		
 		//  Summary:
 		//      Seeding Book Category
-		private async Task SeedBookCategory()
+		private async Task SeedBookCategoryAsync()
         {
 			// Initialize book category entities
-            List<BookCategoryEntity> bookCategories = new()
+            List<BookCategory> bookCategories = new()
             {
                 new()
                 {
-                    EnglishName = nameof(BookCategoryEnum.Mystery).ToString(),
+                    EnglishName = nameof(BookCategoryEnum.Mystery),
                     VietnameseName = BookCategoryEnum.Mystery.GetDescription()
                 },
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Romance).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Romance),
 					VietnameseName = BookCategoryEnum.Romance.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.FantasyAndScienceFiction).ToString(),
+					EnglishName = nameof(BookCategoryEnum.FantasyAndScienceFiction),
 					VietnameseName = BookCategoryEnum.FantasyAndScienceFiction.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.ThrillerAndHorror).ToString(),
+					EnglishName = nameof(BookCategoryEnum.ThrillerAndHorror),
 					VietnameseName = BookCategoryEnum.ThrillerAndHorror.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.ShortStories).ToString(),
+					EnglishName = nameof(BookCategoryEnum.ShortStories),
 					VietnameseName = BookCategoryEnum.ShortStories.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Biography).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Biography),
 					VietnameseName = BookCategoryEnum.Biography.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.CookBooks).ToString(),
+					EnglishName = nameof(BookCategoryEnum.CookBooks),
 					VietnameseName = BookCategoryEnum.CookBooks.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Essays).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Essays),
 					VietnameseName = BookCategoryEnum.Essays.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.SelfHelp).ToString(),
+					EnglishName = nameof(BookCategoryEnum.SelfHelp),
 					VietnameseName = BookCategoryEnum.SelfHelp.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.History).ToString(),
+					EnglishName = nameof(BookCategoryEnum.History),
 					VietnameseName = BookCategoryEnum.History.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Poetry).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Poetry),
 					VietnameseName = BookCategoryEnum.Poetry.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Children).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Children),
 					VietnameseName = BookCategoryEnum.Children.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.BusinessAndInvesting).ToString(),
+					EnglishName = nameof(BookCategoryEnum.BusinessAndInvesting),
 					VietnameseName = BookCategoryEnum.BusinessAndInvesting.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Education).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Education),
 					VietnameseName = BookCategoryEnum.Education.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Politics).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Politics),
 					VietnameseName = BookCategoryEnum.Politics.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.ReligionAndSpirituality).ToString(),
+					EnglishName = nameof(BookCategoryEnum.ReligionAndSpirituality),
 					VietnameseName = BookCategoryEnum.ReligionAndSpirituality.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.LifeSkills).ToString(),
+					EnglishName = nameof(BookCategoryEnum.LifeSkills),
 					VietnameseName = BookCategoryEnum.LifeSkills.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.HealthAndWellness).ToString(),
+					EnglishName = nameof(BookCategoryEnum.HealthAndWellness),
 					VietnameseName = BookCategoryEnum.HealthAndWellness.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.ScienceAndTechnology).ToString(),
+					EnglishName = nameof(BookCategoryEnum.ScienceAndTechnology),
 					VietnameseName = BookCategoryEnum.ScienceAndTechnology.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Novels).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Novels),
 					VietnameseName = BookCategoryEnum.Novels.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.TravelAndGeography).ToString(),
+					EnglishName = nameof(BookCategoryEnum.TravelAndGeography),
 					VietnameseName = BookCategoryEnum.TravelAndGeography.GetDescription()
 				},
 				new()
 				{
-					EnglishName = nameof(BookCategoryEnum.Humor).ToString(),
+					EnglishName = nameof(BookCategoryEnum.Humor),
 					VietnameseName = BookCategoryEnum.Humor.GetDescription()
 				}
 			};
@@ -308,7 +461,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			await _context.BookCategories.AddRangeAsync(bookCategories);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
-			if (saveSucc) _logger.LogInformation("Seed book category success.");
+			if (saveSucc) _logger.Information("Seed book category success.");
 		}
 
         //  Summary:
@@ -317,15 +470,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
 			// Get librian
 			var librian = await _context.Employees
-				.Include(x => x.JobRole)
-				.FirstOrDefaultAsync(e => e.JobRole.EnglishName == JobTitle.Librarian.ToString());
+				.Include(x => x.Role)
+				.FirstOrDefaultAsync(e => e.Role.EnglishName == Role.Librarian.ToString());
 
 			// Get book categories
 			var categories = await _context.BookCategories.ToListAsync();
 
 			if(librian == null || !categories.Any())
 			{
-				_logger.LogError("Not found any librian or book category to process seeding book");
+				_logger.Error("Not found any librian or book category to process seeding book");
 				return;
 			}
 
@@ -383,7 +536,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			await _context.AddRangeAsync(books);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
-			if (saveSucc) _logger.LogInformation("Seed books successfully.");
+			if (saveSucc) _logger.Information("Seed books successfully.");
 		}
     
 		//	Summary:
@@ -391,13 +544,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		private async Task SeedEmployeeAsync()
 		{
 			// Get librian job role
-			var librianJobRole = await _context.JobRoles.FirstOrDefaultAsync(x => 
-				x.EnglishName == JobTitle.Librarian.ToString());
+			var librianJobRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
+				x.EnglishName == Role.Librarian.ToString());
 
 			// Check for role existence
 			if(librianJobRole == null)
 			{
-				_logger.LogError("Not found any librian role to seed Employee");
+				_logger.Error("Not found any librian role to seed Employee");
 				return;
 			}
 
@@ -420,7 +573,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					TwoFactorEnabled = false,
 					PhoneNumberConfirmed = false,
 					EmailConfirmed = false,
-					JobRoleId = librianJobRole.JobRoleId
+					RoleId = librianJobRole.RoleId
 				}
 			};
 
@@ -428,7 +581,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			await _context.Employees.AddRangeAsync(employees);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
-			if (saveSucc) _logger.LogInformation("Seed employees successfully.");
+			if (saveSucc) _logger.Information("Seed employees successfully.");
 		}
 
 	}

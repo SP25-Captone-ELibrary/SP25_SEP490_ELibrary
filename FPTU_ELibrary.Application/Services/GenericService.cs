@@ -3,9 +3,11 @@ using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Interfaces;
+using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using MapsterMapper;
 using Nest;
+using Serilog;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -14,17 +16,20 @@ namespace FPTU_ELibrary.Application.Services
         where TDto : class
     {
         protected readonly IUnitOfWork _unitOfWork;
+        protected readonly ISystemMessageService _msgService;
         protected readonly IMapper _mapper;
-        protected readonly ICacheService _cacheService;
-
+        protected readonly ILogger _logger;
+        
         public GenericService(
+	        ISystemMessageService msgService,
 	        IUnitOfWork unitOfWork, 
 	        IMapper mapper,
-	        ICacheService cacheService) : base(unitOfWork, mapper, cacheService)
+	        ILogger logger) : base(msgService, unitOfWork, mapper, logger)
         {
+	        _logger = logger;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _cacheService = cacheService;
+            _msgService = msgService;
         }
 
         public virtual async Task<IServiceResult> CreateAsync(TDto dto)
@@ -50,19 +55,20 @@ namespace FPTU_ELibrary.Application.Services
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
 					serviceResult.Data = true;
 				}
 				else
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
 					serviceResult.Data = false;
 				}
 			}
-			catch(Exception)
+			catch(Exception ex)
             {
-                throw;
+	            _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress create new entity");
             }
 			
 			return serviceResult;
@@ -88,19 +94,20 @@ namespace FPTU_ELibrary.Application.Services
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Success0004;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0004);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004);
 					serviceResult.Data = true;
 				}
 				else
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0004;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					serviceResult.Data = false;
 				}
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress delete entity");
 			}
 
 			return serviceResult;
@@ -138,7 +145,7 @@ namespace FPTU_ELibrary.Application.Services
 				if (!_unitOfWork.Repository<TEntity, TKey>().HasChanges(existingEntity))
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 					serviceResult.Data = true;
 					return serviceResult;
 				}
@@ -151,19 +158,20 @@ namespace FPTU_ELibrary.Application.Services
 				if (rowsAffected == 0)
 				{
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
-					serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
 					serviceResult.Data = false;
 					return serviceResult;
 				}
 
 				// Mark as update success
 				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
-				serviceResult.Message = await _cacheService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 				serviceResult.Data = true;
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				throw;
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update new entity");
 			}
 
 			return serviceResult;

@@ -1,14 +1,11 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Utils;
-using FPTU_ELibrary.Domain.Common.Constants;
-using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using ILogger = Serilog.ILogger;
 
 namespace FPTU_ELibrary.API.Middlewares
 {
@@ -21,13 +18,13 @@ namespace FPTU_ELibrary.API.Middlewares
 		private readonly RequestDelegate _next;
 		// Contains a set of parameters that are used by a SecurityTokenHandler when validating a SecurityToken.
 		private readonly TokenValidationParameters _tokenValidationParameters;
-		private readonly ILogger<AuthenticationMiddleware> _logger;
+		private readonly ILogger _logger;
 
 		// Contructors
 		public AuthenticationMiddleware(
 			RequestDelegate next,
 			TokenValidationParameters tokenValidationParameters,
-			ILogger<AuthenticationMiddleware> logger)
+			ILogger logger)
 		{
 			_next = next;
 			_tokenValidationParameters = tokenValidationParameters;
@@ -38,9 +35,6 @@ namespace FPTU_ELibrary.API.Middlewares
 		{
 			try
 			{
-				// Try to retrieve global language
-				SetLanguageContext(context);
-				
 				// Check if the endpoint allows anonymous access
 				var endpoint = context.GetEndpoint();
 				if (endpoint?.Metadata?.GetMetadata<IAllowAnonymous>() != null)
@@ -83,7 +77,7 @@ namespace FPTU_ELibrary.API.Middlewares
 			var token = GetTokenFromHeader(context);
 			if (string.IsNullOrEmpty(token))
 			{
-				_logger.LogWarning("Authorization header missing or invalid.");
+				_logger.Warning("Authorization header missing or invalid.");
 				throw new UnauthorizedException("Authorization token is missing or invalid.");
 			}
 
@@ -102,7 +96,7 @@ namespace FPTU_ELibrary.API.Middlewares
 	            var identity = new ClaimsIdentity(jwtToken.Claims, "Bearer");
 	            context.User = new ClaimsPrincipal(identity);
 
-	            _logger.LogInformation("Access token validated successfully.");
+	            _logger.Information("Access token validated successfully.");
 	            return true;
 	        }
 	        catch (SecurityTokenExpiredException ex)
@@ -110,34 +104,25 @@ namespace FPTU_ELibrary.API.Middlewares
 	            // Handle token expiration
 	            if (context.Request.Path.Equals($"/{APIRoute.Authentication.RefreshToken}", StringComparison.OrdinalIgnoreCase))
 	            {
-	                _logger.LogInformation("Token expired. Processing refresh token request.");
+	                _logger.Information("Token expired. Processing refresh token request.");
 	                await _next(context);
 	                return true;
 	            }
 
-	            _logger.LogError("Expired token: {Message}", ex.Message);
+	            _logger.Error("Expired token: {Message}", ex.Message);
 	            throw new UnauthorizedException("Token has expired.");
 	        }
 	        catch (SecurityTokenValidationException ex)
 	        {
-	            _logger.LogError("Token validation failed: {Message}", ex.Message);
+	            _logger.Error("Token validation failed: {Message}", ex.Message);
 	            throw new UnauthorizedException("Token validation failed.");
 	        }
 	        catch (Exception ex)
 	        {
-	            _logger.LogError("Unexpected error during token validation: {Message}", ex.Message);
+	            _logger.Error("Unexpected error during token validation: {Message}", ex.Message);
 	            throw new UnauthorizedException("Unexpected error during token validation.");
 	        }
 	    }
 		
-		//	Summary:
-		//		Set language context
-		private void SetLanguageContext(HttpContext context)
-		{
-			// Retrieve and set language context from request headers
-			var language = context.Request.Headers["Accept-Language"].FirstOrDefault() ?? "en";
-			LanguageContext.CurrentLanguage = language;
-			_logger.LogInformation("Language set to: {Language}", language);
-		}
 	}
 }

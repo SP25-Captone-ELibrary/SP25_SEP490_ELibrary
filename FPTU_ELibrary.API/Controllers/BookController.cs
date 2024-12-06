@@ -25,7 +25,7 @@ namespace FPTU_ELibrary.API.Controllers
 
 		//	Summary:
 		//		Get all book
-		[AllowAnonymous]
+		[Authorize]
 		[HttpGet(APIRoute.Book.GetAll, Name = nameof(GetAllBookAsync))]
 		public async Task<IActionResult> GetAllBookAsync()
 		{
@@ -41,7 +41,7 @@ namespace FPTU_ELibrary.API.Controllers
 			
 			return Ok(getBookResp);
 		}
-
+		
 		[HttpGet(APIRoute.Book.Search, Name = nameof(SearchBookAsync))]
 		public async Task<IActionResult> SearchBookAsync([FromQuery] SearchBookRequest req, CancellationToken cancellationToken)
 		{
