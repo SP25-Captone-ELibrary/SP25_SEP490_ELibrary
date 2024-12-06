@@ -50,7 +50,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
-            builder.Property(e => e.JobRoleId).HasColumnName("job_role_id");
+            builder.Property(e => e.RoleId).HasColumnName("role_id");
             builder.Property(e => e.LastName)
                 .HasMaxLength(100)
                 .HasColumnName("last_name");
@@ -81,10 +81,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_secret_key");
 
-            builder.HasOne(d => d.JobRole).WithMany(p => p.Employees)
-                .HasForeignKey(d => d.JobRoleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_JobRole_JobRoleId");
+            builder.HasOne(d => d.Role).WithMany(p => p.Employees)
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.Restrict) // Restrict delete when SystemRole has associated employees
+                .HasConstraintName("FK_Employee_RoleId");
+
+            #region Update at 12/06/2024 by Le Xuan Phuoc
+            builder.Property(e => e.ModifiedBy)
+                .HasColumnType("nvarchar(100)")
+                .HasColumnName("modified_by");
+            #endregion
         }
     }
 }

@@ -14,12 +14,21 @@ namespace FPTU_ELibrary.API.Extensions
             {
                 // Get service typeof IFptuLibraryDbContextInitilizer from IServiceProvider
                 var initializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+                // Resolve Serilog.ILogger
+                var logger = scope.ServiceProvider.GetRequiredService<Serilog.ILogger>();
+                
+                try
+                {
+	                // Initialize database (if not exist)
+	                await initializer.InitializeAsync();
 
-                // Initialize database (if not exist)
-                await initializer.InitializeAsync();
-
-                // Seeding default data 
-                await initializer.SeedAsync();
+	                // Seeding default data 
+	                await initializer.SeedAsync();
+                }
+                catch (Exception ex)
+                {
+	                logger.Error(ex.Message);   
+                }
             }
         }
 
@@ -32,9 +41,18 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				// Get service typeof IElasticInitializeService from IServiceProvider
 				var initializer = scope.ServiceProvider.GetRequiredService<IElasticInitializeService>();
-
-				// Create index and Indexing documents if not exist
-				await initializer.RunAsync();
+				// Resolve Serilog.ILogger
+				var logger = scope.ServiceProvider.GetRequiredService<Serilog.ILogger>();
+				
+				try
+				{
+					// Create index and Indexing documents if not exist
+					await initializer.RunAsync();
+				}
+				catch (Exception ex)
+				{
+					logger.Error(ex.Message);   
+				}
 			}
 		}
     }

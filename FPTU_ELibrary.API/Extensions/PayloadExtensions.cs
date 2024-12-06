@@ -10,17 +10,33 @@ namespace FPTU_ELibrary.API.Extensions
 	//		application objects
 	public static class PayloadExtensions
 	{
-		// Mapping from typeof(AuthenticationRequest) to typeof(AuthenticatedUserDto)
-		public static AuthenticatedUserDto ToAuthenticatedUser(this AuthenticationRequest req)
-			=> new AuthenticatedUserDto
+		// Mapping from typeof(SignInRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignInRequest req)
+			=> new AuthenticateUserDto
+			{
+				Email = req.Email,
+				Password = null!
+			};
+		
+		// Mapping from typeof(SignInWithOtpRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithOtpRequest req)
+			=> new AuthenticateUserDto
+			{
+				Email = req.Email,
+				Password = null!
+			};
+		
+		// Mapping from typeof(SignInWithPasswordRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithPasswordRequest req)
+			=> new AuthenticateUserDto
 			{
 				Email = req.Email,
 				Password = req.Password
 			};
 
-		// Mapping from typeof(SignUpRequest) to typeof(AuthenticatedUserDto)
-		public static AuthenticatedUserDto ToAuthenticatedUser(this SignUpRequest req)
-			=> new AuthenticatedUserDto
+		// Mapping from typeof(SignUpRequest) to typeof(AuthenticateUserDto)
+		public static AuthenticateUserDto ToAuthenticatedUser(this SignUpRequest req)
+			=> new AuthenticateUserDto
 			{
 				UserCode = req.UserCode,
 				Email = req.Email,

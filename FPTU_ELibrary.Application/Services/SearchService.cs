@@ -161,11 +161,11 @@ namespace FPTU_ELibrary.Application.Services
 				var pageIndex = (int) Math.Ceiling((double) parameters.Skip/ parameters.Take) + 1;
 				var pageSize = parameters.Take;
 
-				return new ServiceResult(ResultConst.SUCCESS_READ_CODE, ResultConst.SUCCESS_READ_MSG,
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, "Get data successfully",
 					result.ToSearchBookResponse(pageIndex, pageSize, totalPage));
 			}
 
-			return new ServiceResult(ResultConst.FAIL_READ_CODE, ResultConst.FAIL_READ_MSG,
+			return new ServiceResult(ResultCodeConst.SYS_Warning0004, "Data not found or empty",
 				result.ToSearchBookResponse(pageIndex: 0, pageSize: 0, totalPage: 0));
 		}
 	}

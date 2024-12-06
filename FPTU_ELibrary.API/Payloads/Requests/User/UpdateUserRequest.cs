@@ -12,9 +12,7 @@ public class UpdateUserRequest
     public int? RoleId { get; set; }
 
     //Recognise who update account
-    public string ModifyBy { get; set; }
+    public string ModifyBy { get; set; } = null!;
 
     // public string? Avatar { get; set; } 
-
-    
 }

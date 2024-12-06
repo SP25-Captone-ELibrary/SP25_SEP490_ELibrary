@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -65,20 +65,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Job_Role",
-                columns: table => new
-                {
-                    job_role_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_JobRole_JobRoleId", x => x.job_role_id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Library_Floor",
                 columns: table => new
                 {
@@ -95,57 +81,68 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "System_Role",
+                name: "System_Feature",
                 columns: table => new
                 {
-                    role_id = table.Column<int>(type: "int", nullable: false)
+                    feature_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_SystemRole_RoleId", x => x.role_id);
+                    table.PrimaryKey("PK_SystemFeature_FeatureId", x => x.feature_id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Employee",
+                name: "System_Message",
                 columns: table => new
                 {
-                    employee_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
-                    employee_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
-                    phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
-                    avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
-                    address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    msg_id = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    msg_content = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: false),
+                    VI = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    EN = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    RU = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    JA = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
+                    KO = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    create_by = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
-                    phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
-                    email_confirmed = table.Column<bool>(type: "bit", nullable: false),
-                    two_factor_secret_key = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true),
-                    job_role_id = table.Column<int>(type: "int", nullable: false)
+                    modified_by = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Employee_EmployeeId", x => x.employee_id);
-                    table.ForeignKey(
-                        name: "FK_JobRole_JobRoleId",
-                        column: x => x.job_role_id,
-                        principalTable: "Job_Role",
-                        principalColumn: "job_role_id");
+                    table.PrimaryKey("PK_SystemMessage_MsgId", x => x.msg_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "System_Permission",
+                columns: table => new
+                {
+                    permission_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    permission_level = table.Column<int>(type: "int", nullable: false),
+                    vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SystemPermission_PermissionId", x => x.permission_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "System_Role",
+                columns: table => new
+                {
+                    role_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    role_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SystemRole_RoleId", x => x.role_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -174,21 +171,97 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Employee",
+                columns: table => new
+                {
+                    employee_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
+                    employee_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
+                    avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
+                    address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    modified_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
+                    two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
+                    phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
+                    email_confirmed = table.Column<bool>(type: "bit", nullable: false),
+                    two_factor_secret_key = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Employee_EmployeeId", x => x.employee_id);
+                    table.ForeignKey(
+                        name: "FK_Employee_RoleId",
+                        column: x => x.role_id,
+                        principalTable: "System_Role",
+                        principalColumn: "role_id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Role_Permission",
+                columns: table => new
+                {
+                    role_permission_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    feature_id = table.Column<int>(type: "int", nullable: false),
+                    permission_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RolePermission_RolePermissionId", x => x.role_permission_id);
+                    table.ForeignKey(
+                        name: "FK_RolePermission_FeatureId",
+                        column: x => x.feature_id,
+                        principalTable: "System_Feature",
+                        principalColumn: "feature_id");
+                    table.ForeignKey(
+                        name: "FK_RolePermission_PermissionId",
+                        column: x => x.permission_id,
+                        principalTable: "System_Permission",
+                        principalColumn: "permission_id");
+                    table.ForeignKey(
+                        name: "FK_RolePermission_RoleId",
+                        column: x => x.role_id,
+                        principalTable: "System_Role",
+                        principalColumn: "role_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "User",
                 columns: table => new
                 {
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     user_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    modified_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
+                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    password_hash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
                     avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
+                    address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    modified_by = table.Column<string>(type: "nvarchar(max)", nullable: true, defaultValue: "True"),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     email_confirmed = table.Column<bool>(type: "bit", nullable: false),
@@ -196,8 +269,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     two_factor_backup_codes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true),
-                    role_id = table.Column<int>(type: "int", nullable: false)
+                    phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -206,7 +278,60 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         name: "FK_SystemRole_RoleId",
                         column: x => x.role_id,
                         principalTable: "System_Role",
-                        principalColumn: "role_id");
+                        principalColumn: "role_id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Library_Path",
+                columns: table => new
+                {
+                    path_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    from_zone_id = table.Column<int>(type: "int", nullable: false),
+                    to_zone_id = table.Column<int>(type: "int", nullable: false),
+                    distance = table.Column<double>(type: "float", nullable: false),
+                    path_description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryPath_PathId", x => x.path_id);
+                    table.ForeignKey(
+                        name: "FK_LibraryPath_FromZoneId",
+                        column: x => x.from_zone_id,
+                        principalTable: "Library_Zone",
+                        principalColumn: "zone_id");
+                    table.ForeignKey(
+                        name: "FK_LibraryPath_ToZoneId",
+                        column: x => x.to_zone_id,
+                        principalTable: "Library_Zone",
+                        principalColumn: "zone_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Library_Section",
+                columns: table => new
+                {
+                    section_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    zone_id = table.Column<int>(type: "int", nullable: false),
+                    section_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibrarySection_SectionId", x => x.section_id);
+                    table.ForeignKey(
+                        name: "FK_LibrarySection_ZoneId",
+                        column: x => x.zone_id,
+                        principalTable: "Library_Zone",
+                        principalColumn: "zone_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -269,64 +394,13 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Library_Path",
-                columns: table => new
-                {
-                    path_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    from_zone_id = table.Column<int>(type: "int", nullable: false),
-                    to_zone_id = table.Column<int>(type: "int", nullable: false),
-                    distance = table.Column<double>(type: "float", nullable: false),
-                    path_description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LibraryPath_PathId", x => x.path_id);
-                    table.ForeignKey(
-                        name: "FK_LibraryPath_FromZoneId",
-                        column: x => x.from_zone_id,
-                        principalTable: "Library_Zone",
-                        principalColumn: "zone_id");
-                    table.ForeignKey(
-                        name: "FK_LibraryPath_ToZoneId",
-                        column: x => x.to_zone_id,
-                        principalTable: "Library_Zone",
-                        principalColumn: "zone_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Library_Section",
-                columns: table => new
-                {
-                    section_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    zone_id = table.Column<int>(type: "int", nullable: false),
-                    section_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LibrarySection_SectionId", x => x.section_id);
-                    table.ForeignKey(
-                        name: "FK_LibrarySection_ZoneId",
-                        column: x => x.zone_id,
-                        principalTable: "Library_Zone",
-                        principalColumn: "zone_id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Refresh_Token",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    refresh_token_id = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    refresh_token_id = table.Column<string>(type: "nvarchar(100)", nullable: false),
+                    token_id = table.Column<string>(type: "nvarchar(36)", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
@@ -347,6 +421,29 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         column: x => x.user_id,
                         principalTable: "User",
                         principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Library_Shelf",
+                columns: table => new
+                {
+                    shelf_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    section_id = table.Column<int>(type: "int", nullable: false),
+                    shelf_number = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryShelf_ShelfId", x => x.shelf_id);
+                    table.ForeignKey(
+                        name: "FK_LibraryShelf_SectionId",
+                        column: x => x.section_id,
+                        principalTable: "Library_Section",
+                        principalColumn: "section_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -436,26 +533,74 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Library_Shelf",
+                name: "Learning_Material",
                 columns: table => new
                 {
-                    shelf_id = table.Column<int>(type: "int", nullable: false)
+                    learning_material_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    section_id = table.Column<int>(type: "int", nullable: false),
-                    shelf_number = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    material_type = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    condition = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    shelf_id = table.Column<int>(type: "int", nullable: true),
+                    total_quantity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    available_quantity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    manufacturer = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    warranty_period = table.Column<DateOnly>(type: "date", nullable: true),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    UpdatedByNavigationEmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LearningMaterial_LearningMaterialId", x => x.learning_material_id);
+                    table.ForeignKey(
+                        name: "FK_LearningMaterial_CreateBy",
+                        column: x => x.create_by,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
+                    table.ForeignKey(
+                        name: "FK_LearningMaterial_ShelfId",
+                        column: x => x.shelf_id,
+                        principalTable: "Library_Shelf",
+                        principalColumn: "shelf_id");
+                    table.ForeignKey(
+                        name: "FK_Learning_Material_Employee_UpdatedByNavigationEmployeeId",
+                        column: x => x.UpdatedByNavigationEmployeeId,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Book_Edition_Copy",
+                columns: table => new
+                {
+                    book_edition_copy_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_edition_id = table.Column<int>(type: "int", nullable: false),
+                    shelf_id = table.Column<int>(type: "int", nullable: true),
+                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     update_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_LibraryShelf_ShelfId", x => x.shelf_id);
+                    table.PrimaryKey("PK_BookEditionCopy_BookEditionCopyId", x => x.book_edition_copy_id);
                     table.ForeignKey(
-                        name: "FK_LibraryShelf_SectionId",
-                        column: x => x.section_id,
-                        principalTable: "Library_Section",
-                        principalColumn: "section_id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_BookEditionCopy_BookEditionId",
+                        column: x => x.book_edition_id,
+                        principalTable: "Book_Edition",
+                        principalColumn: "book_edition_id");
+                    table.ForeignKey(
+                        name: "FK_BookEditionCopy_ShelfId",
+                        column: x => x.shelf_id,
+                        principalTable: "Library_Shelf",
+                        principalColumn: "shelf_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -594,103 +739,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Book_Edition_Copy",
-                columns: table => new
-                {
-                    book_edition_copy_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    book_edition_id = table.Column<int>(type: "int", nullable: false),
-                    shelf_id = table.Column<int>(type: "int", nullable: true),
-                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BookEditionCopy_BookEditionCopyId", x => x.book_edition_copy_id);
-                    table.ForeignKey(
-                        name: "FK_BookEditionCopy_BookEditionId",
-                        column: x => x.book_edition_id,
-                        principalTable: "Book_Edition",
-                        principalColumn: "book_edition_id");
-                    table.ForeignKey(
-                        name: "FK_BookEditionCopy_ShelfId",
-                        column: x => x.shelf_id,
-                        principalTable: "Library_Shelf",
-                        principalColumn: "shelf_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Learning_Material",
-                columns: table => new
-                {
-                    learning_material_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    material_type = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    condition = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    shelf_id = table.Column<int>(type: "int", nullable: true),
-                    total_quantity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    available_quantity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
-                    manufacturer = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    warranty_period = table.Column<DateOnly>(type: "date", nullable: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    UpdatedByNavigationEmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LearningMaterial_LearningMaterialId", x => x.learning_material_id);
-                    table.ForeignKey(
-                        name: "FK_LearningMaterial_CreateBy",
-                        column: x => x.create_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                    table.ForeignKey(
-                        name: "FK_LearningMaterial_ShelfId",
-                        column: x => x.shelf_id,
-                        principalTable: "Library_Shelf",
-                        principalColumn: "shelf_id");
-                    table.ForeignKey(
-                        name: "FK_Learning_Material_Employee_UpdatedByNavigationEmployeeId",
-                        column: x => x.UpdatedByNavigationEmployeeId,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Copy_Condition_History",
-                columns: table => new
-                {
-                    condition_history_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    book_edition_copy_id = table.Column<int>(type: "int", nullable: false),
-                    condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    change_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    changed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Book_Condition_History", x => x.condition_history_id);
-                    table.ForeignKey(
-                        name: "FK_ConditionHistory_BookEditionCopyId",
-                        column: x => x.book_edition_copy_id,
-                        principalTable: "Book_Edition_Copy",
-                        principalColumn: "book_edition_copy_id");
-                    table.ForeignKey(
-                        name: "FK_ConditionHistory_ChangedBy",
-                        column: x => x.changed_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Borrow_Request",
                 columns: table => new
                 {
@@ -732,6 +780,32 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         column: x => x.user_id,
                         principalTable: "User",
                         principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Copy_Condition_History",
+                columns: table => new
+                {
+                    condition_history_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_edition_copy_id = table.Column<int>(type: "int", nullable: false),
+                    condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    change_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    changed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Book_Condition_History", x => x.condition_history_id);
+                    table.ForeignKey(
+                        name: "FK_ConditionHistory_BookEditionCopyId",
+                        column: x => x.book_edition_copy_id,
+                        principalTable: "Book_Edition_Copy",
+                        principalColumn: "book_edition_copy_id");
+                    table.ForeignKey(
+                        name: "FK_ConditionHistory_ChangedBy",
+                        column: x => x.changed_by,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -953,9 +1027,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "changed_by");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Employee_job_role_id",
+                name: "IX_Employee_role_id",
                 table: "Employee",
-                column: "job_role_id");
+                column: "role_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Fine_borrow_record_id",
@@ -1048,6 +1122,21 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "reserved_by");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Role_Permission_feature_id",
+                table: "Role_Permission",
+                column: "feature_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Role_Permission_permission_id",
+                table: "Role_Permission",
+                column: "permission_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Role_Permission_role_id",
+                table: "Role_Permission",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_User_role_id",
                 table: "User",
                 column: "role_id");
@@ -1098,6 +1187,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Reservation_Queue");
 
             migrationBuilder.DropTable(
+                name: "Role_Permission");
+
+            migrationBuilder.DropTable(
+                name: "System_Message");
+
+            migrationBuilder.DropTable(
                 name: "User_Favorites");
 
             migrationBuilder.DropTable(
@@ -1111,6 +1206,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Notification");
+
+            migrationBuilder.DropTable(
+                name: "System_Feature");
+
+            migrationBuilder.DropTable(
+                name: "System_Permission");
 
             migrationBuilder.DropTable(
                 name: "Borrow_Request");
@@ -1131,9 +1232,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Library_Shelf");
 
             migrationBuilder.DropTable(
-                name: "System_Role");
-
-            migrationBuilder.DropTable(
                 name: "Book");
 
             migrationBuilder.DropTable(
@@ -1149,7 +1247,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Library_Zone");
 
             migrationBuilder.DropTable(
-                name: "Job_Role");
+                name: "System_Role");
 
             migrationBuilder.DropTable(
                 name: "Library_Floor");

@@ -7,9 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="8.0.11" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
@@ -17,6 +16,10 @@
     <ProjectReference Include="..\FPTU_ELibrary.Application\FPTU_ELibrary.Application.csproj" />
     <ProjectReference Include="..\FPTU_ELibrary.Domain\FPTU_ELibrary.Domain.csproj" />
     <ProjectReference Include="..\FPTU_ELibrary.Infrastructure\FPTU_ELibrary.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Payloads\Requests\Role\" />
   </ItemGroup>
 
 </Project>

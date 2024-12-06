@@ -87,7 +87,7 @@ namespace FPTU_ELibrary.API.Middlewares
 			}
 
 			// Add title and type for problem details
-			if (_problemDetailsFactory != null)
+			if (_problemDetailsFactory != null!)
 			{
 				// Creates a ProblemDetails instance that configures defaults based on values specified
 				var tempProbDetail = _problemDetailsFactory.CreateProblemDetails(

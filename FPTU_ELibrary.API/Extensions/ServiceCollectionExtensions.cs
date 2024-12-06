@@ -1,12 +1,18 @@
-﻿using FPTU_ELibrary.API.Payloads;
+﻿using System.Data.Common;
+using System.Reflection;
 using FPTU_ELibrary.Application.Configurations;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
-using System.Security.Claims;
 using System.Text;
+using FluentValidation;
+using FPTU_ELibrary.Application.HealthChecks;
+using Mapster;
+using MapsterMapper;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Serilog.Core;
+using StackExchange.Redis;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -14,7 +20,7 @@ namespace FPTU_ELibrary.API.Extensions
 	//      This class is to configure services for presentation layer 
 	public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
         {
 			// Add controllers
             services.AddControllers();
@@ -37,6 +43,9 @@ namespace FPTU_ELibrary.API.Extensions
 	            .CreateLogger();
 
 			builder.Host.UseSerilog();
+			
+			// Register the Serilog logger
+			services.AddSingleton(Log.Logger);
 
 			return services;
 		}
@@ -53,7 +62,9 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
 			// Configure GoogleAuthSettings
 			services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-
+			// Configure FacebookAuthSettings
+			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
+			
 			#region Development stage
 			if (env.IsDevelopment()) // Is Development env
 			{
@@ -72,6 +83,50 @@ namespace FPTU_ELibrary.API.Extensions
 
 			}
 			#endregion
+
+			return services;
+		}
+
+		public static IServiceCollection ConfigureRedis(this IServiceCollection services, 
+			IConfiguration configuration,
+			IWebHostEnvironment env)
+		{
+			// Define redis configuration
+			var redisConfig = env.IsDevelopment()
+				? $"{configuration["RedisSettings:Host"]}:{configuration["RedisSettings:Port"]},abortConnect=false"
+				: $"{Environment.GetEnvironmentVariable("REDIS_URL")},abortConnect=false";
+
+			// Add Redis distributed caching services
+			services.AddStackExchangeRedisCache(config =>
+			{
+				config.Configuration = redisConfig;
+			});
+
+			try
+			{
+				// Register IConnectionMultiplexer (used in CacheHealthCheck and custom Redis operations)
+				services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
+			}
+			catch (RedisConnectionException ex)
+			{
+				Logger.None.Error("Redis connection failed: {msg}", ex.Message);
+			}
+			
+			return services;
+		}
+		
+		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, IConfiguration configuration)
+		{
+			services.AddSingleton<AggregatedHealthCheckService>();
+			services.AddScoped<DbConnection>(sp => 
+				new SqlConnection(configuration.GetConnectionString("DefaultConnectionStr")));
+			
+			return services;
+		}
+
+		public static IServiceCollection ConfigureCamelCaseForValidation(this IServiceCollection services)
+		{
+			ValidatorOptions.Global.PropertyNameResolver = CamelCasePropertyNameResolver.ResolvePropertyName;
 
 			return services;
 		}
@@ -100,53 +155,33 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddAuthentication(options =>
 			{
 				// Define default scheme
-				options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme; // For API requests
-				options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme; // For login challenge
-				options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme; // For Google sign-in
-			})
-			// Enables JWT-bearer authentication
-			.AddJwtBearer(options =>
+				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
+				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
+				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme; 
+			}).AddJwtBearer(options => // Enables JWT-bearer authentication
 			{
 				// Disable Https required for the metadata address or authority
 				options.RequireHttpsMetadata = false;
 				// Define type and definitions required for validating a token
 				options.TokenValidationParameters = services.BuildServiceProvider()
 					.GetRequiredService<TokenValidationParameters>();
-			})
-			.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
-			// Add Google authentication
-			.AddGoogle(options => 
-			{
-				// OAuth2 ClientId
-				options.ClientId = configuration["GoogleAuthSettings:ClientId"]!;
-				// OAuth2 ClientSecret
-				options.ClientSecret = configuration["GoogleAuthSettings:ClientSecret"]!;
-				// SignIn Authentication Scheme
-				options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-				// Handle authentication event CreateTicket
-				options.Events.OnCreatingTicket = ctx =>
-				{
-					// Claim identity
-					var identity = (ClaimsIdentity)ctx.Principal?.Identity! ?? new ClaimsIdentity();
-					// User profile picture
-					var profilePic = ctx.User.GetProperty("picture").GetString();
-					// User email
-					var email = ctx.User.GetProperty("email").GetString();
-					// User name
-					var name = ctx.User.GetProperty("name").GetString();
-
-					// Add claims
-					identity.AddClaim(new Claim("profilePic", profilePic ?? string.Empty));
-					identity.AddClaim(new Claim(ClaimTypes.Email, email ?? string.Empty));
-					identity.AddClaim(new Claim(ClaimTypes.Name, name ?? string.Empty));
-
-					// Mark as completed task
-					return Task.CompletedTask;
-				};
-
 			});
 
 			return services;
 		}
-	}
+
+		public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+		{
+			// Configure CORS
+			services.AddCors(p => p.AddPolicy(policyName, policy =>
+			{
+				// allow all with any header, method
+				policy.WithOrigins("*")
+					.AllowAnyHeader()
+					.AllowAnyMethod();
+			}));
+
+			return services;
+		}
+    }
 }

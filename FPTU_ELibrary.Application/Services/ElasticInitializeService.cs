@@ -3,12 +3,12 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Domain.Entities;
-using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Nest;
+using Serilog;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -17,12 +17,12 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly IBookService<BookDto> _bookService;
 		private readonly IElasticClient _elasticClient;
 		private readonly IConfiguration _configuration;
-		private readonly ILogger<ElasticInitializeService> _logger;
+		private readonly ILogger _logger;
 
 		public ElasticInitializeService(IBookService<BookDto> bookService, 
 			IElasticClient elasticClient,
 			IConfiguration configuration,
-			ILogger<ElasticInitializeService> logger)
+			ILogger logger)
         {
 			_bookService = bookService;
 			_elasticClient = elasticClient;
@@ -37,7 +37,7 @@ namespace FPTU_ELibrary.Application.Services
 
 			if (string.IsNullOrEmpty(index)) 
 			{
-				_logger.LogError("Index {0} not exist", index);
+				_logger.Error("Index {0} not exist", index);
 				return;
 			}
 
@@ -116,7 +116,7 @@ namespace FPTU_ELibrary.Application.Services
 				// Check for valid resp 
 				if (!createIndexResponse.IsValid)
 				{
-					_logger.LogError("Error invoke while creating index: {0}", createIndexResponse.ServerError);
+					_logger.Error("Error invoke while creating index: {0}", createIndexResponse.ServerError);
 					return;
 				}
 			}
@@ -124,22 +124,25 @@ namespace FPTU_ELibrary.Application.Services
 			var documentCountResponse = await _elasticClient.CountAsync<ElasticBook>(c => c.Index(index));
 			if(documentCountResponse.Count > 0)
 			{
-				_logger.LogInformation("Already seed documents for index: {0}", index);
+				_logger.Information("Already seed documents for index: {0}", index);
 				return;
 			}
 
 			// Create book filtering specification
 			BaseSpecification<Book> spec = new();
+			// Enables split query
+			spec.EnableSplitQuery();
 			// Add includes 
-			spec.AddInclude(b => b.Category);
-			spec.AddInclude(b => b.BookEditions);
-			spec.AddInclude(b => b.BookAuthors);
+			spec.ApplyInclude(q => q
+				.Include(b => b.Category)
+				.Include(b => b.BookEditions)
+				.Include(b => b.BookAuthors));
 
 			// Get all books with specification
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);
 		
 			// Check success result
-			if(getBookResp.Status == ResultConst.SUCCESS_READ_CODE)
+			if(getBookResp.ResultCode == ResultCodeConst.SYS_Success0002)
 			{
 				// Convert result data to List
 				var books = getBookResp.Data as List<BookDto>;
