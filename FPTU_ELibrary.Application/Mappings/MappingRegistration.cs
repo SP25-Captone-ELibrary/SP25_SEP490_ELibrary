@@ -1,4 +1,6 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Entities;
 using Mapster;
 

@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Domain.Entities;
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Roles;
 
 namespace FPTU_ELibrary.Application.Dtos
 {
@@ -12,7 +13,7 @@ namespace FPTU_ELibrary.Application.Dtos
 		// Employee detail information
 		public string? EmployeeCode { get; set; }
 		public string Email { get; set; } = null!;
-		public string? PasswordHash { get; set; } = null!;
+		public string? PasswordHash { get; set; } 
 		public string FirstName { get; set; } = null!;
 		public string LastName { get; set; } = null!;
 		public DateTime? Dob { get; set; }

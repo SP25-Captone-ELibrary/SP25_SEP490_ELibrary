@@ -1,8 +1,15 @@
-using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -10,12 +17,204 @@ namespace FPTU_ELibrary.Application.Services;
 public class RolePermissionService : GenericService<RolePermission, RolePermissionDto, int>,
     IRolePermissionService<RolePermissionDto>
 {
+    private readonly ISystemFeatureService<SystemFeatureDto> _featureService;
+    private readonly ISystemRoleService<SystemRoleDto> _roleService;
+    private readonly ISystemPermissionService<SystemPermissionDto> _permissionService;
+
     public RolePermissionService(
+        ISystemPermissionService<SystemPermissionDto> permissionService,
+        ISystemFeatureService<SystemFeatureDto> featureService,
+        ISystemRoleService<SystemRoleDto> roleService,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ILogger logger) 
         : base(msgService, unitOfWork, mapper, logger)
     {
+        _featureService = featureService;
+        _permissionService = permissionService;
+        _roleService = roleService;
+    }
+
+    public async Task<IServiceResult> CreateRoleWithDefaultPermissionsAsync(string engName, string viName, RoleType roleType)
+    {
+        try
+        {
+            // Check role name exist
+            var isRoleNameExist = await _unitOfWork.Repository<SystemRole,int>().AnyAsync(r => 
+                r.EnglishName == engName || r.VietnameseName == viName);
+            if (isRoleNameExist)
+            {
+                return new ServiceResult(ResultCodeConst.Role_Warning0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Role_Warning0001));
+            }
+                
+            // Get access denied permission
+            var accessDeniedPer = 
+                (await _permissionService.GetByPermissionNameAsync(Permission.AccessDenied)).Data as SystemPermissionDto;
+            // Get all system features
+            var features = (await _featureService.GetAllAsync()).Data as List<SystemFeatureDto>;
+            
+            if(accessDeniedPer != null 
+               && features != null && features.Any())
+            {
+                // Initialize role permission collection
+                List<RolePermission> rolePermissions = new();
+
+                // Initialize new role 
+                var roleDto = new SystemRoleDto
+                {
+                    EnglishName = engName,
+                    VietnameseName = viName,
+                    RoleType = roleType.ToString()
+                };
+                
+                // Progress create new role 
+                var newRole = _mapper.Map<SystemRole>(roleDto);
+                var roleRepository = _unitOfWork.Repository<SystemRole, int>();
+                await roleRepository.AddAsync(newRole);
+                await _unitOfWork.SaveChangesAsync(); // Save to get the role ID
+                
+                // Iterate each features and assign its new role
+                foreach (var feat in features)
+                {
+                    rolePermissions.Add(new()
+                    {
+                        FeatureId = feat.FeatureId,
+                        PermissionId = accessDeniedPer.PermissionId,
+                        RoleId = newRole.RoleId
+                    });
+                }                
+            
+                // Add range
+                await _unitOfWork.Repository<RolePermission, int>().AddRangeAsync(rolePermissions);
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected > 0)
+                {
+                    // Create success
+                    return new ServiceResult(ResultCodeConst.SYS_Success0001, 
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+                }
+            }
+            
+            // Create fail
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001, 
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke while progress create new role");
+        }
+    }
+
+    public async Task<IServiceResult> GetRolePermissionTableAsync(bool isRoleVerticalLayout)
+    {
+        try
+        {
+            // Base spec 
+            var baseSpec = new BaseSpecification<RolePermission>();
+            // Enable split query to improve query performance when include relation tables
+            baseSpec.EnableSplitQuery();
+            baseSpec.ApplyInclude(q => q
+                // Include feature
+                .Include(rp => rp.Feature)
+                // Include permission
+                .Include(rp => rp.Permission)
+                // Include role
+                .Include(rp => rp.Role)
+            );
+
+            // Get all role permissions
+            var rolePermissions = (await _unitOfWork.Repository<RolePermission, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+
+            if (rolePermissions.Any()) // Has any permissions
+            {
+                // Convert to Dto
+                var rolePermissionDtos = _mapper.Map<List<RolePermissionDto>>(rolePermissions);
+
+                // Get all system feature
+                var getResult = isRoleVerticalLayout
+                    ? await _featureService.GetAllAsync()
+                    : await _roleService.GetAllAsync();
+                    
+                if(getResult.ResultCode == ResultCodeConst.SYS_Success0002) // Retrieve data success
+                {
+                    // Try convert to role collection
+                    var roles = getResult.Data as List<SystemRoleDto>;
+                    // Try convert to feature collection
+                    var features = getResult.Data as List<SystemFeatureDto>;
+
+                    // Progress generate user permission table
+                    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                        rolePermissionDtos.ToUserPermissionTable(isRoleVerticalLayout, roles, features));
+                } 
+            }
+            
+            // Response fail to generate user permission table
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
+                new UserPermissionTableDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get role permission table");
+        }
+    }
+
+    public async Task<IServiceResult> UpdatePermissionAsync(
+        int colId, int rowId, int permissionId, bool isRoleVerticalLayout)
+    {
+        // Initialize service result
+        var serviceResult = new ServiceResult();
+        
+        try
+        {
+            // Determine role or feature base on layout
+            var roleId = isRoleVerticalLayout ? rowId : colId;
+            var featureId = isRoleVerticalLayout ? colId : rowId;
+            
+            // Base spec 
+            var baseSpec = new BaseSpecification<RolePermission>(
+                rp => rp.RoleId == roleId 
+                      && rp.FeatureId == featureId);
+            var rolePermission = await _unitOfWork.Repository<RolePermission, int>()
+                .GetWithSpecAsync(baseSpec);
+            if (rolePermission == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                    StringUtils.Format(errMsg, "role permission to progress update"));
+            }
+        
+            // Update permission 
+            rolePermission.PermissionId = permissionId;
+            
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+                serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+                serviceResult.Data = null;
+                return serviceResult;
+            }
+        
+            // Mark as update success
+            serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+            serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+            serviceResult.Data = (await GetRolePermissionTableAsync(isRoleVerticalLayout)).Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when update permission matrix");
+        }
+        
+        return serviceResult;
     }
 }

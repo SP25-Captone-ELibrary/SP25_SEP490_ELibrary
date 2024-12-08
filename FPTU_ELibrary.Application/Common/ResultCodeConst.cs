@@ -85,7 +85,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Unknown error
 		/// </summary>
 		public static string SYS_Warning0006 = "SYS.Warning0006";
-		
+		/// <summary>
+		/// [WARNING] Cannot delete {0} as it is in use
+		/// </summary>
+		public static string SYS_Warning0007 = "SYS.Warning0007";
 		#endregion
 
 		#region Auth
@@ -166,6 +169,17 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to send OTP 
 		/// </summary>
 		public static string Auth_Fail0002 = "Auth.Fail0002";
+		#endregion
+
+		#region Role
+		/// <summary>
+		/// Role name already exist, please check again
+		/// </summary>
+		public const string Role_Warning0001 = "Role.Warning0001";
+		/// <summary>
+		/// Cannot update as role is invalid
+		/// </summary>
+		public const string Role_Warning0002 = "Role.Warning0002";
 		#endregion
 
 		#endregion

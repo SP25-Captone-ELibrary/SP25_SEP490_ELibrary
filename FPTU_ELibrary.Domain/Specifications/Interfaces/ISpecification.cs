@@ -12,6 +12,7 @@ namespace FPTU_ELibrary.Domain.Specifications.Interfaces
     {
         Expression<Func<TEntity, bool>> Criteria { get; }
         List<Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>>> Includes { get; }
+        List<Expression<Func<TEntity, bool>>> Filters { get; }
         Expression<Func<TEntity, object>> OrderBy { get; }
         Expression<Func<TEntity, object>> OrderByDescending { get; }
         Expression<Func<TEntity, object>> GroupBy { get; }

@@ -15,6 +15,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
         /// Retrieve with specifications
         Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification);
         Task<IEnumerable<TEntity>> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
+        Task<int> CountAsync();
         Task<int> CountAsync(ISpecification<TEntity> specification);
 
         #endregion

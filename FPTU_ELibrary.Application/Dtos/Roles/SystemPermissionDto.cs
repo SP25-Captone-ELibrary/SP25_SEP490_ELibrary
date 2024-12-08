@@ -1,4 +1,4 @@
-namespace FPTU_ELibrary.Application.Dtos;
+namespace FPTU_ELibrary.Application.Dtos.Roles;
 
 public class SystemPermissionDto
 {

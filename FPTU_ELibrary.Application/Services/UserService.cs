@@ -1,21 +1,17 @@
-﻿using System.Drawing;
-using FPTU_ELibrary.Application.Common;
+﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
-using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using MimeKit.Encodings;
-
-using RoleEnum = FPTU_ELibrary.Domain.Common.Enums.Role;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -182,7 +178,51 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-   //     public async Task<IServiceResult> CreateAccountByAdmin(UserDto newUser)
+		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid userId)
+		{
+			try
+			{
+				// Get user by id
+				var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				// Get role by id 
+				var getRoleResult = await _roleService.GetByIdAsync(roleId);
+				if (user != null 
+				    && getRoleResult.Data is SystemRoleDto role)
+				{
+					// Check is valid role type 
+					if (role.RoleType != RoleType.User.ToString())
+					{
+						return new ServiceResult(ResultCodeConst.Role_Warning0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.Role_Warning0002));
+					}
+					
+					// Progress update user role 
+					user.RoleId = role.RoleId;
+					
+					// Save to DB
+					var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+					if (isSaved) // Save success
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+					}
+					
+					// Fail to update
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				}
+
+				var errMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002); 
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMSg, "role or user"));
+			}catch(Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update user role");	
+			}
+		}
+
+		//     public async Task<IServiceResult> CreateAccountByAdmin(UserDto newUser)
    //     {
    //         try
    //         {

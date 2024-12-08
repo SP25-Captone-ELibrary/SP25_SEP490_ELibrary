@@ -50,7 +50,7 @@
 		/// </summary>
 		public static class User
 		{
-			// [Get]
+			// [GET]
 			public const string GetAll = Base + "/users";
 			public const string Search = Base + "/users/q";
 			// [POST]
@@ -69,6 +69,23 @@
 			public const string HardDelete = Base + "/admin/{id}";
 		}
 
+		/// <summary>
+		/// Employee endpoints
+		/// </summary>
+		public static class Employee
+		{
+			// [GET]
+			public const string GetAll = Base + "/employees";
+			// [POST]
+			public const string Create = Base + "/employees";
+			// [PUT]
+			public const string Update = Base + "/employees/{id}";
+			// [PATCH]
+			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
+			// [DELETE]
+			public const string Delete = Base + "/employees/{id}";
+		}
+		
 		/// <summary>
 		/// SystemMessage endpoints
 		/// </summary>
@@ -94,7 +111,22 @@
 		/// </summary>
 		public static class Role
 		{
-			public const string GetAll = Base + "/roles";
+			//	[GET]
+			public const string GetAllRoleType = Base + "/roles/types";
+			public const string GetAllRole = Base + "/roles";
+			public const string GetAllUserRole = Base + "/roles/users";
+			public const string GetAllEmployeeRole = Base + "/roles/employees";
+			public const string GetAllPermission = Base + "/roles/permissions";
+			public const string GetAllFeature = Base + "/roles/features";
+			public const string GetRolePermissionTable = Base + "/roles/user-permissions";
+			//	[POST]
+			public const string CreateRole = Base + "/roles";
+			//	[PATCH]
+			public const string UpdateRolePermission = Base + "/roles/user-permissions";
+			public const string UpdateUserRole = Base + "/roles/users";
+			public const string UpdateEmployeeRole = Base + "/roles/employees";
+			//	[DELETE]
+			public const string DeleteRole = Base + "/roles";
 		}
 	}
 }
