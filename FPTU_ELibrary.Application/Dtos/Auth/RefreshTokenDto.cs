@@ -1,11 +1,4 @@
-﻿using FPTU_ELibrary.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FPTU_ELibrary.Application.Dtos
+﻿namespace FPTU_ELibrary.Application.Dtos.Auth
 {
 	public class RefreshTokenDto
 	{

@@ -6,5 +6,6 @@
 	{
 		public int MaxRefreshTokenLifeSpan { get; set; }
 		public string RecoveryPasswordRedirectUri { get; set; } = string.Empty;
+		public int PageSize { get; set; }
 	}
 }

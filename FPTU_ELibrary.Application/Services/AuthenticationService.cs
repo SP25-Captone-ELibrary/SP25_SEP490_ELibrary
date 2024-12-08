@@ -2,6 +2,7 @@
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
@@ -598,7 +599,7 @@ namespace FPTU_ELibrary.Application.Services
 				}
 
 				// Hash password
-				user.Password = HashUtils.HashPassword(user.Password!);
+				user.PasswordHash = HashUtils.HashPassword(user.Password!);
 				// Progress create new user
 				user = await CreateNewUserAsync(user) ?? null!;
 
@@ -1291,7 +1292,7 @@ namespace FPTU_ELibrary.Application.Services
 				);
 
 				// Send email
-				await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+				// await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
 				
 				// Update confirmation code
 				user.EmailVerificationCode = otpCode;

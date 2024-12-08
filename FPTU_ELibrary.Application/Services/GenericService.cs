@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -85,7 +86,9 @@ namespace FPTU_ELibrary.Application.Services
 				var existingEntity = await _unitOfWork.Repository<TEntity, TKey>().GetByIdAsync(id);
 				if (existingEntity == null)
 				{
-					throw new NotFoundException(nameof(TEntity), id!.ToString()!);
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(errMsg, nameof(TEntity)));
 				}
 
 				// Process add delete entity
@@ -134,7 +137,9 @@ namespace FPTU_ELibrary.Application.Services
 				var existingEntity = await _unitOfWork.Repository<TEntity, TKey>().GetByIdAsync(id);
 				if (existingEntity == null)
 				{
-					throw new NotFoundException(nameof(TEntity), id!.ToString()!);
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(errMsg, nameof(TEntity)));
 				}
 
 				// Process add update entity

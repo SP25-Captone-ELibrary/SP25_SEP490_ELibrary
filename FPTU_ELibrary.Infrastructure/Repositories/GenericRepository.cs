@@ -60,6 +60,11 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             return await ApplySpecification(specification).FirstOrDefaultAsync();
         }
 
+        public async Task<int> CountAsync()
+        {
+	        return await _dbSet.CountAsync();
+        }
+        
         public async Task<int> CountAsync(ISpecification<TEntity> specification)
         {
             return await ApplySpecification(specification).CountAsync();

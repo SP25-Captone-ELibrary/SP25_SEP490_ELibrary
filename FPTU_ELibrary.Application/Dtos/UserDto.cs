@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Domain.Entities;
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Roles;
 
 namespace FPTU_ELibrary.Application.Dtos
 {

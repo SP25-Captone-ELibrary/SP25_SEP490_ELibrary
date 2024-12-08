@@ -1,4 +1,6 @@
 ﻿
+using System.Text.RegularExpressions;
+
 namespace FPTU_ELibrary.Application.Utils
 {
 	// Summary:
@@ -84,6 +86,31 @@ namespace FPTU_ELibrary.Application.Utils
 			}
 
 			return input;
+		}
+		
+		// Add white space to string
+		public static string AddWhitespaceToString(string input)
+		{
+			if (string.IsNullOrEmpty(input))
+				return input;
+
+			// Use a regex to identify boundaries between lowercase and uppercase letters
+			string result = Regex.Replace(input, "([a-z])([A-Z])", "$1 $2");
+
+			return result;
+		}
+		
+		// Remove word and add white space to string
+		public static string RemoveWordAndAddWhitespace(string input, string wordToRemove)
+		{
+			if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(wordToRemove))
+				return input;
+
+			// Remove the specified word
+			string withoutWord = Regex.Replace(input, wordToRemove, "", RegexOptions.IgnoreCase);
+
+			// Add whitespace to the remaining string
+			return AddWhitespaceToString(withoutWord);
 		}
 	}
 }
