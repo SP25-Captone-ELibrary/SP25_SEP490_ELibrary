@@ -47,12 +47,6 @@ namespace FPTU_ELibrary.API.Controllers
 			return Ok(await _authenticationService.SignInAsync(req.Email));
 		}
 		
-		[HttpPost(APIRoute.Authentication.SignInAsEmployee, Name = nameof(SignInAsEmployeeAsync))]
-		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInRequest req)
-		{
-			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.ToAuthenticatedUser()));
-		}
-		
 		[HttpPost(APIRoute.Authentication.SignInWithPassword, Name = nameof(SignInWithPasswordAsync))]
 		public async Task<IActionResult> SignInWithPasswordAsync([FromBody] SignInWithPasswordRequest req)
 		{
@@ -63,6 +57,24 @@ namespace FPTU_ELibrary.API.Controllers
 		public async Task<IActionResult> SignInWithOtpAsync([FromBody] SignInWithOtpRequest req)
 		{
 			return Ok(await _authenticationService.SignInWithOtpAsync(req.Otp, req.ToAuthenticatedUser()));
+		}
+		
+		[HttpPost(APIRoute.Authentication.SignInAsEmployee, Name = nameof(SignInAsEmployeeAsync))]
+		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInRequest req)
+		{
+			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.Email));
+		}
+		
+		[HttpPost(APIRoute.Authentication.SignInAsAdmin, Name = nameof(SignInAsAdminAsync))]
+		public async Task<IActionResult> SignInAsAdminAsync([FromBody] SignInRequest req)
+		{
+			return Ok(await _authenticationService.SignInAsAdminAsync(req.Email));
+		}
+		
+		[HttpPost(APIRoute.Authentication.SignInWithPasswordAsEmployee, Name = nameof(SignInWithPasswordAsEmployeeAsync))]
+		public async Task<IActionResult> SignInWithPasswordAsEmployeeAsync([FromBody] SignInWithPasswordRequest req)
+		{
+			return Ok(await _authenticationService.SignInWithPasswordAsEmployeeAsync(req.ToAuthenticatedUser()));
 		}
 		
 		[HttpPost(APIRoute.Authentication.SignInWithGoogle, Name = nameof(SignInWithGoogleAsync))]
@@ -88,7 +100,7 @@ namespace FPTU_ELibrary.API.Controllers
 		{
 			return Ok(await _authenticationService.ConfirmEmailForSignUpAsync(req.Email, req.EmailVerificationCode));
 		}
-
+		
 		[HttpPost(APIRoute.Authentication.ResendOtp, Name = nameof(ResendOtpForSignUpAsync))]
 		public async Task<IActionResult> ResendOtpForSignUpAsync([FromBody] ResendOtpForSignUpRequest req)
 		{

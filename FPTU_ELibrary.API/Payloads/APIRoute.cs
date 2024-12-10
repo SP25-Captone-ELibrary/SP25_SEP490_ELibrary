@@ -14,9 +14,11 @@
 			public const string CurrentUser = Base + "/auth/current-user";
 			// [POST]
 			public const string SignIn = Base + "/auth/sign-in";
-			public const string SignInAsEmployee = Base + "/employee/auth/sign-in";
 			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
 			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
+			public const string SignInAsEmployee = Base + "/auth/employee/sign-in";
+			public const string SignInAsAdmin = Base + "/auth/admin/sign-in";
+			public const string SignInWithPasswordAsEmployee = Base + "/auth/employee/sign-in/password-method";
 			public const string SignInWithGoogle = Base + "/auth/sign-in-google";
 			public const string SignInWithFacebook = Base + "/auth/sign-in-facebook";
 			public const string SignUp = Base + "/auth/sign-up";
@@ -26,7 +28,7 @@
 			// [PATCH]
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 			public const string ChangePassword = Base + "/auth/change-password";
-            public const string ChangePasswordAsEmployee = Base + "/employee/auth/change-password";
+            public const string ChangePasswordAsEmployee = Base + "/auth/employee/change-password";
 		}
 
 		/// <summary>
@@ -78,11 +80,13 @@
 			public const string GetAll = Base + "/employees";
 			// [POST]
 			public const string Create = Base + "/employees";
+			public const string Import = Base + "/employees/import";
 			// [PUT]
 			public const string Update = Base + "/employees/{id}";
 			// [PATCH]
 			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
 			// [DELETE]
+			public const string SoftDelete = Base + "/employees/{id}/soft-delete";
 			public const string Delete = Base + "/employees/{id}";
 		}
 		
@@ -121,6 +125,8 @@
 			public const string GetRolePermissionTable = Base + "/roles/user-permissions";
 			//	[POST]
 			public const string CreateRole = Base + "/roles";
+			//	[PUT]
+			public const string UpdateRole = Base + "/roles/{id}";
 			//	[PATCH]
 			public const string UpdateRolePermission = Base + "/roles/user-permissions";
 			public const string UpdateUserRole = Base + "/roles/users";

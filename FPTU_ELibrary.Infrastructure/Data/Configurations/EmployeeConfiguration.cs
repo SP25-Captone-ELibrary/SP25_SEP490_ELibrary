@@ -91,6 +91,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("nvarchar(100)")
                 .HasColumnName("modified_by");
             #endregion
+            
+            #region Update at 12/09/2024 by Le Xuan Phuoc
+            builder.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            #endregion
         }
     }
 }

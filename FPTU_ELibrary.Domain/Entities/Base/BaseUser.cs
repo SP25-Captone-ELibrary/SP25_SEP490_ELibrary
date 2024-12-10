@@ -15,6 +15,8 @@ public class BaseUser : IBaseUser
 
     // Mark as active or not
     public bool IsActive { get; set; }
+
+    public bool IsDeleted { get; set; }
     
     // Creation and modify date
     public DateTime CreateDate { get; set; }

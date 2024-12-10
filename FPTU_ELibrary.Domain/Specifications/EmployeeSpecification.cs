@@ -11,25 +11,28 @@ public class EmployeeSpecification : BaseSpecification<Employee>
     public int PageSize { get; set; }
     public EmployeeSpecification(EmployeeSpecParams specParams, int pageIndex, int pageSize)
         : base(e => 
-            // Search with terms
-            string.IsNullOrEmpty(specParams.Search) || 
             (
-                // Employee code
-                (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
-                // Email
-                (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
-                // Phone
-                (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
-                // Address
-                (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
-                // Individual FirstName and LastName search
-                (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
-                (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
-                // Full Name search
-                (!string.IsNullOrEmpty(e.FirstName) &&
-                 !string.IsNullOrEmpty(e.LastName) &&
-                 (e.FirstName + " " + e.LastName).Contains(specParams.Search))
-            ))
+                // Search with terms
+                string.IsNullOrEmpty(specParams.Search) || 
+                (
+                    // Employee code
+                    (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
+                    // Email
+                    (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
+                    // Phone
+                    (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
+                    // Address
+                    (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
+                    // Individual FirstName and LastName search
+                    (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
+                    // Full Name search
+                    (!string.IsNullOrEmpty(e.FirstName) &&
+                     !string.IsNullOrEmpty(e.LastName) &&
+                     (e.FirstName + " " + e.LastName).Contains(specParams.Search))
+                )
+            // Not mark as deleted
+            ) && !e.IsDeleted)
     {
         // Assign page size and page index
         PageIndex = pageIndex;
@@ -86,9 +89,9 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         else if (specParams.HireDateRange != null 
                  && specParams.HireDateRange.Length > 1) // With range of hire date 
         {
-            AddFilter(x =>
-                           x.HireDate.Date >= specParams.HireDateRange[0].Date 
-                           && x.HireDate.Date <= specParams.HireDateRange[1].Date);       
+            AddFilter(x => x.HireDate.HasValue &&
+                      x.HireDate.Value.Date >= specParams.HireDateRange[0].Date 
+                      && x.HireDate.Value.Date <= specParams.HireDateRange[1].Date);       
         }
         
         // Progress sorting

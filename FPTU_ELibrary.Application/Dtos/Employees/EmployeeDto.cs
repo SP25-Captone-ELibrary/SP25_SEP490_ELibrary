@@ -1,9 +1,8 @@
-﻿using FPTU_ELibrary.Domain.Entities;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Roles;
 
-namespace FPTU_ELibrary.Application.Dtos
+namespace FPTU_ELibrary.Application.Dtos.Employees
 {
 	public class EmployeeDto
 	{
@@ -23,12 +22,12 @@ namespace FPTU_ELibrary.Application.Dtos
 		public string? Gender { get; set; }
 
 		// Employee join, terminate date
-		public DateTime HireDate { get; set; }
+		public DateTime? HireDate { get; set; }
 		public DateTime? TerminationDate { get; set; }
 
 		// Mark as active or not
 		public bool IsActive { get; set; }
-
+		public bool IsDeleted { get; set; }
 
 		// Creation and modify date
 		public DateTime CreateDate { get; set; }
@@ -87,32 +86,33 @@ namespace FPTU_ELibrary.Application.Dtos
 	
 	public static class EmployeeDtoExtensions
 	{
-		public static AuthenticateUserDto ToAuthenticateUserDto(this EmployeeDto userDto)
+		public static AuthenticateUserDto ToAuthenticateUserDto(this EmployeeDto employeeDto)
 		{
 			return new AuthenticateUserDto()
 			{
-				Id = userDto.EmployeeId,
-				UserCode = userDto.EmployeeCode,
-				FirstName = userDto.FirstName,
-				LastName = userDto.LastName,
-				Email = userDto.Email,
-				Avatar = userDto.Avatar,
-				Address = userDto.Address,
-				Gender = userDto.Gender,
-				PasswordHash = userDto.PasswordHash,
-				RoleId = userDto.RoleId,
-				CreateDate = userDto.CreateDate,
-				ModifiedDate = userDto.ModifiedDate,
-				ModifiedBy = userDto.ModifiedBy,
-				EmailConfirmed = userDto.EmailConfirmed,
-				PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
-				EmailVerificationCode = userDto.EmailVerificationCode,
-				TwoFactorEnabled = userDto.TwoFactorEnabled,
-				TwoFactorSecretKey = userDto.TwoFactorSecretKey,
-				TwoFactorBackupCodes = userDto.TwoFactorBackupCodes,
-				PhoneVerificationCode = userDto.PhoneVerificationCode,
-				PhoneVerificationExpiry = userDto.PhoneVerificationExpiry,
-				IsActive = userDto.IsActive,
+				Id = employeeDto.EmployeeId,
+				UserCode = employeeDto.EmployeeCode,
+				FirstName = employeeDto.FirstName,
+				LastName = employeeDto.LastName,
+				Email = employeeDto.Email,
+				Avatar = employeeDto.Avatar,
+				Address = employeeDto.Address,
+				Gender = employeeDto.Gender,
+				PasswordHash = employeeDto.PasswordHash,
+				RoleId = employeeDto.RoleId,
+				CreateDate = employeeDto.CreateDate,
+				ModifiedDate = employeeDto.ModifiedDate,
+				ModifiedBy = employeeDto.ModifiedBy,
+				EmailConfirmed = employeeDto.EmailConfirmed,
+				PhoneNumberConfirmed = employeeDto.PhoneNumberConfirmed,
+				EmailVerificationCode = employeeDto.EmailVerificationCode,
+				TwoFactorEnabled = employeeDto.TwoFactorEnabled,
+				TwoFactorSecretKey = employeeDto.TwoFactorSecretKey,
+				TwoFactorBackupCodes = employeeDto.TwoFactorBackupCodes,
+				PhoneVerificationCode = employeeDto.PhoneVerificationCode,
+				PhoneVerificationExpiry = employeeDto.PhoneVerificationExpiry,
+				IsActive = employeeDto.IsActive,
+				IsDeleted = employeeDto.IsDeleted,
 				IsEmployee = true
 			};
 		}

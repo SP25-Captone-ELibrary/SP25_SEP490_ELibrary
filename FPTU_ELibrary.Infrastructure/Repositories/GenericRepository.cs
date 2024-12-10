@@ -70,10 +70,19 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             return await ApplySpecification(specification).CountAsync();
         }
         
+        public async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> expression)
+        {
+        	return await _dbSet.AnyAsync(expression);
+        }
+        
+        public async Task<bool> AnyAsync(ISpecification<TEntity> specification)
+        {
+	        return await ApplySpecification(specification).AnyAsync();
+        }
+        
         #endregion
 
         #region WRITE DATA
-
         public void Add(TEntity entity)
         {
             _dbSet.Add(entity);
@@ -129,11 +138,6 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
 		#endregion
 
 		#region OTHERS
-		public async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> expression)
-		{
-			return await _dbSet.AnyAsync(expression);
-		}
-
 		public bool HasChanges(TEntity original, TEntity modified)
 		{
 			if (original == null || modified == null)
