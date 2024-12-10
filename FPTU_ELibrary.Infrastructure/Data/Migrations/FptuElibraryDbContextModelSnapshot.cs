@@ -783,6 +783,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1681,6 +1687,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()

@@ -2,11 +2,8 @@
 using FluentValidation.Results;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Application.Validations
@@ -19,12 +16,14 @@ namespace FPTU_ELibrary.Application.Validations
 			{ typeof(IFormFile), new ExcelValidator() },
 			{ typeof(BookDto), new BookDtoValidator() },
 			{ typeof(UserDto), new UserDtoValidator() },
+			{ typeof(EmployeeDto), new EmployeeDtoValidator() },
+			{ typeof(SystemRoleDto), new SystemRoleDtoValidator() },
 			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
 			{ typeof(AuthenticateUserDto), new AuthenticatedUserDtoValidator() },
 			// Add other Validator pairs here.
 		};
 
-		public async static Task<ValidationResult?> ValidateAsync<T>(T dto) where T : class
+		public static async Task<ValidationResult?> ValidateAsync<T>(T dto) where T : class
 		{
 			// Check if a validator exists for the given type.
 			if (Validators.TryGetValue(typeof(T), out var validator) && validator is IValidator<T> typedValidator)

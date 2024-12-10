@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241206140537_Initial Database")]
+    [Migration("20241209040911_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -785,6 +785,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1684,6 +1690,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()

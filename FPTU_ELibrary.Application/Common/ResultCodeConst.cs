@@ -35,6 +35,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [SUCCESS] Create new <0> successfully
 		/// </summary> 
 		public static string SYS_Success0006 = "SYS.Success0006";
+		/// <summary>
+		/// [SUCCESS] Deleted data to trash
+		/// </summary> 
+		public static string SYS_Success0007 = "SYS.Success0007";
 		
 		/// <summary>
 		/// [FAIL] Create fail
@@ -60,6 +64,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to create new <0>
 		/// </summary>
 		public static string SYS_Fail0006 = "SYS.Fail0006";
+		/// <summary>
+		/// [FAIL] Cannot delete because it is bound to other data
+		/// </summary>
+		public static string SYS_Fail0007 = "SYS.Fail0007";
+		/// <summary>
+        /// [FAIL] Fail to import data
+        /// </summary>
+        public static string SYS_Fail0008 = "SYS.Fail0008";
 		
 		/// <summary>
 		/// [WARNING] Invalid inputs
@@ -180,6 +192,19 @@ namespace FPTU_ELibrary.Application.Common
 		/// Cannot update as role is invalid
 		/// </summary>
 		public const string Role_Warning0002 = "Role.Warning0002";
+		#endregion
+
+		#region File
+		/// <summary>
+		/// The uploaded file is not supported
+		/// </summary>
+		public const string File_Warning0001 = "File.Warning0001";
+
+		/// <summary>
+		/// TFile not found
+		/// </summary>
+		public const string File_Warning0002 = "File.Warning0002";
+		
 		#endregion
 
 		#endregion

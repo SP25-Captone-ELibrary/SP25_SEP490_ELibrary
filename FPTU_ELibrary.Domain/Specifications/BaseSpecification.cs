@@ -45,7 +45,6 @@ namespace FPTU_ELibrary.Domain.Specifications
             #endregion
         
             #region Add Specification Properties
-            // Add additional filtering logic
             public void AddFilter(Expression<Func<TEntity, bool>> filterExpression)
             {
                 Filters.Add(filterExpression);
@@ -81,6 +80,34 @@ namespace FPTU_ELibrary.Domain.Specifications
             public void EnableSplitQuery()
             {
                 AsSplitQuery = true;
+            }
+            
+            public BaseSpecification<TEntity> And(BaseSpecification<TEntity> other)
+            {
+                if (other == null!) return this;
+
+                var parameter = Expression.Parameter(typeof(TEntity));
+                var combined = Expression.Lambda<Func<TEntity, bool>>(
+                    Expression.AndAlso(
+                        Expression.Invoke(Criteria, parameter),
+                        Expression.Invoke(other.Criteria, parameter)),
+                    parameter);
+
+                return new BaseSpecification<TEntity>(combined);
+            }
+            
+            public BaseSpecification<TEntity> Or(BaseSpecification<TEntity> other)
+            {
+                if (other == null!) return this;
+
+                var parameter = Expression.Parameter(typeof(TEntity));
+                var combined = Expression.Lambda<Func<TEntity, bool>>(
+                    Expression.OrElse(
+                        Expression.Invoke(Criteria, parameter),
+                        Expression.Invoke(other.Criteria, parameter)),
+                    parameter);
+
+                return new BaseSpecification<TEntity>(combined);
             }
             #endregion
     }

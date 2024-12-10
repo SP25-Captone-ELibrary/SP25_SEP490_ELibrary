@@ -1,9 +1,11 @@
 ﻿using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
+using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Common.Enums;
-using Org.BouncyCastle.Ocsp;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -82,7 +84,13 @@ namespace FPTU_ELibrary.API.Extensions
 		#region Employee
 		// Mapping from typeof(CreateEmployeeRequest) to typeof(EmployeeDto)
 		public static EmployeeDto ToEmployeeDtoForCreate(this CreateEmployeeRequest req)
-			=> new EmployeeDto()
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new EmployeeDto()
 			{
 				EmployeeCode = req.EmployeeCode,
 				Email = req.Email,
@@ -94,13 +102,50 @@ namespace FPTU_ELibrary.API.Extensions
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
 				RoleId = req.RoleId,
-				
+
 				// Set default authorization values
-				CreateDate = DateTime.UtcNow,
+				CreateDate = currentLocalDateTime,
 				IsActive = false,
 				EmailConfirmed = false,
 				PhoneNumberConfirmed = false,
 				TwoFactorEnabled = false
+			};
+		}
+		
+		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateEmployeeRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new EmployeeDto()
+			{
+				Email = req.Email,
+				EmployeeCode = req.EmployeeCode,
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Dob = req.Dob,
+				Phone = req.Phone,
+				Address = req.Address,
+				Gender = req.Gender.ToString(),
+				HireDate = req.HireDate,
+				TerminationDate = req.TerminationDate,
+				ModifiedDate = currentLocalDateTime,
+			};
+		}
+
+		#endregion
+
+		#region Role
+
+		public static SystemRoleDto ToSystemRoleDto(this UpdateRoleRequest req, int roleId)
+			=> new SystemRoleDto()
+			{
+				RoleId = roleId,
+				EnglishName = req.EnglishName,
+				VietnameseName = req.VietnameseName,
+				RoleType = ((Role)req.RoleTypeIdx).ToString()
 			};
 
 		#endregion

@@ -69,7 +69,7 @@ namespace FPTU_ELibrary.Application.Services
 			catch(Exception ex)
             {
 	            _logger.Error(ex.Message);
-                throw new Exception("Error invoke when progress create new entity");
+	            throw;
             }
 			
 			return serviceResult;
@@ -110,7 +110,7 @@ namespace FPTU_ELibrary.Application.Services
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when progress delete entity");
+				throw;
 			}
 
 			return serviceResult;
@@ -176,7 +176,7 @@ namespace FPTU_ELibrary.Application.Services
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when progress update new entity");
+				throw;
 			}
 
 			return serviceResult;

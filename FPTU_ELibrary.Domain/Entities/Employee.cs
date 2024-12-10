@@ -12,7 +12,7 @@ public class Employee : BaseUser
     public string? EmployeeCode { get; set; }
     
     // Employee join, terminate date
-    public DateTime HireDate { get; set; }
+    public DateTime? HireDate { get; set; }
     public DateTime? TerminationDate { get; set; }
     
     // Role in the system

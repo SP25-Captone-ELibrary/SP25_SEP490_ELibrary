@@ -17,7 +17,9 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
         Task<IEnumerable<TEntity>> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
         Task<int> CountAsync();
         Task<int> CountAsync(ISpecification<TEntity> specification);
-
+        Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
+        Task<bool> AnyAsync(ISpecification<TEntity> specification);
+        
         #endregion
 
         #region WRITE DATA
@@ -37,7 +39,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
         #endregion
 
         #region OTHERS
-        Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
         bool HasChanges(TEntity original, TEntity modified);
         bool HasChanges(TEntity entity);
         #endregion

@@ -5,7 +5,6 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Reflection;
-using FPTU_ELibrary.Application.Utils;
 using Serilog;
 
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
@@ -562,7 +561,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EmployeeCode = "EM270925",
 					Email = "librian@gmail.com",
-					PasswordHash = HashUtils.HashPassword("@Employee123"),
+					PasswordHash = string.Empty,
 					FirstName = "Nguyen Van",
 					LastName = "A",
 					Dob = new DateTime(1995, 02, 10),
@@ -584,14 +583,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 {
                     EmployeeCode = $"EM27092{i}",
                     Email = $"employee{i}@gmail.com",
-                    PasswordHash = HashUtils.HashPassword("@Employee123"),
+                    PasswordHash = string.Empty,
                     FirstName = $"First{i}",
                     LastName = $"Last{i}",
                     Dob = new DateTime(1990 + i, 01, i + 1),
                     Phone = $"07771557{i:00}",
-                    Gender = i % 2 == 0 ? "Male" : "Female",
+                    Gender = i % 2 == 0 ? Gender.Male.ToString() : Gender.Female.ToString(), 
                     HireDate = DateTime.UtcNow.AddDays(-i * 10),
-                    IsActive = true,
+                    IsActive = false,
                     CreateDate = DateTime.UtcNow,
                     TwoFactorEnabled = false,
                     PhoneNumberConfirmed = false,

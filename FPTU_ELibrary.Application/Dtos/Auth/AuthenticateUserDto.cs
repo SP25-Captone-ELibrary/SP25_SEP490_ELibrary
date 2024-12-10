@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Domain.Entities.Base;
+﻿using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Domain.Entities.Base;
 
 namespace FPTU_ELibrary.Application.Dtos.Auth
 {
@@ -40,7 +41,8 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
                 TwoFactorBackupCodes = authenticateUser.TwoFactorBackupCodes,
                 PhoneVerificationCode = authenticateUser.PhoneVerificationCode,
                 PhoneVerificationExpiry = authenticateUser.PhoneVerificationExpiry,
-				IsActive = authenticateUser.IsActive
+				IsActive = authenticateUser.IsActive,
+                IsDeleted = authenticateUser.IsDeleted
             };
         }
 
@@ -71,6 +73,7 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
                 PhoneVerificationCode = authenticateUser.PhoneVerificationCode,
                 PhoneVerificationExpiry = authenticateUser.PhoneVerificationExpiry,
                 IsActive = authenticateUser.IsActive,
+                IsDeleted = authenticateUser.IsDeleted
             };
         }
     }

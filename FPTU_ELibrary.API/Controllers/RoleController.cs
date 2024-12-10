@@ -1,7 +1,9 @@
+using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -39,7 +41,7 @@ public class RoleController : ControllerBase
         _permissionService = permissionService;
     }
 
-    // [Authorize]
+    [Authorize]
     [HttpPost(APIRoute.Role.GetAllRoleType, Name = nameof(GetAllRoleTypeAsync))]
     public async Task<IActionResult> GetAllRoleTypeAsync()
     {
@@ -50,14 +52,14 @@ public class RoleController : ControllerBase
         })));
     }
 
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetAllRole, Name = nameof(GetAllRoleAsync))]
     public async Task<IActionResult> GetAllRoleAsync()
     {
         return Ok(await _roleService.GetAllAsync());
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpPost(APIRoute.Role.CreateRole, Name = nameof(CreateRoleAsync))]
     public async Task<IActionResult> CreateRoleAsync([FromBody] CreateRoleRequest req)
     {
@@ -65,48 +67,55 @@ public class RoleController : ControllerBase
     }
     
     // [Authorize]
+    [HttpPut(APIRoute.Role.UpdateRole, Name = nameof(UpdateRoleAsync))]
+    public async Task<IActionResult> UpdateRoleAsync([FromRoute] int id, [FromBody] UpdateRoleRequest req)
+    {
+        return Ok(await _roleService.UpdateAsync(id, req.ToSystemRoleDto(id)));
+    }
+    
+    [Authorize]
     [HttpDelete(APIRoute.Role.DeleteRole, Name = nameof(DeleteRoleAsync))]
     public async Task<IActionResult> DeleteRoleAsync(int roleId)
     {
         return Ok(await _roleService.DeleteAsync(roleId));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpPatch(APIRoute.Role.UpdateUserRole, Name = nameof(UpdateUserRoleAsync))]
     public async Task<IActionResult> UpdateUserRoleAsync([FromBody] UpdateUserRoleRequest req)
     {
         return Ok(await _userService.UpdateRoleAsync(req.RoleId, req.UserId));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpPatch(APIRoute.Role.UpdateEmployeeRole, Name = nameof(UpdateEmployeeRoleAsync))]
     public async Task<IActionResult> UpdateEmployeeRoleAsync([FromBody] UpdateEmployeeRoleRequest req)
     {
         return Ok(await _employeeService.UpdateRoleAsync(req.RoleId, req.EmployeeId));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetAllUserRole, Name = nameof(GetAllUserRoleAsync))]
     public async Task<IActionResult> GetAllUserRoleAsync()
     {
         return Ok(await _roleService.GetAllByRoleType(RoleType.User));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetAllEmployeeRole, Name = nameof(GetAllEmployeeRoleAsync))]
     public async Task<IActionResult> GetAllEmployeeRoleAsync()
     {
         return Ok(await _roleService.GetAllByRoleType(RoleType.Employee));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetAllFeature, Name = nameof(GetAllFeatureAsync))]
     public async Task<IActionResult> GetAllFeatureAsync()
     {
         return Ok(await _featureService.GetAllAsync());
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetAllPermission, Name = nameof(GetAllPermissionAsync))]
     public async Task<IActionResult> GetAllPermissionAsync()
     {
@@ -120,7 +129,7 @@ public class RoleController : ControllerBase
         return Ok(await _rolePerService.GetRolePermissionTableAsync(isRoleVerticalLayout));        
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpPatch(APIRoute.Role.UpdateRolePermission, Name = nameof(UpdateRolePermissionTableAsync))]
     public async Task<IActionResult> UpdateRolePermissionTableAsync([FromBody] UpdateRolePermissionRequest req)
     {
