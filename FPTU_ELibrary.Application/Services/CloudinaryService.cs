@@ -1,0 +1,326 @@
+using System.Net;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
+using FPTU_ELibrary.Application.Dtos.Cloudinary;
+using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
+using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using Serilog;
+using ResourceType = FPTU_ELibrary.Domain.Common.Enums.ResourceType;
+using CloudinaryResourceType = CloudinaryDotNet.Actions.ResourceType;
+
+namespace FPTU_ELibrary.Application.Services;
+
+public class CloudinaryService : ICloudinaryService
+{
+    private readonly Cloudinary _cloudinary;
+    private readonly ILogger _logger;
+    private readonly ISystemMessageService _msgService;
+    private readonly CloudinarySettings _cloudSettings;
+
+    public CloudinaryService(
+        IOptionsMonitor<CloudinarySettings> monitor,
+        ISystemMessageService msgService,
+        Cloudinary cloudinary,
+        ILogger logger)
+    {
+        _cloudSettings = monitor.CurrentValue;
+        _cloudinary = cloudinary;
+        _msgService = msgService;
+        _logger = logger;
+    }
+    
+    public async Task<IServiceResult> UploadAsync(IFormFile file, FileType fileType, ResourceType resourceType)
+    {
+        // Get cloudinary directory by resource type
+        var directory = GetDirectoryFromResourceType(resourceType);
+        // Custom public id, ends with random digits
+        // var uniqueIdWithTimestamp = $"{directory}/{Guid.NewGuid().ToString()}";
+        var uniqueIdWithTimestamp = Guid.NewGuid().ToString();
+
+        try
+        {
+            switch (fileType)
+            {
+                // IMAGE
+                case FileType.Image:
+                    // Validate image 
+                    var imageValidationRes = await new ImageTypeValidator().ValidateAsync(file);
+                    if (!imageValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid image file type", 
+                            imageValidationRes.ToProblemDetails().Errors);
+                    }
+                    
+                    // Initializes image upload params
+                    var imageUploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(uniqueIdWithTimestamp, file.OpenReadStream()),
+                        PublicId = uniqueIdWithTimestamp
+                    };
+                    // Upload image file to cloudinary
+                    var imageResult = await _cloudinary.UploadAsync(imageUploadParams);
+
+                    // Success 
+                    if (imageResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0001,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0001),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = imageResult.SecureUrl.ToString(),
+                                PublicId = imageResult.PublicId,
+                            });
+                    }
+
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0001));
+                // VIDEO
+                case FileType.Video:
+                    // Validate video 
+                    var videoValidationRes = await new VideoTypeValidator().ValidateAsync(file);
+                    if (!videoValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid video file type", 
+                            videoValidationRes.ToProblemDetails().Errors);
+                    }
+                    
+                    // Initializes image upload params
+                    var videoUploadParams = new VideoUploadParams()
+                    {
+                        File = new FileDescription(uniqueIdWithTimestamp, file.OpenReadStream()),
+                        PublicId = uniqueIdWithTimestamp
+                    };
+                    // Upload image file to cloudinary
+                    var videoResult = await _cloudinary.UploadAsync(videoUploadParams);
+
+                    // Success 
+                    if (videoResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0002,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = videoResult.SecureUrl.ToString(),
+                                PublicId = videoResult.PublicId,
+                            });
+                    }
+
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+                default:
+                    return new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+            }
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process upload resource to cloudinary");
+        }
+    }
+
+    public async Task<IServiceResult> UpdateAsync(string publicId, IFormFile file, FileType fileType)
+    {
+        try
+        {
+            switch (fileType)
+            {
+                // IMAGE
+                case FileType.Image:
+                    // Validate image 
+                    var imageValidationRes = await new ImageTypeValidator().ValidateAsync(file);
+                    if (!imageValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid image file type", 
+                            imageValidationRes.ToProblemDetails().Errors);
+                    }
+                    
+                    // Image upload params
+                    var imageUploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(publicId, file.OpenReadStream()),
+                        PublicId = publicId,
+                        // Invalidate = true,
+                        Overwrite = true
+                    };
+                    
+                    var imageResult = await _cloudinary.UploadAsync(imageUploadParams);
+
+                    // Success
+                    if (imageResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0001, 
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0001),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = imageResult.SecureUrl.ToString(),
+                                PublicId = imageResult.PublicId,
+                            });
+                    }
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0001));
+                // VIDEO
+                case FileType.Video:
+                    // Validate video 
+                    var videoValidationRes = await new VideoTypeValidator().ValidateAsync(file);
+                    if (!videoValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid video file type", 
+                            videoValidationRes.ToProblemDetails().Errors);
+                    }
+                    
+                    // Video upload params
+                    var videoUploadParams = new VideoUploadParams()
+                    {
+                        File = new FileDescription(publicId, file.OpenReadStream()),
+                        PublicId = publicId,
+                        // Invalidate = true,
+                        Overwrite = true
+                    };
+                    var videoResult = await _cloudinary.UploadAsync(videoUploadParams);
+
+                    // Success
+                    if (videoResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0002, 
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = videoResult.SecureUrl.ToString(),
+                                PublicId = videoResult.PublicId,
+                            });
+                    }
+                    
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+                default:
+                    return new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+            }
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update resource to cloudinary");
+        }
+    }
+
+    public async Task<IServiceResult> DeleteAsync(string publicId, FileType fileType)
+    {
+        try
+        {
+            // Check exist cloud resource by public id
+            var existResource = await _cloudinary.GetResourceAsync(publicId);
+            if (existResource == null) // Not found
+            {
+                return fileType switch
+                {
+                    // Not found image code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0003, 
+                    // Not found video code
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0004, 
+                    // File type is not valid
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0004)),
+                    _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
+                };
+            }
+        
+            var deleteParams = new DeletionParams(publicId)
+            {
+                Invalidate = true,
+                ResourceType = fileType.Equals(FileType.Image) 
+                    ? CloudinaryResourceType.Image 
+                    : CloudinaryResourceType.Video
+            };
+            
+            var deleteResult = await _cloudinary.DestroyAsync(deleteParams);
+        
+            // Not found
+            if (deleteResult.Result.Contains("not found"))
+            {
+                return fileType switch
+                {
+                    // Not found image code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0003, 
+                        // Not found video code
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0004, 
+                        // File type is not valid
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0004)),
+                    _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
+                };
+            }
+            // Success
+            if (deleteResult.StatusCode == HttpStatusCode.OK)
+            {
+                return fileType switch
+                {
+                    // Not found image code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Success0003, 
+                        // Not found video code
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0003)),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Success0004, 
+                        // File type is not valid
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0004)),
+                    _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
+                };
+            }
+        
+            // Error 
+            return fileType switch
+            {
+                // Not found image code
+                FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Fail0003, 
+                    // Not found video code
+                    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0003)),
+                FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Fail0004, 
+                    // File type is not valid
+                    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0004)),
+                _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process delete resource to cloudinary");
+        }
+    }
+
+    private string? GetDirectoryFromResourceType(ResourceType resourceType)
+    {
+        return resourceType switch
+        {
+            ResourceType.Profile => _cloudSettings.ProfileDirectory,
+            ResourceType.BookAudio => _cloudSettings.BookAudioDirectory,
+            ResourceType.BookImage => _cloudSettings.BookImageDirectory,
+            _ => null
+        };
+    }
+}

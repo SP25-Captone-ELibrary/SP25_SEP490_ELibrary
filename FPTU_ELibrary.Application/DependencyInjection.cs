@@ -28,9 +28,10 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<ISearchService, SearchService>();
 			services.AddScoped<ICacheService, CacheService>();
+			services.AddScoped<ICloudinaryService, CloudinaryService>();
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
-			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			services.AddScoped<IAuthorizationService, AuthorizationService>();
+			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
