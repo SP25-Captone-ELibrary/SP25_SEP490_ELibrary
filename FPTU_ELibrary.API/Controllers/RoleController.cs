@@ -67,6 +67,13 @@ public class RoleController : ControllerBase
     }
     
     // [Authorize]
+    [HttpPost(APIRoute.Role.GetById, Name = nameof(GetByIdAsync))]
+    public async Task<IActionResult> GetByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _roleService.GetByIdAsync(id));
+    }
+    
+    // [Authorize]
     [HttpPut(APIRoute.Role.UpdateRole, Name = nameof(UpdateRoleAsync))]
     public async Task<IActionResult> UpdateRoleAsync([FromRoute] int id, [FromBody] UpdateRoleRequest req)
     {

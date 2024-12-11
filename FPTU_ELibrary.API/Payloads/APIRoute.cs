@@ -126,6 +126,7 @@
 			//	[GET]
 			public const string GetAllRoleType = Base + "/roles/types";
 			public const string GetAllRole = Base + "/roles";
+			public const string GetById = Base + "/roles/{id}";
 			public const string GetAllUserRole = Base + "/roles/users";
 			public const string GetAllEmployeeRole = Base + "/roles/employees";
 			public const string GetAllPermission = Base + "/roles/permissions";
