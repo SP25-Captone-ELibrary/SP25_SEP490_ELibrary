@@ -176,7 +176,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     employee_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     employee_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    hire_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     role_id = table.Column<int>(type: "int", nullable: false),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -383,14 +383,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     message = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     is_public = table.Column<bool>(type: "bit", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    notification_type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
                     table.ForeignKey(
-                        name: "FK_Notification_CreatedBy",
-                        column: x => x.created_by,
+                        name: "FK_Notification_Employee_EmployeeId",
+                        column: x => x.EmployeeId,
                         principalTable: "Employee",
                         principalColumn: "employee_id");
                 });
@@ -1089,9 +1091,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "floor_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Notification_created_by",
+                name: "IX_Notification_EmployeeId",
                 table: "Notification",
-                column: "created_by");
+                column: "EmployeeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notification_Recipient_notification_id",

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241209040911_Initial Database")]
+    [Migration("20241212070007_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -776,7 +776,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("gender");
 
-                    b.Property<DateTime>("HireDate")
+                    b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime")
                         .HasColumnName("hire_date");
 
@@ -1282,9 +1282,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
 
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("bit")
@@ -1295,6 +1299,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("message");
 
+                    b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("notification_type");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -1304,7 +1313,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasKey("NotificationId")
                         .HasName("PK_Notification_NotificationId");
 
-                    b.HasIndex("CreatedBy");
+                    b.HasIndex("EmployeeId");
 
                     b.ToTable("Notification", (string)null);
                 });
@@ -2132,13 +2141,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Notification", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreatedByNavigation")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", null)
                         .WithMany("Notifications")
-                        .HasForeignKey("CreatedBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_Notification_CreatedBy");
-
-                    b.Navigation("CreatedByNavigation");
+                        .HasForeignKey("EmployeeId");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.NotificationRecipient", b =>

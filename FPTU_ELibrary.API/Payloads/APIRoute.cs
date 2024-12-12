@@ -55,20 +55,22 @@
 			// [GET]
 			public const string GetAll = Base + "/users";
 			public const string Search = Base + "/users/q";
-			// [POST]
-			public const string Create = Base + "/admin";
 
+			public const string GetById = Base + "/profile/{id}";
+			// [POST]
+			public const string Create = Base + "/users";
+			public const string CreateManyWithSendEmail = Base + "/users/create-many-with-send-mails";
 			public const string CreateMany = Base + "/createMany";
 			// public const string CreateMany = Base + "/admin/createMany";
 			// [PATCH]
 			//users update their own account
-			public const string Update = Base + "/users/{id}";
+			public const string Update = Base + "/profile/{id}";
 			//admin update role from general user(GU) to Student or Teacher role
-			public const string UpdateRole = Base + "/admin/{id}/role";
+			public const string UpdateRole = Base + "/users/{id}/role";
 			//[Put]
-			public const string ChangeAccountStatus = Base + "/admin/{id}/status";
+			public const string ChangeAccountStatus = Base + "/users/{id}/status";
 			//[Delete]
-			public const string HardDelete = Base + "/admin/{id}";
+			public const string HardDelete = Base + "/users/{id}";
 		}
 
 		/// <summary>
@@ -152,6 +154,27 @@
 			//	[GET]
 			public const string BaseUrl = Base;
 			public const string Check = Base + "/health-check";
+		}
+
+		/// <summary>
+		/// Role management endpoints
+		/// </summary>
+		public static class Notification
+		{
+			//Create
+			public const string Create = "/notifications";
+			//Get	
+			public const string GetTypes = "/notifications/types";
+			public const string GetNotificationByAdmin = "/notifications";
+			//private noti
+			public const string GetNotificationNotByAdmin = "/privacy/{userId}/notifivations";
+
+			public const string GetNumberOfUnreadNotifications = "/privacy/unread-noti";//filter unread notification
+			//Put
+			public const string UpdateReadStatus = "/privacy/notifications";
+			//Delete
+			public const string DeleteNotification = "/notifications/{notiId}";
+
 		}
 	}
 }

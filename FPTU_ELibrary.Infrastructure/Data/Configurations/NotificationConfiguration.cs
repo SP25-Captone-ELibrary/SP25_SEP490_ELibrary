@@ -22,11 +22,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Title)
                 .HasMaxLength(255)
                 .HasColumnName("title");
-
-            builder.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Notifications)
-                .HasForeignKey(d => d.CreatedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Notification_CreatedBy");
+            builder.Property(e => e.NotificationType).HasColumnName("notification_type");
         }
     }
 }

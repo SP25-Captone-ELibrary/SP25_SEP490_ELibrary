@@ -21,6 +21,8 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<SystemMessage, SystemMessageDto>();
 			config.NewConfig<SystemFeature, SystemFeatureDto>();
 			config.NewConfig<SystemPermission, SystemPermissionDto>();
+			config.NewConfig<Notification, NotificationDto>();
+			config.NewConfig<NotificationRecipient, NotificationRecipientDto>();
 			
 			// From [Dto] to [Entity]
 			config.NewConfig<UserDto, User>()

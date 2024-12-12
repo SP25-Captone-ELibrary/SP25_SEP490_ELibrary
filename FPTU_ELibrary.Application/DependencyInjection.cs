@@ -14,6 +14,8 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using OfficeOpenXml;
 
 namespace FPTU_ELibrary.Application
@@ -41,19 +43,21 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
 			services.AddScoped<IUserService<UserDto>, UserService>();
 			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
-			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
-			services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
-			services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
-			services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();	
-			
-			services
-				.ConfigureMapster() // Add mapster
+			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
+			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
+            services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
+            services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
+            services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
+
+            services
+                .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary
 				.ConfigureElastic(configuration); // Add elastic
             
 			//Add License for Excel handler
 			ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-			
+			// Add Hub provider
+			services.AddSingleton<IUserIdProvider, UserHubProvider>();
 			return services;
         }
 

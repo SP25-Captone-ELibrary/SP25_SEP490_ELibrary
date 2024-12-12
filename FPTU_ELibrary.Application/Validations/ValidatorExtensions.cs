@@ -20,6 +20,9 @@ namespace FPTU_ELibrary.Application.Validations
 			{ typeof(SystemRoleDto), new SystemRoleDtoValidator() },
 			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
 			{ typeof(AuthenticateUserDto), new AuthenticatedUserDtoValidator() },
+			{typeof(NotificationDto), new NotificationDtoValidator()},
+			{typeof(NotificationRecipientDto), new NotificationRecipientDtoValidator()}
+			
 			// Add other Validator pairs here.
 		};
 

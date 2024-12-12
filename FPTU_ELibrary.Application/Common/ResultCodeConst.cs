@@ -251,6 +251,26 @@ namespace FPTU_ELibrary.Application.Common
 
 		#endregion
 
+		#region User
+		/// <summary>
+		/// [Warning] Require User code is missing  
+		/// </summary>
+		public static string User_Warning0001 = "User.Warning0001";
+		/// <summary>
+		/// [Warning] Invalid role has been chosen  
+		/// </summary>
+		public static string User_Warning0002 = "User.Warning0002";
+
+		#endregion
+		#region Notification
+
+		/// <summary>
+		/// There is no important message 
+		/// </summary>
+		public static string Notification_Warning0001 = "Notification.Warning0001";
+
+		#endregion
+
 		#endregion
 	}
 }

@@ -5,6 +5,7 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Reflection;
+using Microsoft.VisualBasic.CompilerServices;
 using Serilog;
 
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
@@ -80,6 +81,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
             try
             {
+	            if (!await _context.Users.AnyAsync()) await SeedUsereAsync();
 				// [System Roles]
 				if (!await _context.SystemRoles.AnyAsync()) await SeedSystemRoleAsync();
 				else _logger.Information("Already seed data for table {0}", "System_Role");
@@ -114,7 +116,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
             }
         }
 
-		//  Summary:
+        //  Summary:
 		//      Seeding System role
 		private async Task SeedSystemRoleAsync()
 		{
@@ -190,6 +192,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
 			if (saveSucc) _logger.Information("Seed system role successfully.");
+		}
+		//  Summary:
+		//      Seeding User 
+		private async Task SeedUsereAsync()
+		{
+			// // Initialize user
+			// List<User> users = new List<User>()
+			// {
+			// 	new User()
+			// 	{
+			// 		Email = "admin@gmail.com",
+			// 		PasswordHash = ByteC
+			// 	},
+			// };
 		}
 
 		//	Summary:
