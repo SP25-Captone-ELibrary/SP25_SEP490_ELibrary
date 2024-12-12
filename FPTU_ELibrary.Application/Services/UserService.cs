@@ -325,6 +325,7 @@ namespace FPTU_ELibrary.Application.Services
 
                 //ResultCode of created account
                 newUser.IsActive = true;
+                newUser.IsDeleted = false;
 
                 //Create password and send email
                 var password = Utils.HashUtils.GenerateRandomPassword();
@@ -710,7 +711,8 @@ namespace FPTU_ELibrary.Application.Services
                                         FirstName = user.FirstName,
                                         LastName = user.LastName,
                                         CreateDate = DateTime.Now,
-                                        RoleId = role.RoleId
+                                        RoleId = role.RoleId,
+                                        IsDeleted = false
                                     };
 
                                     await genericService.CreateAsync(newUser);

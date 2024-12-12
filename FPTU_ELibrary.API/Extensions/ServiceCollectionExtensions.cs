@@ -130,7 +130,13 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
-		
+
+		public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
+		{
+			services.AddSignalR();
+			return services;
+		}
+
 		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, 
 			IConfiguration configuration)
 		{

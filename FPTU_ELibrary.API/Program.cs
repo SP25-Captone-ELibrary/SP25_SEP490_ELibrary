@@ -48,8 +48,9 @@ builder.Services
     // Add swagger
     .AddSwagger()
     // Add authentication
-    .AddAuthentication(builder.Configuration);
-builder.Services.AddSignalR();
+    .AddAuthentication(builder.Configuration)
+    // Add signalR
+    .AddSignalR();
 var app = builder.Build();
 
 // app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
@@ -85,4 +86,4 @@ app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 // app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
 app.UseEndpoints(ep => ep.MapHub<NotificationHub>("/notificationHub"));
- app.Run();
+app.Run();
