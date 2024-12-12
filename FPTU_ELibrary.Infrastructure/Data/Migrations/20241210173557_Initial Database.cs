@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -381,14 +381,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     message = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     is_public = table.Column<bool>(type: "bit", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    notification_type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
                     table.ForeignKey(
-                        name: "FK_Notification_CreatedBy",
-                        column: x => x.created_by,
+                        name: "FK_Notification_Employee_EmployeeId",
+                        column: x => x.EmployeeId,
                         principalTable: "Employee",
                         principalColumn: "employee_id");
                 });
@@ -1087,9 +1089,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "floor_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Notification_created_by",
+                name: "IX_Notification_EmployeeId",
                 table: "Notification",
-                column: "created_by");
+                column: "EmployeeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notification_Recipient_notification_id",

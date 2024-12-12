@@ -2,7 +2,9 @@ using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Middlewares;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application;
+using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Infrastructure;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +47,7 @@ builder.Services
     .AddSwagger()
     // Add authentication
     .AddAuthentication(builder.Configuration);
-
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 // app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
@@ -65,7 +67,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
-app.UseCors("Cors");
+app.UseCors(policy =>
+{
+    policy.AllowAnyOrigin() // Cho phép mọi origin trong môi trường phát triển
+        .AllowAnyMethod()
+        .AllowAnyHeader();
+});
 app.UseAuthentication();
 app.UseAuthorization(); 
 
@@ -74,6 +81,6 @@ app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middlewa
 app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 // app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
-
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
-app.Run();
+app.UseEndpoints(ep => ep.MapHub<NotificationHub>("/notificationHub"));
+ app.Run();

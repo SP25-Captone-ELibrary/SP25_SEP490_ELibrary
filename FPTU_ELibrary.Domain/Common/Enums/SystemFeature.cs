@@ -22,4 +22,5 @@ public enum SystemFeature
     SystemConfigurationManagement,
     [Description("system-health")]
     SystemHealthManagement
+    
 }
