@@ -8,5 +8,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         where TDto : class
     {
         Task<IServiceResult> GetByNameAsync(Role role);
+        Task<IServiceResult> GetAllByRoleType(RoleType roleType);
     }
 }

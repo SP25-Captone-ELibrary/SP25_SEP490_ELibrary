@@ -12,6 +12,8 @@ using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using OfficeOpenXml;
@@ -28,9 +30,10 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<ISearchService, SearchService>();
 			services.AddScoped<ICacheService, CacheService>();
+			services.AddScoped<ICloudinaryService, CloudinaryService>();
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
-			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			services.AddScoped<IAuthorizationService, AuthorizationService>();
+			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
@@ -38,17 +41,20 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IBookService<BookDto>, BookService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
-			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
 			services.AddScoped<IUserService<UserDto>, UserService>();
 			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
-			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();	
-			
-			services
-				.ConfigureMapster() // Add mapster
+			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
+            services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
+            services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
+            services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
+
+            services
+                .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary
 				.ConfigureElastic(configuration); // Add elastic
-            //Add License for Excel handler
+            
+			//Add License for Excel handler
 			ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 			// Add Hub provider
 			services.AddSingleton<IUserIdProvider, UserHubProvider>();

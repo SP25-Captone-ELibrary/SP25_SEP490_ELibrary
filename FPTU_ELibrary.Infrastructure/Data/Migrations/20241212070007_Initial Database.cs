@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -176,7 +176,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     employee_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     employee_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    hire_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    hire_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     termination_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     role_id = table.Column<int>(type: "int", nullable: false),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -189,6 +189,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     modified_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
@@ -260,6 +261,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     gender = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),

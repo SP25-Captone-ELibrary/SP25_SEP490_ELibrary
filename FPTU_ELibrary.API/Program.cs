@@ -33,6 +33,8 @@ builder.Services
     .ConfigureAppSettings(builder.Configuration, builder.Environment)
     // Configure Redis
     .ConfigureRedis(builder.Configuration, builder.Environment)
+    // Configure Cloudinary
+    .ConfigureCloudinary(builder.Configuration)
     // Configure healthcheck 
     .ConfigureHealthCheckServices(builder.Configuration);
 

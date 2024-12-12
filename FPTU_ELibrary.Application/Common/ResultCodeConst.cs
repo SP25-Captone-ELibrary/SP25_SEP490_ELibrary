@@ -35,6 +35,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [SUCCESS] Create new <0> successfully
 		/// </summary> 
 		public static string SYS_Success0006 = "SYS.Success0006";
+		/// <summary>
+		/// [SUCCESS] Deleted data to trash
+		/// </summary> 
+		public static string SYS_Success0007 = "SYS.Success0007";
 		
 		/// <summary>
 		/// [FAIL] Create fail
@@ -60,6 +64,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to create new <0>
 		/// </summary>
 		public static string SYS_Fail0006 = "SYS.Fail0006";
+		/// <summary>
+		/// [FAIL] Cannot delete because it is bound to other data
+		/// </summary>
+		public static string SYS_Fail0007 = "SYS.Fail0007";
+		/// <summary>
+        /// [FAIL] Fail to import data
+        /// </summary>
+        public static string SYS_Fail0008 = "SYS.Fail0008";
 		
 		/// <summary>
 		/// [WARNING] Invalid inputs
@@ -85,7 +97,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Unknown error
 		/// </summary>
 		public static string SYS_Warning0006 = "SYS.Warning0006";
-		
+		/// <summary>
+		/// [WARNING] Cannot delete {0} as it is in use
+		/// </summary>
+		public static string SYS_Warning0007 = "SYS.Warning0007";
 		#endregion
 
 		#region Auth
@@ -166,6 +181,74 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to send OTP 
 		/// </summary>
 		public static string Auth_Fail0002 = "Auth.Fail0002";
+		#endregion
+
+		#region Role
+		/// <summary>
+		/// [WARNING] Role name already exist, please check again
+		/// </summary>
+		public const string Role_Warning0001 = "Role.Warning0001";
+		/// <summary>
+		/// [WARNING] Cannot update as role is invalid
+		/// </summary>
+		public const string Role_Warning0002 = "Role.Warning0002";
+		#endregion
+
+		#region File
+		/// <summary>
+		/// The uploaded file is not supported
+		/// </summary>
+		public const string File_Warning0001 = "File.Warning0001";
+
+		/// <summary>
+		/// TFile not found
+		/// </summary>
+		public const string File_Warning0002 = "File.Warning0002";
+		
+		#endregion
+
+		#region Cloud
+		/// <summary>
+		/// [SUCCESS] Upload image successfully
+		/// </summary>
+		public const string Cloud_Success0001 = "Cloud.Success0001";
+		/// <summary>
+		/// [SUCCESS] Upload video successfully
+		/// </summary>
+		public const string Cloud_Success0002 = "Cloud.Success0002";
+		/// <summary>
+		/// [SUCCESS] Delete image successfully
+		/// </summary>
+		public const string Cloud_Success0003 = "Cloud.Success0003";
+		/// <summary>
+		/// [SUCCESS] Delete video successfully
+		/// </summary>
+		public const string Cloud_Success0004 = "Cloud.Success0004";
+		/// <summary>
+		/// [WARNING] Not found image resource
+		/// </summary>
+		public const string Cloud_Warning0003 = "Cloud.Warning0003";
+		/// <summary>
+		/// [WARNING] Not found video resource
+		/// </summary>
+		public const string Cloud_Warning0004 = "Cloud.Warning0004";
+		/// <summary>
+        /// [FAIL] Fail to upload image
+        /// </summary>
+        public const string Cloud_Fail0001 = "Cloud.Fail0001";
+        /// <summary>
+        /// [FAIL] Fail to upload video
+        /// </summary>
+        public const string Cloud_Fail0002 = "Cloud.Fail0002";
+        /// <summary>
+        /// [FAIL] Fail to remove image
+        /// </summary>
+        public const string Cloud_Fail0003 = "Cloud.Fail0003";
+         /// <summary>
+        /// [FAIL] Fail to remove video
+        /// </summary>
+        public const string Cloud_Fail0004 = "Cloud.Fail0004";
+
 		#endregion
 
 		#region User

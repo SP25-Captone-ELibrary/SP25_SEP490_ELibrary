@@ -3,9 +3,11 @@ using System.Drawing;
 using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -117,29 +119,127 @@ namespace FPTU_ELibrary.Application.Services
                     return serviceResult;
                 }
 
-                // Mark as update success
-                serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
-                serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
-                serviceResult.Data = true;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.Message);
-                throw new Exception("Error invoke while update user");
-            }
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke while update user");
+			}
 
-            return serviceResult;
-        }
+			return serviceResult;
+		}
 
-        public async Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password)
-        {
-            try
-            {
-                // Query specification
-                var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
-                // Include job role
-                baseSpec.ApplyInclude(q =>
-                    q.Include(u => u.Role));
+		public async Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				if (existingEntity == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), false);
+				}
+
+				// Update email verification code
+				existingEntity.EmailVerificationCode = code;
+				
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke while confirm email verification code");
+			}
+
+			return serviceResult;
+		}
+		
+		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid userId)
+		{
+			try
+			{
+				// Get user by id
+				var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				// Get role by id 
+				var getRoleResult = await _roleService.GetByIdAsync(roleId);
+				if (user != null 
+				    && getRoleResult.Data is SystemRoleDto role)
+				{
+					// Check is valid role type 
+					if (role.RoleType != RoleType.User.ToString())
+					{
+						return new ServiceResult(ResultCodeConst.Role_Warning0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.Role_Warning0002));
+					}
+					
+					// Progress update user role 
+					user.RoleId = role.RoleId;
+					
+					// Save to DB
+					var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+					if (isSaved) // Save success
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+					}
+					
+					// Fail to update
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				}
+
+				var errMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002); 
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMSg, "role or user"));
+			}catch(Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update user role");	
+			}
+		}
+		
+		public async Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password)
+		{
+			try
+			{
+				// Query specification
+				var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
+				// Include job role
+				baseSpec.ApplyInclude(q => 
+					q.Include(u => u.Role));
 
                 // Get user by query specification
                 var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);

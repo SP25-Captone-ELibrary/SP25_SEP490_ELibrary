@@ -21,6 +21,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
             // Apply criteria
             if (spec.Criteria != null!) query = query.Where(spec.Criteria);
 
+            // Apply additional filters
+            if (spec.Filters != null! && spec.Filters.Any())
+            {
+                foreach (var filter in spec.Filters)
+                {
+                    query = query.Where(filter);
+                }
+            }
+            
             // Apply grouping
             if (spec.GroupBy != null!) query = query.GroupBy(spec.GroupBy).SelectMany(x => x);
 

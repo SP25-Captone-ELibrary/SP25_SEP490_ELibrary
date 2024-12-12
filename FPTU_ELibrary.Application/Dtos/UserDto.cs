@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Domain.Entities;
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Roles;
 
 namespace FPTU_ELibrary.Application.Dtos
 {
@@ -23,6 +24,7 @@ namespace FPTU_ELibrary.Application.Dtos
 
 		// Mark as active user or not 
 		public bool IsActive { get; set; }
+		public bool IsDeleted { get; set; }
 		
 		// Creation datetime
 		public DateTime CreateDate { get; set; }
@@ -87,6 +89,7 @@ namespace FPTU_ELibrary.Application.Dtos
 				PhoneVerificationCode = userDto.PhoneVerificationCode,
 				PhoneVerificationExpiry = userDto.PhoneVerificationExpiry,
 				IsActive = userDto.IsActive,
+				IsDeleted = userDto.IsDeleted,
 				IsEmployee = false
 			};
 		}

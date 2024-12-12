@@ -1,4 +1,7 @@
 ﻿
+using System.Text;
+using System.Text.RegularExpressions;
+
 namespace FPTU_ELibrary.Application.Utils
 {
 	// Summary:
@@ -8,7 +11,7 @@ namespace FPTU_ELibrary.Application.Utils
 		private static readonly Random _rnd = new Random();
 
 		// Generate unique code with specific length
-		public static string GenerateCode(int length = 6)
+		public static string GenerateUniqueCode(int length = 6)
 		{
 			const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 			return new string(Enumerable.Repeat(chars, length)
@@ -16,8 +19,32 @@ namespace FPTU_ELibrary.Application.Utils
 										.ToArray());
 		}
 
+		// Generate unique code based on current timestamp
+		public static string GenerateUniqueCodeWithTimestamp(int length = 6)
+		{
+			if (length <= 0) return null!;
+			
+			// Get the current timestamp
+			string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
+
+			// Generate a random string 
+			const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+			Random random = new Random();
+			StringBuilder randomString = new StringBuilder();
+
+			for (int i = 0; i < length; i++)
+			{
+				randomString.Append(chars[random.Next(chars.Length)]);
+			}
+
+			// Combine timestamp and random string
+			string combinedCode = timestamp + randomString;
+			// Substring to specific length 
+			return combinedCode.Substring(0, Math.Min(length, combinedCode.Length));
+		}
+		
 		// Generates a unique token using the current UTC timestamp and a secure GUID.
-		public static string GenerateTokenWithTimeStamp()
+		public static string GenerateTokenWithTimestamp()
 		{
 			try
 			{
@@ -84,6 +111,31 @@ namespace FPTU_ELibrary.Application.Utils
 			}
 
 			return input;
+		}
+		
+		// Add white space to string
+		public static string AddWhitespaceToString(string input)
+		{
+			if (string.IsNullOrEmpty(input))
+				return input;
+
+			// Use a regex to identify boundaries between lowercase and uppercase letters
+			string result = Regex.Replace(input, "([a-z])([A-Z])", "$1 $2");
+
+			return result;
+		}
+		
+		// Remove word and add white space to string
+		public static string RemoveWordAndAddWhitespace(string input, string wordToRemove)
+		{
+			if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(wordToRemove))
+				return input;
+
+			// Remove the specified word
+			string withoutWord = Regex.Replace(input, wordToRemove, "", RegexOptions.IgnoreCase);
+
+			// Add whitespace to the remaining string
+			return AddWhitespaceToString(withoutWord);
 		}
 	}
 }

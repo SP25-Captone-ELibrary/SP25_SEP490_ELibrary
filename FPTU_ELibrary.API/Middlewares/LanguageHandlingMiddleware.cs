@@ -34,8 +34,8 @@ public class LanguageHandlingMiddleware
     private void SetLanguageContext(HttpContext context)
     {
         // Retrieve and set language context from request headers
-        var language = context.Request.Headers["Accept-Language"].FirstOrDefault() ?? "en";
-        LanguageContext.CurrentLanguage = language;
+        var language = context.Request.Headers["Accept-Language"].FirstOrDefault();
+        LanguageContext.CurrentLanguage = language != null && !language.Split(";").Any() ? language : "en";
         _logger.Information("Language set to: {Language}", language);
     }
 }

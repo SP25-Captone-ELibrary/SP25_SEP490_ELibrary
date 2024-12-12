@@ -13,7 +13,7 @@ namespace FPTU_ELibrary.Domain.Specifications
     //      This class is to handle query with conditions, filter, order, pagination data 
     public class BaseSpecification<TEntity> : ISpecification<TEntity> where TEntity :class
     {
-        // Default constructor
+            // Default constructor
             public BaseSpecification() { }
         
             // Constructor with specific criteria
@@ -23,6 +23,9 @@ namespace FPTU_ELibrary.Domain.Specifications
             // Filtering criteria
             public Expression<Func<TEntity, bool>> Criteria { get; } = null!;
         
+            // Additional filters
+            public List<Expression<Func<TEntity, bool>>> Filters { get; } = new();
+            
             // Include related tables
             public List<Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>>> Includes { get; } = new();
         
@@ -42,6 +45,11 @@ namespace FPTU_ELibrary.Domain.Specifications
             #endregion
         
             #region Add Specification Properties
+            public void AddFilter(Expression<Func<TEntity, bool>> filterExpression)
+            {
+                Filters.Add(filterExpression);
+            }
+            
             public void ApplyInclude(Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> includeExpression)
             {
                 Includes.Add(includeExpression);
@@ -72,6 +80,34 @@ namespace FPTU_ELibrary.Domain.Specifications
             public void EnableSplitQuery()
             {
                 AsSplitQuery = true;
+            }
+            
+            public BaseSpecification<TEntity> And(BaseSpecification<TEntity> other)
+            {
+                if (other == null!) return this;
+
+                var parameter = Expression.Parameter(typeof(TEntity));
+                var combined = Expression.Lambda<Func<TEntity, bool>>(
+                    Expression.AndAlso(
+                        Expression.Invoke(Criteria, parameter),
+                        Expression.Invoke(other.Criteria, parameter)),
+                    parameter);
+
+                return new BaseSpecification<TEntity>(combined);
+            }
+            
+            public BaseSpecification<TEntity> Or(BaseSpecification<TEntity> other)
+            {
+                if (other == null!) return this;
+
+                var parameter = Expression.Parameter(typeof(TEntity));
+                var combined = Expression.Lambda<Func<TEntity, bool>>(
+                    Expression.OrElse(
+                        Expression.Invoke(Criteria, parameter),
+                        Expression.Invoke(other.Criteria, parameter)),
+                    parameter);
+
+                return new BaseSpecification<TEntity>(combined);
             }
             #endregion
     }

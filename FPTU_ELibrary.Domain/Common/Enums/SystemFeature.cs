@@ -12,9 +12,9 @@ public enum SystemFeature
     RoleManagement,
     [Description("fines")]
     FineManagement,
-    [Description("books")] // Combine with authors, categories
+    [Description("/management/books")] // Combine with authors, categories
     BookManagement,
-    [Description("borrows")] // Combine with returns
+    [Description("/management/borrows")] // Combine with returns
     BorrowManagement,
     [Description("transactions")]
     TransactionManagement,

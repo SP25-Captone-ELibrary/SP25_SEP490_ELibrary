@@ -559,14 +559,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		//		Seeding Employee
 		private async Task SeedEmployeeAsync()
 		{
-			// Get librian job role
-			var librianJobRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
+			// Get librarian job role
+			var librarianJobRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
 				x.EnglishName == Role.Librarian.ToString());
 
 			// Check for role existence
-			if(librianJobRole == null)
+			if(librarianJobRole == null)
 			{
-				_logger.Error("Not found any librian role to seed Employee");
+				_logger.Error("Not found any librarian role to seed Employee");
 				return;
 			}
 
@@ -577,7 +577,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EmployeeCode = "EM270925",
 					Email = "librian@gmail.com",
-					PasswordHash = "$2y$10$b53oQweICAgJnyIKawNmV.x7LKLdsWSd5/ZuSy8l4Za6jt1rnHJrS",//
+					PasswordHash = string.Empty,
 					FirstName = "Nguyen Van",
 					LastName = "A",
 					Dob = new DateTime(1995, 02, 10),
@@ -589,9 +589,32 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					TwoFactorEnabled = false,
 					PhoneNumberConfirmed = false,
 					EmailConfirmed = false,
-					RoleId = librianJobRole.RoleId
+					RoleId = librarianJobRole.RoleId
 				}
 			};
+			
+			for (int i = 1; i <= 10; i++)
+            {
+                employees.Add(new Employee
+                {
+                    EmployeeCode = $"EM27092{i}",
+                    Email = $"employee{i}@gmail.com",
+                    PasswordHash = string.Empty,
+                    FirstName = $"First{i}",
+                    LastName = $"Last{i}",
+                    Dob = new DateTime(1990 + i, 01, i + 1),
+                    Phone = $"07771557{i:00}",
+                    Gender = i % 2 == 0 ? Gender.Male.ToString() : Gender.Female.ToString(), 
+                    HireDate = DateTime.UtcNow.AddDays(-i * 10),
+                    IsActive = false,
+                    CreateDate = DateTime.UtcNow,
+                    TwoFactorEnabled = false,
+                    PhoneNumberConfirmed = false,
+                    EmailConfirmed = false,
+                    RoleId = librarianJobRole.RoleId
+                });
+            }
+
 
 			// Add Range
 			await _context.Employees.AddRangeAsync(employees);

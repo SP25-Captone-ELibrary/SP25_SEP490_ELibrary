@@ -9,8 +9,10 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> SignInAsync(string email);
         Task<IServiceResult> SignInWithPasswordAsync(TDto user);
         Task<IServiceResult> SignInWithOtpAsync(string otp, TDto user);
-        Task<IServiceResult> SignInAsEmployeeAsync(TDto user);
+        Task<IServiceResult> SignInAsEmployeeAsync(string email);
+        Task<IServiceResult> SignInAsAdminAsync(string email);
         Task<IServiceResult> SignInWithGoogleAsync(string code);
+        Task<IServiceResult> SignInWithPasswordAsEmployeeAsync(TDto user);
         Task<IServiceResult> SignInWithFacebookAsync(string accessToken, int expiresIn);
         Task<IServiceResult> SignUpAsync(TDto user);
         Task<IServiceResult> ConfirmEmailForSignUpAsync(string email, string emailVerificationCode);

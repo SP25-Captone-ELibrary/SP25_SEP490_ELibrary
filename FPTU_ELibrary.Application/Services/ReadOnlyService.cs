@@ -103,7 +103,7 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
-		public async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
+		public virtual async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
 		{
 			try
 			{
@@ -149,7 +149,7 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-		public async Task<IServiceResult> CountAsync(ISpecification<TEntity> specification)
+		public virtual async Task<IServiceResult> CountAsync(ISpecification<TEntity> specification)
 		{
 			try
 			{
@@ -163,5 +163,20 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke when progress count data");
 			}
 		}
-	}
+
+		public async Task<IServiceResult> CountAsync()
+		{
+			try
+			{
+				var totalEntity = await _unitOfWork.Repository<TEntity, TKey>().CountAsync();
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), totalEntity);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress count data");
+			}
+		}
+    }
 }

@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241210173557_Initial Database")]
+    [Migration("20241212070007_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -776,7 +776,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("gender");
 
-                    b.Property<DateTime>("HireDate")
+                    b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime")
                         .HasColumnName("hire_date");
 
@@ -785,6 +785,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1693,6 +1699,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()
