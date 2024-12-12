@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using CloudinaryDotNet;
 using FluentValidation;
 using FPTU_ELibrary.Application.HealthChecks;
 using Mapster;
@@ -64,7 +65,9 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
 			// Configure FacebookAuthSettings
 			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-			
+			// Configure CloudinarySettings
+			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
+				
 			#region Development stage
 			if (env.IsDevelopment()) // Is Development env
 			{
@@ -114,8 +117,22 @@ namespace FPTU_ELibrary.API.Extensions
 			
 			return services;
 		}
+
+		public static IServiceCollection ConfigureCloudinary(this IServiceCollection services,
+			IConfiguration configuration)
+		{
+			Cloudinary cloudinary = new Cloudinary(configuration["CloudinarySettings:CloudinaryUrl"]!)
+			{
+				Api = { Secure = true }
+			};
+
+			services.AddSingleton(cloudinary);
+
+			return services;
+		}
 		
-		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, IConfiguration configuration)
+		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, 
+			IConfiguration configuration)
 		{
 			services.AddSingleton<AggregatedHealthCheckService>();
 			services.AddScoped<DbConnection>(sp => 
@@ -131,7 +148,8 @@ namespace FPTU_ELibrary.API.Extensions
 			return services;
 		}
 		
-		public static IServiceCollection AddAuthentication(this IServiceCollection services, IConfiguration configuration)
+		public static IServiceCollection AddAuthentication(this IServiceCollection services, 
+			IConfiguration configuration)
 		{
 			// Define TokenValidationParameters
 			var tokenValidationParameters = new TokenValidationParameters

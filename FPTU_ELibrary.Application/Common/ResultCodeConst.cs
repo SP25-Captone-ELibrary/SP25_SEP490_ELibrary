@@ -185,11 +185,11 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region Role
 		/// <summary>
-		/// Role name already exist, please check again
+		/// [WARNING] Role name already exist, please check again
 		/// </summary>
 		public const string Role_Warning0001 = "Role.Warning0001";
 		/// <summary>
-		/// Cannot update as role is invalid
+		/// [WARNING] Cannot update as role is invalid
 		/// </summary>
 		public const string Role_Warning0002 = "Role.Warning0002";
 		#endregion
@@ -205,6 +205,50 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string File_Warning0002 = "File.Warning0002";
 		
+		#endregion
+
+		#region Cloud
+		/// <summary>
+		/// [SUCCESS] Upload image successfully
+		/// </summary>
+		public const string Cloud_Success0001 = "Cloud.Success0001";
+		/// <summary>
+		/// [SUCCESS] Upload video successfully
+		/// </summary>
+		public const string Cloud_Success0002 = "Cloud.Success0002";
+		/// <summary>
+		/// [SUCCESS] Delete image successfully
+		/// </summary>
+		public const string Cloud_Success0003 = "Cloud.Success0003";
+		/// <summary>
+		/// [SUCCESS] Delete video successfully
+		/// </summary>
+		public const string Cloud_Success0004 = "Cloud.Success0004";
+		/// <summary>
+		/// [WARNING] Not found image resource
+		/// </summary>
+		public const string Cloud_Warning0003 = "Cloud.Warning0003";
+		/// <summary>
+		/// [WARNING] Not found video resource
+		/// </summary>
+		public const string Cloud_Warning0004 = "Cloud.Warning0004";
+		/// <summary>
+        /// [FAIL] Fail to upload image
+        /// </summary>
+        public const string Cloud_Fail0001 = "Cloud.Fail0001";
+        /// <summary>
+        /// [FAIL] Fail to upload video
+        /// </summary>
+        public const string Cloud_Fail0002 = "Cloud.Fail0002";
+        /// <summary>
+        /// [FAIL] Fail to remove image
+        /// </summary>
+        public const string Cloud_Fail0003 = "Cloud.Fail0003";
+         /// <summary>
+        /// [FAIL] Fail to remove video
+        /// </summary>
+        public const string Cloud_Fail0004 = "Cloud.Fail0004";
+
 		#endregion
 
 		#endregion

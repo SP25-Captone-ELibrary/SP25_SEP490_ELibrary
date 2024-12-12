@@ -89,6 +89,24 @@
 			public const string SoftDelete = Base + "/employees/{id}/soft-delete";
 			public const string Delete = Base + "/employees/{id}";
 		}
+
+		/// <summary>
+		/// Resource endpoints
+		/// </summary>
+		public static class Resource
+		{
+			// [GET]
+			public const string GetAllType = "/resources/types";
+			// [POST]
+			public const string UploadImage = Base + "/resources/images/upload";
+			public const string UploadVideo = Base + "/resources/videos/upload";
+			// [PUT]
+			public const string UpdateImage = Base + "/resources/images/update";
+			public const string UpdateVideo = Base + "/resources/videos/update";
+			// [DELETE]
+			public const string DeleteImage = Base + "/resources/images";
+			public const string DeleteVideo = Base + "/resources/videos";
+		}
 		
 		/// <summary>
 		/// SystemMessage endpoints
@@ -101,16 +119,6 @@
 		}
 
 		/// <summary>
-		/// System service healthcheck endpoints
-		/// </summary>
-		public static class HealthCheck
-		{
-			//	[GET]
-			public const string BaseUrl = Base;
-			public const string Check = Base + "/health-check";
-		}
-
-		/// <summary>
 		/// Role management endpoints
 		/// </summary>
 		public static class Role
@@ -118,6 +126,7 @@
 			//	[GET]
 			public const string GetAllRoleType = Base + "/roles/types";
 			public const string GetAllRole = Base + "/roles";
+			public const string GetById = Base + "/roles/{id}";
 			public const string GetAllUserRole = Base + "/roles/users";
 			public const string GetAllEmployeeRole = Base + "/roles/employees";
 			public const string GetAllPermission = Base + "/roles/permissions";
@@ -133,6 +142,16 @@
 			public const string UpdateEmployeeRole = Base + "/roles/employees";
 			//	[DELETE]
 			public const string DeleteRole = Base + "/roles";
+		}
+		
+		/// <summary>
+		/// System service healthcheck endpoints
+		/// </summary>
+		public static class HealthCheck
+		{
+			//	[GET]
+			public const string BaseUrl = Base;
+			public const string Check = Base + "/health-check";
 		}
 	}
 }

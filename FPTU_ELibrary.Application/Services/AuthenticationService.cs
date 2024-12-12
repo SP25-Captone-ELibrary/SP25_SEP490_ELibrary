@@ -324,7 +324,7 @@ namespace FPTU_ELibrary.Application.Services
 				}
 				
 				// Generate confirmation code
-				var otpCode = StringUtils.GenerateCode();
+				var otpCode = StringUtils.GenerateUniqueCode();
 				// Email subject
 				var emailSubject = "ELibrary - Resend confirmation email";
 				// Email content
@@ -441,7 +441,7 @@ namespace FPTU_ELibrary.Application.Services
 				}
 				
 				// Generate confirmation code
-				var otpCode = StringUtils.GenerateCode();
+				var otpCode = StringUtils.GenerateUniqueCode();
 				// Email subject
 				var emailSubject = "ELibrary - recovery password";
 				// Email content
@@ -593,7 +593,7 @@ namespace FPTU_ELibrary.Application.Services
 				if (user != null!) // Create user successfully
 				{
 					// Generate confirmation code
-					var otpCode = StringUtils.GenerateCode();
+					var otpCode = StringUtils.GenerateUniqueCode();
 					// Email subject
 					var emailSubject = "ELibrary - Sign up confirmation email";
 					// Email content
@@ -731,7 +731,7 @@ namespace FPTU_ELibrary.Application.Services
 					{
 						// Progress sending OTP to user's email
 						// Generate confirmation code
-						var otpCode = StringUtils.GenerateCode();
+						var otpCode = StringUtils.GenerateUniqueCode();
 						// Email subject
 						var emailSubject = "ELibrary - Sign in confirmation email";
 						// Email content
@@ -916,7 +916,7 @@ namespace FPTU_ELibrary.Application.Services
 					{
 						// Progress sending OTP to user's email
 						// Generate confirmation code
-						var otpCode = StringUtils.GenerateCode();
+						var otpCode = StringUtils.GenerateUniqueCode();
 						// Email subject
 						var emailSubject = "ELibrary Employee - Sign in confirmation email";
 						// Email content
