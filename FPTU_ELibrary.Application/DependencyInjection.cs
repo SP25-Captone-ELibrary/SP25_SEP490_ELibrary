@@ -44,6 +44,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IUserService<UserDto>, UserService>();
 			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
+			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();	
 			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
@@ -84,7 +85,7 @@ namespace FPTU_ELibrary.Application
 
 			return services;
 		}
-
+		
 		public static IServiceCollection ConfigureElastic(this IServiceCollection services, IConfiguration configuration)
 		{ 
 			var elasticConfiguration = configuration.GetSection("ElasticSettings");
