@@ -835,8 +835,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("termination_date");
 
                     b.Property<string>("TwoFactorBackupCodes")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
+                        .HasMaxLength(350)
+                        .HasColumnType("nvarchar(350)")
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -1745,7 +1745,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("role_id");
 
                     b.Property<string>("TwoFactorBackupCodes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(350)
+                        .HasColumnType("nvarchar(350)")
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")

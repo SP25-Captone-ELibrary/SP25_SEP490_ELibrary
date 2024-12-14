@@ -67,8 +67,8 @@ public class RoleController : ControllerBase
     }
     
     // [Authorize]
-    [HttpPost(APIRoute.Role.GetById, Name = nameof(GetByIdAsync))]
-    public async Task<IActionResult> GetByIdAsync([FromRoute] int id)
+    [HttpPost(APIRoute.Role.GetById, Name = nameof(GetRoleByIdAsync))]
+    public async Task<IActionResult> GetRoleByIdAsync([FromRoute] int id)
     {
         return Ok(await _roleService.GetByIdAsync(id));
     }
@@ -91,14 +91,14 @@ public class RoleController : ControllerBase
     [HttpPatch(APIRoute.Role.UpdateUserRole, Name = nameof(UpdateUserRoleAsync))]
     public async Task<IActionResult> UpdateUserRoleAsync([FromBody] UpdateUserRoleRequest req)
     {
-        return Ok(await _userService.UpdateRoleAsync(req.RoleId, req.UserId));
+        return Ok(await _userService.UpdateRoleAsync(req.UserId, req.RoleId));
     }
     
     [Authorize]
     [HttpPatch(APIRoute.Role.UpdateEmployeeRole, Name = nameof(UpdateEmployeeRoleAsync))]
     public async Task<IActionResult> UpdateEmployeeRoleAsync([FromBody] UpdateEmployeeRoleRequest req)
     {
-        return Ok(await _employeeService.UpdateRoleAsync(req.RoleId, req.EmployeeId));
+        return Ok(await _employeeService.UpdateRoleAsync(req.EmployeeId, req.RoleId));
     }
     
     [Authorize]

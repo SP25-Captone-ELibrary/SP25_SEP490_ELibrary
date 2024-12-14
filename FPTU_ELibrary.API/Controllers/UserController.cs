@@ -4,7 +4,9 @@ using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Validations;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -21,7 +23,6 @@ public class UserController:ControllerBase
 {
     private readonly IUserService<UserDto> _userService;
     
-
     public UserController(IUserService<UserDto> userService)
     {
         _userService = userService;
@@ -32,7 +33,7 @@ public class UserController:ControllerBase
      public async Task<IActionResult> GetAllUserAsync([FromQuery] UserSpecParams req)
      {
          return Ok(await _userService.GetAllWithSpecAsync(new UserSpecification(userSpecParams:req,
-             pageIndex: req.PageIndex??1,pageSize: req.PageSize??5),tracked:false));
+             pageIndex: req.PageIndex ?? 1,pageSize: req.PageSize??5),tracked:false));
      }
     // [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
     //[AllowAnonymous]
@@ -43,10 +44,10 @@ public class UserController:ControllerBase
     //    if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
     //    return Ok(result);
     //}
-    [HttpGet(APIRoute.User.GetById, Name = nameof(GetById))]
-    public async Task<IActionResult> GetById([FromRoute] Guid id)
+    [HttpGet(APIRoute.User.GetById, Name = nameof(GetUserByIdAsync))]
+    public async Task<IActionResult> GetUserByIdAsync([FromRoute] Guid id)
     {
-        return Ok(await _userService.GetById(id));
+        return Ok(await _userService.GetByIdAsync(id));
     }
 
     [HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
@@ -90,6 +91,7 @@ public class UserController:ControllerBase
     // {
     //     return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
     // }
+    
     [HttpPost(APIRoute.User.CreateManyWithSendEmail, Name = nameof(CreateManyAccountByAdminWithSendEmail))]
     [AllowAnonymous]
     public IActionResult CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
@@ -97,6 +99,17 @@ public class UserController:ControllerBase
         // Bắt đầu tác vụ nền
         _ = _userService.CreateManyAccountsWithSendEmail(req.File);
 
-        return Ok("Account creation and email sending process has started");
+        // Retrieve global language
+        var langStr = LanguageContext.CurrentLanguage;
+        var langEnum = EnumExtensions.GetValueFromDescription<SystemLanguage>(langStr);
+
+        // Response
+        return langEnum switch 
+        {
+            // as vi
+            SystemLanguage.Vietnamese => Ok("Đang tiến hành tạo tài khoản và gửi email"),
+            // default as eng
+            _ => Ok("Account creation and email sending process has started")
+        };
     }
 }

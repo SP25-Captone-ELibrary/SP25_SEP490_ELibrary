@@ -51,6 +51,7 @@ builder.Services
     .AddAuthentication(builder.Configuration)
     // Add signalR
     .AddSignalR();
+
 var app = builder.Build();
 
 // app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
@@ -70,20 +71,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
-app.UseCors(policy =>
-{
-    policy.AllowAnyOrigin() // Cho phép mọi origin trong môi trường phát triển
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-});
 app.UseAuthentication();
 app.UseAuthorization(); 
 
-// Custom Middlewares
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware
 app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
-// app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
+
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
-app.UseEndpoints(ep => ep.MapHub<NotificationHub>("/notificationHub"));
+app.MapHub<NotificationHub>("/notificationHub"); // Maps incoming requests with the specified path with specified Hub type
 app.Run();

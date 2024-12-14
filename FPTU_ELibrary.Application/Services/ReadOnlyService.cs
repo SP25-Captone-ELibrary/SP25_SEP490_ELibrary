@@ -148,6 +148,28 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke when progress check total data");
 			}
 		}
+		
+		public virtual async Task<IServiceResult> AnyAsync(ISpecification<TEntity> specification)
+		{
+			try
+			{
+				var hasAny = await _unitOfWork.Repository<TEntity, TKey>().AnyAsync(specification);
+
+				if (!hasAny)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+				}
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress check total data");
+			}
+		}
 
 		public virtual async Task<IServiceResult> CountAsync(ISpecification<TEntity> specification)
 		{

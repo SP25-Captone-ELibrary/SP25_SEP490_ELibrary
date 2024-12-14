@@ -14,17 +14,19 @@
 			public const string CurrentUser = Base + "/auth/current-user";
 			// [POST]
 			public const string SignIn = Base + "/auth/sign-in";
-			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
-			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
 			public const string SignInAsEmployee = Base + "/auth/employee/sign-in";
 			public const string SignInAsAdmin = Base + "/auth/admin/sign-in";
-			public const string SignInWithPasswordAsEmployee = Base + "/auth/employee/sign-in/password-method";
+			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
+			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
 			public const string SignInWithGoogle = Base + "/auth/sign-in-google";
 			public const string SignInWithFacebook = Base + "/auth/sign-in-facebook";
 			public const string SignUp = Base + "/auth/sign-up";
 			public const string RefreshToken = Base + "/auth/refresh-token";
 			public const string ResendOtp = Base + "/auth/resend-otp";
 			public const string ChangePasswordOtpVerification = Base + "/auth/change-password/verify-otp";
+			public const string EnableMfa = Base + "/auth/enable-mfa";
+			public const string ValidateMfa = Base + "/auth/validate-mfa";
+			public const string ValidateBackupCode = Base + "/auth/validate-mfa-backup";
 			// [PATCH]
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 			public const string ChangePassword = Base + "/auth/change-password";

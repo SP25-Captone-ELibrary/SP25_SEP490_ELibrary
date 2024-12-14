@@ -46,6 +46,26 @@ namespace FPTU_ELibrary.Application.Services
             _service = service;
         }
 
+        public override async Task<IServiceResult> GetByIdAsync(Guid id)
+        {
+            //query specification
+            var baseSpec = new BaseSpecification<User>(u => u.UserId.Equals(id));
+            // Include job role
+            baseSpec.ApplyInclude(u => u.Include(u => u.Role));
+            // Get user by query specification
+            var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
+
+            if (existedUser is null)
+            {
+                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errorMsg, "account"));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
+        }
+        
         public override async Task<IServiceResult> CreateAsync(UserDto dto)
         {
             // Initiate service result
@@ -187,7 +207,7 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 		
-		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid userId)
+		public async Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId)
 		{
 			try
 			{
@@ -381,43 +401,6 @@ namespace FPTU_ELibrary.Application.Services
             }
         }
 
-        // public async Task<IServiceResult> SearchAccount(string searchString)
-        // {
-        //     //query specification
-        //     var baseSpec = new BaseSpecification<User>(x => x.UserCode!.Contains(searchString)
-        //                                                     || x.Email.Contains(searchString)
-        //                                                     || x.FirstName!.Contains(searchString)
-        //                                                     || x.LastName!.Contains(searchString)
-        //                                                     || x.Phone!.Contains(searchString)
-        //     );
-        //
-        //     var result = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(baseSpec);
-        //     if (!result.Any())
-        //         return new ServiceResult(ResultCodeConst.WARNING_NO_DATA_CODE, ResultCodeConst.WARNING_NO_DATA_MSG);
-        //
-        //     return new ServiceResult(ResultCodeConst.SUCCESS_READ_CODE, ResultCodeConst.SUCCESS_READ_MSG,
-        //         _mapper.Map<IEnumerable<UserDto>>(result));
-        // }
-        public async Task<IServiceResult> GetById(Guid id)
-        {
-            //query specification
-            var baseSpec = new BaseSpecification<User>(u => u.UserId.Equals(id));
-            // Include job role
-            baseSpec.ApplyInclude(u => u.Include(u => u.Role));
-            // Get user by query specification
-            var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-
-            if (existedUser is null)
-            {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
-        }
-
         public async Task<IServiceResult> ChangeAccountStatus(Guid userId)
         {
             var currentAccount = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
@@ -481,6 +464,78 @@ namespace FPTU_ELibrary.Application.Services
                 _mapper.Map<UserDto>(currentAccount));
         }
 
+        public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
+        {
+            try
+            {
+                // Get user by id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(
+                    new BaseSpecification<User>(u => u.Email == email));
+                if (user == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Progress update MFA key and backup codes
+                user.TwoFactorSecretKey = mfaKey;
+                user.TwoFactorBackupCodes = string.Join(",", backupCodes);
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+        
+        public async Task<IServiceResult> UpdateMfaStatusAsync(Guid userId)
+        {
+            try
+            {
+                // Get user by id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+                if (user == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Change account 2FA status
+                user.TwoFactorEnabled = true;
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+        
         #region Temporary return. Offical return required worker to send many emails at the time.
 
         // public async Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile)
@@ -594,33 +649,7 @@ namespace FPTU_ELibrary.Application.Services
             return new ServiceResult(ResultCodeConst.SYS_Success0004, ResultCodeConst.SYS_Success0004);
         }
 
-        //  #region User Own Sending Email and format function
-
-        private async Task SendUserEmail(UserDto newUser, string rawPassword)
-        {
-            var emailMessageDto = new EmailMessageDto(
-                // Define Recipient
-                to: new List<string>() { newUser.Email },
-                // Define subject
-                // Add email body content
-                subject: "ELibrary - Change password notification",
-                // Add email body content
-                content: $@"
-						<div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-							<h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
-							<p> ELibrary has created account with your email and here is your password:</p>
-							<h1 style='font-weight: bold; color: #2C3E50;'>{rawPassword}</h1>
-							<p> Please login and change the password as soon as posible.</p>
-							<br />
-							<p style='font-size: 16px;'>Thanks,</p>
-						<p style='font-size: 16px;'>The ELibrary Team</p>
-						</div>"
-            );
-            // Send email
-            var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
-        }
-
-
+        #region Background tasks
         public Task CreateManyAccountsWithSendEmail(IFormFile excelFile)
         {
             return Task.Run(async () =>
@@ -721,9 +750,9 @@ namespace FPTU_ELibrary.Application.Services
                                         new List<string> { newUser.Email },
                                         "ELibrary - Change password notification",
                                         $@"
-                            <h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
-                            <p>Your account has been created. Your password is:</p>
-                            <h1>{password}</h1>");
+                                        <h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
+                                        <p>Your account has been created. Your password is:</p>
+                                        <h1>{password}</h1>");
 
                                     emailToSend.Add(emailMessageDto);
                                 }
@@ -750,5 +779,30 @@ namespace FPTU_ELibrary.Application.Services
                 }
             });
         }
+        
+        private async Task SendUserEmail(UserDto newUser, string rawPassword)
+        {
+            var emailMessageDto = new EmailMessageDto(
+                // Define Recipient
+                to: new List<string>() { newUser.Email },
+                // Define subject
+                // Add email body content
+                subject: "ELibrary - Change password notification",
+                // Add email body content
+                content: $@"
+						<div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+							<h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
+							<p> ELibrary has created account with your email and here is your password:</p>
+							<h1 style='font-weight: bold; color: #2C3E50;'>{rawPassword}</h1>
+							<p> Please login and change the password as soon as posible.</p>
+							<br />
+							<p style='font-size: 16px;'>Thanks,</p>
+						<p style='font-size: 16px;'>The ELibrary Team</p>
+						</div>"
+            );
+            // Send email
+            var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
+        }
+        #endregion
     }
 }

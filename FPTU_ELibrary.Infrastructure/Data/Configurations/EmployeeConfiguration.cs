@@ -74,7 +74,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("datetime")
                 .HasColumnName("termination_date");
             builder.Property(e => e.TwoFactorBackupCodes)
-                .HasMaxLength(255)
+                .HasMaxLength(350)
                 .HasColumnName("two_factor_backup_codes");
             builder.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
             builder.Property(e => e.TwoFactorSecretKey)

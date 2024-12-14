@@ -7,8 +7,8 @@ public class CreateNotificationRequest
     public string Title { get; set; } = null!;
     public string Message { get; set; } = null!;
     public bool IsPublic { get; set; }
-    public string CreateBy { get; set; }
-    public string NotificationType { get; set; }
+    public string CreateBy { get; set; } = null!;
+    public string NotificationType { get; set; } = null!;
     public List<string>? ListRecipient { get; set; }
 }
 

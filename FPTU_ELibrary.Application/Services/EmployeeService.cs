@@ -308,7 +308,7 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
-		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid employeeId)
+		public async Task<IServiceResult> UpdateRoleAsync(Guid employeeId, int roleId)
 		{
 			try
 			{
@@ -612,7 +612,79 @@ namespace FPTU_ELibrary.Application.Services
 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<EmployeeDto?>(employee));
 		}
+		
+		public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
+        {
+            try
+            {
+                // Get employee by id 
+                var employee = await _unitOfWork.Repository<Employee, Guid>().GetWithSpecAsync(
+	                new BaseSpecification<Employee>(e => e.Email == email));
+                if (employee == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Progress update MFA key and backup codes
+                employee.TwoFactorSecretKey = mfaKey;
+                employee.TwoFactorBackupCodes = string.Join(",", backupCodes);
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
 
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+		
+		public async Task<IServiceResult> UpdateMfaStatusAsync(Guid employeeId)
+		{
+			try
+			{
+				// Get employee by id 
+				var employee = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (employee == null) // Not found
+				{
+					var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMsg, "employee"));
+				}
+                
+				// Change account 2FA status
+				employee.TwoFactorEnabled = true;
+                
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update MFA key");
+			}    
+		}
+		
 		public async Task<IServiceResult> ImportAsync(IFormFile? file, DuplicateHandle duplicateHandle, string? columnSeparator, string? encodingType, string[]? scanningFields)
 		{
 			try
@@ -817,13 +889,16 @@ namespace FPTU_ELibrary.Application.Services
 				if (scanningFields != null)
 				{
 					// Initialize base spec
-					BaseSpecification<Employee>? baseSpec = null;
+					BaseSpecification<Employee>? empBaseSpec = null;
+					BaseSpecification<User>? userBaseSpec = null;
 					
 					// Iterate each fields to add criteria scanning logic
 					foreach (var field in scanningFields)
 					{
 						var normalizedField = field.ToUpperInvariant();
-						var newSpec = normalizedField switch
+						
+						// Building query to check duplicates on Employee entity
+						var newEmpSpec = normalizedField switch
 						{
 							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
 								new BaseSpecification<Employee>(e => e.Email.Equals(record.Email)),
@@ -831,19 +906,41 @@ namespace FPTU_ELibrary.Application.Services
 								new BaseSpecification<Employee>(e => e.Phone == record.Phone),
 							_ => null
 						};
+						
+						// Building query to check duplicates on User entity
+						var newUserSpec = normalizedField switch
+						{
+							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Email.Equals(record.Email)),
+							var phone when phone == nameof(Employee.Phone).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Phone == record.Phone),
+							_ => null
+						};
 
-						if (newSpec != null)
+						if (newEmpSpec != null) // Found new employee spec
 						{
 							// Combine specifications with AND logic
-							baseSpec = baseSpec == null
-								? newSpec
-								: baseSpec.Or(newSpec);
+							empBaseSpec = empBaseSpec == null
+								? newEmpSpec
+								: empBaseSpec.Or(newEmpSpec);
+						}
+						
+						if (newUserSpec != null) // Found new user spec
+						{
+							// Combine specifications with AND logic
+							userBaseSpec = userBaseSpec == null
+								? newUserSpec
+								: userBaseSpec.Or(newUserSpec);
 						}
 					}
 
 					// Check exist with spec
-					if (baseSpec != null 
-					    && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(baseSpec))
+					if (
+						// Any employee found
+						(empBaseSpec != null && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(empBaseSpec)) || 
+						// Any user found
+						(userBaseSpec != null && await _unitOfWork.Repository<User, Guid>().AnyAsync(userBaseSpec))
+					)
 					{
 						isError = true;
 						errMsg = isEng ? "Duplicate email or phone" : "Email hoặc số điện thoại bị trùng";
