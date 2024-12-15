@@ -26,7 +26,7 @@ namespace FPTU_ELibrary.API.Controllers
 
 		//	Summary:
 		//		Get all book
-		[Authorize]
+		// [Authorize]
 		[HttpGet(APIRoute.Book.GetAll, Name = nameof(GetAllBookAsync))]
 		public async Task<IActionResult> GetAllBookAsync()
 		{

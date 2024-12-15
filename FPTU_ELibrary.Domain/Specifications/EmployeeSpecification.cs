@@ -11,28 +11,25 @@ public class EmployeeSpecification : BaseSpecification<Employee>
     public int PageSize { get; set; }
     public EmployeeSpecification(EmployeeSpecParams specParams, int pageIndex, int pageSize)
         : base(e => 
+            // Search with terms
+            string.IsNullOrEmpty(specParams.Search) || 
             (
-                // Search with terms
-                string.IsNullOrEmpty(specParams.Search) || 
-                (
-                    // Employee code
-                    (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
-                    // Email
-                    (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
-                    // Phone
-                    (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
-                    // Address
-                    (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
-                    // Individual FirstName and LastName search
-                    (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
-                    // Full Name search
-                    (!string.IsNullOrEmpty(e.FirstName) &&
-                     !string.IsNullOrEmpty(e.LastName) &&
-                     (e.FirstName + " " + e.LastName).Contains(specParams.Search))
-                )
-            // Not mark as deleted
-            ) && !e.IsDeleted)
+                // Employee code
+                (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
+                // Email
+                (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
+                // Phone
+                (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
+                // Address
+                (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
+                // Individual FirstName and LastName search
+                (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
+                // Full Name search
+                (!string.IsNullOrEmpty(e.FirstName) &&
+                 !string.IsNullOrEmpty(e.LastName) &&
+                 (e.FirstName + " " + e.LastName).Contains(specParams.Search))
+            ))
     {
         // Assign page size and page index
         PageIndex = pageIndex;
@@ -55,6 +52,7 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         }
         else if (specParams.EmployeeCode != null)
         {
+            // AddFilter(x => x.EmployeeCode != null && x.EmployeeCode.Contains(specParams.EmployeeCode));
             AddFilter(x => x.EmployeeCode == specParams.EmployeeCode);
         }
         else if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
@@ -64,6 +62,10 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         else if (specParams.IsActive != null) // With status
         {
             AddFilter(x => x.IsActive == specParams.IsActive);       
+        }
+        else if (specParams.IsDeleted != null) // Is deleted
+        {
+            AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
         }
         else if (specParams.DobRange != null 
                   && specParams.DobRange.Length > 1) // With range of dob

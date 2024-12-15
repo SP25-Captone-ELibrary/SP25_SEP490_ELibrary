@@ -17,6 +17,7 @@ public class HealthCheckController : ControllerBase
         _aggregatedHealthCheckService = aggregatedHealthCheckService;
     }
 
+    [Authorize]
     [HttpGet(APIRoute.HealthCheck.BaseUrl)]
     public async Task<IActionResult> ForCheckAsync()
     {
@@ -25,6 +26,7 @@ public class HealthCheckController : ControllerBase
         return Ok();
     }
     
+    [Authorize]
     [HttpGet(APIRoute.HealthCheck.Check)]
     public async Task<IActionResult> GetHealthStatusAsync()
     {

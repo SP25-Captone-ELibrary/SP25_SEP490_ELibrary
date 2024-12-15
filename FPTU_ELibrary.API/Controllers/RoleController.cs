@@ -42,7 +42,7 @@ public class RoleController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost(APIRoute.Role.GetAllRoleType, Name = nameof(GetAllRoleTypeAsync))]
+    [HttpGet(APIRoute.Role.GetAllRoleType, Name = nameof(GetAllRoleTypeAsync))]
     public async Task<IActionResult> GetAllRoleTypeAsync()
     {
         return await Task.FromResult(Ok(Enum.GetValues<RoleType>().Select(rt => new
@@ -66,14 +66,14 @@ public class RoleController : ControllerBase
         return Ok(await _rolePerService.CreateRoleWithDefaultPermissionsAsync(req.EnglishName, req.VietnameseName, req.RoleTypeIdx));
     }
     
-    // [Authorize]
-    [HttpPost(APIRoute.Role.GetById, Name = nameof(GetRoleByIdAsync))]
+    [Authorize]
+    [HttpGet(APIRoute.Role.GetById, Name = nameof(GetRoleByIdAsync))]
     public async Task<IActionResult> GetRoleByIdAsync([FromRoute] int id)
     {
         return Ok(await _roleService.GetByIdAsync(id));
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpPut(APIRoute.Role.UpdateRole, Name = nameof(UpdateRoleAsync))]
     public async Task<IActionResult> UpdateRoleAsync([FromRoute] int id, [FromBody] UpdateRoleRequest req)
     {
@@ -82,9 +82,9 @@ public class RoleController : ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.Role.DeleteRole, Name = nameof(DeleteRoleAsync))]
-    public async Task<IActionResult> DeleteRoleAsync(int roleId)
+    public async Task<IActionResult> DeleteRoleAsync([FromRoute] int id)
     {
-        return Ok(await _roleService.DeleteAsync(roleId));
+        return Ok(await _roleService.DeleteAsync(id));
     }
     
     [Authorize]
@@ -129,7 +129,7 @@ public class RoleController : ControllerBase
         return Ok(await _permissionService.GetAllAsync());
     }
     
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.Role.GetRolePermissionTable, Name = nameof(GetRolePermissionTableAsync))]
     public async Task<IActionResult> GetRolePermissionTableAsync(bool isRoleVerticalLayout)
     {

@@ -1,5 +1,6 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
@@ -9,6 +10,7 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -25,6 +27,36 @@ namespace FPTU_ELibrary.Application.Services
 			ILogger logger)
 			: base(msgService, unitOfWork, mapper, logger)
 		{
+		}
+
+		// Override get all
+		public override async Task<IServiceResult> GetAllAsync(bool tracked = true)
+		{
+			try
+	        {
+		        var localConfig = new TypeAdapterConfig();
+		        localConfig.NewConfig<SystemRole, SystemRoleDto>()
+			        .Ignore(dest => dest.RolePermissions);
+		        
+	            var roles = await _unitOfWork.Repository<SystemRole, int>()
+		            .GetAllAsync();
+
+	            if (!roles.Any())
+	            {
+	                return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+	                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
+	                    _mapper.Map<IEnumerable<SystemRoleDto>>(roles));
+	            }
+
+	            return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+	                roles.Adapt<IEnumerable<SystemRoleDto>>(localConfig));
+	        }
+	        catch(Exception ex)
+	        {
+	            _logger.Error(ex.Message);
+	            throw new Exception("Error invoke when progress get all data");
+	        }
 		}
 
 		//	Override delete procedure
@@ -140,6 +172,10 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			try
 			{
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<SystemRole, SystemRoleDto>()
+					.Ignore(dest => dest.RolePermissions);
+				
 				// Get roles by role type
 				var roles = await _unitOfWork.Repository<SystemRole, int>()
 					.GetAllWithSpecAsync(new BaseSpecification<SystemRole>(
@@ -149,7 +185,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Success0002,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-						_mapper.Map<List<SystemRoleDto>>(roles));
+						roles.Adapt<IEnumerable<SystemRoleDto>>(localConfig));
 				}
 
 				// Not found any role

@@ -81,7 +81,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
             try
             {
-	            if (!await _context.Users.AnyAsync()) await SeedUsereAsync();
+	            if (!await _context.Users.AnyAsync()) await SeedUserAsync();
 				// [System Roles]
 				if (!await _context.SystemRoles.AnyAsync()) await SeedSystemRoleAsync();
 				else _logger.Information("Already seed data for table {0}", "System_Role");
@@ -195,17 +195,9 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		}
 		//  Summary:
 		//      Seeding User 
-		private async Task SeedUsereAsync()
+		private async Task SeedUserAsync()
 		{
-			// // Initialize user
-			// List<User> users = new List<User>()
-			// {
-			// 	new User()
-			// 	{
-			// 		Email = "admin@gmail.com",
-			// 		PasswordHash = ByteC
-			// 	},
-			// };
+			await Task.CompletedTask;
 		}
 
 		//	Summary:
@@ -577,7 +569,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EmployeeCode = "EM270925",
 					Email = "librian@gmail.com",
-					PasswordHash = string.Empty,
+					// Password: @Employee123
+					PasswordHash = "$2a$13$2bD1T7g/kstNMw0LWEksKuUaGhuAXCXkftsfIURf7yJ6Hr20I2Aae",
 					FirstName = "Nguyen Van",
 					LastName = "A",
 					Dob = new DateTime(1995, 02, 10),

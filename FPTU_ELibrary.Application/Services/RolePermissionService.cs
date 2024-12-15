@@ -186,9 +186,9 @@ public class RolePermissionService : GenericService<RolePermission, RolePermissi
                 .GetWithSpecAsync(baseSpec);
             if (rolePermission == null)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002);
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-                    StringUtils.Format(errMsg, "role permission to progress update"));
+                    StringUtils.Format(errMsg, "role permission"));
             }
         
             // Update permission 

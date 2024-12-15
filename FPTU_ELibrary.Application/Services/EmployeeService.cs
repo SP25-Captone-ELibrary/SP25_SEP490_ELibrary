@@ -492,6 +492,54 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> UndoDeleteAsync(Guid employeeId)
+		{
+			try
+			{
+				// Check exist employee
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, "employee"));
+				}
+
+				// Check if employee account already mark as deleted
+				if (!existingEntity.IsDeleted)
+				{
+					// Get error msg
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+				
+				// Update delete status
+				existingEntity.IsDeleted = false;
+				
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					// Get error msg
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
+
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);	
+				throw new Exception("Error invoke when process soft delete employee");	
+			}
+		}
+		
 		public override async Task<IServiceResult> GetAllWithSpecAsync(
 			ISpecification<Employee> specification,
 			bool tracked = true)

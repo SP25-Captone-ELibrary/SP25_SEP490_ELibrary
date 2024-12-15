@@ -82,6 +82,7 @@
 		{
 			// [GET]
 			public const string GetAll = Base + "/employees";
+			public const string GetAllFromTrash = Base + "/employees/trash";
 			// [POST]
 			public const string Create = Base + "/employees";
 			public const string Import = Base + "/employees/import";
@@ -91,6 +92,7 @@
 			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
 			// [DELETE]
 			public const string SoftDelete = Base + "/employees/{id}/soft-delete";
+			public const string UndoDelete = Base + "/employees/{id}/undo-delete";
 			public const string Delete = Base + "/employees/{id}";
 		}
 
@@ -100,7 +102,7 @@
 		public static class Resource
 		{
 			// [GET]
-			public const string GetAllType = "/resources/types";
+			public const string GetAllType = Base + "/resources/types";
 			// [POST]
 			public const string UploadImage = Base + "/resources/images/upload";
 			public const string UploadVideo = Base + "/resources/videos/upload";
@@ -145,7 +147,7 @@
 			public const string UpdateUserRole = Base + "/roles/users";
 			public const string UpdateEmployeeRole = Base + "/roles/employees";
 			//	[DELETE]
-			public const string DeleteRole = Base + "/roles";
+			public const string DeleteRole = Base + "/roles/{id}";
 		}
 		
 		/// <summary>
