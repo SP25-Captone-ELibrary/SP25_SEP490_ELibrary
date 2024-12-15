@@ -6,6 +6,8 @@ using FPTU_ELibrary.Application.Services;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -54,6 +56,14 @@ public class NotificationController: ControllerBase
     public async Task<IActionResult> UpdateReadStatus()
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? ""; 
-        return Ok(await _notificationRecipientService.GetNumberOfUnreadNotifications(email));
+        return Ok(await _notificationRecipientService.UpdateReadStatus(email));
+    }
+
+    [HttpGet(APIRoute.Notification.GetNotificationByAdmin, Name = nameof(GetAllNotification))]
+    [Authorize]
+    public async Task<IActionResult> GetAllNotification([FromQuery] NotificationSpecParams specParams)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email));
     }
 }
