@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Domain.Entities;
+﻿using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +22,8 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         // Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile);
         //// This delete feature support not opening database to delete;
         Task<IServiceResult> DeleteAccount(Guid id);
-        Task CreateManyAccountsWithSendEmail(IFormFile excelFile);
+
+        Task<IServiceResult> CreateManyAccountsWithSendEmail(string email,IFormFile? excelFile, DuplicateHandle duplicateHandle);
         Task<IServiceResult> GetById(Guid id);
     }
 }

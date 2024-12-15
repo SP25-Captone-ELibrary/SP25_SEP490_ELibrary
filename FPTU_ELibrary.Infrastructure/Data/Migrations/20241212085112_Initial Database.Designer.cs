@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241212070007_Initial Database")]
+    [Migration("20241212085112_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />

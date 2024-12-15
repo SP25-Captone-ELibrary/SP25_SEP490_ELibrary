@@ -95,7 +95,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         }
 
         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002));
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),noti.Count());
     }
 
     public async Task<IServiceResult> UpdateReadStatus(string email)

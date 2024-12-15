@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Services;
 using FPTU_ELibrary.Application.Validations;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -91,12 +94,12 @@ public class UserController:ControllerBase
     //     return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
     // }
     [HttpPost(APIRoute.User.CreateManyWithSendEmail, Name = nameof(CreateManyAccountByAdminWithSendEmail))]
-    [AllowAnonymous]
-    public IActionResult CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
-    {
-        // Bắt đầu tác vụ nền
-        _ = _userService.CreateManyAccountsWithSendEmail(req.File);
-
-        return Ok("Account creation and email sending process has started");
+    [Authorize]
+    public async Task<IActionResult> CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
+    { 
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _userService.CreateManyAccountsWithSendEmail(email,req.File, 
+            Enum.Parse<DuplicateHandle>(req.DuplicateHandle)));
     }
+    
 }

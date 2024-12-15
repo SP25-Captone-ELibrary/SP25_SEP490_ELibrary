@@ -19,7 +19,7 @@ namespace FPTU_ELibrary.Application.Validations
                 .NotNull().WithMessage("Message cannot be null.");
             // CreatedDate must not be in the future
             RuleFor(notification => notification.CreateDate)
-                .Must(date => date <= DateTime.UtcNow)
+                .Must(date => date < DateTime.Now.AddMinutes(5))
                 .WithMessage("CreateDate cannot be in the future.");
 
             // CreatedBy must not be null or empty
