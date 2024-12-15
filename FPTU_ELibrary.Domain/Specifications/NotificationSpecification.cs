@@ -31,8 +31,7 @@ public class NotificationSpecification :BaseSpecification<Notification>
         PageSize = pageSize;
 
         EnableSplitQuery();
-        AddOrderByDescending(n => n.CreateDate);
-
+        
         if (roleId == 1) // Admin
         {
             AddFilter(x => x.IsPublic);
@@ -41,8 +40,59 @@ public class NotificationSpecification :BaseSpecification<Notification>
         {
             AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email == email));
         }
+        if (notificationSpecParams.Title != null)
+        {
+            AddFilter(x => x.Title == notificationSpecParams.Title);
+        }
+        else if (!string.IsNullOrEmpty(notificationSpecParams.Message)) // With gender
+        {
+            AddFilter(x => x.Message == notificationSpecParams.Message);
+        }
+        else if (!string.IsNullOrEmpty(notificationSpecParams.CreatedBy)) // With gender
+        {
+            AddFilter(x => x.CreatedBy == notificationSpecParams.CreatedBy);
+        }
+        else if (!string.IsNullOrEmpty(notificationSpecParams.NotificationType)) // With gender
+        {
+            AddFilter(x => x.NotificationType == notificationSpecParams.NotificationType);
+        }
+        else if (notificationSpecParams.CreateDateRange != null 
+                 && notificationSpecParams.CreateDateRange.Length > 1) // With range of dob
+        {
+            AddFilter(x =>
+                           x.CreateDate.Date >= notificationSpecParams.CreateDateRange[0].Date 
+                           && x.CreateDate.Date <= notificationSpecParams.CreateDateRange[1].Date);       
+        }
+       
+        if (!string.IsNullOrEmpty(notificationSpecParams.Sort))
+        {
+            var sortBy = notificationSpecParams.Sort.Trim();
+            var isDescending = sortBy.StartsWith("-");
+            var propertyName = isDescending ? sortBy.Substring(1) : sortBy;
 
-        // Các điều kiện filter khác theo specParams...
+            ApplySorting(propertyName, isDescending);
+        }
+        else
+        {
+            AddOrderByDescending(n => n.CreateDate);
+        }
     }
+    private void ApplySorting(string propertyName, bool isDescending)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return;
 
+        // Use Reflection to dynamically apply sorting
+        var parameter = Expression.Parameter(typeof(Notification), "x");
+        var property = Expression.Property(parameter, propertyName);
+        var sortExpression = Expression.Lambda<Func<Notification, object>>(Expression.Convert(property, typeof(object)), parameter);
+
+        if (isDescending)
+        {
+            AddOrderByDescending(sortExpression);
+        }
+        else
+        {
+            AddOrderBy(sortExpression);
+        }
+    }
 }
