@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
     partial class FptuElibraryDbContextModelSnapshot : ModelSnapshot

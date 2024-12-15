@@ -167,7 +167,7 @@
 			public const string GetTypes = "/notifications/types";
 			public const string GetNotificationByAdmin = "/notifications";
 			//private noti
-			public const string GetNotificationNotByAdmin = "/privacy/{userId}/notifivations";
+			public const string GetNotificationNotByAdmin = "/privacy/notifivations";
 
 			public const string GetNumberOfUnreadNotifications = "/privacy/unread-noti";//filter unread notification
 			//Put

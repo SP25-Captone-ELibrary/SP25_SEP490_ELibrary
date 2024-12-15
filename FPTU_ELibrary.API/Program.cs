@@ -85,5 +85,5 @@ app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 // app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
-app.UseEndpoints(ep => ep.MapHub<NotificationHub>("/notificationHub"));
+app.UseEndpoints(ep => ep.MapApplicationHubs());
 app.Run();
