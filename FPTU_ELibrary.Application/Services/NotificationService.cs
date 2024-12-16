@@ -19,7 +19,7 @@ using Serilog;
 
 namespace FPTU_ELibrary.Application.Services.IServices;
 
-public class NotificationService : GenericService<Notification, NotificationDto, Guid>,
+public class NotificationService : GenericService<Notification, NotificationDto, int>,
     INotificationService<NotificationDto>
 {
     private readonly IHubContext<NotificationHub> _hubContext;
@@ -76,7 +76,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             }
 
             var notiEntity = _mapper.Map<Notification>(noti);
-            await _unitOfWork.Repository<Notification, Guid>().AddAsync(notiEntity);
+            await _unitOfWork.Repository<Notification, int>().AddAsync(notiEntity);
             if (await _unitOfWork.SaveChangesAsync() > 0)
             {
                 if (noti.IsPublic == true)
@@ -175,7 +175,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 roleId
             );
 
-            var totalNotification = await _unitOfWork.Repository<Notification, Guid>().CountAsync(notificationSpec);
+            var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
             var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
 
             if (notificationSpec.PageIndex > totalPage || notificationSpec.PageIndex < 1)
@@ -188,7 +188,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 take: notificationSpec.PageSize
             );
 
-            var entities = await _unitOfWork.Repository<Notification, Guid>()
+            var entities = await _unitOfWork.Repository<Notification, int>()
                 .GetAllWithSpecAsync(notificationSpec, tracked);
 
             if (entities.Any())

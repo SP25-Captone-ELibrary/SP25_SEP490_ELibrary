@@ -184,5 +184,15 @@
 			public const string DeleteNotification = "/notifications/{notiId}";
 
 		}
+
+		/// <summary>
+		/// BookCategory endpoints
+		/// </summary>
+		public static class BookCategory
+		{
+			public const string Create = "/book-categories";
+			public const string Update = "/book-categories/{id}";
+			public const string Delete = "/book-categories/{id}";
+		}
 	}
 }

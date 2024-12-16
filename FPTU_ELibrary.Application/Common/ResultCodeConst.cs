@@ -296,6 +296,13 @@ namespace FPTU_ELibrary.Application.Common
 
 		#endregion
 
+		#region BookCategory
+		/// <summary>
+		/// This Category has been used. Cannot be deleted
+		/// </summary>
+		public static string BookCategory_Warning0001 = "BookCategory.Warning0001";
+		#endregion
+
 		#endregion
 	}
 }
