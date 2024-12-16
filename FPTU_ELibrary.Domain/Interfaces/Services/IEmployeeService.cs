@@ -20,6 +20,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 		Task<IServiceResult> UndoDeleteAsync(Guid employeeId);
 		Task<IServiceResult> ImportAsync(IFormFile? file, DuplicateHandle duplicateHandle, 
 			string? columnSeparator, string? encodingType, string[]? scanningFields);
+		Task<IServiceResult> ExportAsync(ISpecification<Employee> spec);
 		Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
 		Task<IServiceResult> UpdateMfaStatusAsync(Guid employeeId);
 	}

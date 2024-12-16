@@ -1,22 +1,16 @@
 using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
-using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
-using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
-using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 

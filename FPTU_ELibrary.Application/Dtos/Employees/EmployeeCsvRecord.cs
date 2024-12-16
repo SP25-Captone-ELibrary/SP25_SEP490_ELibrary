@@ -1,3 +1,4 @@
+using System.Collections;
 using CsvHelper.Configuration.Attributes;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -81,6 +82,32 @@ public static class EmployeeCsvRecordExtensions
                 PhoneNumberConfirmed = false,
                 CreateDate = currentLocalDateTime,
                 RoleId = role.RoleId
+            };
+        }).ToList();
+    }
+
+    public static List<EmployeeCsvRecord> ToEmployeeCsvRecords(this IEnumerable<EmployeeDto> employees,
+        List<SystemRoleDto> employeeRoles)
+    {
+        return employees.Select(e =>
+        {
+            var role = employeeRoles.FirstOrDefault(x => x.EnglishName.Equals(e.Role.EnglishName,
+                StringComparison.OrdinalIgnoreCase));
+            if (role == null) return null!;
+
+            return new EmployeeCsvRecord()
+            {
+                Email = e.Email,
+                EmployeeCode = e.EmployeeCode,
+                FirstName = e.FirstName,
+                LastName = e.LastName,
+                Phone = e.Phone,
+                Address = e.Address,
+                Gender = e.Gender,
+                HireDate = e.HireDate?.ToString("yyyy-MM-dd"),
+                TerminationDate = e.TerminationDate?.ToString("yyyy-MM-dd"),
+                Dob = e.Dob?.ToString("yyyy-MM-dd"),
+                Role = role.EnglishName
             };
         }).ToList();
     }

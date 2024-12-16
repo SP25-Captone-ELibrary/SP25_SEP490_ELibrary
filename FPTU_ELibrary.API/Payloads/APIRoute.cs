@@ -85,6 +85,7 @@
 		{
 			// [GET]
 			public const string GetAll = Base + "/employees";
+			public const string Export = Base + "/employees/export";
 			// [POST]
 			public const string Create = Base + "/employees";
 			public const string Import = Base + "/employees/import";
