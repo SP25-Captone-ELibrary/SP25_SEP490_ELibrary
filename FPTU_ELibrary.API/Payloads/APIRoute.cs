@@ -170,18 +170,18 @@
 		public static class Notification
 		{
 			//Create
-			public const string Create = "/notifications";
+			public const string Create =Base + "/notifications";
 			//Get	
-			public const string GetTypes = "/notifications/types";
-			public const string GetNotificationByAdmin = "/notifications";
+			public const string GetTypes =Base + "/notifications/types";
+			public const string GetNotificationByAdmin =Base + "/notifications";
 			//private noti
-			public const string GetNotificationNotByAdmin = "/privacy/notifivations";
+			public const string GetNotificationNotByAdmin =Base + "/privacy/notifivations";
 
-			public const string GetNumberOfUnreadNotifications = "/privacy/unread-noti";//filter unread notification
+			public const string GetNumberOfUnreadNotifications =Base + "/privacy/unread-noti";//filter unread notification
 			//Put
-			public const string UpdateReadStatus = "/privacy/notifications";
+			public const string UpdateReadStatus =Base + "/privacy/notifications";
 			//Delete
-			public const string DeleteNotification = "/notifications/{notiId}";
+			public const string DeleteNotification =Base + "/notifications/{notiId}";
 
 		}
 	}
