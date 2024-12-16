@@ -75,6 +75,8 @@ namespace FPTU_ELibrary.Application.Dtos
 				Avatar = userDto.Avatar,
 				Address = userDto.Address,
 				Gender = userDto.Gender,
+				Dob = userDto.Dob,
+				Phone = userDto.Phone,
 				PasswordHash = userDto.PasswordHash,
 				RoleId = userDto.RoleId,
 				CreateDate = userDto.CreateDate,

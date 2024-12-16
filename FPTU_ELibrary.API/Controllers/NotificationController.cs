@@ -26,8 +26,8 @@ public class NotificationController: ControllerBase
         _notificationRecipientService = notificationRecipientService;
     }
 
-    [HttpPost(APIRoute.Notification.Create,Name=nameof(CreateNotification))]
     [Authorize]
+    [HttpPost(APIRoute.Notification.Create,Name=nameof(CreateNotification))]
     public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationRequest req)
     {
         // Retrieve user email from token
@@ -36,23 +36,23 @@ public class NotificationController: ControllerBase
         return Ok(await _notificationService.CreateNotification(dto,roleName, req.ListRecipient));
     }
 
-    [HttpGet(APIRoute.Notification.GetTypes,Name= nameof(GetTypes))]
     [AllowAnonymous]
+    [HttpGet(APIRoute.Notification.GetTypes,Name= nameof(GetTypes))]
     public async Task<IActionResult> GetTypes()
     {
         return Ok(await _notificationService.GetTypes());
     }
 
-    [HttpGet(APIRoute.Notification.GetNumberOfUnreadNotifications, Name = nameof(GetNumberOfUnreadNotifications))]
     [Authorize]
+    [HttpGet(APIRoute.Notification.GetNumberOfUnreadNotifications, Name = nameof(GetNumberOfUnreadNotifications))]
     public async Task<IActionResult> GetNumberOfUnreadNotifications()
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? ""; 
         return Ok(await _notificationRecipientService.GetNumberOfUnreadNotifications(email));
     }
 
-    [HttpPut(APIRoute.Notification.UpdateReadStatus, Name = nameof(UpdateReadStatus))]
     [Authorize]
+    [HttpPut(APIRoute.Notification.UpdateReadStatus, Name = nameof(UpdateReadStatus))]
     public async Task<IActionResult> UpdateReadStatus()
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? ""; 

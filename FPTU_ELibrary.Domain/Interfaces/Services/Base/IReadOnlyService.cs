@@ -14,6 +14,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services.Base
 		Task<IServiceResult> GetWithSpecAsync(ISpecification<TEntity> specification);
 		Task<IServiceResult> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
 		Task<IServiceResult> AnyAsync(Expression<Func<TEntity, bool>> predicate);
+		Task<IServiceResult> AnyAsync(ISpecification<TEntity> specification);
 		Task<IServiceResult> CountAsync(ISpecification<TEntity> specification);
 		Task<IServiceResult> CountAsync();
 	}

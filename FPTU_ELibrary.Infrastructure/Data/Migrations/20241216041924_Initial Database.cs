@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -268,7 +268,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     email_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     two_factor_secret_key = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)

@@ -12,19 +12,24 @@
 			// [GET]
 			public const string ForgotPassword = Base + "/auth/forgot-password";
 			public const string CurrentUser = Base + "/auth/current-user";
+			public const string GetMfaBackupAsync = Base + "/auth/mfa-backup";
 			// [POST]
 			public const string SignIn = Base + "/auth/sign-in";
-			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
-			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
 			public const string SignInAsEmployee = Base + "/auth/employee/sign-in";
 			public const string SignInAsAdmin = Base + "/auth/admin/sign-in";
-			public const string SignInWithPasswordAsEmployee = Base + "/auth/employee/sign-in/password-method";
+			public const string SignInWithPassword = Base + "/auth/sign-in/password-method";
+			public const string SignInWithOtp = Base + "/auth/sign-in/otp-method";
 			public const string SignInWithGoogle = Base + "/auth/sign-in-google";
 			public const string SignInWithFacebook = Base + "/auth/sign-in-facebook";
 			public const string SignUp = Base + "/auth/sign-up";
 			public const string RefreshToken = Base + "/auth/refresh-token";
 			public const string ResendOtp = Base + "/auth/resend-otp";
 			public const string ChangePasswordOtpVerification = Base + "/auth/change-password/verify-otp";
+			public const string EnableMfa = Base + "/auth/enable-mfa";
+			public const string ValidateMfa = Base + "/auth/validate-mfa";
+			public const string ValidateBackupCode = Base + "/auth/validate-mfa-backup";
+			public const string RegenerateBackupCode = Base + "/auth/regenerate-mfa-backup";
+			public const string RegenerateBackupCodeConfirm = Base + "/auth/regenerate-mfa-backup/confirm";
 			// [PATCH]
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 			public const string ChangePassword = Base + "/auth/change-password";
@@ -66,7 +71,7 @@
 			//users update their own account
 			public const string Update = Base + "/profile/{id}";
 			//admin update role from general user(GU) to Student or Teacher role
-			public const string UpdateRole = Base + "/users/{id}/role";
+			// public const string UpdateRole = Base + "/users/{id}/role";
 			//[Put]
 			public const string ChangeAccountStatus = Base + "/users/{id}/status";
 			//[Delete]
@@ -85,10 +90,12 @@
 			public const string Import = Base + "/employees/import";
 			// [PUT]
 			public const string Update = Base + "/employees/{id}";
+			public const string UpdateProfile = Base + "/employess/{id}/profile";
 			// [PATCH]
 			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
 			// [DELETE]
 			public const string SoftDelete = Base + "/employees/{id}/soft-delete";
+			public const string UndoDelete = Base + "/employees/{id}/undo-delete";
 			public const string Delete = Base + "/employees/{id}";
 		}
 
@@ -98,7 +105,7 @@
 		public static class Resource
 		{
 			// [GET]
-			public const string GetAllType = "/resources/types";
+			public const string GetAllType = Base + "/resources/types";
 			// [POST]
 			public const string UploadImage = Base + "/resources/images/upload";
 			public const string UploadVideo = Base + "/resources/videos/upload";
@@ -143,7 +150,7 @@
 			public const string UpdateUserRole = Base + "/roles/users";
 			public const string UpdateEmployeeRole = Base + "/roles/employees";
 			//	[DELETE]
-			public const string DeleteRole = Base + "/roles";
+			public const string DeleteRole = Base + "/roles/{id}";
 		}
 		
 		/// <summary>

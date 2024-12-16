@@ -183,7 +183,7 @@ namespace FPTU_ELibrary.Application.Services
 
 			return serviceResult;
 		}
-
+		
 		public override async Task<IServiceResult> DeleteAsync(Guid id)
 		{
 			// Initiate service result
@@ -253,6 +253,76 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
+		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+
+				// Update specific properties
+				existingEntity.FirstName = dto.FirstName;
+				existingEntity.LastName = dto.LastName;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<Employee, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw;
+			}
+
+			return serviceResult;
+		}
+		
 		public async Task<IServiceResult> UpdateWithoutValidationAsync(Guid employeeId, EmployeeDto dto)
 		{
 			// Initiate service result
@@ -308,7 +378,7 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
-		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid employeeId)
+		public async Task<IServiceResult> UpdateRoleAsync(Guid employeeId, int roleId)
 		{
 			try
 			{
@@ -492,6 +562,54 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> UndoDeleteAsync(Guid employeeId)
+		{
+			try
+			{
+				// Check exist employee
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, "employee"));
+				}
+
+				// Check if employee account already mark as deleted
+				if (!existingEntity.IsDeleted)
+				{
+					// Get error msg
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+				
+				// Update delete status
+				existingEntity.IsDeleted = false;
+				
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					// Get error msg
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
+
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);	
+				throw new Exception("Error invoke when process soft delete employee");	
+			}
+		}
+		
 		public override async Task<IServiceResult> GetAllWithSpecAsync(
 			ISpecification<Employee> specification,
 			bool tracked = true)
@@ -612,7 +730,79 @@ namespace FPTU_ELibrary.Application.Services
 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<EmployeeDto?>(employee));
 		}
+		
+		public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
+        {
+            try
+            {
+                // Get employee by id 
+                var employee = await _unitOfWork.Repository<Employee, Guid>().GetWithSpecAsync(
+	                new BaseSpecification<Employee>(e => e.Email == email));
+                if (employee == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Progress update MFA key and backup codes
+                employee.TwoFactorSecretKey = mfaKey;
+                employee.TwoFactorBackupCodes = string.Join(",", backupCodes);
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
 
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+		
+		public async Task<IServiceResult> UpdateMfaStatusAsync(Guid employeeId)
+		{
+			try
+			{
+				// Get employee by id 
+				var employee = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (employee == null) // Not found
+				{
+					var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMsg, "employee"));
+				}
+                
+				// Change account 2FA status
+				employee.TwoFactorEnabled = true;
+                
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update MFA key");
+			}    
+		}
+		
 		public async Task<IServiceResult> ImportAsync(IFormFile? file, DuplicateHandle duplicateHandle, string? columnSeparator, string? encodingType, string[]? scanningFields)
 		{
 			try
@@ -817,13 +1007,16 @@ namespace FPTU_ELibrary.Application.Services
 				if (scanningFields != null)
 				{
 					// Initialize base spec
-					BaseSpecification<Employee>? baseSpec = null;
+					BaseSpecification<Employee>? empBaseSpec = null;
+					BaseSpecification<User>? userBaseSpec = null;
 					
 					// Iterate each fields to add criteria scanning logic
 					foreach (var field in scanningFields)
 					{
 						var normalizedField = field.ToUpperInvariant();
-						var newSpec = normalizedField switch
+						
+						// Building query to check duplicates on Employee entity
+						var newEmpSpec = normalizedField switch
 						{
 							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
 								new BaseSpecification<Employee>(e => e.Email.Equals(record.Email)),
@@ -831,19 +1024,41 @@ namespace FPTU_ELibrary.Application.Services
 								new BaseSpecification<Employee>(e => e.Phone == record.Phone),
 							_ => null
 						};
+						
+						// Building query to check duplicates on User entity
+						var newUserSpec = normalizedField switch
+						{
+							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Email.Equals(record.Email)),
+							var phone when phone == nameof(Employee.Phone).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Phone == record.Phone),
+							_ => null
+						};
 
-						if (newSpec != null)
+						if (newEmpSpec != null) // Found new employee spec
 						{
 							// Combine specifications with AND logic
-							baseSpec = baseSpec == null
-								? newSpec
-								: baseSpec.Or(newSpec);
+							empBaseSpec = empBaseSpec == null
+								? newEmpSpec
+								: empBaseSpec.Or(newEmpSpec);
+						}
+						
+						if (newUserSpec != null) // Found new user spec
+						{
+							// Combine specifications with AND logic
+							userBaseSpec = userBaseSpec == null
+								? newUserSpec
+								: userBaseSpec.Or(newUserSpec);
 						}
 					}
 
 					// Check exist with spec
-					if (baseSpec != null 
-					    && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(baseSpec))
+					if (
+						// Any employee found
+						(empBaseSpec != null && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(empBaseSpec)) || 
+						// Any user found
+						(userBaseSpec != null && await _unitOfWork.Repository<User, Guid>().AnyAsync(userBaseSpec))
+					)
 					{
 						isError = true;
 						errMsg = isEng ? "Duplicate email or phone" : "Email hoặc số điện thoại bị trùng";

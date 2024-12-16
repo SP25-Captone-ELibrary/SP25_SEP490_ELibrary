@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241212085112_Initial Database")]
+    [Migration("20241216041924_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1748,7 +1748,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("role_id");
 
                     b.Property<string>("TwoFactorBackupCodes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")

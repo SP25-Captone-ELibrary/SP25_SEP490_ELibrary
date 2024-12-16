@@ -86,7 +86,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Warning0003 = "SYS.Warning0003";
 		/// <summary>
-		/// [WARNING] Data not found
+		/// [WARNING] Data not found or empty
 		/// </summary>
 		public static string SYS_Warning0004 = "SYS.Warning0004";
 		/// <summary>
@@ -141,6 +141,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string Auth_Success0009 = "Auth.Success0009";
 		/// <summary>
+		/// [SUCCESS] Create MFA backup codes succesfully
+		/// </summary>
+		public static string Auth_Success0010 = "Auth.Success0010";
+		
+		/// <summary>
 		/// [WARNING] Account not allow to access
 		/// </summary>
 		public static string Auth_Warning0001 = "Auth.Warning0001";
@@ -172,6 +177,22 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Account email is not verify yet
 		/// </summary>
 		public static string Auth_Warning0008 = "Auth.Warning0008";
+		/// <summary>
+		/// [WARNING] The account has enabled 2-factor
+		/// </summary>
+		public static string Auth_Warning0009 = "Auth.Warning0009";
+		/// <summary>
+		/// [WARNING] Two-factor authentication is required
+		/// </summary>
+		public static string Auth_Warning0010 = "Auth.Warning0010";
+		/// <summary>
+		/// [WARNING] Cannot process as the account has not enabled 2-factor authentication yet
+		/// </summary>
+		public static string Auth_Warning0011 = "Auth.Warning0011";
+		/// <summary>
+		/// [WARNING] Backup code is not valid
+		/// </summary>
+		public static string Auth_Warning0012 = "Auth.Warning0012";
 		
 		/// <summary>
 		/// [FAIL] Fail to update password
@@ -181,6 +202,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to send OTP 
 		/// </summary>
 		public static string Auth_Fail0002 = "Auth.Fail0002";
+		/// <summary>
+		/// [FAIL] Fail to create backup codes
+		/// </summary>
+		public static string Auth_Fail0003 = "Auth.Fail0003";
 		#endregion
 
 		#region Role

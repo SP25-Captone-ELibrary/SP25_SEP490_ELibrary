@@ -27,6 +27,7 @@ public class EmployeeController : ControllerBase
         _appSettings = appSettings.CurrentValue;
     }
     
+    [Authorize]
     [HttpGet(APIRoute.Employee.GetAll, Name = nameof(GetAllEmployeeAsync))]
     public async Task<IActionResult> GetAllEmployeeAsync([FromQuery] EmployeeSpecParams specParams)
     {
@@ -35,13 +36,15 @@ public class EmployeeController : ControllerBase
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
     }
-
+    
+    [Authorize]
     [HttpPost(APIRoute.Employee.Create, Name = nameof(CreateEmployeeAsync))]
     public async Task<IActionResult> CreateEmployeeAsync([FromBody] CreateEmployeeRequest req)
     {
         return Ok(await _employeeService.CreateAsync(req.ToEmployeeDtoForCreate()));
     }
 
+    [Authorize]
     [HttpPost(APIRoute.Employee.Import, Name = nameof(ImportEmployeeAsync))]
     public async Task<IActionResult> ImportEmployeeAsync([FromForm] ImportEmployeeRequest req)
     {
@@ -49,24 +52,42 @@ public class EmployeeController : ControllerBase
             req.ColumnSeparator,  req.EncodingType, req.ScanningFields));
     }
     
+    [Authorize]
     [HttpPut(APIRoute.Employee.Update, Name = nameof(UpdateEmployeeAsync))]
     public async Task<IActionResult> UpdateEmployeeAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeRequest req)
     {
         return Ok(await _employeeService.UpdateAsync(id, req.ToEmployeeDtoForUpdate()));
     }
+    
+    [Authorize]
+    [HttpPut(APIRoute.Employee.UpdateProfile, Name = nameof(UpdateEmployeeProfileAsync))]
+    public async Task<IActionResult> UpdateEmployeeProfileAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeRequest req)
+    {
+        return Ok(await _employeeService.UpdateProfileAsync(id, req.ToEmployeeDtoForUpdateProfile()));
+    }
 
+    [Authorize]
     [HttpPatch(APIRoute.Employee.ChangeActiveStatus, Name = nameof(ChangeActiveStatusAsync))]
     public async Task<IActionResult> ChangeActiveStatusAsync([FromRoute] Guid id)
     {
         return Ok(await _employeeService.ChangeActiveStatusAsync(id));
     }
 
+    [Authorize]
     [HttpDelete(APIRoute.Employee.SoftDelete, Name = nameof(SoftDeleteEmployeeAsync))]
     public async Task<IActionResult> SoftDeleteEmployeeAsync([FromRoute] Guid id)
     {
         return Ok(await _employeeService.SoftDeleteAsync(id));
     }
     
+    [Authorize]
+    [HttpPatch(APIRoute.Employee.UndoDelete, Name = nameof(UndoDeleteEmployeeAsync))]
+    public async Task<IActionResult> UndoDeleteEmployeeAsync([FromRoute] Guid id)
+    {
+        return Ok(await _employeeService.UndoDeleteAsync(id));
+    }
+    
+    [Authorize]
     [HttpDelete(APIRoute.Employee.Delete, Name = nameof(DeleteEmployeeAsync))]
     public async Task<IActionResult> DeleteEmployeeAsync([FromRoute] Guid id)
     {
