@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
@@ -5,7 +6,6 @@ using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -31,7 +31,6 @@ public class UserController:ControllerBase
         IUserService<UserDto> userService)
     {
         _userService = userService;
-        _appSettings = monitor.CurrentValue;
     }
 
      [Authorize]
@@ -39,10 +38,8 @@ public class UserController:ControllerBase
      public async Task<IActionResult> GetAllUserAsync([FromQuery] UserSpecParams req)
      {
          return Ok(await _userService.GetAllWithSpecAsync(new UserSpecification(userSpecParams:req,
-             pageIndex: req.PageIndex ?? 1, 
-             pageSize: req.PageSize ?? _appSettings.PageSize), tracked:false));
+             pageIndex: req.PageIndex??1,pageSize: req.PageSize??5),tracked:false));
      }
-     
     // [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
     //[AllowAnonymous]
     //public async Task<IActionResult> SearchUserAsync([FromQuery] 
@@ -62,6 +59,7 @@ public class UserController:ControllerBase
 
     [Authorize]
     [HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
+    [AllowAnonymous]
     public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserRequest req)
     {   
         return Ok(await _userService.CreateAccountByAdmin(req.ToUser()));
@@ -76,7 +74,7 @@ public class UserController:ControllerBase
 
     [Authorize]
     [HttpPatch(APIRoute.User.Update, Name = nameof(UpdateUserAsync))]
-    public async Task<IActionResult> UpdateUserAsync([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
+        public async Task<IActionResult> UpdateUserAsync([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
     {
         return Ok(await _userService.UpdateAccount(id, dto.ToUserForUpdate(),dto.ModifyBy));
     }
@@ -94,25 +92,12 @@ public class UserController:ControllerBase
     // {
     //     return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
     // }
-    
-    [Authorize]
     [HttpPost(APIRoute.User.CreateManyWithSendEmail, Name = nameof(CreateManyAccountByAdminWithSendEmail))]
-    public IActionResult CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
-    {
-        // Bắt đầu tác vụ nền
-        _ = _userService.CreateManyAccountsWithSendEmail(req.File);
-
-        // Retrieve global language
-        var langStr = LanguageContext.CurrentLanguage;
-        var langEnum = EnumExtensions.GetValueFromDescription<SystemLanguage>(langStr);
-
-        // Response
-        return langEnum switch 
-        {
-            // as vi
-            SystemLanguage.Vietnamese => Ok("Đang tiến hành tạo tài khoản và gửi email"),
-            // default as eng
-            _ => Ok("Account creation and email sending process has started")
-        };
+    [Authorize]
+    public async Task<IActionResult> CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
+    { 
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _userService.CreateManyAccountsWithSendEmail(email,req.File, 
+            Enum.Parse<DuplicateHandle>(req.DuplicateHandle)));
     }
 }

@@ -1,8 +1,6 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Middlewares;
-using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application;
-using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Infrastructure;
 
 
@@ -51,7 +49,6 @@ builder.Services
     .AddAuthentication(builder.Configuration)
     // Add signalR
     .AddSignalR();
-
 var app = builder.Build();
 
 // app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
@@ -71,13 +68,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
+app.UseCors(policy =>
+{
+    policy.AllowAnyOrigin() // Cho phép mọi origin trong môi trường phát triển
+        .AllowAnyMethod()
+        .AllowAnyHeader();
+});
 app.UseAuthentication();
 app.UseAuthorization(); 
 
+// Custom Middlewares
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware
 app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
-app.MapHub<NotificationHub>("/notificationHub"); // Maps incoming requests with the specified path with specified Hub type
+app.UseEndpoints(ep => ep.MapApplicationHubs());
 app.Run();

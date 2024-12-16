@@ -15,7 +15,7 @@ using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
 
-public class NotificationRecipientService : GenericService<NotificationRecipient, NotificationRecipientDto, Guid>
+public class NotificationRecipientService : GenericService<NotificationRecipient, NotificationRecipientDto, int>
     , INotificationRecipientService<NotificationRecipientDto>
 {
     private readonly IUserService<UserDto> _userService;
@@ -47,7 +47,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
             }
 
             // Process add new entity
-            await _unitOfWork.Repository<NotificationRecipient, Guid>()
+            await _unitOfWork.Repository<NotificationRecipient, int>()
                 .AddAsync(_mapper.Map<NotificationRecipient>(notification));
             // Save to DB
             if (await _unitOfWork.SaveChangesAsync() > 0)
@@ -95,7 +95,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         }
 
         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002));
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),noti.Count());
     }
 
     public async Task<IServiceResult> UpdateReadStatus(string email)
@@ -119,7 +119,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         foreach (var noti  in notifications)
         {
             noti.IsRead = true;
-            await _unitOfWork.Repository<NotificationRecipient, Guid>().UpdateAsync(noti);
+            await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
         }
 
         var result =await _unitOfWork.SaveChangesWithTransactionAsync();

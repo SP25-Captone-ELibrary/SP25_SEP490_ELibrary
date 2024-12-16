@@ -15,14 +15,11 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId);
         Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
         Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code);
+        Task<IServiceResult> ChangeAccountStatus(Guid userId);
         Task<IServiceResult> UpdateAccount(Guid userId, TDto userUpdateDetail,string roleName);
         Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
         Task<IServiceResult> UpdateMfaStatusAsync(Guid userId);
         Task<IServiceResult> DeleteAccount(Guid id);
-        Task<IServiceResult> ChangeAccountStatus(Guid userId);
-        
-        #region Background tasks
-        Task CreateManyAccountsWithSendEmail(IFormFile excelFile);
-        #endregion
+        Task<IServiceResult> CreateManyAccountsWithSendEmail(string email,IFormFile? excelFile, DuplicateHandle duplicateHandle);
     }
 }

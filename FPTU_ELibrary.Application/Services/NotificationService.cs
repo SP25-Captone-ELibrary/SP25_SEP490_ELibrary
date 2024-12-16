@@ -9,6 +9,9 @@ using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
@@ -137,17 +140,75 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         return new ServiceResult(ResultCodeConst.SYS_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new { NotificationType = result });
     }
-    
-    
+
+
     private async Task SendPrivateNotification(string userId, NotificationDto dto)
     {
-            await _hubContext.Clients.User(userId).SendAsync("ReceiveNotification", new
+        await _hubContext.Clients.User(userId).SendAsync("ReceiveNotification", new
+        {
+            Title = dto.Title,
+            Message = dto.Message,
+            IsPublic = false,
+            Timestamp = dto.CreateDate,
+            NotificationType = dto.NotificationType
+        });
+    }
+
+    public async Task<IServiceResult> GetAllWithSpecAsync(
+        NotificationSpecParams specParams,
+        string email,
+        bool tracked = true
+    )
+    {
+        try
+        {
+            var userResult = await _userService.GetByEmailAsync(email);
+            var user = (UserDto)userResult.Data!;
+            var roleId = user.RoleId;
+
+            // Tạo mới NotificationSpecification dựa trên specParams, email, và roleId
+            var notificationSpec = new NotificationSpecification(
+                specParams,
+                specParams.PageIndex ?? 1,
+                specParams.PageSize ?? 5,
+                email,
+                roleId
+            );
+
+            var totalNotification = await _unitOfWork.Repository<Notification, Guid>().CountAsync(notificationSpec);
+            var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
+
+            if (notificationSpec.PageIndex > totalPage || notificationSpec.PageIndex < 1)
             {
-                Title = dto.Title,
-                Message = dto.Message,
-                IsPublic = false,
-                Timestamp = dto.CreateDate,
-                NotificationType = dto.NotificationType
-            });
+                notificationSpec.PageIndex = 1;
+            }
+
+            notificationSpec.ApplyPaging(
+                skip: notificationSpec.PageSize * (notificationSpec.PageIndex - 1),
+                take: notificationSpec.PageSize
+            );
+
+            var entities = await _unitOfWork.Repository<Notification, Guid>()
+                .GetAllWithSpecAsync(notificationSpec, tracked);
+
+            if (entities.Any())
+            {
+                var paginationResultDto = new PaginatedResultDto<NotificationDto>(
+                    _mapper.Map<IEnumerable<NotificationDto>>(entities),
+                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage);
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                _mapper.Map<IEnumerable<NotificationDto>>(entities));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get all data");
+        }
     }
 }

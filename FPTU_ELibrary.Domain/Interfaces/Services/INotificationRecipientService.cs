@@ -2,7 +2,7 @@ using FPTU_ELibrary.Domain.Entities;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services.Base;
 
-public interface INotificationRecipientService<TDto> :IGenericService<NotificationRecipient,TDto,Guid> 
+public interface INotificationRecipientService<TDto> :IGenericService<NotificationRecipient,TDto,int> 
     where TDto: class
 {
     Task<IServiceResult> CreatePrivateNotification(TDto notification);
