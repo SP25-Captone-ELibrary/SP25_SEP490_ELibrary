@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using FPTU_ELibrary.Application.Configurations;
 using OtpNet;
 using QRCoder;
 
@@ -7,6 +10,10 @@ namespace FPTU_ELibrary.Application.Utils;
 //      This class is to provide procedures to handle two-factor authentication feature
 public class TwoFactorAuthUtils
 {
+    private readonly AppSettings _appSettings = null!;
+    private static byte[] _key = null!;
+    private static byte[] _iv = null!;
+    
     #region Generator
     //  Summary:
     //      Generate secret key for specific user
@@ -59,15 +66,62 @@ public class TwoFactorAuthUtils
     #endregion
 
     #region Hashing
-    public static IEnumerable<string> HashBackupCodes(IEnumerable<string> codes)
+    //  Summary:
+    //      Encrypts backup codes 
+    public static IEnumerable<string> EncryptBackupCodes(IEnumerable<string> codes, AppSettings appSettings)
     {
-        // Hash the codes for secure storage
-        return codes.Select(code => BCrypt.Net.BCrypt.HashPassword(code));
+        _key = Convert.FromBase64String(appSettings.AESKey);
+        _iv = Convert.FromBase64String(appSettings.AESIV);
+        
+        return codes.Select(Encrypt);
+    }
+    
+    //  Summary:
+    //      Decrypts backup codes
+    public static IEnumerable<string> DecryptBackupCodes(IEnumerable<string> encryptedCodes, AppSettings appSettings)
+    {
+        _key = Convert.FromBase64String(appSettings.AESKey);
+        _iv = Convert.FromBase64String(appSettings.AESIV);
+        
+        return encryptedCodes.Select(Decrypt);
     }
 
-    public static string? VerifyBackupCodeAndGetMatch(string providedCode, IEnumerable<string> hashedCodes)
+    // Summary:
+    //      Verifies a provided backup code 
+    public static string? VerifyBackupCodeAndGetMatch(string providedCode, IEnumerable<string> encryptedCodes, AppSettings appSettings)
     {
-        return hashedCodes.FirstOrDefault(hash => BCrypt.Net.BCrypt.Verify(providedCode, hash));
+        _key = Convert.FromBase64String(appSettings.AESKey);
+        _iv = Convert.FromBase64String(appSettings.AESIV);
+        
+        return encryptedCodes
+            .FirstOrDefault(encryptedCode => Decrypt(encryptedCode) == providedCode);
     }
+    
+    private static string Encrypt(string plainText)
+    {
+        using var aes = Aes.Create();
+        aes.Key = _key;
+        aes.IV = _iv;
+
+        var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+        var plainBytes = Encoding.UTF8.GetBytes(plainText);
+
+        var encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+        return Convert.ToBase64String(encryptedBytes);
+    }
+    
+    private static string Decrypt(string encryptedText)
+    {
+        using var aes = Aes.Create();
+        aes.Key = _key;
+        aes.IV = _iv;
+
+        var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+        var encryptedBytes = Convert.FromBase64String(encryptedText);
+
+        var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+        return Encoding.UTF8.GetString(decryptedBytes);
+    }
+    
     #endregion
 }

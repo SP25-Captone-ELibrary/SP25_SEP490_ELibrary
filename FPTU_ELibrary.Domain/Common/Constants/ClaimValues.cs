@@ -4,4 +4,5 @@ public static class ClaimValues
 {
     public const string EMPLOYEE_CLAIMVALUE = "employee";
     public const string USER_CLAIMVALUE = "user";
+    public const string MFA_CLAIMVALUE = "mfa";
 }

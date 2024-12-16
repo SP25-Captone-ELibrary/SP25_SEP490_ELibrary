@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Validations;
@@ -14,6 +15,7 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
@@ -22,10 +24,14 @@ namespace FPTU_ELibrary.API.Controllers;
 public class UserController:ControllerBase
 {
     private readonly IUserService<UserDto> _userService;
-    
-    public UserController(IUserService<UserDto> userService)
+    private readonly AppSettings _appSettings;
+
+    public UserController(
+        IOptionsMonitor<AppSettings> monitor,
+        IUserService<UserDto> userService)
     {
         _userService = userService;
+        _appSettings = monitor.CurrentValue;
     }
 
      [Authorize]
@@ -33,7 +39,8 @@ public class UserController:ControllerBase
      public async Task<IActionResult> GetAllUserAsync([FromQuery] UserSpecParams req)
      {
          return Ok(await _userService.GetAllWithSpecAsync(new UserSpecification(userSpecParams:req,
-             pageIndex: req.PageIndex ?? 1,pageSize: req.PageSize??5),tracked:false));
+             pageIndex: req.PageIndex ?? 1, 
+             pageSize: req.PageSize ?? _appSettings.PageSize), tracked:false));
      }
      
     // [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
@@ -74,13 +81,6 @@ public class UserController:ControllerBase
         return Ok(await _userService.UpdateAccount(id, dto.ToUserForUpdate(),dto.ModifyBy));
     }
 
-    [Authorize]
-    [HttpPatch(APIRoute.User.UpdateRole,Name = nameof(UpdateRoleForGeneralUser))]
-    public async Task<IActionResult> UpdateRoleForGeneralUser([FromRoute] Guid id,[FromBody] UpdateUserRequest dto)
-    {
-        return Ok(await _userService.UpdateAccount(id, dto.ToUpdateRoleUser(),dto.ModifyBy));
-    }
-    
     [Authorize]
     [HttpDelete(APIRoute.User.HardDelete,Name = nameof(DeleteUser))]
     public async Task<IActionResult> DeleteUser([FromRoute] Guid id)

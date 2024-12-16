@@ -86,7 +86,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Warning0003 = "SYS.Warning0003";
 		/// <summary>
-		/// [WARNING] Data not found
+		/// [WARNING] Data not found or empty
 		/// </summary>
 		public static string SYS_Warning0004 = "SYS.Warning0004";
 		/// <summary>
@@ -141,7 +141,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string Auth_Success0009 = "Auth.Success0009";
 		/// <summary>
-		/// [SUCCESS] Backup code is valid
+		/// [SUCCESS] Create MFA backup codes succesfully
 		/// </summary>
 		public static string Auth_Success0010 = "Auth.Success0010";
 		
@@ -202,6 +202,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Fail to send OTP 
 		/// </summary>
 		public static string Auth_Fail0002 = "Auth.Fail0002";
+		/// <summary>
+		/// [FAIL] Fail to create backup codes
+		/// </summary>
+		public static string Auth_Fail0003 = "Auth.Fail0003";
 		#endregion
 
 		#region Role

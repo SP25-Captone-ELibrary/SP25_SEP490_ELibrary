@@ -1295,7 +1295,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Generate QrCode bytes from URI
 					var qrCode = TwoFactorAuthUtils.GenerateQrCode(uri);
 					// Hash backup codes
-					var hashedBackupCodes = TwoFactorAuthUtils.HashBackupCodes(backupCodes);
+					var hashedBackupCodes = TwoFactorAuthUtils.EncryptBackupCodes(backupCodes, _appSettings);
 					
 					IServiceResult? enableResult;
 					// Stored secret key and backup codes
@@ -1329,7 +1329,7 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke when progress enable mfa");
 			}
 		}
-
+		
 		public async Task<IServiceResult> ValidateMfaAsync(string email, string otp)
 		{
 			try
@@ -1365,8 +1365,7 @@ namespace FPTU_ELibrary.Application.Services
 				if (authUser != null)
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey) 
-					    || string.IsNullOrEmpty(authUser.TwoFactorBackupCodes)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011, 
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
@@ -1422,36 +1421,38 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					// Map to authenticate user
 					authUser = userDto.ToAuthenticateUserDto();
+					// Assign role name for JWT generator
+					authUser.RoleName = userDto.Role.EnglishName;
 				}else if (employeeResult.Data is EmployeeDto employeeDto) // Detect email as employee
 				{
 					// Map to authenticate user
 					authUser = employeeDto.ToAuthenticateUserDto();
+					// Assign role name for JWT generator
+					authUser.RoleName = employeeDto.Role.EnglishName;
 				}
 				
 				// Handle validate MFA
 				if (authUser != null)
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)
-					    || string.IsNullOrEmpty(authUser.TwoFactorBackupCodes)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
+					}
+
+					// Mark as all backup codes of user have been used
+					if (string.IsNullOrEmpty(authUser.TwoFactorBackupCodes)) 
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Warning0012,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0012));
 					}
 					
 					// Split user backup code by comma
 					var hashedCodes = authUser.TwoFactorBackupCodes.Split(',');
 					
-					// Check if hashed code not exist
-					if (!hashedCodes.Any())
-					{
-						// Mark as invalid backup code
-						return new ServiceResult(ResultCodeConst.Auth_Warning0012, 
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0012));
-					}
-					
 					// Verify Backup Code
-					var matchingHash = TwoFactorAuthUtils.VerifyBackupCodeAndGetMatch(backupCode, hashedCodes);
+					var matchingHash = TwoFactorAuthUtils.VerifyBackupCodeAndGetMatch(backupCode, hashedCodes, _appSettings);
 					if (matchingHash != null)
 					{
 						// Remove the matching hash 
@@ -1459,8 +1460,6 @@ namespace FPTU_ELibrary.Application.Services
 
 						// Update backup codes
 						authUser.TwoFactorBackupCodes = string.Join(",", hashedCodes);
-						// Change 2FA status
-						authUser.TwoFactorEnabled = false;
 						
 						if (authUser.IsEmployee) // Is employee
 						{
@@ -1473,9 +1472,8 @@ namespace FPTU_ELibrary.Application.Services
 								authUser.Email, authUser.TwoFactorSecretKey, hashedCodes);
 						}
 						
-						// Invalid backup code
-						return new ServiceResult(ResultCodeConst.Auth_Success0010, 
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0010));
+						// Authenticate user
+						return await AuthenticateUserAsync(authUser);
 					}
 					
 					// Invalid backup code
@@ -1491,6 +1489,237 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				_logger.Error(ex.Message);
 				throw new Exception("Error invoke when process validate backup code");
+			}
+		}
+
+		public async Task<IServiceResult> RegenerateMfaBackupCodeAsync(string email)
+		{
+			try
+			{
+				// Initialize authenticate user 
+				AuthenticateUserDto? authUser = null;
+				
+				// Check whether the email belongs to (User/Employee)
+				var userResult = await _userService.GetByEmailAsync(email);
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				
+				if (userResult.Data == null &&
+				    employeeResult.Data == null) // Not found email match any type of user
+				{
+					var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(message, "email"));
+				}else if (userResult.Data is UserDto userDto) // Detect email as user
+				{
+					// Map to authenticate user
+					authUser = userDto.ToAuthenticateUserDto();
+				}else if (employeeResult.Data is EmployeeDto employeeDto) // Detect email as employee
+				{
+					// Map to authenticate user
+					authUser = employeeDto.ToAuthenticateUserDto();
+				}
+				
+				// Handle regenerate backup code
+				if (authUser != null)
+				{
+					// Check whether user or employee already enable MFA
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
+					}
+					
+					// Sending email & generate confirm token
+					// Generate confirmation code
+					var otpCode = StringUtils.GenerateUniqueCode();
+					// Email subject
+					var emailSubject = "ELibrary - Regenerate backup codes confirmation email";
+					// Email content
+					var emailContent = $@"
+		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+		                        <h3>Hi {authUser.FirstName} {authUser.LastName},</h3>
+		                        <p>Here's your confirmation code:</p>
+		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+		                        <p>Use this code to complete regenerate backup codes process.</p>
+		                        <br />
+		                        <p style='font-size: 16px;'>Thanks,</p>
+		                        <p style='font-size: 16px;'>The ELibrary Team</p>
+		                    </div>";
+					
+					// Generate MFA backup token
+					var token = await new JwtUtils(_webTokenSettings).GenerateMfaTokenAsync(authUser);
+					
+					var isOtpSent = await SendAndSaveOtpAsync(otpCode, authUser, emailSubject, emailContent);
+					if (isOtpSent) // Email sent
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Success0005,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005), 
+								new RegenerateMfaBackupResultDto()
+								{
+									Token = token
+								});
+					}
+					else
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Fail0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0002));
+					}
+				}
+				
+				// Unknown error
+				return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke while regenerating backup code");
+			}
+		}
+
+		public async Task<IServiceResult> ConfirmRegenerateMfaBackupCodeAsync(string email, string otp, string token)
+		{
+			try
+			{
+				// Initialize authenticate user 
+				AuthenticateUserDto? authUser = null;
+				
+				// Check whether the email belongs to (User/Employee)
+				var userResult = await _userService.GetByEmailAsync(email);
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				
+				if (userResult.Data == null &&
+				    employeeResult.Data == null) // Not found email match any type of user
+				{
+					var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(message, "email"));
+				}else if (userResult.Data is UserDto userDto) // Detect email as user
+				{
+					// Map to authenticate user
+					authUser = userDto.ToAuthenticateUserDto();
+				}else if (employeeResult.Data is EmployeeDto employeeDto) // Detect email as employee
+				{
+					// Map to authenticate user
+					authUser = employeeDto.ToAuthenticateUserDto();
+				}
+				
+				// Verify OTP 
+				if (authUser != null 
+				    && authUser.EmailVerificationCode == otp) // Is valid OTP
+				{
+					// Check whether user or employee already enable MFA
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
+					}
+					
+					// Validate Mfa token 
+					var jwtToken = await new JwtUtils(_tokenValidationParameters).ValidateMfaTokenAsync(token);
+					if (jwtToken == null || authUser.TwoFactorSecretKey == null)
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Fail0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0003));
+					}
+					
+					// Generate new backup codes
+					// Generate backup codes
+					var backupCodes = TwoFactorAuthUtils.GenerateBackupCodes();
+					// Hash backup codes
+					var hashedBackupCodes = TwoFactorAuthUtils.EncryptBackupCodes(backupCodes, _appSettings);
+
+					IServiceResult? enableResult;
+					// Stored secret key and backup codes
+					if (authUser.IsEmployee) enableResult = await _employeeService.UpdateMfaSecretAndBackupAsync(email, authUser.TwoFactorSecretKey, hashedBackupCodes);
+					else enableResult = await _userService.UpdateMfaSecretAndBackupAsync(email, authUser.TwoFactorSecretKey, hashedBackupCodes);
+
+					if (enableResult.Data is true)
+					{
+						// Create MFA backup codes message
+						return new ServiceResult(ResultCodeConst.Auth_Success0010,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0010));
+					}
+					
+					// Fail to regenerate MFA backup codes
+					return new ServiceResult(ResultCodeConst.Auth_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Fail0003));
+				}
+				
+				// Not match OTP
+				return new ServiceResult(ResultCodeConst.Auth_Warning0005, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0005));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke while process confirm regenerate MFA backup code");
+			}
+		}
+
+		public async Task<IServiceResult> GetMfaBackupAsync(string email)
+		{
+			try
+			{
+				// Initialize authenticate user 
+				AuthenticateUserDto? authUser = null;
+				
+				// Check whether the email belongs to (User/Employee)
+				var userResult = await _userService.GetByEmailAsync(email);
+				var employeeResult = await _employeeService.GetByEmailAsync(email);
+				
+				if (userResult.Data == null &&
+				    employeeResult.Data == null) // Not found email match any type of user
+				{
+					var message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(message, "email"));
+				}else if (userResult.Data is UserDto userDto) // Detect email as user
+				{
+					// Map to authenticate user
+					authUser = userDto.ToAuthenticateUserDto();
+				}else if (employeeResult.Data is EmployeeDto employeeDto) // Detect email as employee
+				{
+					// Map to authenticate user
+					authUser = employeeDto.ToAuthenticateUserDto();
+				}
+				
+				// Handle get MFA code
+				if (authUser != null)
+				{
+					// Check whether user or employee already enable MFA
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					{
+						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
+					}
+
+					if (string.IsNullOrEmpty(authUser.TwoFactorBackupCodes))
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+					}					
+					
+					// Split user backup code by comma
+					var hashedCodes = authUser.TwoFactorBackupCodes.Split(',');
+					
+					// Verify Backup Code
+					var decryptedBackupCodes = TwoFactorAuthUtils.DecryptBackupCodes(hashedCodes, _appSettings);
+					if (decryptedBackupCodes.Any())
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), decryptedBackupCodes);
+					}
+				}
+				
+				// Fail to get data 
+				return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke while process get MFA backup codes");
 			}
 		}
 		

@@ -6,6 +6,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         where TDto : class
     {
         Task<IServiceResult> GetCurrentUserAsync(string email);
+        Task<IServiceResult> GetMfaBackupAsync(string email);
         Task<IServiceResult> SignInAsync(string email);
         Task<IServiceResult> SignInWithPasswordAsync(TDto user);
         Task<IServiceResult> SignInWithOtpAsync(string otp, TDto user);
@@ -26,6 +27,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> EnableMfaAsync(string email);
         Task<IServiceResult> ValidateMfaAsync(string email, string otp);
         Task<IServiceResult> ValidateMfaBackupCodeAsync(string email, string backupCode);
-        // Task<IServiceResult> RegenerateMfaBackupCodeAsync(string email);
+        Task<IServiceResult> RegenerateMfaBackupCodeAsync(string email);
+        Task<IServiceResult> ConfirmRegenerateMfaBackupCodeAsync(string email, string otp, string token);
     }
 }

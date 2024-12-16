@@ -58,6 +58,13 @@ public class EmployeeController : ControllerBase
     {
         return Ok(await _employeeService.UpdateAsync(id, req.ToEmployeeDtoForUpdate()));
     }
+    
+    [Authorize]
+    [HttpPut(APIRoute.Employee.UpdateProfile, Name = nameof(UpdateEmployeeProfileAsync))]
+    public async Task<IActionResult> UpdateEmployeeProfileAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeRequest req)
+    {
+        return Ok(await _employeeService.UpdateProfileAsync(id, req.ToEmployeeDtoForUpdateProfile()));
+    }
 
     [Authorize]
     [HttpPatch(APIRoute.Employee.ChangeActiveStatus, Name = nameof(ChangeActiveStatusAsync))]

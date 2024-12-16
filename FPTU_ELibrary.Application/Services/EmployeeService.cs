@@ -183,7 +183,7 @@ namespace FPTU_ELibrary.Application.Services
 
 			return serviceResult;
 		}
-
+		
 		public override async Task<IServiceResult> DeleteAsync(Guid id)
 		{
 			// Initiate service result
@@ -253,6 +253,76 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
+		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+
+				// Update specific properties
+				existingEntity.FirstName = dto.FirstName;
+				existingEntity.LastName = dto.LastName;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<Employee, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw;
+			}
+
+			return serviceResult;
+		}
+		
 		public async Task<IServiceResult> UpdateWithoutValidationAsync(Guid employeeId, EmployeeDto dto)
 		{
 			// Initiate service result

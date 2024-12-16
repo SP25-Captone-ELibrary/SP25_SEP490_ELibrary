@@ -12,6 +12,7 @@
 			// [GET]
 			public const string ForgotPassword = Base + "/auth/forgot-password";
 			public const string CurrentUser = Base + "/auth/current-user";
+			public const string GetMfaBackupAsync = Base + "/auth/mfa-backup";
 			// [POST]
 			public const string SignIn = Base + "/auth/sign-in";
 			public const string SignInAsEmployee = Base + "/auth/employee/sign-in";
@@ -27,6 +28,8 @@
 			public const string EnableMfa = Base + "/auth/enable-mfa";
 			public const string ValidateMfa = Base + "/auth/validate-mfa";
 			public const string ValidateBackupCode = Base + "/auth/validate-mfa-backup";
+			public const string RegenerateBackupCode = Base + "/auth/regenerate-mfa-backup";
+			public const string RegenerateBackupCodeConfirm = Base + "/auth/regenerate-mfa-backup/confirm";
 			// [PATCH]
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 			public const string ChangePassword = Base + "/auth/change-password";
@@ -68,7 +71,7 @@
 			//users update their own account
 			public const string Update = Base + "/profile/{id}";
 			//admin update role from general user(GU) to Student or Teacher role
-			public const string UpdateRole = Base + "/users/{id}/role";
+			// public const string UpdateRole = Base + "/users/{id}/role";
 			//[Put]
 			public const string ChangeAccountStatus = Base + "/users/{id}/status";
 			//[Delete]
@@ -82,12 +85,12 @@
 		{
 			// [GET]
 			public const string GetAll = Base + "/employees";
-			public const string GetAllFromTrash = Base + "/employees/trash";
 			// [POST]
 			public const string Create = Base + "/employees";
 			public const string Import = Base + "/employees/import";
 			// [PUT]
 			public const string Update = Base + "/employees/{id}";
+			public const string UpdateProfile = Base + "/employess/{id}/profile";
 			// [PATCH]
 			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
 			// [DELETE]

@@ -5,11 +5,13 @@ using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
+using System.Security.Claims;
+using System.Security.Cryptography;
 
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
 
@@ -164,6 +166,32 @@ namespace FPTU_ELibrary.API.Controllers
 		public async Task<IActionResult> ValidateMfaBackupCodeAsync([FromBody] ValidateMfaBackupCodeRequest req)
 		{
 			return Ok(await _authenticationService.ValidateMfaBackupCodeAsync(req.Email, req.BackupCode));
+		}
+
+		[Authorize]
+		[HttpPost(APIRoute.Authentication.RegenerateBackupCode, Name = nameof(RegenerateBackupCodeAsync))]
+		public async Task<IActionResult> RegenerateBackupCodeAsync()
+		{
+			// Retrieve user email from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.RegenerateMfaBackupCodeAsync(email ?? string.Empty));
+		}
+		
+		[Authorize]
+		[HttpPost(APIRoute.Authentication.RegenerateBackupCodeConfirm, Name = nameof(RegenerateBackupCodeConfirmAsync))]
+		public async Task<IActionResult> RegenerateBackupCodeConfirmAsync([FromBody] RegenerateBackupConfirmRequest req)
+		{
+			// Retrieve user email from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.ConfirmRegenerateMfaBackupCodeAsync(email ?? string.Empty, req.Otp, req.Token));
+		}
+
+		[Authorize]
+		[HttpGet(APIRoute.Authentication.GetMfaBackupAsync, Name = nameof(GetMfaBackupAsyncAsync))]
+		public async Task<IActionResult> GetMfaBackupAsyncAsync()
+		{
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.GetMfaBackupAsync(email ?? string.Empty));
 		}
 	}
 }

@@ -67,7 +67,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.RoleId).HasColumnName("role_id");
             builder.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
             builder.Property(e => e.TwoFactorBackupCodes)
-                .HasMaxLength(350)
+                .HasMaxLength(255)
                 .HasColumnName("two_factor_backup_codes");
             builder.Property(e => e.TwoFactorSecretKey)
                 .HasMaxLength(255)
