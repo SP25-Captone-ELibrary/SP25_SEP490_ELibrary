@@ -45,12 +45,12 @@ namespace FPTU_ELibrary.Application.Services
 	            {
 	                return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
 	                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
-	                    _mapper.Map<IEnumerable<SystemRoleDto>>(roles));
+	                    _mapper.Map<List<SystemRoleDto>>(roles));
 	            }
 
 	            return new ServiceResult(ResultCodeConst.SYS_Success0002, 
 	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
-	                roles.Adapt<IEnumerable<SystemRoleDto>>(localConfig));
+	                roles.Adapt<List<SystemRoleDto>>(localConfig));
 	        }
 	        catch(Exception ex)
 	        {
@@ -185,7 +185,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Success0002,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-						roles.Adapt<IEnumerable<SystemRoleDto>>(localConfig));
+						roles.Adapt<List<SystemRoleDto>>(localConfig));
 				}
 
 				// Not found any role

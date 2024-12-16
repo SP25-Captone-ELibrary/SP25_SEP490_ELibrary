@@ -50,45 +50,45 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         {
             AddFilter(x => x.RoleId == specParams.RoleId);
         }
-        else if (specParams.EmployeeCode != null)
+        if (specParams.EmployeeCode != null)
         {
             // AddFilter(x => x.EmployeeCode != null && x.EmployeeCode.Contains(specParams.EmployeeCode));
             AddFilter(x => x.EmployeeCode == specParams.EmployeeCode);
         }
-        else if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
+        if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
         {
             AddFilter(x => x.Gender == specParams.Gender);
         }
-        else if (specParams.IsActive != null) // With status
+        if (specParams.IsActive != null) // With status
         {
             AddFilter(x => x.IsActive == specParams.IsActive);       
         }
-        else if (specParams.IsDeleted != null) // Is deleted
+        if (specParams.IsDeleted != null) // Is deleted
         {
             AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
         }
-        else if (specParams.DobRange != null 
+        if (specParams.DobRange != null 
                   && specParams.DobRange.Length > 1) // With range of dob
         {
             AddFilter(x => x.Dob.HasValue &&
                 x.Dob.Value.Date >= specParams.DobRange[0].Date 
                     && x.Dob.Value.Date <= specParams.DobRange[1].Date);       
         }
-        else if (specParams.CreateDateRange != null 
+        if (specParams.CreateDateRange != null 
                   && specParams.CreateDateRange.Length > 1) // With range of create date 
         {
             AddFilter(x => 
                            x.CreateDate >= specParams.CreateDateRange[0].Date 
                             && x.CreateDate <= specParams.CreateDateRange[1].Date);       
         }
-        else if (specParams.ModifiedDateRange != null 
+        if (specParams.ModifiedDateRange != null 
                  && specParams.ModifiedDateRange.Length > 1) // With range of create date 
         {
             AddFilter(x => x.ModifiedDate.HasValue &&
                 x.ModifiedDate.Value.Date >= specParams.ModifiedDateRange[0].Date 
                     && x.ModifiedDate.Value.Date <= specParams.ModifiedDateRange[1].Date);       
         }
-        else if (specParams.HireDateRange != null 
+        if (specParams.HireDateRange != null 
                  && specParams.HireDateRange.Length > 1) // With range of hire date 
         {
             AddFilter(x => x.HireDate.HasValue &&

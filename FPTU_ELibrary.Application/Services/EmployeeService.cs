@@ -955,6 +955,71 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> ExportAsync(ISpecification<Employee> spec)
+		{
+			try
+			{
+				// Try to parse specification to EmployeeSpecification
+				var employeeSpec = spec as EmployeeSpecification;
+				// Check if specification is null
+				if (employeeSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+				
+				// Define a local Mapster configuration
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<Employee, EmployeeDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.RoleId)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role) 
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+				
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<Employee, Guid>()
+					.GetAllWithSpecAsync(employeeSpec, tracked: false);
+				
+				// Get all employee role
+				var employeeRoles = 
+					(await _roleService.GetAllByRoleType(RoleType.Employee)).Data as List<SystemRoleDto>;
+				if (employeeRoles == null || !employeeRoles.Any())
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}
+				
+				if (entities.Any()) // Exist data
+				{
+					// Map entities to dtos 
+					var employeeDtos = _mapper.Map<List<EmployeeDto>>(entities);
+					// Process export data to file
+					var fileBytes = CsvUtils.ExportToExcel(
+						employeeDtos.ToEmployeeCsvRecords(employeeRoles));
+
+					return new ServiceResult(ResultCodeConst.SYS_Success0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+						fileBytes);
+				}
+				
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process export employee to excel");
+			}
+		}
+		
 		private async Task<List<string>> DetectWrongDataAsync(
 			List<EmployeeCsvRecord> records, 
 			string[]? scanningFields,

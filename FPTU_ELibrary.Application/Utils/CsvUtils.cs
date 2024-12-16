@@ -86,4 +86,43 @@ public static class CsvUtils
 
         return records;
     }
+    
+    public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1") where T : class
+    {
+        // Create a new Excel package
+        using (var package = new OfficeOpenXml.ExcelPackage())
+        {
+            // Add a worksheet to the package
+            var worksheet = package.Workbook.Worksheets.Add(sheetName);
+
+            // Get properties of T
+            var properties = typeof(T).GetProperties();
+
+            // Write the headers
+            for (int col = 0; col < properties.Length; col++)
+            {
+                worksheet.Cells[1, col + 1].Value = properties[col].Name;
+            }
+
+            // Write data rows
+            int rowIndex = 2; // Start from the second row 
+            foreach (var item in data)
+            {
+                for (int col = 0; col < properties.Length; col++)
+                {
+                    // Get the value of the property and write it to the cell
+                    var value = properties[col].GetValue(item);
+                    worksheet.Cells[rowIndex, col + 1].Value = value;
+                }
+
+                rowIndex++;
+            }
+
+            // Turn on auto-fit columns 
+            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+            // Return the Excel file as a byte array
+            return package.GetAsByteArray();
+        }
+    }
 }
