@@ -754,7 +754,7 @@ namespace FPTU_ELibrary.Application.Services
                                     var password = Utils.HashUtils.GenerateRandomPassword();
                                     var role = (SystemRoleDto)result.Data!;
                                     newUser.RoleId = role.RoleId;
-                                    newUser.PasswordHash = password;
+                                    newUser.PasswordHash = Utils.HashUtils.HashPassword(password);
                                     userToAdd.Add(newUser);
                                     emailPasswords.Add(newUser.Email, password);
                                 }

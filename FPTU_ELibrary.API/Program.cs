@@ -85,5 +85,10 @@ app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 // app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
+app.UseCors(x => x
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .SetIsOriginAllowed(origin => true)
+    .AllowCredentials());
 app.UseEndpoints(ep => ep.MapApplicationHubs());
 app.Run();
