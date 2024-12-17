@@ -55,7 +55,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
             {
                 serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
                 serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-                serviceResult.Data = true;
+                serviceResult.Data = notification;
             }
             else
             {
