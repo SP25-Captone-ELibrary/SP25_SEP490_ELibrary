@@ -2,21 +2,16 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
-using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Domain.Interfaces.Services;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
-using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity.Data;
-
+using System.Security.Claims;
+using FPTU_ELibrary.Application.Utils;
+using Microsoft.IdentityModel.Tokens;
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
 
 namespace FPTU_ELibrary.API.Controllers
@@ -25,12 +20,15 @@ namespace FPTU_ELibrary.API.Controllers
 	public class AuthenticationController : ControllerBase
 	{
 		private readonly IAuthenticationService<AuthenticateUserDto> _authenticationService;
+		private readonly TokenValidationParameters _tokenValidationParameters;
 
 		public AuthenticationController(
-			IAuthenticationService<AuthenticateUserDto> authenticationService)
+			IAuthenticationService<AuthenticateUserDto> authenticationService,
+			TokenValidationParameters tokenValidationParameters)
         {
 			_authenticationService = authenticationService;
-		}
+			_tokenValidationParameters = tokenValidationParameters;
+        }
 		
 		[Authorize]
 		[HttpGet(APIRoute.Authentication.CurrentUser, Name = nameof(GetCurrentUserAsync))]
@@ -60,21 +58,15 @@ namespace FPTU_ELibrary.API.Controllers
 		}
 		
 		[HttpPost(APIRoute.Authentication.SignInAsEmployee, Name = nameof(SignInAsEmployeeAsync))]
-		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInRequest req)
+		public async Task<IActionResult> SignInAsEmployeeAsync([FromBody] SignInWithPasswordRequest req)
 		{
-			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.Email));
+			return Ok(await _authenticationService.SignInAsEmployeeAsync(req.ToAuthenticatedUser()));
 		}
 		
 		[HttpPost(APIRoute.Authentication.SignInAsAdmin, Name = nameof(SignInAsAdminAsync))]
-		public async Task<IActionResult> SignInAsAdminAsync([FromBody] SignInRequest req)
+		public async Task<IActionResult> SignInAsAdminAsync([FromBody] SignInWithPasswordRequest req)
 		{
-			return Ok(await _authenticationService.SignInAsAdminAsync(req.Email));
-		}
-		
-		[HttpPost(APIRoute.Authentication.SignInWithPasswordAsEmployee, Name = nameof(SignInWithPasswordAsEmployeeAsync))]
-		public async Task<IActionResult> SignInWithPasswordAsEmployeeAsync([FromBody] SignInWithPasswordRequest req)
-		{
-			return Ok(await _authenticationService.SignInWithPasswordAsEmployeeAsync(req.ToAuthenticatedUser()));
+			return Ok(await _authenticationService.SignInAsAdminAsync(req.ToAuthenticatedUser()));
 		}
 		
 		[HttpPost(APIRoute.Authentication.SignInWithGoogle, Name = nameof(SignInWithGoogleAsync))]
@@ -106,35 +98,6 @@ namespace FPTU_ELibrary.API.Controllers
 		{
 			return Ok(await _authenticationService.ResendOtpAsync(req.Email));
 		}
-		
-		[HttpPost(APIRoute.Authentication.RefreshToken, Name = nameof(RefreshTokenAsync))]
-		public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest req)
-		{
-			// Retrieve claims from the authenticated user's identity
-			var roleName = User.FindFirst(ClaimTypes.Role)?.Value;
-			var userType = User.FindFirst(CustomClaimTypes.UserType)?.Value;
-			var email = User.FindFirst(ClaimTypes.Email)?.Value;
-			var name = User.FindFirst(JwtRegisteredClaimNames.Name)?.Value;
-			var tokenId = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-			if (string.IsNullOrEmpty(email) // Is not exist email claim
-			    || string.IsNullOrEmpty(userType) // Is not exist user type claim
-			    || string.IsNullOrEmpty(roleName) // Is not exist role claim
-			    || string.IsNullOrEmpty(name) // Is not exist name claim
-			    || string.IsNullOrEmpty(tokenId)) // Is not exist tokenId claim
-			{
-				// 401
-				throw new UnauthorizedException("Missing token claims.");
-			}
-			
-			// Generate new token using refresh token
-			return Ok(await _authenticationService.RefreshTokenAsync(
-				email: email,
-				userType: userType,
-				name: name,
-				roleName: roleName,
-				tokenId: tokenId,
-				refreshToken: req.RefreshToken));
-		}
 
 		[HttpGet(APIRoute.Authentication.ForgotPassword, Name = nameof(ForgotPasswordAsync))]
 		public async Task<IActionResult> ForgotPasswordAsync([FromQuery] ForgotPasswordRequest req)
@@ -159,5 +122,56 @@ namespace FPTU_ELibrary.API.Controllers
 		{
 			return Ok(await _authenticationService.ChangePasswordAsEmployeeAsync(req.Email, req.Password, req.Token));
 		} 
+		
+		[HttpPost(APIRoute.Authentication.RefreshToken, Name = nameof(RefreshTokenAsync))]
+		public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest req)
+		{
+			// Generate new token using refresh token
+			return Ok(await _authenticationService.RefreshTokenAsync(req.AccessToken, req.RefreshToken));
+		}
+
+		[HttpPost(APIRoute.Authentication.EnableMfa, Name = nameof(EnableMfaAsync))]
+		public async Task<IActionResult> EnableMfaAsync([FromBody] EnableMfaRequest req)
+		{
+			return Ok(await _authenticationService.EnableMfaAsync(req.Email));
+		}
+		
+		[HttpPost(APIRoute.Authentication.ValidateMfa, Name = nameof(ValidateMfaAsync))]
+		public async Task<IActionResult> ValidateMfaAsync([FromBody] ValidateMfaRequest req)
+		{
+			return Ok(await _authenticationService.ValidateMfaAsync(req.Email, req.Otp));
+		}
+		
+		[HttpPost(APIRoute.Authentication.ValidateBackupCode, Name = nameof(ValidateMfaBackupCodeAsync))]
+		public async Task<IActionResult> ValidateMfaBackupCodeAsync([FromBody] ValidateMfaBackupCodeRequest req)
+		{
+			return Ok(await _authenticationService.ValidateMfaBackupCodeAsync(req.Email, req.BackupCode));
+		}
+
+		[Authorize]
+		[HttpPost(APIRoute.Authentication.RegenerateBackupCode, Name = nameof(RegenerateBackupCodeAsync))]
+		public async Task<IActionResult> RegenerateBackupCodeAsync()
+		{
+			// Retrieve user email from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.RegenerateMfaBackupCodeAsync(email ?? string.Empty));
+		}
+		
+		[Authorize]
+		[HttpPost(APIRoute.Authentication.RegenerateBackupCodeConfirm, Name = nameof(RegenerateBackupCodeConfirmAsync))]
+		public async Task<IActionResult> RegenerateBackupCodeConfirmAsync([FromBody] RegenerateBackupConfirmRequest req)
+		{
+			// Retrieve user email from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.ConfirmRegenerateMfaBackupCodeAsync(email ?? string.Empty, req.Otp, req.Token));
+		}
+
+		[Authorize]
+		[HttpGet(APIRoute.Authentication.GetMfaBackupAsync, Name = nameof(GetMfaBackupAsyncAsync))]
+		public async Task<IActionResult> GetMfaBackupAsyncAsync()
+		{
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			return Ok(await _authenticationService.GetMfaBackupAsync(email ?? string.Empty));
+		}
 	}
 }

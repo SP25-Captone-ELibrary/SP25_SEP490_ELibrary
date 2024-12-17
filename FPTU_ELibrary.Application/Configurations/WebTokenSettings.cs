@@ -13,5 +13,6 @@
         public int TokenLifeTimeInMinutes { get; set; }
         public int RefreshTokenLifeTimeInMinutes { get; set; }
         public int RecoveryPasswordLifeTimeInMinutes { get; set; }
+        public int MfaTokenLifeTimeInMinutes { get; set; }
     }
 }

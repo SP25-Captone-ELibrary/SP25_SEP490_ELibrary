@@ -14,19 +14,13 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
-using FPTU_ELibrary.Domain.Specifications.Params;
-using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using MimeKit.Encodings;
-using OfficeOpenXml.Packaging.Ionic.Zip;
 using RoleEnum = FPTU_ELibrary.Domain.Common.Enums.Role;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using Org.BouncyCastle.Ocsp;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -50,6 +44,26 @@ namespace FPTU_ELibrary.Application.Services
             _service = service;
         }
 
+        public override async Task<IServiceResult> GetByIdAsync(Guid id)
+        {
+            //query specification
+            var baseSpec = new BaseSpecification<User>(u => u.UserId.Equals(id));
+            // Include job role
+            baseSpec.ApplyInclude(u => u.Include(u => u.Role));
+            // Get user by query specification
+            var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
+
+            if (existedUser is null)
+            {
+                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errorMsg, "account"));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
+        }
+        
         public override async Task<IServiceResult> CreateAsync(UserDto dto)
         {
             // Initiate service result
@@ -188,42 +202,42 @@ namespace FPTU_ELibrary.Application.Services
                 throw new Exception("Error invoke while confirm email verification code");
             }
 
-            return serviceResult;
-        }
-
-        public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid userId)
-        {
-            try
-            {
-                // Get user by id
-                var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
-                // Get role by id 
-                var getRoleResult = await _roleService.GetByIdAsync(roleId);
-                if (user != null
-                    && getRoleResult.Data is SystemRoleDto role)
-                {
-                    // Check is valid role type 
-                    if (role.RoleType != RoleType.User.ToString())
-                    {
-                        return new ServiceResult(ResultCodeConst.Role_Warning0002,
-                            await _msgService.GetMessageAsync(ResultCodeConst.Role_Warning0002));
-                    }
-
-                    // Progress update user role 
-                    user.RoleId = role.RoleId;
-
-                    // Save to DB
-                    var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
-                    if (isSaved) // Save success
-                    {
-                        return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-                    }
-
-                    // Fail to update
-                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-                }
+			return serviceResult;
+		}
+		
+		public async Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId)
+		{
+			try
+			{
+				// Get user by id
+				var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				// Get role by id 
+				var getRoleResult = await _roleService.GetByIdAsync(roleId);
+				if (user != null 
+				    && getRoleResult.Data is SystemRoleDto role)
+				{
+					// Check is valid role type 
+					if (role.RoleType != RoleType.User.ToString())
+					{
+						return new ServiceResult(ResultCodeConst.Role_Warning0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.Role_Warning0002));
+					}
+					
+					// Progress update user role 
+					user.RoleId = role.RoleId;
+					
+					// Save to DB
+					var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+					if (isSaved) // Save success
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+					}
+					
+					// Fail to update
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				}
 
                 var errMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -486,6 +500,79 @@ namespace FPTU_ELibrary.Application.Services
                 _mapper.Map<UserDto>(currentAccount));
         }
 
+        public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
+        {
+            try
+            {
+                // Get user by id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(
+                    new BaseSpecification<User>(u => u.Email == email));
+                if (user == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Progress update MFA key and backup codes
+                user.TwoFactorSecretKey = mfaKey;
+                user.TwoFactorBackupCodes = string.Join(",", backupCodes);
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+        
+        public async Task<IServiceResult> UpdateMfaStatusAsync(Guid userId)
+        {
+            try
+            {
+                // Get user by id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+                if (user == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Change account 2FA status
+                user.TwoFactorEnabled = true;
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+        
+        
         #region Temporary return. Offical return required worker to send many emails at the time.
 
         // public async Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile)
@@ -600,7 +687,6 @@ namespace FPTU_ELibrary.Application.Services
         }
 
         //  #region User Own Sending Email and format function
-
         private async Task SendUserEmail(UserDto newUser, string rawPassword)
         {
             var emailMessageDto = new EmailMessageDto(
@@ -624,7 +710,6 @@ namespace FPTU_ELibrary.Application.Services
             // Send email
             var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
         }
-
 
         public async Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile,
             DuplicateHandle duplicateHandle)
@@ -776,9 +861,9 @@ namespace FPTU_ELibrary.Application.Services
                                     new List<string> { userDto.Email },
                                     "ELibrary - Change password notification",
                                     $@"
-                            <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
-                            <p>Your account has been created. Your password is:</p>
-                            <h1>{emailPasswords[userDto.Email]}</h1>");
+                                    <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
+                                    <p>Your account has been created. Your password is:</p>
+                                    <h1>{emailPasswords[userDto.Email]}</h1>");
                                 await emailService.SendEmailAsync(emailMessageDto, true);
                             }
 

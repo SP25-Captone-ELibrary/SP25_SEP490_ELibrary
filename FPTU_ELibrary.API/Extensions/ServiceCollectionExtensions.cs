@@ -169,7 +169,8 @@ namespace FPTU_ELibrary.API.Extensions
 				ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
 				ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
 				RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
-				ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!)
+				ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
+				ClockSkew = TimeSpan.Zero
 			};
 			
 			// Register TokenValidationParameters in the DI container

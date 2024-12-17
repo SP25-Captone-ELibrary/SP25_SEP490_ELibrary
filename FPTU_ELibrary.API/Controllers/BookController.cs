@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -26,7 +27,7 @@ namespace FPTU_ELibrary.API.Controllers
 
 		//	Summary:
 		//		Get all book
-		[Authorize]
+		// [Authorize]
 		[HttpGet(APIRoute.Book.GetAll, Name = nameof(GetAllBookAsync))]
 		public async Task<IActionResult> GetAllBookAsync()
 		{

@@ -1,8 +1,6 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Middlewares;
-using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.Application;
-using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Infrastructure;
 
 
@@ -83,7 +81,7 @@ app.UseAuthorization();
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware
 app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
-// app.UseMiddleware<AuthenticationMiddleware>(); // Authentication middleware
+
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
 app.UseCors(x => x
     .AllowAnyMethod()

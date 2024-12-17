@@ -1,5 +1,6 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
@@ -54,7 +55,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
             {
                 serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
                 serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-                serviceResult.Data = true;
+                serviceResult.Data = notification;
             }
             else
             {
@@ -113,7 +114,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         {
             var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0001);
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errorMsg, "notification-recipient"));
+                StringUtils.Format(errorMsg, "notification recipient"));
         }
 
         foreach (var noti  in notifications)

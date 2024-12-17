@@ -71,14 +71,6 @@ namespace FPTU_ELibrary.API.Extensions
 				Dob = req.Dob,
 				Phone = req.Phone,
 			};
-
-		// Mapping from typeof(UpdateUserRequest) to typeof(UserDto)
-		public static UserDto ToUpdateRoleUser(this UpdateUserRequest req)
-			=> new UserDto()
-			{ 
-				UserCode = req.UserCode,
-				RoleId = req.RoleId??4,
-			};
 		#endregion
 
 		#region Employee
@@ -121,7 +113,6 @@ namespace FPTU_ELibrary.API.Extensions
 			
 			return new EmployeeDto()
 			{
-				Email = req.Email,
 				EmployeeCode = req.EmployeeCode,
 				FirstName = req.FirstName,
 				LastName = req.LastName,
@@ -132,6 +123,26 @@ namespace FPTU_ELibrary.API.Extensions
 				HireDate = req.HireDate,
 				TerminationDate = req.TerminationDate,
 				ModifiedDate = currentLocalDateTime,
+			};
+		}
+
+		public static EmployeeDto ToEmployeeDtoForUpdateProfile(this UpdateEmployeeProfileRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new EmployeeDto()
+			{
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Dob = req.Dob,
+				Phone = req.Phone,
+				Address = req.Address,
+				Gender = req.Gender.ToString(),
+				ModifiedDate = currentLocalDateTime,
+				Avatar = req.Avatar
 			};
 		}
 

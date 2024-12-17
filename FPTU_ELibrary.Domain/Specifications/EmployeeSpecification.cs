@@ -11,28 +11,25 @@ public class EmployeeSpecification : BaseSpecification<Employee>
     public int PageSize { get; set; }
     public EmployeeSpecification(EmployeeSpecParams specParams, int pageIndex, int pageSize)
         : base(e => 
+            // Search with terms
+            string.IsNullOrEmpty(specParams.Search) || 
             (
-                // Search with terms
-                string.IsNullOrEmpty(specParams.Search) || 
-                (
-                    // Employee code
-                    (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
-                    // Email
-                    (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
-                    // Phone
-                    (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
-                    // Address
-                    (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
-                    // Individual FirstName and LastName search
-                    (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
-                    // Full Name search
-                    (!string.IsNullOrEmpty(e.FirstName) &&
-                     !string.IsNullOrEmpty(e.LastName) &&
-                     (e.FirstName + " " + e.LastName).Contains(specParams.Search))
-                )
-            // Not mark as deleted
-            ) && !e.IsDeleted)
+                // Employee code
+                (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
+                // Email
+                (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
+                // Phone
+                (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
+                // Address
+                (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
+                // Individual FirstName and LastName search
+                (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
+                // Full Name search
+                (!string.IsNullOrEmpty(e.FirstName) &&
+                 !string.IsNullOrEmpty(e.LastName) &&
+                 (e.FirstName + " " + e.LastName).Contains(specParams.Search))
+            ))
     {
         // Assign page size and page index
         PageIndex = pageIndex;
@@ -53,40 +50,52 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         {
             AddFilter(x => x.RoleId == specParams.RoleId);
         }
-        else if (specParams.EmployeeCode != null)
+        if (specParams.EmployeeCode != null) // With employee code
         {
             AddFilter(x => x.EmployeeCode == specParams.EmployeeCode);
         }
-        else if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
+        if (!string.IsNullOrEmpty(specParams.FirstName)) // With first name
+        {
+            AddFilter(x => x.FirstName == specParams.FirstName);
+        }
+        if (!string.IsNullOrEmpty(specParams.LastName)) // With last name
+        {
+            AddFilter(x => x.LastName == specParams.LastName);
+        }
+        if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
         {
             AddFilter(x => x.Gender == specParams.Gender);
         }
-        else if (specParams.IsActive != null) // With status
+        if (specParams.IsActive != null) // With status
         {
             AddFilter(x => x.IsActive == specParams.IsActive);       
         }
-        else if (specParams.DobRange != null 
+        if (specParams.IsDeleted != null) // Is deleted
+        {
+            AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
+        }
+        if (specParams.DobRange != null 
                   && specParams.DobRange.Length > 1) // With range of dob
         {
             AddFilter(x => x.Dob.HasValue &&
                 x.Dob.Value.Date >= specParams.DobRange[0].Date 
                     && x.Dob.Value.Date <= specParams.DobRange[1].Date);       
         }
-        else if (specParams.CreateDateRange != null 
+        if (specParams.CreateDateRange != null 
                   && specParams.CreateDateRange.Length > 1) // With range of create date 
         {
             AddFilter(x => 
                            x.CreateDate >= specParams.CreateDateRange[0].Date 
                             && x.CreateDate <= specParams.CreateDateRange[1].Date);       
         }
-        else if (specParams.ModifiedDateRange != null 
+        if (specParams.ModifiedDateRange != null 
                  && specParams.ModifiedDateRange.Length > 1) // With range of create date 
         {
             AddFilter(x => x.ModifiedDate.HasValue &&
                 x.ModifiedDate.Value.Date >= specParams.ModifiedDateRange[0].Date 
                     && x.ModifiedDate.Value.Date <= specParams.ModifiedDateRange[1].Date);       
         }
-        else if (specParams.HireDateRange != null 
+        if (specParams.HireDateRange != null 
                  && specParams.HireDateRange.Length > 1) // With range of hire date 
         {
             AddFilter(x => x.HireDate.HasValue &&
@@ -104,6 +113,9 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 specParams.Sort = specParams.Sort.Trim('-');
             }
 
+            // Uppercase sort text
+            specParams.Sort = specParams.Sort.ToUpper();
+            
             // Define sorting pattern
             var sortMappings = new Dictionary<string, Expression<Func<Employee, object>>>()
             {
@@ -115,6 +127,8 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 { "PHONE", x => x.Phone ?? string.Empty },
                 { "GENDER", x => x.Gender ?? string.Empty },
                 { "CREATEDATE", x => x.CreateDate },
+                { "HIREDATE", x => x.HireDate ?? null! },
+                { "ACTIVE", x => x.IsActive },
                 { "ROLE", x => x.Role.EnglishName },
             };
         

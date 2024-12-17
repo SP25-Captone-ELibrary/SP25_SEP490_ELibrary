@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDatabase : Migration
+    public partial class Initialdatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,6 +19,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     author_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     author_image = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
+                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     biography = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
@@ -26,7 +27,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     date_of_death = table.Column<DateTime>(type: "datetime", nullable: true),
                     nationality = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true)
+                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -268,7 +270,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     email_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     two_factor_secret_key = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    two_factor_backup_codes = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     phone_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     email_verification_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     phone_verification_expiry = table.Column<DateTime>(type: "datetime", nullable: true)

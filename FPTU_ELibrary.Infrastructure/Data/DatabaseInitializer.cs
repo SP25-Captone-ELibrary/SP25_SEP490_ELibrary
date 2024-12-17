@@ -81,7 +81,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
             try
             {
-	            if (!await _context.Users.AnyAsync()) await SeedUsereAsync();
+	            if (!await _context.Users.AnyAsync()) await SeedUserAsync();
 				// [System Roles]
 				if (!await _context.SystemRoles.AnyAsync()) await SeedSystemRoleAsync();
 				else _logger.Information("Already seed data for table {0}", "System_Role");
@@ -195,17 +195,9 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		}
 		//  Summary:
 		//      Seeding User 
-		private async Task SeedUsereAsync()
+		private async Task SeedUserAsync()
 		{
-			// // Initialize user
-			// List<User> users = new List<User>()
-			// {
-			// 	new User()
-			// 	{
-			// 		Email = "admin@gmail.com",
-			// 		PasswordHash = ByteC
-			// 	},
-			// };
+			await Task.CompletedTask;
 		}
 
 		//	Summary:
@@ -321,12 +313,19 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	    {
 		    // Get all system features
 		    var features = await _context.SystemFeatures.ToListAsync();
-		    // Get all system roles
-		    var roles = await _context.SystemRoles.ToListAsync();
+		    // Get system roles (Admin & Employee only)
+		    var roles = await _context.SystemRoles.Where(sr => 
+			    sr.RoleType == nameof(RoleType.Employee) || // All employee roles
+			    sr.EnglishName.Equals(nameof(Role.Administration))) // Admin role
+			.ToListAsync();
+		    
 		    // Get [FULL_ACCESS] permission
 		    var fullAccessPermission = await _context.SystemPermissions.
 				    FirstOrDefaultAsync(p => p.EnglishName == nameof(Permission.FullAccess));
-
+			// Get [ACCESS_DENIED] permission
+			var accessDeniedPermission = await _context.SystemPermissions.
+				FirstOrDefaultAsync(p => p.EnglishName == nameof(Permission.AccessDenied));
+		    
 		    // Initialize list of permission
 		    List<RolePermission> rolePermissions = new();
 		    for (int i = 0; i < features.Count; ++i)
@@ -335,11 +334,30 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			    for (int j = 0; j < roles.Count; ++j)
 			    {
 				    var role = roles[j];
+
+				    // Set default [ACCESS_DENIED] for all roles except Admin
+				    if (feature.EnglishName.Equals(nameof(SystemFeatureEnum.RoleManagement)))
+				    {
+					    // Is not Admin
+					    if(!role.EnglishName.Equals(nameof(Role.Administration)))
+					    {
+						    // Add role permission
+						    rolePermissions.Add(new()
+						    {
+							    PermissionId = accessDeniedPermission!.PermissionId, // Access Denied
+							    FeatureId = feature.FeatureId,
+							    RoleId = role.RoleId
+						    });
+						    
+						    // Mark as continue
+						    continue;
+					    }
+				    }
 				    
 				    // Add role permission
 				    rolePermissions.Add(new()
 				    {
-					    PermissionId = fullAccessPermission!.PermissionId,
+					    PermissionId = fullAccessPermission!.PermissionId, // Full Access 
 					    FeatureId = feature.FeatureId,
 					    RoleId = role.RoleId
 				    });
@@ -577,7 +595,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EmployeeCode = "EM270925",
 					Email = "librian@gmail.com",
-					PasswordHash = string.Empty,
+					// Password: @Employee123
+					PasswordHash = "$2a$13$2bD1T7g/kstNMw0LWEksKuUaGhuAXCXkftsfIURf7yJ6Hr20I2Aae",
 					FirstName = "Nguyen Van",
 					LastName = "A",
 					Dob = new DateTime(1995, 02, 10),

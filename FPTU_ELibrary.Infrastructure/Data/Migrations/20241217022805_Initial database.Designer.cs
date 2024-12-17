@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241212085112_Initial Database")]
-    partial class InitialDatabase
+    [Migration("20241217022805_Initial database")]
+    partial class Initialdatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -62,11 +62,22 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("dob");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("email");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("first_name");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1748,7 +1759,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("role_id");
 
                     b.Property<string>("TwoFactorBackupCodes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")

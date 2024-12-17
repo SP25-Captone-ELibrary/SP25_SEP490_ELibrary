@@ -41,15 +41,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 			builder.Property(e => e.EmailVerificationCode)
 				.HasMaxLength(20)
 				.HasColumnName("email_verification_code");
-			builder.Property(e => e.FirstName)
+            builder.Property(e => e.FirstName)
                 .HasMaxLength(100)
                 .HasColumnName("first_name");
-
-            #region Update at: 2-12-2024 by Nguyen Vu Quang Huy
-            builder.Property(e => e.ModifiedBy)
-                .HasColumnType("nvarchar(100)")
-                .HasColumnName("modified_by");
-            #endregion
            
             builder.Property(e => e.IsActive)
                 .HasDefaultValue(true)
@@ -71,8 +65,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("datetime")
                 .HasColumnName("phone_verification_expiry");
             builder.Property(e => e.RoleId).HasColumnName("role_id");
-            builder.Property(e => e.TwoFactorBackupCodes).HasColumnName("two_factor_backup_codes");
             builder.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
+            builder.Property(e => e.TwoFactorBackupCodes)
+                .HasMaxLength(255)
+                .HasColumnName("two_factor_backup_codes");
             builder.Property(e => e.TwoFactorSecretKey)
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_secret_key");
@@ -85,6 +81,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .OnDelete(DeleteBehavior.Restrict) // Restrict delete when SystemRole has associated employees
                 .HasConstraintName("FK_SystemRole_RoleId");
 
+            #region Update at: 2-12-2024 by Nguyen Vu Quang Huy
+            builder.Property(e => e.ModifiedBy)
+                .HasColumnType("nvarchar(100)")
+                .HasColumnName("modified_by");
+            #endregion
+            
             #region Update at 12/09/2024 by Le Xuan Phuoc
             builder.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)

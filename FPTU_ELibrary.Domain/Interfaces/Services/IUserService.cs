@@ -13,17 +13,14 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
         Task<IServiceResult> GetByEmailAsync(string email);
         Task<IServiceResult> CreateAccountByAdmin(TDto user);
-        Task<IServiceResult> UpdateRoleAsync(int roleId, Guid userId);
+        Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId);
         Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
         Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code);
-        //Task<IServiceResult> SearchAccount(string searchString);
         Task<IServiceResult> ChangeAccountStatus(Guid userId);
         Task<IServiceResult> UpdateAccount(Guid userId, TDto userUpdateDetail,string roleName);
-        // Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile);
-        //// This delete feature support not opening database to delete;
+        Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
+        Task<IServiceResult> UpdateMfaStatusAsync(Guid userId);
         Task<IServiceResult> DeleteAccount(Guid id);
-
         Task<IServiceResult> CreateManyAccountsWithSendEmail(string email,IFormFile? excelFile, DuplicateHandle duplicateHandle);
-        Task<IServiceResult> GetById(Guid id);
     }
 }

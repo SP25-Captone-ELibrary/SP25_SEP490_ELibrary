@@ -1,19 +1,21 @@
-﻿using System.Text;
-
-namespace FPTU_ELibrary.Application.Utils
+﻿namespace FPTU_ELibrary.Application.Utils
 {
     // Summary:
     //		Provide utility procedures to handle any logic related to encrypt/decrypt
     public class HashUtils
     {
+        //  Summary:
+        //      Verify that the hash of given text matches to provided hash
         public static bool VerifyPassword(string password, string storedHash)
-            // Verfifies that the hash of given text matches to provided hash
             => BC.EnhancedVerify(password, storedHash);
 
+        //  Summary:
+        //      Pre-hash a password with SHA384 then using the OpenBSD BCrypt scheme and a salt
         public static string HashPassword(string password)
-            // Pre-hash a password with SHA384 then using the OpenBSD BCrypt scheme and a salt
             => BC.EnhancedHashPassword(password, 13);
 
+        //  Summary:
+        //      Generate random password base on specific requirement
         public static string GenerateRandomPassword()
         {
             //Collection of password requirement 

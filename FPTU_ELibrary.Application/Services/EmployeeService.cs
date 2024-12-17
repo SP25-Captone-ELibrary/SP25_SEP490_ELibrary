@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Dtos;
@@ -183,7 +184,7 @@ namespace FPTU_ELibrary.Application.Services
 
 			return serviceResult;
 		}
-
+		
 		public override async Task<IServiceResult> DeleteAsync(Guid id)
 		{
 			// Initiate service result
@@ -203,9 +204,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Check whether employee in the trash bin
 				if (!existingEntity.IsDeleted)
 				{
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					return new ServiceResult(ResultCodeConst.SYS_Fail0004, 
-						StringUtils.Format(errMsg, nameof(Employee)));
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
 				
 				// Check employee constraints
@@ -236,11 +236,8 @@ namespace FPTU_ELibrary.Application.Services
 				}
 				else
 				{
-					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
-
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0004;
-					serviceResult.Message = StringUtils.Format(errMsg, nameof(Employee));
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					serviceResult.Data = false;
 				}
 			}
@@ -253,6 +250,77 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
+		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+
+				// Update specific properties
+				existingEntity.FirstName = dto.FirstName;
+				existingEntity.LastName = dto.LastName;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				existingEntity.Avatar = dto.Avatar;
+				
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<Employee, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw;
+			}
+
+			return serviceResult;
+		}
+		
 		public async Task<IServiceResult> UpdateWithoutValidationAsync(Guid employeeId, EmployeeDto dto)
 		{
 			// Initiate service result
@@ -308,7 +376,7 @@ namespace FPTU_ELibrary.Application.Services
 			return serviceResult;
 		}
 
-		public async Task<IServiceResult> UpdateRoleAsync(int roleId, Guid employeeId)
+		public async Task<IServiceResult> UpdateRoleAsync(Guid employeeId, int roleId)
 		{
 			try
 			{
@@ -475,10 +543,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (rowsAffected == 0)
 				{
 					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
-
 					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-						StringUtils.Format(errMsg, nameof(Employee)));
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
 
 				// Mark as update success
@@ -492,6 +558,51 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> UndoDeleteAsync(Guid employeeId)
+		{
+			try
+			{
+				// Check exist employee
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, "employee"));
+				}
+
+				// Check if employee account already mark as deleted
+				if (!existingEntity.IsDeleted)
+				{
+					// Get error msg
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						StringUtils.Format(errMsg, nameof(Employee)));
+				}
+				
+				// Update delete status
+				existingEntity.IsDeleted = false;
+				
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);	
+				throw new Exception("Error invoke when process soft delete employee");	
+			}
+		}
+		
 		public override async Task<IServiceResult> GetAllWithSpecAsync(
 			ISpecification<Employee> specification,
 			bool tracked = true)
@@ -612,7 +723,79 @@ namespace FPTU_ELibrary.Application.Services
 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
 				_mapper.Map<EmployeeDto?>(employee));
 		}
+		
+		public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
+        {
+            try
+            {
+                // Get employee by id 
+                var employee = await _unitOfWork.Repository<Employee, Guid>().GetWithSpecAsync(
+	                new BaseSpecification<Employee>(e => e.Email == email));
+                if (employee == null) // Not found
+                {
+                    var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errorMsg, "account"));
+                }
+                
+                // Progress update MFA key and backup codes
+                employee.TwoFactorSecretKey = mfaKey;
+                employee.TwoFactorBackupCodes = string.Join(",", backupCodes);
+                
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
 
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress update MFA key");
+            }    
+        }
+		
+		public async Task<IServiceResult> UpdateMfaStatusAsync(Guid employeeId)
+		{
+			try
+			{
+				// Get employee by id 
+				var employee = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				if (employee == null) // Not found
+				{
+					var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errorMsg, "employee"));
+				}
+                
+				// Change account 2FA status
+				employee.TwoFactorEnabled = true;
+                
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress update MFA key");
+			}    
+		}
+		
 		public async Task<IServiceResult> ImportAsync(IFormFile? file, DuplicateHandle duplicateHandle, string? columnSeparator, string? encodingType, string[]? scanningFields)
 		{
 			try
@@ -648,20 +831,22 @@ namespace FPTU_ELibrary.Application.Services
 					CsvUtils.ReadCsvOrExcel<EmployeeCsvRecord>(file, csvConfig, encodingType);
 
 				// Get all employee role
-				var employeeRoles = 
+				var employeeRoles =
 					(await _roleService.GetAllByRoleType(RoleType.Employee)).Data as List<SystemRoleDto>;
 				if (employeeRoles == null || !employeeRoles.Any())
 				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0008, 
+					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008));
 				}
-				
+
 				// Determine system lang
-				var lang = (SystemLanguage) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+				var lang =
+					(SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+						.CurrentLanguage);
 				var isEng = lang == SystemLanguage.English;
-				
+
 				// Detect record errors
-				var detectResult = await DetectWrongDataAsync(records, scanningFields, employeeRoles, lang);
+				var detectResult = await DetectWrongDataAsync(records, scanningFields, employeeRoles, (SystemLanguage) lang!);
 				if (detectResult.Any())
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
@@ -691,8 +876,8 @@ namespace FPTU_ELibrary.Application.Services
 								records.RemoveAt(duplicateIdx);
 							}
 
-							additionalMsg = isEng 
-								? $"{detectDuplicateResult.Keys.Count} data have been replaced" 
+							additionalMsg = isEng
+								? $"{detectDuplicateResult.Keys.Count} data have been replaced"
 								: $"{detectDuplicateResult.Keys.Count} đã bị lượt bỏ";
 							break;
 						case DuplicateHandle.Skip:
@@ -702,23 +887,24 @@ namespace FPTU_ELibrary.Application.Services
 							foreach (var duplicateIdx in detectDuplicateResult.Keys.OrderByDescending(idx => idx))
 							{
 								// Remove all duplicates related to current key
-								foreach (var otherIdx in detectDuplicateResult[duplicateIdx].OrderByDescending(idx => idx))
+								foreach (var otherIdx in detectDuplicateResult[duplicateIdx]
+									         .OrderByDescending(idx => idx))
 								{
 									records.RemoveAt(otherIdx);
-									
+
 									// Increase total skip
 									++totalSkips;
 								}
 
 								// Remove first element, after remove all its duplicates
 								records.RemoveAt(duplicateIdx);
-								
+
 								// Increase total skip
 								++totalSkips;
 							}
-							
-							additionalMsg = isEng 
-								? $"{totalSkips} data have been replaced" 
+
+							additionalMsg = isEng
+								? $"{totalSkips} data have been replaced"
 								: $"{totalSkips} đã bị lượt bỏ";
 							break;
 					}
@@ -726,7 +912,7 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Convert to employee dto collection
 				var employeeDtos = records.ToEmployeeDtosForImport(employeeRoles);
-				
+
 				// Progress import data
 				await _unitOfWork.Repository<Employee, Guid>().AddRangeAsync(_mapper.Map<List<Employee>>(employeeDtos));
 				// Save to DB
@@ -737,8 +923,8 @@ namespace FPTU_ELibrary.Application.Services
 						: $"Import {employeeDtos.Count} data successfully";
 					return new ServiceResult(ResultCodeConst.SYS_Success0005, respMsg, true);
 				}
-				
-				return new ServiceResult(ResultCodeConst.SYS_Warning0005, 
+
+				return new ServiceResult(ResultCodeConst.SYS_Warning0005,
 					"No data effected", false);
 			}
 			catch (UnprocessableEntityException)
@@ -747,16 +933,25 @@ namespace FPTU_ELibrary.Application.Services
 			}
 			catch (TypeConverterException ex)
 			{
-				var lang = (SystemLanguage) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+				var lang =
+					(SystemLanguage)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+						.CurrentLanguage);
 				// Extract row information if available
 				var rowNumber = ex.Data.Contains("Row") ? ex.Data["Row"] : "unknown";
 
 				// Generate an appropriate error message
-				var errMsg = lang == SystemLanguage.English 
-					? $"Wrong data type at row {rowNumber}" 
+				var errMsg = lang == SystemLanguage.English
+					? $"Wrong data type at row {rowNumber}"
 					: $"Sai kiểu dữ liệu ở dòng {rowNumber}";
-				
+
 				throw new BadRequestException(errMsg);
+			}
+			catch (ReaderException ex)
+			{
+				_logger.Error(ex.Message);
+				// Invalid column separator selection
+				return new ServiceResult(ResultCodeConst.File_Warning0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0003));
 			}
 			catch (Exception ex)
 			{
@@ -765,6 +960,71 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> ExportAsync(ISpecification<Employee> spec)
+		{
+			try
+			{
+				// Try to parse specification to EmployeeSpecification
+				var employeeSpec = spec as EmployeeSpecification;
+				// Check if specification is null
+				if (employeeSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+				
+				// Define a local Mapster configuration
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<Employee, EmployeeDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.RoleId)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role) 
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+				
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<Employee, Guid>()
+					.GetAllWithSpecAsync(employeeSpec, tracked: false);
+				
+				// Get all employee role
+				var employeeRoles = 
+					(await _roleService.GetAllByRoleType(RoleType.Employee)).Data as List<SystemRoleDto>;
+				if (employeeRoles == null || !employeeRoles.Any())
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}
+				
+				if (entities.Any()) // Exist data
+				{
+					// Map entities to dtos 
+					var employeeDtos = _mapper.Map<List<EmployeeDto>>(entities);
+					// Process export data to file
+					var fileBytes = CsvUtils.ExportToExcel(
+						employeeDtos.ToEmployeeCsvRecords(employeeRoles));
+
+					return new ServiceResult(ResultCodeConst.SYS_Success0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+						fileBytes);
+				}
+				
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process export employee to excel");
+			}
+		}
+		
 		private async Task<List<string>> DetectWrongDataAsync(
 			List<EmployeeCsvRecord> records, 
 			string[]? scanningFields,
@@ -817,13 +1077,16 @@ namespace FPTU_ELibrary.Application.Services
 				if (scanningFields != null)
 				{
 					// Initialize base spec
-					BaseSpecification<Employee>? baseSpec = null;
+					BaseSpecification<Employee>? empBaseSpec = null;
+					BaseSpecification<User>? userBaseSpec = null;
 					
 					// Iterate each fields to add criteria scanning logic
 					foreach (var field in scanningFields)
 					{
 						var normalizedField = field.ToUpperInvariant();
-						var newSpec = normalizedField switch
+						
+						// Building query to check duplicates on Employee entity
+						var newEmpSpec = normalizedField switch
 						{
 							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
 								new BaseSpecification<Employee>(e => e.Email.Equals(record.Email)),
@@ -831,19 +1094,41 @@ namespace FPTU_ELibrary.Application.Services
 								new BaseSpecification<Employee>(e => e.Phone == record.Phone),
 							_ => null
 						};
+						
+						// Building query to check duplicates on User entity
+						var newUserSpec = normalizedField switch
+						{
+							var email when email == nameof(Employee.Email).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Email.Equals(record.Email)),
+							var phone when phone == nameof(Employee.Phone).ToUpperInvariant() =>
+								new BaseSpecification<User>(e => e.Phone == record.Phone),
+							_ => null
+						};
 
-						if (newSpec != null)
+						if (newEmpSpec != null) // Found new employee spec
 						{
 							// Combine specifications with AND logic
-							baseSpec = baseSpec == null
-								? newSpec
-								: baseSpec.Or(newSpec);
+							empBaseSpec = empBaseSpec == null
+								? newEmpSpec
+								: empBaseSpec.Or(newEmpSpec);
+						}
+						
+						if (newUserSpec != null) // Found new user spec
+						{
+							// Combine specifications with AND logic
+							userBaseSpec = userBaseSpec == null
+								? newUserSpec
+								: userBaseSpec.Or(newUserSpec);
 						}
 					}
 
 					// Check exist with spec
-					if (baseSpec != null 
-					    && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(baseSpec))
+					if (
+						// Any employee found
+						(empBaseSpec != null && await _unitOfWork.Repository<Employee, Guid>().AnyAsync(empBaseSpec)) || 
+						// Any user found
+						(userBaseSpec != null && await _unitOfWork.Repository<User, Guid>().AnyAsync(userBaseSpec))
+					)
 					{
 						isError = true;
 						errMsg = isEng ? "Duplicate email or phone" : "Email hoặc số điện thoại bị trùng";

@@ -4,23 +4,37 @@ namespace FPTU_ELibrary.Domain.Common.Enums;
 
 public enum SystemFeature
 {
-    [Description("users")]
+    // System features
+    [Description("/management/users")]
     UserManagement,
-    [Description("employees")]
+    [Description("/management/employees")]
     EmployeeManagement,
-    [Description("roles")]
+    [Description("/management/roles")] // Combine with permissions
     RoleManagement,
-    [Description("fines")]
+    [Description("/management/fines")]
     FineManagement,
-    [Description("/management/books")] // Combine with authors, categories
+    [Description("/management/books")] // Combine with authors, categories, resources
     BookManagement,
-    [Description("/management/borrows")] // Combine with returns
+    [Description("/management/borrows")] // Combine with notifications, returns
     BorrowManagement,
-    [Description("transactions")]
+    [Description("/management/transactions")]
     TransactionManagement,
-    [Description("system-configurations")]
+    [Description("/management/system-configurations")] // Combine with system-messages
     SystemConfigurationManagement,
-    [Description("system-health")]
-    SystemHealthManagement
+    [Description("/management/system-health")]
+    SystemHealthManagement,
     
+    // Combined Features
+    [Description("/management/authors")]
+    AuthorManagement,
+    [Description("/management/categories")]
+    CategoryManagement,
+    [Description("/management/notifications")]
+    NotificationManagement,
+    [Description("/management/returns")]
+    ReturnManagement,
+    [Description("/management/system-messages")]
+    SystemMessageManagement,
+    [Description("/management/resources")]
+    ResourceManagement
 }
