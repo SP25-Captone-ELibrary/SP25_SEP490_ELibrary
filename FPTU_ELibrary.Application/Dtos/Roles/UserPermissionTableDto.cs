@@ -15,6 +15,7 @@ public static class UserPermissionTableDtoExtensions
 {
     public static UserPermissionTableDto? ToUserPermissionTable(this List<RolePermissionDto> rolePermissions,
         bool isRoleVerticalLayout,
+        int rolePermissionFeatureId,
         List<SystemRoleDto>? roles = null,
         List<SystemFeatureDto>? features = null)
     {
@@ -28,7 +29,7 @@ public static class UserPermissionTableDtoExtensions
         List<string>? colHeaders = new(); // Table header columns
         List<UserPermissionRowDto>? rows = new(); // Table rows 
         IEnumerable<IGrouping<string, RolePermissionDto>>? groups = null;
-        
+                
         // Get current system language
         var langStr = LanguageContext.CurrentLanguage;
         var langEnum = EnumExtensions.GetValueFromDescription<SystemLanguage>(langStr);
@@ -65,6 +66,7 @@ public static class UserPermissionTableDtoExtensions
                         RowId = isRoleVerticalLayout ? rp.RoleId : rp.FeatureId,
                         ColId = isRoleVerticalLayout ? rp.FeatureId : rp.RoleId,
                         CellContent = StringUtils.AddWhitespaceToString(rp.Permission.EnglishName),
+                        IsModifiable = rolePermissionFeatureId != rp.FeatureId 
                     }));
                     rows.Add(singleRow);
                 }

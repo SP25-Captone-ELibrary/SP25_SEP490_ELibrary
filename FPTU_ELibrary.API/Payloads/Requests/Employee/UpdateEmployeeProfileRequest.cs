@@ -10,4 +10,5 @@ public class UpdateEmployeeProfileRequest
     public string Phone { get; set; } = null!;
     public string Address { get; set; } = null!;
     public Gender Gender { get; set; }
+    public string? Avatar { get; set; } 
 }

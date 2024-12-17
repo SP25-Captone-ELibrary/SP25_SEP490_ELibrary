@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Dtos;
@@ -203,9 +204,8 @@ namespace FPTU_ELibrary.Application.Services
 				// Check whether employee in the trash bin
 				if (!existingEntity.IsDeleted)
 				{
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					return new ServiceResult(ResultCodeConst.SYS_Fail0004, 
-						StringUtils.Format(errMsg, nameof(Employee)));
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
 				
 				// Check employee constraints
@@ -236,11 +236,8 @@ namespace FPTU_ELibrary.Application.Services
 				}
 				else
 				{
-					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
-
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0004;
-					serviceResult.Message = StringUtils.Format(errMsg, nameof(Employee));
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
 					serviceResult.Data = false;
 				}
 			}
@@ -286,6 +283,7 @@ namespace FPTU_ELibrary.Application.Services
 				existingEntity.Phone = dto.Phone;
 				existingEntity.Address = dto.Address;
 				existingEntity.Gender = dto.Gender;
+				existingEntity.Avatar = dto.Avatar;
 				
 				// Check if there are any differences between the original and the updated entity
 				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
@@ -545,10 +543,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (rowsAffected == 0)
 				{
 					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
-
 					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-						StringUtils.Format(errMsg, nameof(Employee)));
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
 
 				// Mark as update success
@@ -592,11 +588,8 @@ namespace FPTU_ELibrary.Application.Services
 				var rowsAffected = await _unitOfWork.SaveChangesAsync();
 				if (rowsAffected == 0)
 				{
-					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
-
 					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-						StringUtils.Format(errMsg, nameof(Employee)));
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
 
 				// Mark as update success
@@ -838,20 +831,22 @@ namespace FPTU_ELibrary.Application.Services
 					CsvUtils.ReadCsvOrExcel<EmployeeCsvRecord>(file, csvConfig, encodingType);
 
 				// Get all employee role
-				var employeeRoles = 
+				var employeeRoles =
 					(await _roleService.GetAllByRoleType(RoleType.Employee)).Data as List<SystemRoleDto>;
 				if (employeeRoles == null || !employeeRoles.Any())
 				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0008, 
+					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008));
 				}
-				
+
 				// Determine system lang
-				var lang = (SystemLanguage) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+				var lang =
+					(SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+						.CurrentLanguage);
 				var isEng = lang == SystemLanguage.English;
-				
+
 				// Detect record errors
-				var detectResult = await DetectWrongDataAsync(records, scanningFields, employeeRoles, lang);
+				var detectResult = await DetectWrongDataAsync(records, scanningFields, employeeRoles, (SystemLanguage) lang!);
 				if (detectResult.Any())
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
@@ -881,8 +876,8 @@ namespace FPTU_ELibrary.Application.Services
 								records.RemoveAt(duplicateIdx);
 							}
 
-							additionalMsg = isEng 
-								? $"{detectDuplicateResult.Keys.Count} data have been replaced" 
+							additionalMsg = isEng
+								? $"{detectDuplicateResult.Keys.Count} data have been replaced"
 								: $"{detectDuplicateResult.Keys.Count} đã bị lượt bỏ";
 							break;
 						case DuplicateHandle.Skip:
@@ -892,23 +887,24 @@ namespace FPTU_ELibrary.Application.Services
 							foreach (var duplicateIdx in detectDuplicateResult.Keys.OrderByDescending(idx => idx))
 							{
 								// Remove all duplicates related to current key
-								foreach (var otherIdx in detectDuplicateResult[duplicateIdx].OrderByDescending(idx => idx))
+								foreach (var otherIdx in detectDuplicateResult[duplicateIdx]
+									         .OrderByDescending(idx => idx))
 								{
 									records.RemoveAt(otherIdx);
-									
+
 									// Increase total skip
 									++totalSkips;
 								}
 
 								// Remove first element, after remove all its duplicates
 								records.RemoveAt(duplicateIdx);
-								
+
 								// Increase total skip
 								++totalSkips;
 							}
-							
-							additionalMsg = isEng 
-								? $"{totalSkips} data have been replaced" 
+
+							additionalMsg = isEng
+								? $"{totalSkips} data have been replaced"
 								: $"{totalSkips} đã bị lượt bỏ";
 							break;
 					}
@@ -916,7 +912,7 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Convert to employee dto collection
 				var employeeDtos = records.ToEmployeeDtosForImport(employeeRoles);
-				
+
 				// Progress import data
 				await _unitOfWork.Repository<Employee, Guid>().AddRangeAsync(_mapper.Map<List<Employee>>(employeeDtos));
 				// Save to DB
@@ -927,8 +923,8 @@ namespace FPTU_ELibrary.Application.Services
 						: $"Import {employeeDtos.Count} data successfully";
 					return new ServiceResult(ResultCodeConst.SYS_Success0005, respMsg, true);
 				}
-				
-				return new ServiceResult(ResultCodeConst.SYS_Warning0005, 
+
+				return new ServiceResult(ResultCodeConst.SYS_Warning0005,
 					"No data effected", false);
 			}
 			catch (UnprocessableEntityException)
@@ -937,16 +933,25 @@ namespace FPTU_ELibrary.Application.Services
 			}
 			catch (TypeConverterException ex)
 			{
-				var lang = (SystemLanguage) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+				var lang =
+					(SystemLanguage)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+						.CurrentLanguage);
 				// Extract row information if available
 				var rowNumber = ex.Data.Contains("Row") ? ex.Data["Row"] : "unknown";
 
 				// Generate an appropriate error message
-				var errMsg = lang == SystemLanguage.English 
-					? $"Wrong data type at row {rowNumber}" 
+				var errMsg = lang == SystemLanguage.English
+					? $"Wrong data type at row {rowNumber}"
 					: $"Sai kiểu dữ liệu ở dòng {rowNumber}";
-				
+
 				throw new BadRequestException(errMsg);
+			}
+			catch (ReaderException ex)
+			{
+				_logger.Error(ex.Message);
+				// Invalid column separator selection
+				return new ServiceResult(ResultCodeConst.File_Warning0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0003));
 			}
 			catch (Exception ex)
 			{

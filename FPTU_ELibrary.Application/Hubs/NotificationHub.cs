@@ -3,7 +3,7 @@ using Serilog;
 
 namespace FPTU_ELibrary.Application.Hubs;
 
-public class NotificationHub :Hub
+public class NotificationHub : Hub
 {
     public override async Task OnConnectedAsync()
     {

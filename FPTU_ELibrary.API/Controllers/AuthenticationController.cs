@@ -7,12 +7,11 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
-using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using System.Security.Claims;
-using System.Security.Cryptography;
-
+using FPTU_ELibrary.Application.Utils;
+using Microsoft.IdentityModel.Tokens;
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
 
 namespace FPTU_ELibrary.API.Controllers
@@ -21,12 +20,15 @@ namespace FPTU_ELibrary.API.Controllers
 	public class AuthenticationController : ControllerBase
 	{
 		private readonly IAuthenticationService<AuthenticateUserDto> _authenticationService;
+		private readonly TokenValidationParameters _tokenValidationParameters;
 
 		public AuthenticationController(
-			IAuthenticationService<AuthenticateUserDto> authenticationService)
+			IAuthenticationService<AuthenticateUserDto> authenticationService,
+			TokenValidationParameters tokenValidationParameters)
         {
 			_authenticationService = authenticationService;
-		}
+			_tokenValidationParameters = tokenValidationParameters;
+        }
 		
 		[Authorize]
 		[HttpGet(APIRoute.Authentication.CurrentUser, Name = nameof(GetCurrentUserAsync))]
@@ -124,30 +126,8 @@ namespace FPTU_ELibrary.API.Controllers
 		[HttpPost(APIRoute.Authentication.RefreshToken, Name = nameof(RefreshTokenAsync))]
 		public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest req)
 		{
-			// Retrieve claims from the authenticated user's identity
-			var roleName = User.FindFirst(ClaimTypes.Role)?.Value;
-			var userType = User.FindFirst(CustomClaimTypes.UserType)?.Value;
-			var email = User.FindFirst(ClaimTypes.Email)?.Value;
-			var name = User.FindFirst(JwtRegisteredClaimNames.Name)?.Value;
-			var tokenId = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-			if (string.IsNullOrEmpty(email) // Is not exist email claim
-			    || string.IsNullOrEmpty(userType) // Is not exist user type claim
-			    || string.IsNullOrEmpty(roleName) // Is not exist role claim
-			    || string.IsNullOrEmpty(name) // Is not exist name claim
-			    || string.IsNullOrEmpty(tokenId)) // Is not exist tokenId claim
-			{
-				// 401
-				throw new UnauthorizedException("Missing token claims.");
-			}
-			
 			// Generate new token using refresh token
-			return Ok(await _authenticationService.RefreshTokenAsync(
-				email: email,
-				userType: userType,
-				name: name,
-				roleName: roleName,
-				tokenId: tokenId,
-				refreshToken: req.RefreshToken));
+			return Ok(await _authenticationService.RefreshTokenAsync(req.AccessToken, req.RefreshToken));
 		}
 
 		[HttpPost(APIRoute.Authentication.EnableMfa, Name = nameof(EnableMfaAsync))]

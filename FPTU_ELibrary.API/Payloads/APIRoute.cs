@@ -57,25 +57,33 @@
 		/// </summary>
 		public static class User
 		{
+			#region Management
 			// [GET]
-			public const string GetAll = Base + "/users";
-			public const string Search = Base + "/users/q";
-
-			public const string GetById = Base + "/profile/{id}";
+			public const string GetAll = Base + "/management/users";
+			public const string Search = Base + "/management/users/q";
 			// [POST]
-			public const string Create = Base + "/users";
-			public const string CreateManyWithSendEmail = Base + "/users/create-many-with-send-mails";
-			public const string CreateMany = Base + "/createMany";
-			// public const string CreateMany = Base + "/admin/createMany";
+			public const string Create = Base + "/management/users";
+			public const string CreateManyWithSendEmail = Base + "/management/users/create-many-with-send-mails";
+			public const string CreateMany = Base + "/management/createMany";
+			// [PUT]
+			public const string ChangeAccountStatus = Base + "/management/users/{id}/status";
 			// [PATCH]
-			//users update their own account
-			public const string Update = Base + "/profile/{id}";
+			// [DELETE]
+			public const string HardDelete = Base + "/management/users/{id}";
+			
+			// public const string CreateMany = Base + "/admin/createMany";
 			//admin update role from general user(GU) to Student or Teacher role
 			// public const string UpdateRole = Base + "/users/{id}/role";
-			//[Put]
-			public const string ChangeAccountStatus = Base + "/users/{id}/status";
-			//[Delete]
-			public const string HardDelete = Base + "/users/{id}";
+			#endregion
+			
+			// [GET]
+			public const string GetById = Base + "/profile/{id}";
+			// [POST]
+			// [PATCH]
+			public const string Update = Base + "/profile/{id}"; //users update their own account
+			// [PUT]
+			// [PATCH]
+			// [DELETE]
 		}
 
 		/// <summary>
@@ -83,39 +91,49 @@
 		/// </summary>
 		public static class Employee
 		{
+			#region Management
 			// [GET]
-			public const string GetAll = Base + "/employees";
-			public const string Export = Base + "/employees/export";
+			public const string GetAll = Base + "/management/employees";
+			public const string Export = Base + "/management/employees/export";
 			// [POST]
-			public const string Create = Base + "/employees";
-			public const string Import = Base + "/employees/import";
+			public const string Create = Base + "/management/employees";
+			public const string Import = Base + "/management/employees/import";
 			// [PUT]
-			public const string Update = Base + "/employees/{id}";
-			public const string UpdateProfile = Base + "/employess/{id}/profile";
+			public const string Update = Base + "/management/employees/{id}";
+			public const string UpdateProfile = Base + "/management/employees/{id}/profile";
 			// [PATCH]
-			public const string ChangeActiveStatus = Base + "/employees/{id}/status";
+			public const string ChangeActiveStatus = Base + "/management/employees/{id}/status";
 			// [DELETE]
-			public const string SoftDelete = Base + "/employees/{id}/soft-delete";
-			public const string UndoDelete = Base + "/employees/{id}/undo-delete";
-			public const string Delete = Base + "/employees/{id}";
+			public const string SoftDelete = Base + "/management/employees/{id}/soft-delete";
+			public const string UndoDelete = Base + "/management/employees/{id}/undo-delete";
+			public const string Delete = Base + "/management/employees/{id}";
+			#endregion
 		}
 
+		/// <summary>
+		/// Author endpoints
+		/// </summary>
+		public static class Author
+		{
+			public const string GetAll = Base + "/management/authors";
+		}
+		
 		/// <summary>
 		/// Resource endpoints
 		/// </summary>
 		public static class Resource
 		{
 			// [GET]
-			public const string GetAllType = Base + "/resources/types";
+			public const string GetAllType = Base + "/management/resources/types";
 			// [POST]
-			public const string UploadImage = Base + "/resources/images/upload";
-			public const string UploadVideo = Base + "/resources/videos/upload";
+			public const string UploadImage = Base + "/management/resources/images/upload";
+			public const string UploadVideo = Base + "/management/resources/videos/upload";
 			// [PUT]
-			public const string UpdateImage = Base + "/resources/images/update";
-			public const string UpdateVideo = Base + "/resources/videos/update";
+			public const string UpdateImage = Base + "/management/resources/images/update";
+			public const string UpdateVideo = Base + "/management/resources/videos/update";
 			// [DELETE]
-			public const string DeleteImage = Base + "/resources/images";
-			public const string DeleteVideo = Base + "/resources/videos";
+			public const string DeleteImage = Base + "/management/resources/images";
+			public const string DeleteVideo = Base + "/management/resources/videos";
 		}
 		
 		/// <summary>
@@ -124,8 +142,8 @@
 		public static class SystemMessage
 		{
 			// [POST]
-			public const string ImportToExcel = Base + "/system-messages/import-excel";
-			public const string ExportToExcel = Base + "/system-messages/export-excel";
+			public const string ImportToExcel = Base + "/management/system-messages/import-excel";
+			public const string ExportToExcel = Base + "/management/system-messages/export-excel";
 		}
 
 		/// <summary>
@@ -133,25 +151,37 @@
 		/// </summary>
 		public static class Role
 		{
+			#region Management
 			//	[GET]
-			public const string GetAllRoleType = Base + "/roles/types";
-			public const string GetAllRole = Base + "/roles";
-			public const string GetById = Base + "/roles/{id}";
-			public const string GetAllUserRole = Base + "/roles/users";
-			public const string GetAllEmployeeRole = Base + "/roles/employees";
-			public const string GetAllPermission = Base + "/roles/permissions";
-			public const string GetAllFeature = Base + "/roles/features";
-			public const string GetRolePermissionTable = Base + "/roles/user-permissions";
+			public const string GetAllRoleType = Base + "/management/roles/types";
+			public const string GetAllRole = Base + "/management/roles";
+			public const string GetById = Base + "/management/roles/{id}";
+			public const string GetAllUserRole = Base + "/management/roles/users";
+			public const string GetAllEmployeeRole = Base + "/management/roles/employees";
+			public const string GetAllPermission = Base + "/management/roles/permissions";
+			public const string GetAllFeature = Base + "/management/roles/features";
+			public const string GetRolePermissionTable = Base + "/management/roles/user-permissions";
 			//	[POST]
-			public const string CreateRole = Base + "/roles";
+			public const string CreateRole = Base + "/management/roles";
 			//	[PUT]
-			public const string UpdateRole = Base + "/roles/{id}";
+			public const string UpdateRole = Base + "/management/roles/{id}";
 			//	[PATCH]
-			public const string UpdateRolePermission = Base + "/roles/user-permissions";
-			public const string UpdateUserRole = Base + "/roles/users";
-			public const string UpdateEmployeeRole = Base + "/roles/employees";
+			public const string UpdateRolePermission = Base + "/management/roles/user-permissions";
+			public const string UpdateUserRole = Base + "/management/roles/users";
+			public const string UpdateEmployeeRole = Base + "/management/roles/employees";
 			//	[DELETE]
-			public const string DeleteRole = Base + "/roles/{id}";
+			public const string DeleteRole = Base + "/management/roles/{id}";
+			#endregion
+		}
+
+		/// <summary>
+		/// Feature endpoints
+		/// </summary>
+		public static class Feature
+		{
+			//	[GET]
+			public const string GetAuthorizedUserFeatures = Base + "/features/authorized";
+			public const string GetFeaturePermission = Base + "/features/{id}/authorized-permission";
 		}
 		
 		/// <summary>
@@ -169,20 +199,26 @@
 		/// </summary>
 		public static class Notification
 		{
-			//Create
-			public const string Create =Base + "/notifications";
-			//Get	
-			public const string GetTypes =Base + "/notifications/types";
-			public const string GetNotificationByAdmin =Base + "/notifications";
-			//private noti
-			public const string GetNotificationNotByAdmin =Base + "/privacy/notifivations";
-
-			public const string GetNumberOfUnreadNotifications =Base + "/privacy/unread-noti";//filter unread notification
-			//Put
-			public const string UpdateReadStatus =Base + "/privacy/notifications";
-			//Delete
-			public const string DeleteNotification =Base + "/notifications/{notiId}";
-
+			#region Management
+			//	[GET]	
+			public const string Create = Base + "/management/notifications";
+			public const string GetTypes = Base + "/management/notifications/types";
+			public const string GetNotificationByAdmin = Base + "/management/notifications";
+			//	[POST]
+			//	[PUT]
+			//	[PATCH]
+			//	[DELETE]
+			public const string DeleteNotification = Base + "/management/notifications/{notiId}";
+			#endregion
+			
+			//	[GET]
+			//	[POST]
+			public const string GetNotificationNotByAdmin = Base + "/privacy/notifivations";
+			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; //filter unread notification
+			//	[PUT]
+			public const string UpdateReadStatus = Base + "/privacy/notifications";
+			//	[PATCH]
+			//	[DELETE]
 		}
 	}
 }

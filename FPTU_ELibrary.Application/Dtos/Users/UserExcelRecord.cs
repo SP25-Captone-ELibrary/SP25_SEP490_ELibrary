@@ -16,7 +16,7 @@ public class UserExcelRecord
 public class UserFailedMessage
 {
     public int Row { get; set; }
-    public List<string> ErrMsg { get; set; }
+    public List<string> ErrMsg { get; set; } = null!;
 }
 
 public static class UserExcelRecordExtension

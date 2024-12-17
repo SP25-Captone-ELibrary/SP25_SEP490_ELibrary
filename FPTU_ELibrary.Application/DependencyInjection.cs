@@ -12,7 +12,9 @@ using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -42,6 +44,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IBookService<BookDto>, BookService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
 			services.AddScoped<IUserService<UserDto>, UserService>();
+			services.AddScoped<IAuthorService<AuthorDto>, AuthorService>();
 			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
 			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();	

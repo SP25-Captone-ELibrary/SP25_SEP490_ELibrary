@@ -14,7 +14,7 @@ namespace FPTU_ELibrary.Application.Extensions
 			return attribute?.Description ?? value.ToString();
 		}
 		
-		public static object GetValueFromDescription<T>(string description) where T : Enum
+		public static object? GetValueFromDescription<T>(string description) where T : Enum
         {
             foreach(var field in typeof(T).GetFields())
             {
@@ -31,7 +31,7 @@ namespace FPTU_ELibrary.Application.Extensions
                 }
             }
 
-            return null!;
+            return null;
         }
 	}
 }

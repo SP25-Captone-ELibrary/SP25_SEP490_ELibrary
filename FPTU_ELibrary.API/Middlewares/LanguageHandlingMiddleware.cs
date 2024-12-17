@@ -1,4 +1,6 @@
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Domain.Common.Enums;
 using ILogger = Serilog.ILogger;
 
 namespace FPTU_ELibrary.API.Middlewares;
@@ -35,7 +37,22 @@ public class LanguageHandlingMiddleware
     {
         // Retrieve and set language context from request headers
         var language = context.Request.Headers["Accept-Language"].FirstOrDefault();
-        LanguageContext.CurrentLanguage = language != null && language.Split(";").Length == 1 ? language : "en";
+        
+        // Check is valid language request
+        if (language != null && language.Split(";").Length == 1)
+        {
+            // Is exist in system language
+            if (EnumExtensions.GetValueFromDescription<SystemLanguage>(language) != null)
+            {
+                // Assign value
+                LanguageContext.CurrentLanguage = language;
+            }
+        }
+        
+        // Set default as english if language not found or invalid
+        LanguageContext.CurrentLanguage = SystemLanguage.English.GetDescription();
+        
+        // Logging
         _logger.Information("Language set to: {Language}", language);
     }
 }

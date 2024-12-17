@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Validations;
