@@ -221,14 +221,19 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region File
 		/// <summary>
-		/// The uploaded file is not supported
+		/// [WARNING] The uploaded file is not supported
 		/// </summary>
 		public const string File_Warning0001 = "File.Warning0001";
 
 		/// <summary>
-		/// TFile not found
+		/// [WARNING] TFile not found
 		/// </summary>
 		public const string File_Warning0002 = "File.Warning0002";
+		
+		/// <summary>
+		/// [WARNING] Invalid column separator selection
+		/// </summary>
+		public const string File_Warning0003 = "File.Warning0003";
 		
 		#endregion
 

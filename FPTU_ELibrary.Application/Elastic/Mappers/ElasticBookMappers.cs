@@ -1,4 +1,5 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Elastic.Responses;

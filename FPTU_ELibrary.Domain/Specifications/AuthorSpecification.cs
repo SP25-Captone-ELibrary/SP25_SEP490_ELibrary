@@ -1,27 +1,25 @@
 using System.Linq.Expressions;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
-using Microsoft.EntityFrameworkCore;
 
 namespace FPTU_ELibrary.Domain.Specifications;
 
-public class EmployeeSpecification : BaseSpecification<Employee>
+public class AuthorSpecification : BaseSpecification<Author>
 {
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
-    public EmployeeSpecification(EmployeeSpecParams specParams, int pageIndex, int pageSize)
+
+    public AuthorSpecification(AuthorSpecParams specParams, int pageIndex, int pageSize)
         : base(e => 
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) || 
             (
                 // Employee code
-                (!string.IsNullOrEmpty(e.EmployeeCode) && e.EmployeeCode.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(e.AuthorCode) && e.AuthorCode.Contains(specParams.Search)) ||
                 // Email
                 (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
-                // Phone
-                (!string.IsNullOrEmpty(e.Phone) && e.Phone.Contains(specParams.Search)) ||
-                // Address
-                (!string.IsNullOrEmpty(e.Address) && e.Address.Contains(specParams.Search)) ||
+                // Nationality
+                (!string.IsNullOrEmpty(e.Nationality) && e.Nationality.Contains(specParams.Search)) ||
                 // Individual FirstName and LastName search
                 (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
@@ -38,21 +36,13 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         // Enable split query
         EnableSplitQuery();
         
-        // Include role 
-        ApplyInclude(q => q
-            .Include(e => e.Role));
-        
         // Default order by first name
         AddOrderBy(e => e.FirstName);
         
         // Progress filter
-        if (specParams.RoleId > 0) // With role
+        if (specParams.AuthorCode != null) // With employee code
         {
-            AddFilter(x => x.RoleId == specParams.RoleId);
-        }
-        if (specParams.EmployeeCode != null) // With employee code
-        {
-            AddFilter(x => x.EmployeeCode == specParams.EmployeeCode);
+            AddFilter(x => x.AuthorCode == specParams.AuthorCode);
         }
         if (!string.IsNullOrEmpty(specParams.FirstName)) // With first name
         {
@@ -62,45 +52,37 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         {
             AddFilter(x => x.LastName == specParams.LastName);
         }
-        if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
-        {
-            AddFilter(x => x.Gender == specParams.Gender);
-        }
-        if (specParams.IsActive != null) // With status
-        {
-            AddFilter(x => x.IsActive == specParams.IsActive);       
-        }
         if (specParams.IsDeleted != null) // Is deleted
         {
             AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
         }
         if (specParams.DobRange != null 
-                  && specParams.DobRange.Length > 1) // With range of dob
+            && specParams.DobRange.Length > 1) // With range of dob
         {
             AddFilter(x => x.Dob.HasValue &&
-                x.Dob.Value.Date >= specParams.DobRange[0].Date 
-                    && x.Dob.Value.Date <= specParams.DobRange[1].Date);       
+                           x.Dob.Value.Date >= specParams.DobRange[0].Date 
+                           && x.Dob.Value.Date <= specParams.DobRange[1].Date);       
         }
         if (specParams.CreateDateRange != null 
-                  && specParams.CreateDateRange.Length > 1) // With range of create date 
+            && specParams.CreateDateRange.Length > 1) // With range of create date 
         {
             AddFilter(x => 
-                           x.CreateDate >= specParams.CreateDateRange[0].Date 
-                            && x.CreateDate <= specParams.CreateDateRange[1].Date);       
+                x.CreateDate >= specParams.CreateDateRange[0].Date 
+                && x.CreateDate <= specParams.CreateDateRange[1].Date);       
         }
         if (specParams.ModifiedDateRange != null 
-                 && specParams.ModifiedDateRange.Length > 1) // With range of create date 
+            && specParams.ModifiedDateRange.Length > 1) // With range of create date 
         {
-            AddFilter(x => x.ModifiedDate.HasValue &&
-                x.ModifiedDate.Value.Date >= specParams.ModifiedDateRange[0].Date 
-                    && x.ModifiedDate.Value.Date <= specParams.ModifiedDateRange[1].Date);       
+            AddFilter(x => x.UpdateDate.HasValue &&
+                           x.UpdateDate.Value.Date >= specParams.ModifiedDateRange[0].Date 
+                           && x.UpdateDate.Value.Date <= specParams.ModifiedDateRange[1].Date);       
         }
-        if (specParams.HireDateRange != null 
-                 && specParams.HireDateRange.Length > 1) // With range of hire date 
+        if (specParams.DateOfDeathRange != null 
+            && specParams.DateOfDeathRange.Length > 1) // With range of death date 
         {
-            AddFilter(x => x.HireDate.HasValue &&
-                      x.HireDate.Value.Date >= specParams.HireDateRange[0].Date 
-                      && x.HireDate.Value.Date <= specParams.HireDateRange[1].Date);       
+            AddFilter(x => x.DateOfDeath.HasValue &&
+                           x.DateOfDeath.Value.Date >= specParams.DateOfDeathRange[0].Date 
+                           && x.DateOfDeath.Value.Date <= specParams.DateOfDeathRange[1].Date);       
         }
         
         // Progress sorting
@@ -112,24 +94,23 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             {
                 specParams.Sort = specParams.Sort.Trim('-');
             }
-
+            
             // Uppercase sort text
             specParams.Sort = specParams.Sort.ToUpper();
-            
+        
             // Define sorting pattern
-            var sortMappings = new Dictionary<string, Expression<Func<Employee, object>>>()
+            var sortMappings = new Dictionary<string, Expression<Func<Author, object>>>()
             {
-                { "EMPLOYEECODE", x => x.EmployeeCode ?? string.Empty },
-                { "EMAIL", x => x.Email },
+                { "AUTHORCODE", x => x.AuthorCode ?? string.Empty },
+                { "EMAIL", x => x.Email ?? string.Empty },
                 { "FIRSTNAME", x => x.FirstName },
                 { "LASTNAME", x => x.LastName },
+                { "NATIONALITY", x => x.Nationality ?? string.Empty },
+                { "BIOGRAPHY", x => x.Biography ?? string.Empty },
                 { "DOB", x => x.Dob ?? null! },
-                { "PHONE", x => x.Phone ?? string.Empty },
-                { "GENDER", x => x.Gender ?? string.Empty },
+                { "DATEOFDEATH", x => x.DateOfDeath ?? null! },
                 { "CREATEDATE", x => x.CreateDate },
-                { "HIREDATE", x => x.HireDate ?? null! },
-                { "ACTIVE", x => x.IsActive },
-                { "ROLE", x => x.Role.EnglishName },
+                { "MODIFIEDDATE", x => x.UpdateDate ?? null! }
             };
         
             // Get sorting pattern
@@ -140,8 +121,5 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 else AddOrderBy(sortExpression);    
             }
         }
-        
-        // Apply paging 
-        // ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
     }
 }

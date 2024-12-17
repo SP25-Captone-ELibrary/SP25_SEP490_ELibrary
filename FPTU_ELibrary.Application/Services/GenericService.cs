@@ -165,7 +165,6 @@ namespace FPTU_ELibrary.Application.Services
 					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
 					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
 					serviceResult.Data = false;
-					return serviceResult;
 				}
 
 				// Mark as update success

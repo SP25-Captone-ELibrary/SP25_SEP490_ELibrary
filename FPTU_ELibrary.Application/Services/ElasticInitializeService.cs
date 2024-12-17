@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;

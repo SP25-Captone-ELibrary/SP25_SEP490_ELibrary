@@ -59,10 +59,10 @@ namespace FPTU_ELibrary.Application.Utils
 			List<Claim> authClaims = new()
 			{
 				new Claim(ClaimTypes.Role, user.RoleName),
-				new Claim(ClaimTypes.Email, user.Email),
 				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
 					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
 					: ClaimValues.USER_CLAIMVALUE), // Is user
+				new Claim(JwtRegisteredClaimNames.Email, user.Email),
 				new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName} {user.LastName}".Trim()),
 				new Claim(JwtRegisteredClaimNames.Jti, tokenId),
 			};
@@ -99,7 +99,7 @@ namespace FPTU_ELibrary.Application.Utils
 				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
 					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
 					: ClaimValues.USER_CLAIMVALUE), // Is user
-				new Claim(ClaimTypes.Email, user.Email),
+				new Claim(JwtRegisteredClaimNames.Email, user.Email),
 				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 			};
 
@@ -135,8 +135,8 @@ namespace FPTU_ELibrary.Application.Utils
 				new Claim(CustomClaimTypes.UserType, user.IsEmployee 
 					? ClaimValues.EMPLOYEE_CLAIMVALUE // Is employee
 					: ClaimValues.USER_CLAIMVALUE), // Is user
-				new Claim(ClaimTypes.Email, user.Email),
 				new Claim(CustomClaimTypes.Mfa, ClaimValues.MFA_CLAIMVALUE),
+				new Claim(JwtRegisteredClaimNames.Email, user.Email),
 				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 			};
 
@@ -227,6 +227,35 @@ namespace FPTU_ELibrary.Application.Utils
 
 			// Converts a string into an instance of JwtSecurityToken
 			return tokenHandler.ReadJwtToken(token) ?? null;
+		}
+		
+		// Validate access token
+		public JwtSecurityToken? ValidateExpiredAccessToken(string token)
+		{
+			// Initialize token handler
+			var tokenHandler = new JwtSecurityTokenHandler();
+			
+			try
+			{
+				// Check if the token format is valid
+				if (!tokenHandler.CanReadToken(token))
+					throw new UnauthorizedException("Invalid token format.");
+
+				// Validate access token
+				tokenHandler.ValidateToken(token, _tokenValidationParameters, out var validatedToken);
+				
+				return (JwtSecurityToken?) validatedToken;
+			}
+			catch (SecurityTokenExpiredException ex)
+			{
+				// Converts a string into an instance of JwtSecurityToken
+				var decryptedToken = tokenHandler.ReadJwtToken(token) ?? null;
+				return decryptedToken;
+			}
+			catch (Exception ex)
+			{
+				return null;
+			}
 		}
     }
 }

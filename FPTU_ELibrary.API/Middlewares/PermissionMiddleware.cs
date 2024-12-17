@@ -43,6 +43,8 @@ public class PermissionMiddleware
     {
         if (path == null) return null;
         var segments = path.Split('/');
-        return segments.Length > 2 ? segments[2] : null; // "roles", "books", etc.
+        
+        // "/management/roles", "/management/books", etc.
+        return segments.Length > 3 ? $"/{segments[2]}/{segments[3]}" : null; 
     }
 }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Notification;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Services;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;

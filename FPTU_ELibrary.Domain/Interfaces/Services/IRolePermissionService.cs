@@ -8,6 +8,8 @@ public interface IRolePermissionService<TDto> : IGenericService<RolePermission, 
     where TDto : class
 {
     Task<IServiceResult> CreateRoleWithDefaultPermissionsAsync(string engName, string viName, RoleType roleType);
+    Task<IServiceResult> GetAuthorizedUserFeatureAsync(string email, bool? isEmployee);
+    Task<IServiceResult> GetFeaturePermissionAsync(int featureId, string email, bool? isEmployee);
     Task<IServiceResult> GetRolePermissionTableAsync(bool isRoleVerticalLayout);
     Task<IServiceResult> UpdatePermissionAsync(int colId, int rowId, int permissionId, bool isRoleVerticalLayout);
 }
