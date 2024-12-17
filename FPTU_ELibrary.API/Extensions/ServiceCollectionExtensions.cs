@@ -190,6 +190,22 @@ namespace FPTU_ELibrary.API.Extensions
 				// Define type and definitions required for validating a token
 				options.TokenValidationParameters = services.BuildServiceProvider()
 					.GetRequiredService<TokenValidationParameters>();
+				options.Events = new JwtBearerEvents
+				{
+					OnMessageReceived = context =>
+					{
+						var accessToken = context.Request.Query["access_token"];
+
+						// If the request is for our hub...
+						var path = context.HttpContext.Request.Path;
+						if (!string.IsNullOrEmpty(accessToken))
+						{
+							// Read the token out of the query string
+							context.Token = accessToken;
+						}
+						return Task.CompletedTask;
+					}
+				};
 			});
 
 			return services;

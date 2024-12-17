@@ -68,12 +68,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
-app.UseCors(policy =>
-{
-    policy.AllowAnyOrigin() // Cho phép mọi origin trong môi trường phát triển
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-});
 app.UseAuthentication();
 app.UseAuthorization(); 
 
