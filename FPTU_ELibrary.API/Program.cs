@@ -68,12 +68,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting(); 
-app.UseCors(policy =>
-{
-    policy.AllowAnyOrigin() // Cho phép mọi origin trong môi trường phát triển
-        .AllowAnyMethod()
-        .AllowAnyHeader();
-});
 app.UseAuthentication();
 app.UseAuthorization(); 
 
@@ -83,5 +77,10 @@ app.UseMiddleware<LanguageHandlingMiddleware>(); // Language handling middleware
 app.UseMiddleware<PermissionMiddleware>(); // Permission middleware
 
 app.MapControllers(); // Maps controller endpoints after middleware pipeline
+app.UseCors(x => x
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .SetIsOriginAllowed(origin => true)
+    .AllowCredentials());
 app.UseEndpoints(ep => ep.MapApplicationHubs());
 app.Run();

@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Validations;
@@ -100,7 +101,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                         var addPrivateNotiResult = await _notificationRecipient.CreatePrivateNotification(privateNoti);
                         if (addPrivateNotiResult.ResultCode == ResultCodeConst.SYS_Success0001)
                         {
-                            await SendPrivateNotification(recipient, noti);
+                            await SendPrivateNotification(recipient, _mapper.Map<NotificationDto>(notiEntity));
                             serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
                             serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
                             serviceResult.Data = true;
@@ -146,6 +147,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     {
         await _hubContext.Clients.User(userId).SendAsync("ReceiveNotification", new
         {
+            NotificationId = dto.NotificationId,
             Title = dto.Title,
             Message = dto.Message,
             IsPublic = false,

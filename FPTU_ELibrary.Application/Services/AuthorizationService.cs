@@ -8,6 +8,7 @@ using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+
 using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
 using SystemFeatureEnum = FPTU_ELibrary.Domain.Common.Enums.SystemFeature;
 
@@ -34,38 +35,120 @@ public class AuthorizationService : IAuthorizationService
         try
         {
             // Get feature enum from desc
-            var featureEnum = EnumExtensions.GetValueFromDescription<SystemFeatureEnum>(featureDesc);
-            if (featureEnum == null!) return true;
+            var featureEnum = (SystemFeatureEnum?) EnumExtensions.GetValueFromDescription<SystemFeatureEnum>(featureDesc);
+            if (featureEnum == null) return true;
             
             // Check exist feature
             var featureEntity = await _unitOfWork.Repository<SystemFeature, int>()
                 .GetWithSpecAsync(new BaseSpecification<SystemFeature>(
                     sf => sf.EnglishName.Equals(featureEnum.ToString())));
-            // Allow to access if not exist in authorized features
-            if (featureEntity == null) return true;
-            
-            // Build base spec 
-            var baseSpec = new BaseSpecification<RolePermission>(
-                rp => rp.Role.EnglishName.Equals(role) && // with specific role
-                      rp.Feature.EnglishName.Equals(featureEnum.ToString())); // with specific feature
-            // Include permission
-            baseSpec.ApplyInclude(q => 
-                q.Include(rp => rp.Permission));
-            
-            // Get role permission with spec
-            var rolePermissions = 
-                await _unitOfWork.Repository<RolePermission, int>().GetAllWithSpecAsync(baseSpec); 
+            if (featureEntity == null) // Not found root features
+            {
+                // Continue to check whether is combined route -> Allow to access if not found
+                return await ProcessCheckIsCombinedRouteAsync(role, (SystemFeatureEnum) featureEnum, httpMethod);
+            };
 
-            // Check for permission validity
-            return rolePermissions.Any(rp => IsPermissionValid(
-                rp.Permission.PermissionLevel, // Current level of permission 
-                httpMethod)); // Get required permission based on HttpMethod
+            // Process check root features
+            return await CheckPermissionAsync(role, featureEntity.EnglishName, httpMethod);
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new ForbiddenException();
+            throw new ForbiddenException("You do not have permission to access this resource.");
         }
+    }
+
+    private SystemFeatureEnum? GetCombinedRoute(SystemFeatureEnum requestFeature)
+    {
+        #region BookManagement 
+        // Route: [BookManagement] -> Combine with [AuthorManagement] and [CategoryManagement]
+        // Is [AuthorManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.AuthorManagement))
+        {
+            return SystemFeatureEnum.BookManagement;
+        } 
+        // Is [CategoryManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.CategoryManagement))
+        {
+            return SystemFeatureEnum.BookManagement;
+        }
+        // Is [ResourceManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.ResourceManagement))
+        {
+            return SystemFeatureEnum.BookManagement;
+        }
+        #endregion
+
+        #region BorrowManagement
+        // Route: [BorrowManagement] -> Combine with [ReturnManagement] and [NotificationManagement]
+        // Is [ReturnManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.ReturnManagement))
+        {
+            return SystemFeatureEnum.BorrowManagement;
+        }
+        // Is [NotificationManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.NotificationManagement))
+        {
+            return SystemFeatureEnum.BorrowManagement;
+        }
+        #endregion
+        
+        #region SystemConfigurationManagement
+        // Route: [SystemConfigurationManagement] -> Combine with [SystemMessageManagement] 
+        // Is [AuthorManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.SystemMessageManagement))
+        {
+            return SystemFeatureEnum.SystemConfigurationManagement;
+        } 
+        #endregion
+        
+        return null;
+    }
+
+    private async Task<bool> ProcessCheckIsCombinedRouteAsync(string role, SystemFeatureEnum requestFeature, string httpMethod)
+    {
+        // Check request feature name is in combined route
+        var featureOfCombinedRoute = GetCombinedRoute(requestFeature);
+        // Null -> Route valid to access, not required to check permission
+        if (featureOfCombinedRoute == null) return true; 
+        
+        // Initialize root feature 
+        SystemFeatureEnum? rootFeature = null;
+        // Is [RoleManagement]
+        if (featureOfCombinedRoute == SystemFeatureEnum.RoleManagement) 
+        {
+            rootFeature = SystemFeatureEnum.RoleManagement;
+        // Is [BookManagement]
+        }else if (featureOfCombinedRoute == SystemFeatureEnum.BookManagement)
+        {
+            rootFeature = SystemFeatureEnum.BookManagement;
+        }
+
+        return await CheckPermissionAsync(role, rootFeature.ToString(), httpMethod);
+    }
+
+    private async Task<bool> CheckPermissionAsync(string role, string? featureName, string httpMethod)
+    {
+        // Not exist feature that required permission  -> Allow to access 
+        if(string.IsNullOrEmpty(featureName)) return true;
+        
+        // Process check permission
+        // Build base spec 
+        var baseSpec = new BaseSpecification<RolePermission>(
+            rp => rp.Role.EnglishName.Equals(role) && // with specific role
+                  rp.Feature.EnglishName.Equals(featureName)); // with specific feature
+        // Include permission
+        baseSpec.ApplyInclude(q => 
+            q.Include(rp => rp.Permission));
+            
+        // Get role permission with spec
+        var rolePermissions = 
+            await _unitOfWork.Repository<RolePermission, int>().GetAllWithSpecAsync(baseSpec); 
+
+        // Check for permission validity
+        return rolePermissions.Any(rp => IsPermissionValid(
+            rp.Permission.PermissionLevel, // Current level of permission 
+            httpMethod)); // Get required permission based on HttpMethod
     }
     
     private bool IsPermissionValid(int permissionLevel, string httpMethod)

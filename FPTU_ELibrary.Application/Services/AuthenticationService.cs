@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Application.Common;
+﻿using System.Security.Claims;
+using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
@@ -22,6 +23,7 @@ using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Util;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Nest;
@@ -493,7 +495,7 @@ namespace FPTU_ELibrary.Application.Services
 					if (userDto.TwoFactorEnabled) 
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0010,
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0010));
+							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0010), userDto.Email);
 					}
 					
 					// Add account details
@@ -591,7 +593,7 @@ namespace FPTU_ELibrary.Application.Services
 						if (userDto.TwoFactorEnabled) 
 						{
 							return new ServiceResult(ResultCodeConst.Auth_Warning0010,
-								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0010));
+								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0010), userDto.Email);
 						}
 						
 						// Add user details
@@ -1128,10 +1130,27 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-		public async Task<IServiceResult> RefreshTokenAsync(
-			string email, string userType, string name,
-			string roleName, string tokenId, string refreshTokenId)
+		public async Task<IServiceResult> RefreshTokenAsync(string accessToken, string refreshTokenId)
 		{
+			// Try to validate and extract claims from access token
+			var token = new JwtUtils(_tokenValidationParameters).ValidateExpiredAccessToken(accessToken);
+
+			// Retrieve claims from the authenticated user's identity
+			var roleName = token?.Claims.FirstOrDefault(c => c.Type == CustomClaimTypes.Role)?.Value;
+			var userType = token?.Claims.FirstOrDefault(c => c.Type == CustomClaimTypes.UserType)?.Value;
+			var email = token?.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value;
+			var name = token?.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Name)?.Value;
+			var tokenId = token?.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+			if (string.IsNullOrEmpty(email) // Is not exist email claim
+			    || string.IsNullOrEmpty(userType) // Is not exist user type claim
+			    || string.IsNullOrEmpty(roleName) // Is not exist role claim
+			    || string.IsNullOrEmpty(name) // Is not exist name claim
+			    || string.IsNullOrEmpty(tokenId)) // Is not exist tokenId claim
+			{
+				// 401
+				throw new UnauthorizedException("Missing token claims.");
+			}
+			
 			// Check exist refresh token by tokenId and refreshTokenId
             var getRefreshTokenResult = await _refreshTokenService.GetByTokenIdAndRefreshTokenIdAsync(
                 tokenId, refreshTokenId);
@@ -1401,6 +1420,7 @@ namespace FPTU_ELibrary.Application.Services
 		}
 		
 		public async Task<IServiceResult> ValidateMfaBackupCodeAsync(string email, string backupCode)
+		
 		{
 			try
 			{
@@ -1435,7 +1455,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (authUser != null)
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)
+					    || !authUser.TwoFactorEnabled) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
@@ -1523,7 +1544,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (authUser != null)
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey) 
+					    || !authUser.TwoFactorEnabled) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
@@ -1609,7 +1631,8 @@ namespace FPTU_ELibrary.Application.Services
 				    && authUser.EmailVerificationCode == otp) // Is valid OTP
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey) 
+					    || !authUser.TwoFactorEnabled) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));
@@ -1688,7 +1711,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (authUser != null)
 				{
 					// Check whether user or employee already enable MFA
-					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)) // Not enabled yet
+					if (string.IsNullOrEmpty(authUser.TwoFactorSecretKey)
+					    || !authUser.TwoFactorEnabled) // Not enabled yet
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0011,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0011));

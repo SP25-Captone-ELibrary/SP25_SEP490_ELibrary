@@ -143,6 +143,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender.ToString(),
 				ModifiedDate = currentLocalDateTime,
+				Avatar = req.Avatar
 			};
 		}
 

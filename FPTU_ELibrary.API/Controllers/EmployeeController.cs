@@ -76,7 +76,7 @@ public class EmployeeController : ControllerBase
     
     [Authorize]
     [HttpPut(APIRoute.Employee.UpdateProfile, Name = nameof(UpdateEmployeeProfileAsync))]
-    public async Task<IActionResult> UpdateEmployeeProfileAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeRequest req)
+    public async Task<IActionResult> UpdateEmployeeProfileAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeProfileRequest req)
     {
         return Ok(await _employeeService.UpdateProfileAsync(id, req.ToEmployeeDtoForUpdateProfile()));
     }
@@ -87,7 +87,7 @@ public class EmployeeController : ControllerBase
     {
         return Ok(await _employeeService.ChangeActiveStatusAsync(id));
     }
-
+        
     [Authorize]
     [HttpDelete(APIRoute.Employee.SoftDelete, Name = nameof(SoftDeleteEmployeeAsync))]
     public async Task<IActionResult> SoftDeleteEmployeeAsync([FromRoute] Guid id)

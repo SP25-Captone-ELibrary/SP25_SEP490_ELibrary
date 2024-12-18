@@ -1,4 +1,5 @@
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.Notification;
 

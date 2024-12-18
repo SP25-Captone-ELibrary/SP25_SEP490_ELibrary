@@ -1,6 +1,6 @@
 ﻿using FPTU_ELibrary.Domain.Entities;
 
-namespace FPTU_ELibrary.Application.Dtos
+namespace FPTU_ELibrary.Application.Dtos.Books
 {
     public class BookDto
     {

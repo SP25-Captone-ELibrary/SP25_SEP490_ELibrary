@@ -44,6 +44,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.UpdateDate)
                 .HasColumnType("datetime")
                 .HasColumnName("update_date");
+
+            #region Update at 16/12/2024 by Le Xuan Phuoc
+            builder.Property(e => e.Email)
+                .HasMaxLength(255)
+                .HasColumnName("email");
+            builder.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            #endregion
         }
     }
 }
