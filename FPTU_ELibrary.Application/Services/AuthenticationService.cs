@@ -1233,7 +1233,6 @@ namespace FPTU_ELibrary.Application.Services
 					userDto.TwoFactorBackupCodes = null;
 					userDto.PhoneVerificationCode = null;
 					userDto.PhoneVerificationExpiry = null;
-					userDto.UserId = Guid.Empty;
 					userDto.PasswordHash = null;
 					userDto.RoleId = 0;
 					userDto.Role.RoleId = 0;
@@ -1249,7 +1248,6 @@ namespace FPTU_ELibrary.Application.Services
 					employeeDto.TwoFactorBackupCodes = null;
 					employeeDto.PhoneVerificationCode = null;
 					employeeDto.PhoneVerificationExpiry = null;
-					employeeDto.EmployeeId = Guid.Empty;
 					employeeDto.PasswordHash = null;
 					employeeDto.RoleId = 0;
 					employeeDto.Role.RoleId = 0;

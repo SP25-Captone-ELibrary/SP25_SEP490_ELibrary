@@ -1,5 +1,3 @@
-using FPTU_ELibrary.Domain.Common.Enums;
-
 namespace FPTU_ELibrary.API.Payloads.Requests.Employee;
 
 public class UpdateEmployeeRequest : UpdateEmployeeProfileRequest

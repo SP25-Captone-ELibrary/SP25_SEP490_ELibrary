@@ -32,13 +32,21 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary> 
 		public static string SYS_Success0005 = "SYS.Success0005";
 		/// <summary>
-		/// [SUCCESS] Create new <0> successfully
+		/// [SUCCESS] Create new {0} successfully
 		/// </summary> 
 		public static string SYS_Success0006 = "SYS.Success0006";
 		/// <summary>
 		/// [SUCCESS] Deleted data to trash
 		/// </summary> 
 		public static string SYS_Success0007 = "SYS.Success0007";
+		/// <summary>
+		/// [SUCCESS] Deleted {0} data successfully
+		/// </summary> 
+		public static string SYS_Success0008 = "SYS.Success0008";
+		/// <summary>
+		/// [SUCCESS] Recovery data successfully
+		/// </summary> 
+		public static string SYS_Success0009 = "SYS.Success0009";
 		
 		/// <summary>
 		/// [FAIL] Create fail
@@ -57,11 +65,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Fail0004 = "SYS.Fail0004";
 		/// <summary>
-		/// [FAIL] Fail to get data: <0>
+		/// [FAIL] Fail to get data: {0}
 		/// </summary>
 		public static string SYS_Fail0005 = "SYS.Fail0005";
 		/// <summary>
-		/// [FAIL] Fail to create new <0>
+		/// [FAIL] Fail to create new {0}
 		/// </summary>
 		public static string SYS_Fail0006 = "SYS.Fail0006";
 		/// <summary>

@@ -59,17 +59,22 @@
 		{
 			#region Management
 			// [GET]
+			public const string GetById = Base + "/management/users/{id}";
 			public const string GetAll = Base + "/management/users";
-			public const string Search = Base + "/management/users/q";
 			// [POST]
 			public const string Create = Base + "/management/users";
 			public const string CreateManyWithSendEmail = Base + "/management/users/create-many-with-send-mails";
-			public const string CreateMany = Base + "/management/createMany";
 			// [PUT]
-			public const string ChangeAccountStatus = Base + "/management/users/{id}/status";
+			public const string Update = Base + "/management/users";
 			// [PATCH]
+			public const string ChangeAccountStatus = Base + "/management/users/{id}/status";
+			public const string SoftDelete = Base + "/management/users/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/users/soft-delete-range";
+			public const string UndoDelete = Base + "/management/users/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/users/undo-delete-range";
 			// [DELETE]
 			public const string HardDelete = Base + "/management/users/{id}";
+			public const string HardDeleteRange = Base + "/management/users";
 			
 			// public const string CreateMany = Base + "/admin/createMany";
 			//admin update role from general user(GU) to Student or Teacher role
@@ -77,10 +82,9 @@
 			#endregion
 			
 			// [GET]
-			public const string GetById = Base + "/profile/{id}";
 			// [POST]
 			// [PATCH]
-			public const string Update = Base + "/profile/{id}"; //users update their own account
+			// public const string Update = Base + "/profile/{id}"; //users update their own account
 			// [PUT]
 			// [PATCH]
 			// [DELETE]
@@ -103,10 +107,13 @@
 			public const string UpdateProfile = Base + "/management/employees/{id}/profile";
 			// [PATCH]
 			public const string ChangeActiveStatus = Base + "/management/employees/{id}/status";
-			// [DELETE]
 			public const string SoftDelete = Base + "/management/employees/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/employees/soft-delete-range";
 			public const string UndoDelete = Base + "/management/employees/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/employees/undo-delete-range";
+			// [DELETE]
 			public const string Delete = Base + "/management/employees/{id}";
+			public const string DeleteRange = Base + "/management/employees";
 			#endregion
 		}
 
@@ -115,7 +122,29 @@
 		/// </summary>
 		public static class Author
 		{
+			#region Management
+			//	[GET]
 			public const string GetAll = Base + "/management/authors";
+			public const string GetById = Base + "/management/authors/{id}";
+			//	[POST]
+			public const string Create = Base + "/management/authors";
+			//	[PUT] | [PATCH]
+			public const string Update = Base + "/management/authors/{id}";
+			//	[DELETE]
+	
+			#endregion
+			
+			//	[GET]
+			public const string GetAuthorDetail = Base + "/authors/{id}";
+			//	[POST]
+			//	[PUT] | [PATCH]
+			public const string UndoDelete = Base + "/management/authors/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/authors/undo-delete-range";
+			public const string SoftDelete = Base + "/management/authors/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/authors/soft-delete-range";
+			//	[DELETE]
+			public const string Delete = Base + "/management/authors/{id}";
+			public const string DeleteRange = Base + "/management/authors";
 		}
 		
 		/// <summary>

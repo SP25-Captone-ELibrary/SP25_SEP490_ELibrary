@@ -91,23 +91,22 @@ namespace FPTU_ELibrary.Application.Services
 									.Date(d => d.Name(ee => ee.CreateDate))
 									.Date(d => d.Name(ee => ee.UpdatedDate))
 									.Keyword(k => k.Name(ee => ee.CreateBy))
-								)
-							)
-							// Mapping author as nested documents
-							.Nested<ElasticAuthor>(n => n
-								.Name(e => e.Authors)
-								.Properties(np => np
-									.Number(nn => nn.Name(ee => ee.AuthorId).Type(NumberType.Integer))
-									.Keyword(k => k.Name(ee => ee.AuthorCode))
-									.Keyword(k => k.Name(ee => ee.AuthorImage))
-									.Text(t => t.Name(ee => ee.FirstName))
-									.Text(t => t.Name(ee => ee.LastName))
-									.Text(t => t.Name(ee => ee.Biography))
-									.Date(d => d.Name(ee => ee.Dob))
-									.Date(d => d.Name(ee => ee.DateOfDeath))
-									.Keyword(k => k.Name(ee => ee.Nationality))
-									.Date(d => d.Name(ee => ee.CreateDate))
-									.Date(d => d.Name(ee => ee.UpdateDate))
+									// Mapping author as nested documents
+									.Nested<ElasticAuthor>(n2 => n2
+										.Name(e => e.Authors)
+										.Properties(np2 => np2
+											.Number(nn => nn.Name(ee => ee.AuthorId).Type(NumberType.Integer))
+											.Keyword(k => k.Name(ee => ee.AuthorCode))
+											.Keyword(k => k.Name(ee => ee.AuthorImage))
+											.Text(t => t.Name(ee => ee.FullName))
+											.Text(t => t.Name(ee => ee.Biography))
+											.Date(d => d.Name(ee => ee.Dob))
+											.Date(d => d.Name(ee => ee.DateOfDeath))
+											.Keyword(k => k.Name(ee => ee.Nationality))
+											.Date(d => d.Name(ee => ee.CreateDate))
+											.Date(d => d.Name(ee => ee.UpdateDate))
+										)
+									)
 								)
 							)
 						)
@@ -137,7 +136,7 @@ namespace FPTU_ELibrary.Application.Services
 			spec.ApplyInclude(q => q
 				.Include(b => b.Category)
 				.Include(b => b.BookEditions)
-				.Include(b => b.BookAuthors));
+				.Include(b => b.BookEditions));
 
 			// Get all books with specification
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);

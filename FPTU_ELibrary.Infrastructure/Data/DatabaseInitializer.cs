@@ -109,6 +109,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [Books]
 				if (!await _context.Books.AnyAsync()) await SeedBookAsync();
 				else _logger.Information("Already seed data for table {0}", "Book");
+				
+				// [Authors]
+				if (!await _context.Authors.AnyAsync()) await SeedAuthorAsync();
+				else _logger.Information("Already seed data for table {0}", "Author");
 			}
             catch (Exception ex)
             {
@@ -502,15 +506,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
         //      Seeding Book
         private async Task SeedBookAsync()
         {
-			// Get librian
-			var librian = await _context.Employees
+			// Get librarian
+			var librarian = await _context.Employees
 				.Include(x => x.Role)
 				.FirstOrDefaultAsync(e => e.Role.EnglishName == Role.Librarian.ToString());
 
 			// Get book categories
 			var categories = await _context.BookCategories.ToListAsync();
 
-			if(librian == null || !categories.Any())
+			if(librarian == null || !categories.Any())
 			{
 				_logger.Error("Not found any librian or book category to process seeding book");
 				return;
@@ -532,16 +536,16 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					CategoryId = categories.First(x => 
 						x.EnglishName == BookCategoryEnum.FantasyAndScienceFiction.ToString()).CategoryId,
 					CreateDate = DateTime.Now,
-					CreateBy = librian.EmployeeId,
+					CreateBy = librarian.EmployeeId,
 					UpdatedDate = null,
 					UpdatedBy = null,
 					BookEditions = new List<BookEdition>
 					{
-						new BookEdition { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1997, PageCount = 309, Language = "English", Isbn = "9780747532699", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1998, PageCount = 320, Language = "English", Isbn = "9780747538493", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId }
+						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1997, PageCount = 309, Language = "English", Isbn = "9780747532699", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1998, PageCount = 320, Language = "English", Isbn = "9780747538493", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
 					}
 				},
 				new Book
@@ -554,25 +558,150 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					CategoryId = categories.First(x =>
 						x.EnglishName == BookCategoryEnum.Novels.ToString()).CategoryId,
 					CreateDate = DateTime.Now,
-					CreateBy = librian.EmployeeId,
+					CreateBy = librarian.EmployeeId,
 					BookEditions = new List<BookEdition>
 					{
-						new BookEdition { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1937, PageCount = 310, Language = "English", Isbn = "9780547928227", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1951, PageCount = 320, Language = "English", Isbn = "9780261102217", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId },
-						new BookEdition { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreateDate = DateTime.Now, CreateBy = librian.EmployeeId }
+						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1937, PageCount = 310, Language = "English", Isbn = "9780547928227", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1951, PageCount = 320, Language = "English", Isbn = "9780261102217", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
+						new() { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
 					}
-				},
+				}
 			};
 
 			// Add Range
-			await _context.AddRangeAsync(books);
+			await _context.Books.AddRangeAsync(books);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
 			if (saveSucc) _logger.Information("Seed books successfully.");
 		}
     
+        //	Summary:
+        //		Seeding Author
+        private async Task SeedAuthorAsync()
+        {
+	        List<Author> authors = new()
+			{
+			    new()
+			    {
+			        AuthorCode = "AUTH001",
+			        AuthorImage = "image1.jpg",
+			        FullName = "Jane Doe",
+			        Biography = "<p>Jane Doe is a celebrated author known for her thrilling novels.</p>",
+			        Dob = new DateTime(1975, 3, 10),
+			        Nationality = "American",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = true
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH002",
+			        AuthorImage = "image2.jpg",
+			        FullName = "John Smith",
+			        Biography = "<p>John Smith has written numerous science fiction classics.</p>",
+			        Dob = new DateTime(1980, 5, 15),
+			        Nationality = "British",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH003",
+			        AuthorImage = "image3.jpg",
+			        FullName = "Emily Jones",
+			        Biography = "<p>Emily Jones is a poet and novelist with a global following.</p>",
+			        Dob = new DateTime(1990, 1, 20),
+			        Nationality = "Canadian",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH004",
+			        AuthorImage = "image4.jpg",
+			        FullName = "Robert Brown",
+			        Biography = "<p>Robert Brown specializes in historical fiction.</p>",
+			        Dob = new DateTime(1965, 11, 30),
+			        Nationality = "Australian",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = true
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH005",
+			        AuthorImage = "image5.jpg",
+			        FullName = "Lisa Wilson",
+			        Biography = "<p>Lisa Wilson is an award-winning children's book author.</p>",
+			        Dob = new DateTime(1988, 7, 5),
+			        Nationality = "American",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH006",
+			        AuthorImage = "image6.jpg",
+			        FullName = "Michael Green",
+			        Biography = "<p>Michael Green is known for his compelling mystery novels.</p>",
+			        Dob = new DateTime(1972, 4, 25),
+			        Nationality = "Irish",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH007",
+			        AuthorImage = "image7.jpg",
+			        FullName = "Sophia Miller",
+			        Biography = "<p>Sophia Miller writes romance novels enjoyed worldwide.</p>",
+			        Dob = new DateTime(1995, 2, 12),
+			        Nationality = "French",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH008",
+			        AuthorImage = "image8.jpg",
+			        FullName = "William King",
+			        Biography = "<p>William King is a prominent fantasy author.</p>",
+			        Dob = new DateTime(1983, 9, 18),
+			        Nationality = "Scottish",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH009",
+			        AuthorImage = "image9.jpg",
+			        FullName = "Elizabeth Hall",
+			        Biography = "<p>Elizabeth Hall has authored bestselling biographies.</p>",
+			        Dob = new DateTime(1978, 6, 22),
+			        Nationality = "New Zealander",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH010",
+			        AuthorImage = "image10.jpg",
+			        FullName = "David White",
+			        Biography = "<p>David White writes award-winning nonfiction works.</p>",
+			        Dob = new DateTime(1969, 12, 5),
+			        Nationality = "South African",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    }
+			};
+	        
+	        // Add Range
+	        await _context.Authors.AddRangeAsync(authors);
+	        var saveSucc = await _context.SaveChangesAsync() > 0;
+
+	        if (saveSucc) _logger.Information("Seed authors successfully.");
+        }
+        
 		//	Summary:
 		//		Seeding Employee
 		private async Task SeedEmployeeAsync()
@@ -641,7 +770,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 
 			if (saveSucc) _logger.Information("Seed employees successfully.");
 		}
-
 	}
 
 	//	Summary:

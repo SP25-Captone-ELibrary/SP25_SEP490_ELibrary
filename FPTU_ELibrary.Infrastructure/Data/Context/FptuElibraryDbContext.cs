@@ -50,7 +50,7 @@ public partial class FptuElibraryDbContext : DbContext
 	{
 		IConfigurationBuilder builder = new ConfigurationBuilder()
 			.SetBasePath(Directory.GetCurrentDirectory())
-			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+			.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
 			.AddEnvironmentVariables();
 
 		string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? null!;

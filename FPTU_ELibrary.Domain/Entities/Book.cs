@@ -24,7 +24,6 @@ public class Book
     public Guid? UpdatedBy { get; set; }
 
     // Mapping entities
-    public ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
     public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
     public BookCategory Category { get; set; } = null!;
     public Employee CreateByNavigation { get; set; } = null!;

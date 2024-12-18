@@ -1,12 +1,10 @@
 ﻿using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +37,7 @@ namespace FPTU_ELibrary.API.Controllers
 			spec.ApplyInclude(q => q
 					.Include(b => b.Category)
 					.Include(b => b.BookEditions)
-					.Include(b => b.BookAuthors));
+						.ThenInclude(b => b.BookEditionAuthors));
 
 			// Get all books with specification
 			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);

@@ -157,7 +157,10 @@ public class RolePermissionService : GenericService<RolePermission, RolePermissi
                 // Get all system feature
                 var getResult = isRoleVerticalLayout
                     ? await _featureService.GetAllAsync()
-                    : await _roleService.GetAllAsync();
+                    // Get all system roles for user-permission tables
+                    : await _roleService.GetAllWithSpecAsync(new BaseSpecification<SystemRole>(
+                        q => q.RoleType == nameof(RoleType.Employee) // With Employees
+                             || q.EnglishName == nameof(Role.Administration))); // With Admin 
                 
                 if(getResult.ResultCode == ResultCodeConst.SYS_Success0002) // Retrieve data success
                 {

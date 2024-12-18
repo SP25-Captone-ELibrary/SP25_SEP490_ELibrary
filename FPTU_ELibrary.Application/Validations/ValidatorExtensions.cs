@@ -2,6 +2,7 @@
 using FluentValidation.Results;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Notifications;
@@ -16,6 +17,7 @@ namespace FPTU_ELibrary.Application.Validations
 		private static readonly Dictionary<Type, IValidator> Validators = new()
 		{
 			{ typeof(IFormFile), new ExcelValidator() },
+			{ typeof(AuthorDto), new AuthorValidator() },
 			{ typeof(BookDto), new BookDtoValidator() },
 			{ typeof(UserDto), new UserDtoValidator() },
 			{ typeof(EmployeeDto), new EmployeeDtoValidator() },

@@ -16,17 +16,10 @@ public class AuthorSpecification : BaseSpecification<Author>
             (
                 // Employee code
                 (!string.IsNullOrEmpty(e.AuthorCode) && e.AuthorCode.Contains(specParams.Search)) ||
-                // Email
-                (!string.IsNullOrEmpty(e.Email) && e.Email.Contains(specParams.Search)) ||
                 // Nationality
                 (!string.IsNullOrEmpty(e.Nationality) && e.Nationality.Contains(specParams.Search)) ||
-                // Individual FirstName and LastName search
-                (!string.IsNullOrEmpty(e.FirstName) && e.FirstName.Contains(specParams.Search)) ||
-                (!string.IsNullOrEmpty(e.LastName) && e.LastName.Contains(specParams.Search)) ||
                 // Full Name search
-                (!string.IsNullOrEmpty(e.FirstName) &&
-                 !string.IsNullOrEmpty(e.LastName) &&
-                 (e.FirstName + " " + e.LastName).Contains(specParams.Search))
+                (!string.IsNullOrEmpty(e.FullName) && e.FullName.Contains(specParams.Search))
             ))
     {
         // Assign page size and page index
@@ -37,20 +30,16 @@ public class AuthorSpecification : BaseSpecification<Author>
         EnableSplitQuery();
         
         // Default order by first name
-        AddOrderBy(e => e.FirstName);
+        AddOrderBy(e => e.FullName);
         
         // Progress filter
         if (specParams.AuthorCode != null) // With employee code
         {
             AddFilter(x => x.AuthorCode == specParams.AuthorCode);
         }
-        if (!string.IsNullOrEmpty(specParams.FirstName)) // With first name
+        if (!string.IsNullOrEmpty(specParams.Nationality)) // With nationality
         {
-            AddFilter(x => x.FirstName == specParams.FirstName);
-        }
-        if (!string.IsNullOrEmpty(specParams.LastName)) // With last name
-        {
-            AddFilter(x => x.LastName == specParams.LastName);
+            AddFilter(x => x.Nationality == specParams.Nationality);
         }
         if (specParams.IsDeleted != null) // Is deleted
         {
@@ -94,17 +83,14 @@ public class AuthorSpecification : BaseSpecification<Author>
             {
                 specParams.Sort = specParams.Sort.Trim('-');
             }
-            
-            // Uppercase sort text
+
             specParams.Sort = specParams.Sort.ToUpper();
-        
+            
             // Define sorting pattern
             var sortMappings = new Dictionary<string, Expression<Func<Author, object>>>()
             {
                 { "AUTHORCODE", x => x.AuthorCode ?? string.Empty },
-                { "EMAIL", x => x.Email ?? string.Empty },
-                { "FIRSTNAME", x => x.FirstName },
-                { "LASTNAME", x => x.LastName },
+                { "FULLNAME", x => x.FullName },
                 { "NATIONALITY", x => x.Nationality ?? string.Empty },
                 { "BIOGRAPHY", x => x.Biography ?? string.Empty },
                 { "DOB", x => x.Dob ?? null! },

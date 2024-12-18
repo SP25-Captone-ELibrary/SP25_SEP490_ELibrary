@@ -1,5 +1,6 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Notifications;
@@ -14,7 +15,12 @@ namespace FPTU_ELibrary.Application.Mappings
 		public void Register(TypeAdapterConfig config)
 		{
 			// From [Entity] to [Dto]
+			config.NewConfig<Author, AuthorDto>();
 			config.NewConfig<Book, BookDto>();
+			config.NewConfig<BookReview, BookReviewDto>();
+			config.NewConfig<BookEdition, BookEditionDto>();
+			config.NewConfig<BookEditionAuthor, BookEditionAuthorDto>();
+			config.NewConfig<BookEditionInventory, BookEditionInventoryDto>();
 			config.NewConfig<User, UserDto>();
 			config.NewConfig<Employee, EmployeeDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
@@ -31,8 +37,13 @@ namespace FPTU_ELibrary.Application.Mappings
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
 			config.NewConfig<EmployeeDto, Employee>()
+				.Ignore(dest => dest.EmployeeId)
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
+			config.NewConfig<AuthorDto, Author>()
+				.Ignore(dest => dest.AuthorId);
+			config.NewConfig<UserDto, User>()
+				.Ignore(dest => dest.UserId);
 		}
 	}
 }

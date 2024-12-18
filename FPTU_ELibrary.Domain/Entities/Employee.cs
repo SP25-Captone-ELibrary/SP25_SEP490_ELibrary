@@ -48,8 +48,8 @@ public class Employee : BaseUser
     //public ICollection<LearningMaterial> LearningMaterialUpdatedByNavigations { get; set; } = new List<LearningMaterial>();
     //public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
 
-    [JsonIgnore]
-    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    // [JsonIgnore]
+    // public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
 	[JsonIgnore]
 	public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();

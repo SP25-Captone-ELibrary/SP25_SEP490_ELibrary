@@ -32,12 +32,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Dob)
                 .HasColumnType("datetime")
                 .HasColumnName("dob");
-            builder.Property(e => e.FirstName)
-                .HasMaxLength(100)
-                .HasColumnName("first_name");
-            builder.Property(e => e.LastName)
-                .HasMaxLength(100)
-                .HasColumnName("last_name");
+            // builder.Property(e => e.FirstName)
+            //     .HasMaxLength(100)
+            //     .HasColumnName("first_name");
+            // builder.Property(e => e.LastName)
+            //     .HasMaxLength(100)
+            //     .HasColumnName("last_name");
             builder.Property(e => e.Nationality)
                 .HasMaxLength(100)
                 .HasColumnName("nationality");
@@ -46,12 +46,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnName("update_date");
 
             #region Update at 16/12/2024 by Le Xuan Phuoc
-            builder.Property(e => e.Email)
-                .HasMaxLength(255)
-                .HasColumnName("email");
             builder.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
+            builder.Property(e => e.FullName)
+                .HasMaxLength(200)
+                .HasColumnName("full_name");
             #endregion
         }
     }

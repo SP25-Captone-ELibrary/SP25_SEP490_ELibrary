@@ -46,6 +46,7 @@ public class LanguageHandlingMiddleware
             {
                 // Assign value
                 LanguageContext.CurrentLanguage = language;
+                return;
             }
         }
         

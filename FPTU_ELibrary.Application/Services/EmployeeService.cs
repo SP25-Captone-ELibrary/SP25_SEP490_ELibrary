@@ -23,6 +23,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml.Export.ToCollection.Exceptions;
 using Serilog;
@@ -135,7 +136,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-						StringUtils.Format(errMsg, nameof(Employee)));
+						StringUtils.Format(errMsg, nameof(Employee).ToLower()));
 				}
 
 				// Update specific properties
@@ -197,41 +198,41 @@ namespace FPTU_ELibrary.Application.Services
 				if (existingEntity == null)
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-						StringUtils.Format(errMsg, nameof(Employee)));
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, nameof(Employee).ToLower()));
 				}
 
 				// Check whether employee in the trash bin
 				if (!existingEntity.IsDeleted)
 				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0004, 
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 				}
-				
-				// Check employee constraints
-				var baseSpec = new BaseSpecification<Employee>(q =>
-					( // Has constraint with books
-						q.BookCreateByNavigations.Any() || q.BookUpdatedByNavigations.Any() ||
-						q.BookEditions.Any() || q.BookResources.Any() ||
-						// Has constraint with learning material
-						q.LearningMaterialCreateByNavigations.Any() ||
-						// Has constraint with borrow & returns
-						q.BorrowRecords.Any()
-						// With specific employee id 
-					) && q.EmployeeId == id);
-				var hasConstraints = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(baseSpec);
-				if (hasConstraints)
-				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0007, 
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-				}
-				
+
+				// // Check employee constraints
+				// var baseSpec = new BaseSpecification<Employee>(q =>
+				// 	( // Has constraint with books
+				// 		q.BookCreateByNavigations.Any() || q.BookUpdatedByNavigations.Any() ||
+				// 		q.BookEditions.Any() || q.BookResources.Any() ||
+				// 		// Has constraint with learning material
+				// 		q.LearningMaterialCreateByNavigations.Any() ||
+				// 		// Has constraint with borrow & returns
+				// 		q.BorrowRecords.Any()
+				// 		// With specific employee id 
+				// 	) && q.EmployeeId == id);
+				// var hasConstraints = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(baseSpec);
+				// if (hasConstraints)
+				// {
+				// 	return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+				// 		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+				// }
+
 				// Process add delete entity
 				await _unitOfWork.Repository<Employee, Guid>().DeleteAsync(id);
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
-					return new ServiceResult(ResultCodeConst.SYS_Success0004, 
+					return new ServiceResult(ResultCodeConst.SYS_Success0004,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
 				}
 				else
@@ -241,15 +242,162 @@ namespace FPTU_ELibrary.Application.Services
 					serviceResult.Data = false;
 				}
 			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw;
+			}
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
-				throw;
+				throw new Exception("Error invoke when process delete employee");
 			}
 
 			return serviceResult;
 		}
 
+		public async Task<IServiceResult> DeleteRangeAsync(Guid[] employeeIds)
+		{
+			try
+            {
+                // Get all matching employee 
+                // Build spec
+                var baseSpec = new BaseSpecification<Employee>(e => employeeIds.Contains(e.EmployeeId));
+                var employeeEntities = await _unitOfWork.Repository<Employee, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var employeeList = employeeEntities.ToList();
+                if (employeeList.Any(x => !x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Process delete range
+                await _unitOfWork.Repository<Employee, Guid>().DeleteRangeAsync(employeeIds);
+                // Save to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0)
+                {
+            	    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+            	    return new ServiceResult(ResultCodeConst.SYS_Success0008,
+            		    StringUtils.Format(msg, employeeList.Count.ToString()), true);
+                }
+    
+                // Fail to delete
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException is SqlException sqlEx)
+                {
+            	    switch (sqlEx.Number)
+            	    {
+            		    case 547: // Foreign key constraint violation
+            			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+            				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+            	    }
+                }
+            		
+                // Throw if other issues
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when process delete range employee");
+            }
+		}
+		
+		public override async Task<IServiceResult> GetAllWithSpecAsync(
+			ISpecification<Employee> specification,
+			bool tracked = true)
+		{
+			try
+			{
+				// Try to parse specification to EmployeeSpecification
+				var employeeSpec = specification as EmployeeSpecification;
+				// Check if specification is null
+				if (employeeSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+				
+				// Define a local Mapster configuration
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<Employee, EmployeeDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.RoleId)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role) 
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+				
+				// Count total employees
+				var totalEmployeeWithSpec = await _unitOfWork.Repository<Employee, Guid>().CountAsync(employeeSpec);
+				// Count total page
+				var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / employeeSpec.PageSize);
+				
+				// Set pagination to specification after count total employees 
+				if (employeeSpec.PageIndex > totalPage 
+					|| employeeSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+				{
+					employeeSpec.PageIndex = 1; // Set default to first page
+				}
+				
+				// Apply pagination
+				employeeSpec.ApplyPaging(
+					skip: employeeSpec.PageSize * (employeeSpec.PageIndex - 1), 
+					take: employeeSpec.PageSize);
+				
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<Employee, Guid>()
+					.GetAllWithSpecAsync(employeeSpec, tracked);
+				
+				if (entities.Any()) // Exist data
+				{
+					// Convert to dto collection 
+					var employeeDtos = entities.Adapt<IEnumerable<EmployeeDto>>(localConfig);
+					
+					// Pagination result 
+					var paginationResultDto = new PaginatedResultDto<EmployeeDto>(employeeDtos,
+						employeeSpec.PageIndex, employeeSpec.PageSize, totalPage);
+					
+					// Response with pagination 
+					return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+				}
+				
+				// Not found any data
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+					// Mapping entities to dto and ignore sensitive user data
+					entities.Adapt<IEnumerable<EmployeeDto>>(localConfig));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get all data");
+			}
+		}
+		
 		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
 		{
 			// Initiate service result
@@ -273,7 +421,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-						StringUtils.Format(errMsg, nameof(Employee)));
+						StringUtils.Format(errMsg, nameof(Employee).ToLower()));
 				}
 
 				// Update specific properties
@@ -518,23 +666,14 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				// Check exist employee
 				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
-				if (existingEntity == null)
+				// Check if employee account already mark as deleted
+				if (existingEntity == null || existingEntity.IsDeleted)
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 						StringUtils.Format(errMsg, "employee"));
 				}
-
-				// Check if employee account already mark as deleted
-				if (existingEntity.IsDeleted)
-				{
-					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, nameof(Employee)));
-				}
-				
+			
 				// Update delete status
 				existingEntity.IsDeleted = true;
 				
@@ -548,8 +687,8 @@ namespace FPTU_ELibrary.Application.Services
 				}
 
 				// Mark as update success
-				return new ServiceResult(ResultCodeConst.SYS_Success0004,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+				return new ServiceResult(ResultCodeConst.SYS_Success0007,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007));
 			}
 			catch (Exception ex)
 			{
@@ -558,27 +697,58 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> SoftDeleteRangeAsync(Guid[] employeeIds)
+		{
+			try
+            {
+                // Get all matching employee 
+                // Build spec
+                var baseSpec = new BaseSpecification<Employee>(e => employeeIds.Contains(e.EmployeeId));
+                var employeeEntities = await _unitOfWork.Repository<Employee, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var employeeList = employeeEntities.ToList();
+                if (employeeList.Any(x => x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+                
+                // Progress update deleted status to true
+                employeeList.ForEach(x => x.IsDeleted = true);
+            	
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    // Get error msg
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0007,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when remove range employee");
+            }
+		}
+		
 		public async Task<IServiceResult> UndoDeleteAsync(Guid employeeId)
 		{
 			try
 			{
 				// Check exist employee
 				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
-				if (existingEntity == null)
+				// Check if employee account already mark as deleted
+				if (existingEntity == null || !existingEntity.IsDeleted)
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 						StringUtils.Format(errMsg, "employee"));
-				}
-
-				// Check if employee account already mark as deleted
-				if (!existingEntity.IsDeleted)
-				{
-					// Get error msg
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
-
-					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-						StringUtils.Format(errMsg, nameof(Employee)));
 				}
 				
 				// Update delete status
@@ -593,93 +763,54 @@ namespace FPTU_ELibrary.Application.Services
 				}
 
 				// Mark as update success
-				return new ServiceResult(ResultCodeConst.SYS_Success0004,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+				return new ServiceResult(ResultCodeConst.SYS_Success0009,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009));
 			}
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);	
-				throw new Exception("Error invoke when process soft delete employee");	
+				throw new Exception("Error invoke when process undo delete employee");	
 			}
 		}
-		
-		public override async Task<IServiceResult> GetAllWithSpecAsync(
-			ISpecification<Employee> specification,
-			bool tracked = true)
+
+		public async Task<IServiceResult> UndoDeleteRangeAsync(Guid[] employeeIds)
 		{
 			try
-			{
-				// Try to parse specification to EmployeeSpecification
-				var employeeSpec = specification as EmployeeSpecification;
-				// Check if specification is null
-				if (employeeSpec == null)
-				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
-				}				
-				
-				// Define a local Mapster configuration
-				var localConfig = new TypeAdapterConfig();
-				localConfig.NewConfig<Employee, EmployeeDto>()
-					.Ignore(dest => dest.PasswordHash!)
-					.Ignore(dest => dest.RoleId)
-					.Ignore(dest => dest.EmailConfirmed)
-					.Ignore(dest => dest.TwoFactorEnabled)
-					.Ignore(dest => dest.PhoneNumberConfirmed)
-					.Ignore(dest => dest.TwoFactorSecretKey!)
-					.Ignore(dest => dest.TwoFactorBackupCodes!)
-					.Ignore(dest => dest.PhoneVerificationCode!)
-					.Ignore(dest => dest.EmailVerificationCode!)
-					.Ignore(dest => dest.PhoneVerificationExpiry!)
-					.Map(dto => dto.Role, src => src.Role) 
-					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
-				
-				// Count total employees
-				var totalEmployeeWithSpec = await _unitOfWork.Repository<Employee, Guid>().CountAsync(employeeSpec);
-				// Count total page
-				var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / employeeSpec.PageSize);
-				
-				// Set pagination to specification after count total employees 
-				if (employeeSpec.PageIndex > totalPage 
-					|| employeeSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
-				{
-					employeeSpec.PageIndex = 1; // Set default to first page
-				}
-				
-				// Apply pagination
-				employeeSpec.ApplyPaging(
-					skip: employeeSpec.PageSize * (employeeSpec.PageIndex - 1), 
-					take: employeeSpec.PageSize);
-				
-				// Get all with spec
-				var entities = await _unitOfWork.Repository<Employee, Guid>()
-					.GetAllWithSpecAsync(employeeSpec, tracked);
-				
-				if (entities.Any()) // Exist data
-				{
-					// Convert to dto collection 
-					var employeeDtos = entities.Adapt<IEnumerable<EmployeeDto>>(localConfig);
-					
-					// Pagination result 
-					var paginationResultDto = new PaginatedResultDto<EmployeeDto>(employeeDtos,
-						employeeSpec.PageIndex, employeeSpec.PageSize, totalPage);
-					
-					// Response with pagination 
-					return new ServiceResult(ResultCodeConst.SYS_Success0002, 
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-				}
-				
-				// Not found any data
-				return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-					// Mapping entities to dto and ignore sensitive user data
-					entities.Adapt<IEnumerable<EmployeeDto>>(localConfig));
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when progress get all data");
-			}
+            {
+                // Get all matching employee 
+                // Build spec
+                var baseSpec = new BaseSpecification<Employee>(e => employeeIds.Contains(e.EmployeeId));
+                var employeeEntities = await _unitOfWork.Repository<Employee, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var employeeList = employeeEntities.ToList();
+                if (employeeList.Any(x => !x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+                
+                // Progress undo deleted status to false
+                employeeList.ForEach(x => x.IsDeleted = false);
+                        
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    // Get error msg
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0009,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when process undo delete range");
+            }
 		}
 		
 		public async Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password)

@@ -48,8 +48,5 @@ namespace FPTU_ELibrary.Application.Elastic.Models
 
         [Nested]
         public List<ElasticBookEdition> BookEditions { get; set; } = null!;
-
-        [Nested]
-        public List<ElasticAuthor> Authors { get; set; } = null!;
     }
 }
