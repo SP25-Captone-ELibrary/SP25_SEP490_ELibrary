@@ -226,9 +226,10 @@
 		/// </summary>
 		public static class BookCategory
 		{
-			public const string Create = "/book-categories";
-			public const string Update = "/book-categories/{id}";
-			public const string Delete = "/book-categories/{id}";
+			public const string Create = Base + "/book-categories";
+			public const string Update = Base + "/book-categories/{id}";
+			public const string Delete = Base + "/book-categories/{id}";
+			public const string GetAll = Base + "/book-categories";
 		}
 	}
 }

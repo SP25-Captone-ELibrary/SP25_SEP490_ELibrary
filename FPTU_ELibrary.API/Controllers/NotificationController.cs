@@ -61,7 +61,7 @@ public class NotificationController: ControllerBase
     }
 
     [HttpGet(APIRoute.Notification.GetNotificationByAdmin, Name = nameof(GetAllNotification))]
-    [Authorize]
+    [Authorize] 
     public async Task<IActionResult> GetAllNotification([FromQuery] NotificationSpecParams specParams)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";

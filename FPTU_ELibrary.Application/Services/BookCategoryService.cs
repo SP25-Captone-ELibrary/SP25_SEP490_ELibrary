@@ -25,23 +25,8 @@ public class BookCategoryService :GenericService<BookCategory, BookCategoryDto, 
     {
     }
 
-    public async Task<IServiceResult> GetAll()
+    public async Task<IServiceResult?> Delete(int id)
     {
-        throw new NotImplementedException();
-    }
-
-    public async Task<IServiceResult> Update(int id, BookCategoryDto dto, string roleName)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<IServiceResult?> Delete(int id, string roleName)
-    {
-        if (!roleName.Equals(nameof(RoleEnum.Administration)))
-        {
-            return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-        }
         var baseSpec = new BaseSpecification<BookCategory>(bc => bc.CategoryId == id);
         var existedBookCategory = await _unitOfWork.Repository<BookCategory,int>().GetWithSpecAsync(baseSpec);
         if (existedBookCategory is null)
@@ -58,7 +43,7 @@ public class BookCategoryService :GenericService<BookCategory, BookCategoryDto, 
 
         return await DeleteAsync(existedBookCategory.CategoryId);
     }
-
+    
     public async Task<IServiceResult> SoftDelete(int id, string roleName)
     {
         if (!roleName.Equals(nameof(RoleEnum.Administration)))
@@ -83,15 +68,5 @@ public class BookCategoryService :GenericService<BookCategory, BookCategoryDto, 
 
         existedBookCategory.IsDelete = true;
         return await UpdateAsync(existedBookCategory.CategoryId, _mapper.Map<BookCategoryDto>(existedBookCategory));
-    }
-
-    public async Task<IServiceResult> Create(BookCategoryDto dto, string roleName)
-    {
-        if (!roleName.Equals(nameof(RoleEnum.Administration)))
-        {
-            return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-        }
-        return await CreateAsync(dto);
     }
 }

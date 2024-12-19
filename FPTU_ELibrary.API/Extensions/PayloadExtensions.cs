@@ -71,6 +71,7 @@ namespace FPTU_ELibrary.API.Extensions
 				LastName = req.LastName,
 				Dob = req.Dob,
 				Phone = req.Phone,
+				UserCode = req.UserCode
 			};
 		#endregion
 
