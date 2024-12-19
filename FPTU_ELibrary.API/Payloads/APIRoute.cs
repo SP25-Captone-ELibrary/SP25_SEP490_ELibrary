@@ -223,7 +223,7 @@
 		{
 			//	[GET]
 			public const string BaseUrl = Base;
-			public const string Check = Base + "/management/health-check";
+			public const string Check = Base + "/health-check";
 		}
 
 		/// <summary>
