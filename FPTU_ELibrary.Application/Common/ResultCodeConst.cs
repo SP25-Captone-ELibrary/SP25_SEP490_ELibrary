@@ -323,6 +323,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// There is no important message 
 		/// </summary>
 		public static string Notification_Warning0001 = "Notification.Warning0001";
+		/// <summary>
+		/// Access to noti that not belongs to this account 
+		/// </summary>
+		public static string Notification_Warning0002 = "Notification.Warning0002";
 
 		#endregion
 

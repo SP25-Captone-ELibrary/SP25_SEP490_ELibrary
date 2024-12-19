@@ -31,10 +31,7 @@ public class NotificationController: ControllerBase
     [HttpPost(APIRoute.Notification.Create,Name=nameof(CreateNotification))]
     public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationRequest req)
     {
-        // Retrieve user email from token
-        var roleName = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
-        var dto = req.ToNotificationDto();
-        return Ok(await _notificationService.CreateNotification(dto,roleName, req.ListRecipient));
+        return Ok(await _notificationService.CreateNotification(req.ToNotificationDto(), req.ListRecipient));
     }
 
     [AllowAnonymous]
@@ -64,7 +61,16 @@ public class NotificationController: ControllerBase
     [Authorize]
     public async Task<IActionResult> GetAllNotification([FromQuery] NotificationSpecParams specParams)
     {
+        // define who are using this 
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email));
+    }
+    [HttpGet(APIRoute.Notification.GetById, Name = nameof(GetById))]
+    [Authorize]
+    public async Task<IActionResult> GetById([FromRoute] int id)
+    {
+        // define who are using this 
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _notificationService.GetById(email, id));
     }
 }
