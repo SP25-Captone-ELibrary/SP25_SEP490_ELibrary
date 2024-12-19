@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    [Migration("20241217022805_Initial database")]
-    partial class Initialdatabase
+    [Migration("20241217175254_Initial Database")]
+    partial class InitialDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -62,28 +62,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("dob");
 
-                    b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("FirstName")
+                    b.Property<string>("FullName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("first_name");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("full_name");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("last_name");
 
                     b.Property<string>("Nationality")
                         .HasMaxLength(100)
@@ -166,33 +155,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("UpdatedBy");
 
                     b.ToTable("Book", (string)null);
-                });
-
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookAuthor", b =>
-                {
-                    b.Property<int>("BookAuthorId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("book_author_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookAuthorId"));
-
-                    b.Property<int>("AuthorId")
-                        .HasColumnType("int")
-                        .HasColumnName("author_id");
-
-                    b.Property<int>("BookId")
-                        .HasColumnType("int")
-                        .HasColumnName("book_id");
-
-                    b.HasKey("BookAuthorId")
-                        .HasName("PK_BookAuthor_BookAuthorId");
-
-                    b.HasIndex("AuthorId");
-
-                    b.HasIndex("BookId");
-
-                    b.ToTable("Book_Author", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookCategory", b =>
@@ -309,6 +271,33 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("CreateBy");
 
                     b.ToTable("Book_Edition", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionAuthor", b =>
+                {
+                    b.Property<int>("BookEditionAuthorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("book_edition_author_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionAuthorId"));
+
+                    b.Property<int>("AuthorId")
+                        .HasColumnType("int")
+                        .HasColumnName("author_id");
+
+                    b.Property<int>("BookEditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("book_edition_id");
+
+                    b.HasKey("BookEditionAuthorId")
+                        .HasName("PK_BookAuthorEdition_BookEditionAuthorId");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("BookEditionId");
+
+                    b.ToTable("Book_Edition_Author", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionCopy", b =>
@@ -1839,25 +1828,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("UpdatedByNavigation");
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookAuthor", b =>
-                {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Author", "Author")
-                        .WithMany("BookAuthors")
-                        .HasForeignKey("AuthorId")
-                        .IsRequired()
-                        .HasConstraintName("FK_BookAuthor_AuthorId");
-
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Book", "Book")
-                        .WithMany("BookAuthors")
-                        .HasForeignKey("BookId")
-                        .IsRequired()
-                        .HasConstraintName("FK_BookAuthor_BookId");
-
-                    b.Navigation("Author");
-
-                    b.Navigation("Book");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEdition", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Book", "Book")
@@ -1875,6 +1845,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Book");
 
                     b.Navigation("CreateByNavigation");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionAuthor", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Author", "Author")
+                        .WithMany("BookEditionAuthors")
+                        .HasForeignKey("AuthorId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BookEditionAuthor_AuthorId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.BookEdition", "BookEdition")
+                        .WithMany("BookEditionAuthors")
+                        .HasForeignKey("BookEditionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BookEditionAuthor_BookId");
+
+                    b.Navigation("Author");
+
+                    b.Navigation("BookEdition");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionCopy", b =>
@@ -2277,13 +2266,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Author", b =>
                 {
-                    b.Navigation("BookAuthors");
+                    b.Navigation("BookEditionAuthors");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Book", b =>
                 {
-                    b.Navigation("BookAuthors");
-
                     b.Navigation("BookEditions");
                 });
 
@@ -2294,6 +2281,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEdition", b =>
                 {
+                    b.Navigation("BookEditionAuthors");
+
                     b.Navigation("BookEditionCopies");
 
                     b.Navigation("BookEditionInventory");

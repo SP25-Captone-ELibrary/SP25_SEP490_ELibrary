@@ -113,7 +113,6 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 specParams.Sort = specParams.Sort.Trim('-');
             }
 
-            // Uppercase sort text
             specParams.Sort = specParams.Sort.ToUpper();
             
             // Define sorting pattern
@@ -126,6 +125,7 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 { "DOB", x => x.Dob ?? null! },
                 { "PHONE", x => x.Phone ?? string.Empty },
                 { "GENDER", x => x.Gender ?? string.Empty },
+                { "ADDRESS", x => x.Address ?? string.Empty },
                 { "CREATEDATE", x => x.CreateDate },
                 { "HIREDATE", x => x.HireDate ?? null! },
                 { "ACTIVE", x => x.IsActive },

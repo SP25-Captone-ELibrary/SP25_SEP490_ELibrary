@@ -22,7 +22,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
             _context = context;
 
-            // Initialize repo hastable if not exist
+            // Initialize repo hashtable if not exist
             if (_repositories == null) _repositories = new Hashtable();
         }
 

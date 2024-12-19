@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Query;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
+using Microsoft.EntityFrameworkCore;
 
 namespace FPTU_ELibrary.Domain.Specifications
 {
@@ -15,8 +16,12 @@ namespace FPTU_ELibrary.Domain.Specifications
             PageIndex = pageIndex;
             PageSize = pageSize;
 
-            ApplyPaging(pageSize, (pageIndex - 1) * pageSize);
-
+            // ApplyPaging(pageSize, (pageIndex - 1) * pageSize);
+        
+            // Include role
+            ApplyInclude(q => q
+                .Include(u => u.Role));
+            
             // Apply Sorting
             if (!string.IsNullOrEmpty(userSpecParams.Sort))
             {

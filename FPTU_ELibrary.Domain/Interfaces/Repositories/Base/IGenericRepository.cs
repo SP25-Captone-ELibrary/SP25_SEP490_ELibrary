@@ -30,10 +30,11 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
         void Delete(TKey id);
         void Update(TEntity entity);
 
-        /// Asyncronous operation
+        /// Asynchronous operation
         Task AddAsync(TEntity entity);
         Task AddRangeAsync(IEnumerable<TEntity> entities);
         Task DeleteAsync(TKey id);
+        Task DeleteRangeAsync(TKey[] ids);
 		Task UpdateAsync(TEntity entity);
 
         #endregion

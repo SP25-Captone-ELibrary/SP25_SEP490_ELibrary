@@ -2,8 +2,6 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 
 public class AuthorSpecParams : BaseSpecParams
 {
-    public string? FirstName { get; set; } 
-    public string? LastName { get; set; } 
     public string? AuthorCode { get; set; }
     public string? Nationality { get; set; }
     public bool? IsDeleted { get; set; }

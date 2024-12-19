@@ -1,9 +1,7 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
-using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Elastic.Responses;
-using FPTU_ELibrary.Domain.Entities;
 using Nest;
 
 namespace FPTU_ELibrary.API.Mappings
@@ -48,20 +46,19 @@ namespace FPTU_ELibrary.API.Mappings
 					CreateDate = be.CreateDate,
 					UpdatedDate = be.UpdatedDate,
 					CreateBy = be.CreateBy,
-				}).ToList(),
-				Authors = booKDto.BookAuthors.Select(ba => new ElasticAuthor
-				{
-					AuthorId = ba.Author.AuthorId,
-					AuthorCode = ba.Author.AuthorCode,
-					AuthorImage = ba.Author.AuthorImage,
-					FirstName = ba.Author.FirstName,
-					LastName = ba.Author.LastName,
-					Biography = ba.Author.Biography ?? string.Empty,
-					Dob = ba.Author.Dob,
-					DateOfDeath = ba.Author.DateOfDeath,
-					Nationality = ba.Author.Nationality,
-					CreateDate = ba.Author.CreateDate,
-					UpdateDate = ba.Author.UpdateDate
+					Authors = booKDto.BookAuthors.Select(ba => new ElasticAuthor
+					{
+						AuthorId = ba.Author.AuthorId,
+						AuthorCode = ba.Author.AuthorCode,
+						AuthorImage = ba.Author.AuthorImage,
+						FullName = ba.Author.FullName,
+						Biography = ba.Author.Biography ?? string.Empty,
+						Dob = ba.Author.Dob,
+						DateOfDeath = ba.Author.DateOfDeath,
+						Nationality = ba.Author.Nationality,
+						CreateDate = ba.Author.CreateDate,
+						UpdateDate = ba.Author.UpdateDate
+					}).ToList()
 				}).ToList(),
 			};
 

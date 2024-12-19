@@ -1,20 +1,20 @@
+using FPTU_ELibrary.Application.Dtos.Authors;
 using Newtonsoft.Json;
 
 namespace FPTU_ELibrary.Application.Dtos.Books;
 
-public class BookAuthorDto
+public class BookEditionAuthorDto
 {
     // Key
-    public int BookAuthorId { get; set; }
+    public int BookEditionAuthorId { get; set; }
     // Book belongs to 
-    public int BookId { get; set; }
+    public int BookEditionId { get; set; }
     // Author belongs to
     public int AuthorId { get; set; }
     
     // Mapping entities
-    [JsonIgnore]
     public AuthorDto Author { get; set; } = null!;
 
     [JsonIgnore]
-    public BookDto Book { get; set; } = null!;
+    public BookEditionDto BookEdition { get; set; } = null!;
 }

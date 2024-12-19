@@ -1,6 +1,6 @@
-using Newtonsoft.Json;
+using FPTU_ELibrary.Application.Dtos.Books;
 
-namespace FPTU_ELibrary.Application.Dtos.Books;
+namespace FPTU_ELibrary.Application.Dtos.Authors;
 
 public class AuthorDto
 {
@@ -10,9 +10,7 @@ public class AuthorDto
     // Author detail information
     public string? AuthorCode { get; set; }
     public string? AuthorImage { get; set; }
-    public string? Email { get; set; } 
-    public string FirstName { get; set; } = null!;
-    public string LastName { get; set; } = null!;
+    public string FullName { get; set; } = null!;
     public string? Biography { get; set; } // Save as HTML text
     public DateTime? Dob { get; set; }
     public DateTime? DateOfDeath { get; set; } 
@@ -26,5 +24,5 @@ public class AuthorDto
     public bool IsDeleted { get; set; }
 
     // Mapping entity
-    public ICollection<BookAuthorDto> BookAuthors { get; set; } = new List<BookAuthorDto>();
+    public ICollection<BookEditionAuthorDto> BookEditionAuthors { get; set; } = new List<BookEditionAuthorDto>();
 }

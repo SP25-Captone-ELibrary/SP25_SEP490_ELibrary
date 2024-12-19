@@ -1,8 +1,8 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.Application.Configurations;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -10,7 +10,6 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using MimeTypes;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -36,6 +35,13 @@ public class EmployeeController : ControllerBase
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.Employee.GetById, Name = nameof(GetEmployeeByIdAsync))]
+    public async Task<IActionResult> GetEmployeeByIdAsync([FromRoute] Guid id)
+    {
+        return Ok(await _employeeService.GetByIdAsync(id));
     }
     
     [Authorize]
@@ -75,13 +81,6 @@ public class EmployeeController : ControllerBase
     }
     
     [Authorize]
-    [HttpPut(APIRoute.Employee.UpdateProfile, Name = nameof(UpdateEmployeeProfileAsync))]
-    public async Task<IActionResult> UpdateEmployeeProfileAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeProfileRequest req)
-    {
-        return Ok(await _employeeService.UpdateProfileAsync(id, req.ToEmployeeDtoForUpdateProfile()));
-    }
-
-    [Authorize]
     [HttpPatch(APIRoute.Employee.ChangeActiveStatus, Name = nameof(ChangeActiveStatusAsync))]
     public async Task<IActionResult> ChangeActiveStatusAsync([FromRoute] Guid id)
     {
@@ -89,10 +88,17 @@ public class EmployeeController : ControllerBase
     }
         
     [Authorize]
-    [HttpDelete(APIRoute.Employee.SoftDelete, Name = nameof(SoftDeleteEmployeeAsync))]
+    [HttpPatch(APIRoute.Employee.SoftDelete, Name = nameof(SoftDeleteEmployeeAsync))]
     public async Task<IActionResult> SoftDeleteEmployeeAsync([FromRoute] Guid id)
     {
         return Ok(await _employeeService.SoftDeleteAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.Employee.SoftDeleteRange, Name = nameof(SoftDeleteEmployeeRangeAsync))]
+    public async Task<IActionResult> SoftDeleteEmployeeRangeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    {
+        return Ok(await _employeeService.SoftDeleteRangeAsync(req.Ids));
     }
     
     [Authorize]
@@ -103,9 +109,23 @@ public class EmployeeController : ControllerBase
     }
     
     [Authorize]
+    [HttpPatch(APIRoute.Employee.UndoDeleteRange, Name = nameof(UndoDeleteRangeEmployeeAsync))]
+    public async Task<IActionResult> UndoDeleteRangeEmployeeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    {
+        return Ok(await _employeeService.UndoDeleteRangeAsync(req.Ids));
+    }
+    
+    [Authorize]
     [HttpDelete(APIRoute.Employee.Delete, Name = nameof(DeleteEmployeeAsync))]
     public async Task<IActionResult> DeleteEmployeeAsync([FromRoute] Guid id)
     {
         return Ok(await _employeeService.DeleteAsync(id));
+    }
+    
+    [Authorize]
+    [HttpDelete(APIRoute.Employee.DeleteRange, Name = nameof(DeleteRangeEmployeeAsync))]
+    public async Task<IActionResult> DeleteRangeEmployeeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    {
+        return Ok(await _employeeService.DeleteRangeAsync(req.Ids));
     }
 }

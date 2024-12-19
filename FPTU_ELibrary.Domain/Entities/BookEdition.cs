@@ -33,10 +33,11 @@ public class BookEdition
     public BookEditionInventory? BookEditionInventory { get; set; }
     public Employee CreateByNavigation { get; set; } = null!;
 
+    public ICollection<BookEditionAuthor> BookEditionAuthors { get; set; } = new List<BookEditionAuthor>();
     public ICollection<BookEditionCopy> BookEditionCopies { get; set; } = new List<BookEditionCopy>();
     public ICollection<BookResource> BookResources { get; set; } = new List<BookResource>();
     public ICollection<BookReview> BookReviews { get; set; } = new List<BookReview>();
-
+    
     [JsonIgnore]
     public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
 

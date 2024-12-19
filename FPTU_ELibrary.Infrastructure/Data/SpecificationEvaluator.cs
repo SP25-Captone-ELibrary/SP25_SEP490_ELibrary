@@ -29,27 +29,27 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     query = query.Where(filter);
                 }
             }
-            
+
             // Apply grouping
-            if (spec.GroupBy != null!) query = query.GroupBy(spec.GroupBy).SelectMany(x => x);
+            if (spec.GroupBy != null!) query = query.GroupBy(spec.GroupBy).Select(g => g.FirstOrDefault())!; 
 
             // Apply ordering
-            if (spec.OrderBy != null!) query = query.OrderBy(spec.OrderBy);
-            if (spec.OrderByDescending != null!) query = query.OrderByDescending(spec.OrderByDescending);
+            if (spec.OrderBy != null!) query = query?.OrderBy(spec.OrderBy);
+            if (spec.OrderByDescending != null!) query = query?.OrderByDescending(spec.OrderByDescending);
 
             // Apply pagination
-            if (spec.IsPagingEnabled) query = query.Skip(spec.Skip).Take(spec.Take);
+            if (spec.IsPagingEnabled) query = query?.Skip(spec.Skip).Take(spec.Take);
 
             // Apply includes (with support for ThenInclude)
             if (spec.Includes != null!)
             {
                 foreach (var include in spec.Includes)
                 {
-                    query = include(query);
+                    if (query != null) query = include(query);
                 }
             }
 
-            return query;
+            return query!;
         } 
     }
 }

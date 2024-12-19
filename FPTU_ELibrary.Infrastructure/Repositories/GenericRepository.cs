@@ -127,6 +127,19 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
 				_dbSet.Remove(entity);
 			}
 		}
+		
+		public async Task DeleteRangeAsync(TKey[] ids)
+		{
+			foreach (var id in ids)
+			{
+				var entity = await _dbSet.FindAsync(id);
+
+				if (entity != null)
+				{
+					_dbSet.Remove(entity);
+				}
+			}
+		}
 
 		public async Task UpdateAsync(TEntity entity)
 		{
