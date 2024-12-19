@@ -1,10 +1,16 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Text.RegularExpressions;
+using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
@@ -15,6 +21,8 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -57,15 +65,105 @@ namespace FPTU_ELibrary.Application.Services
 
             if (existedUser is null)
             {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
             }
+            
+            // Define a local Mapster configuration
+            var localConfig = new TypeAdapterConfig();
+            localConfig.NewConfig<User, UserDto>()
+	            .Ignore(dest => dest.PasswordHash!)
+	            .Ignore(dest => dest.RoleId)
+	            .Ignore(dest => dest.EmailConfirmed)
+	            .Ignore(dest => dest.TwoFactorEnabled)
+	            .Ignore(dest => dest.PhoneNumberConfirmed)
+	            .Ignore(dest => dest.TwoFactorSecretKey!)
+	            .Ignore(dest => dest.TwoFactorBackupCodes!)
+	            .Ignore(dest => dest.PhoneVerificationCode!)
+	            .Ignore(dest => dest.EmailVerificationCode!)
+	            .Ignore(dest => dest.PhoneVerificationExpiry!)
+	            .Map(dto => dto.Role, src => src.Role) 
+	            .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                existedUser.Adapt<UserDto>(localConfig));
         }
-        
+
+        public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<User> spec, bool tracked = true)
+        {
+	        try
+	        {
+		        // Try to parse specification to UserSpecification
+		        var userSpec = spec as UserSpecification;
+		        // Check if specification is null
+		        if (userSpec == null)
+		        {
+			        return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		        }		
+		        
+		        // Define a local Mapster configuration
+		        var localConfig = new TypeAdapterConfig();
+		        localConfig.NewConfig<User, UserDto>()
+			        .Ignore(dest => dest.PasswordHash!)
+			        .Ignore(dest => dest.RoleId)
+			        .Ignore(dest => dest.EmailConfirmed)
+			        .Ignore(dest => dest.TwoFactorEnabled)
+			        .Ignore(dest => dest.PhoneNumberConfirmed)
+			        .Ignore(dest => dest.TwoFactorSecretKey!)
+			        .Ignore(dest => dest.TwoFactorBackupCodes!)
+			        .Ignore(dest => dest.PhoneVerificationCode!)
+			        .Ignore(dest => dest.EmailVerificationCode!)
+			        .Ignore(dest => dest.PhoneVerificationExpiry!)
+			        .Map(dto => dto.Role, src => src.Role) 
+			        .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+		        
+		        // Count total users
+		        var totalEmployeeWithSpec = await _unitOfWork.Repository<User, Guid>().CountAsync(userSpec);
+		        // Count total page
+		        var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / userSpec.PageSize);
+				
+		        // Set pagination to specification after count total users 
+		        if (userSpec.PageIndex > totalPage 
+		            || userSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+		        {
+			        userSpec.PageIndex = 1; // Set default to first page
+		        }
+				
+		        // Apply pagination
+		        userSpec.ApplyPaging(
+			        skip: userSpec.PageSize * (userSpec.PageIndex - 1), 
+			        take: userSpec.PageSize);
+		        
+		        var entities = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(spec, tracked);
+		        if (entities.Any())
+		        {
+			        // Convert to dto collection 
+			        var userDtos = entities.Adapt<IEnumerable<UserDto>>(localConfig);
+					
+			        // Pagination result 
+			        var paginationResultDto = new PaginatedResultDto<UserDto>(userDtos,
+				        userSpec.PageIndex, userSpec.PageSize, totalPage);
+					
+			        // Response with pagination 
+			        return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+		        }
+
+		        // Not found any data
+		        return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+			        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+			        // Mapping entities to dto and ignore sensitive user data
+			        entities.Adapt<IEnumerable<UserDto>>(localConfig));
+	        }
+	        catch (Exception ex)
+	        {
+		        _logger.Error(ex.Message);
+		        throw new Exception("Error invoke when progress get all data");
+	        }
+        }
+		
         public override async Task<IServiceResult> CreateAsync(UserDto dto)
         {
             // Initiate service result
@@ -439,19 +537,28 @@ namespace FPTU_ELibrary.Application.Services
 		            throw new UnprocessableEntityException("Invalid Validations", errors);
 	            }
 	            
-                //query specification
-                var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(newUser.Email));
-                // Include job role
-                baseSpec.ApplyInclude(u => u.Include(u => u.Role));
-
-                // Get user by query specification
-                var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-                if (existedUser is not null)
+                // Custom validation result
+                var customErrors = new Dictionary<string, string[]>();
+                // Check exist email & employee code
+                var isExistUserEmail = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Email == newUser.Email);
+                var isExistEmployeeEmail = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.Email == newUser.Email);
+                var isExistUserCode = await _unitOfWork.Repository<User, Guid>().AnyAsync(e => e.UserCode == newUser.UserCode);
+                if (isExistEmployeeEmail || isExistUserEmail) // Already exist email
                 {
-                    return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-                        await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+                	customErrors.Add(
+                		StringUtils.ToCamelCase(nameof(User.Email)),
+                		[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
                 }
-
+                if (isExistUserCode) // Already exist employee code
+                {
+                	customErrors.Add(
+                		StringUtils.ToCamelCase(nameof(User.UserCode)), 
+                		[await _msgService.GetMessageAsync(ResultCodeConst.User_Warning0001)]);
+                }
+                // Check whether invoke errors
+                if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
+				
+                // Try to retrieve general member role
                 var result = await _roleService.GetByNameAsync(RoleEnum.GeneralMember);
                 if (result.ResultCode == ResultCodeConst.SYS_Success0002)
                 {
@@ -464,52 +571,19 @@ namespace FPTU_ELibrary.Application.Services
                     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                         StringUtils.Format(errorMsg, "role"));
                 }
-
-                //Create password and send email
-                var password = HashUtils.GenerateRandomPassword();
-                newUser.PasswordHash = HashUtils.HashPassword(password);
                 
-                // Progress create new user
-                var createdResult = await CreateAsync(newUser);
-
-                if (createdResult.Data is true)
+                // Process add new entity
+                await _unitOfWork.Repository<User, Guid>().AddAsync(_mapper.Map<User>(newUser));
+                // Save to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0)
                 {
-                    #region Old User Sending Email handler
-
-                    //progress send current password for email
-                    //           // Define email message
-                    //           var emailMessageDto = new EmailMessageDto(
-                    //               // Define Recipient
-                    //               to: new List<string>() { newUser.Email },
-                    //               // Define subject
-                    //               // Add email body content
-                    //               subject: "ELibrary - Change password notification",
-                    //               // Add email body content
-                    //               content: $@"
-                    // <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-                    // 	<h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
-                    // 	<p> ELibrary has created account with your email and here is your password:</p>
-                    // 	<h1 style='font-weight: bold; color: #2C3E50;'>{password}</h1>
-                    // 	<p> Please login and change the password as soon as posible.</p>
-                    // 	<br />
-                    // 	<p style='font-size: 16px;'>Thanks,</p>
-                    // <p style='font-size: 16px;'>The ELibrary Team</p>
-                    // </div>"
-                    //           );
-                    //           // Send email
-                    //           var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
-
-                    #endregion
-
-                    await SendUserEmail(newUser, password);
-                    return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+	                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+		                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
                 }
-                else
-                {
-                    return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
-                }
+                
+                // Fail to create
+                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
             }
 			catch (UnprocessableEntityException)
 			{
@@ -785,6 +859,64 @@ namespace FPTU_ELibrary.Application.Services
             }
 		}
         
+		public async Task<IServiceResult> ExportAsync(ISpecification<User> spec)
+		{
+			try
+			{
+				// Try to parse specification to UserSpecification
+				var userSpec = spec as UserSpecification;
+				// Check if specification is null
+				if (userSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+				
+				// Not apply paging 
+				
+				// Define a local Mapster configuration
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<User, UserDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.RoleId)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role) 
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+				
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<User, Guid>()
+					.GetAllWithSpecAsync(userSpec, tracked: false);
+				
+				if (entities.Any()) // Exist data
+				{
+					// Map entities to dtos 
+					var userDtos = _mapper.Map<List<UserDto>>(entities);
+					// Process export data to file
+					var fileBytes = CsvUtils.ExportToExcel(
+						userDtos.ToUserExcelRecords());
+
+					return new ServiceResult(ResultCodeConst.SYS_Success0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+						fileBytes);
+				}
+				
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process export employee to excel");
+			}
+		}
+		
         #region Temporary return. Offical return required worker to send many emails at the time.
 
         // public async Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile)
@@ -918,181 +1050,188 @@ namespace FPTU_ELibrary.Application.Services
         }
 
         public async Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile,
-            DuplicateHandle duplicateHandle)
+            DuplicateHandle duplicateHandle, bool isSendEmail)
         {
-            // Query specification
-            var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
-            // Include job role
-            baseSpec.ApplyInclude(q =>
-                q.Include(u => u.Role));
-            var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-            if (user is null)
-            {
-                return new ServiceResult(ResultCodeConst.Auth_Warning0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
-            }
-            else if (user.RoleId != 1)
-            {
-                return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-            }
+	        // Initialize fields
+	        var langEnum =
+		        (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+	        var isEng = langEnum == SystemLanguage.English;
+	        var totalImportData = 0;
+	        
+            async Task ProcessAccountsAsync()
+		    {
+		        using var scope = _service.CreateScope();
+		        var roleService = scope.ServiceProvider.GetRequiredService<ISystemRoleService<SystemRoleDto>>();
+		        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+		        var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+		        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+		        var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
+		        var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AccountHub>>();
 
-            _ = Task.Run(async () =>
-            {
-                var scope = _service.CreateScope();
-                var rolerService = scope.ServiceProvider.GetRequiredService<ISystemRoleService<SystemRoleDto>>();
-                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
-                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                var genericService =
-                    scope.ServiceProvider.GetRequiredService<IGenericService<User, UserDto, Guid>>();
-                var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
-                var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AccountHub>>();
+		        if (excelFile == null || excelFile.Length == 0)
+		        {
+		            throw new BadRequestException(isEng
+		                ? "File is not valid"
+		                : "File không hợp lệ");
+		        }
 
-                if (excelFile == null || excelFile.Length == 0)
-                {
-                    throw new BadRequestException("File is empty or null");
-                }
+		        // Validate import file 
+		        var validationResult = await ValidatorExtensions.ValidateAsync(excelFile);
+		        if (validationResult != null && !validationResult.IsValid)
+		        {
+			        // Response the uploaded file is not supported
+			        throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+		        }
 
-                // Validate file format (e.g., only allow .xlsx files)
-                var allowedExtensions = new[] { ".xlsx" };
-                var fileExtension = Path.GetExtension(excelFile.FileName);
-                if (!allowedExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
-                {
-                    throw new BadRequestException("Invalid file type. Only .xlsx files are allowed.");
-                }
+		        using var memoryStream = new MemoryStream();
+		        await excelFile.CopyToAsync(memoryStream);
+		        memoryStream.Position = 0;
 
-                using (var memoryStream = new MemoryStream())
-                {
-                    await excelFile.CopyToAsync(memoryStream);
-                    memoryStream.Position = 0;
+		        try
+		        {
+		            var result = await roleService.GetByNameAsync(RoleEnum.GeneralMember);
+		            if (result.ResultCode != ResultCodeConst.SYS_Success0002)
+		            {
+		                logger.Error("Not found any role with nameof General user");
+		                throw new NotFoundException("Role", "General user");
+		            }
 
-                    try
-                    {
-                        var result = await rolerService.GetByNameAsync(RoleEnum.GeneralMember);
-                        if (result.ResultCode != ResultCodeConst.SYS_Success0002)
-                        {
-                            logger.Error("Not found any role with nameof General user");
-                            throw new NotFoundException("Role", "General user");
-                        }
+		            var failedMsgs = new List<UserFailedMessage>();
 
-                        var failedMsgs = new List<UserFailedMessage>();
+		            using var package = new OfficeOpenXml.ExcelPackage(memoryStream);
+		            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+		            if (worksheet == null)
+		            {
+		                throw new BadRequestException(isEng
+		                    ? "Excel file does not contain any worksheet"
+		                    : "Không tìm thấy worksheet");
+		            }
 
-                        // Đọc và xử lý file Excel
-                        using (var package = new OfficeOpenXml.ExcelPackage(memoryStream))
-                        {
-                            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                            if (worksheet == null)
-                            {
-                                throw new BadRequestException("Excel file does not contain any worksheet");
-                            }
+		            int rowCount = worksheet.Dimension.Rows;
+		            var processedEmails = new Dictionary<string, int>();
+		            var emailPasswords = new Dictionary<string, string>();
+		            var userToAdd = new List<UserDto>();
 
-                            int rowCount = worksheet.Dimension.Rows;
+		            for (int row = 2; row <= rowCount; row++)
+		            {
+		                var userRecord = new UserExcelRecord()
+		                {
+		                    Email = worksheet.Cells[row, 1].Text,
+		                    FirstName = worksheet.Cells[row, 2].Text,
+		                    LastName = worksheet.Cells[row, 3].Text,
+		                    Dob = worksheet.Cells[row, 4].Text,
+		                    Gender = worksheet.Cells[row, 5].Text,
+		                    Phone = worksheet.Cells[row, 6].Text,
+		                    Address = worksheet.Cells[row, 7].Text,
+		                };
 
-                            // Tập hợp lưu các email đã xử lý
-                            var processedEmails = new Dictionary<string, int>();
-                            // dictionary for email-password
-                            var emailPasswords = new Dictionary<string, string>();
-                            var userToAdd = new List<UserDto>();
-                            for (int row = 2; row <= rowCount; row++)
-                            {
-                                var userRecord = new UserExcelRecord()
-                                {
-                                    Email = worksheet.Cells[row, 1].Text,
-                                    FirstName = worksheet.Cells[row, 2].Text,
-                                    LastName = worksheet.Cells[row, 3].Text,
-                                    Dob = worksheet.Cells[row, 4].Text,
-                                    Gender = worksheet.Cells[row, 5].Text,
-                                    Phone = worksheet.Cells[row, 6].Text,
-                                    Address = worksheet.Cells[row, 7].Text,
-                                };
+		                if (processedEmails.ContainsKey(userRecord.Email))
+		                {
+		                    if (duplicateHandle.ToString().ToLower() == "skip")
+		                    {
+		                        continue;
+		                    }
+		                    else if (duplicateHandle.ToString().ToLower() == "replace")
+		                    {
+		                        failedMsgs.RemoveAll(f => f.Row == processedEmails[userRecord.Email]);
+		                        processedEmails[userRecord.Email] = row;
+		                    }
+		                }
+		                else
+		                {
+		                    processedEmails[userRecord.Email] = row;
+		                }
 
-                                // check the exist record if it has been add
-                                if (processedEmails.ContainsKey(userRecord.Email))
-                                {
-                                    if (duplicateHandle.ToString().ToLower() == "skip")
-                                    {
-                                        //  skip the current record
-                                        continue;
-                                    }
-                                    else if (duplicateHandle.ToString().ToLower() == "replace")
-                                    {
-                                        // Remove old record + failed msg of old msg
-                                        failedMsgs.RemoveAll(f => f.Row == processedEmails[userRecord.Email]);
-                                        processedEmails[userRecord.Email] = row;
-                                    }
-                                }
-                                else
-                                {
-                                    processedEmails[userRecord.Email] = row;
-                                }
+		                var rowErr = await DetectWrongRecord(userRecord, unitOfWork, langEnum);
+		                if (rowErr.Count != 0)
+		                {
+		                    failedMsgs.Add(new UserFailedMessage()
+		                    {
+		                        Row = row,
+		                        ErrMsg = rowErr
+		                    });
+		                }
+		                else
+		                {
+		                    // Convert to UserDto
+			                var newUser = userRecord.ToUserDto();
+		                    // Retrieve default role
+		                    var role = (SystemRoleDto) result.Data!;
+							// Assign role
+		                    newUser.RoleId = role.RoleId;
 
-                                // Error found
-                                var rowErr = await DetectWrongRecord(userRecord, unitOfWork);
-                                if (rowErr.Count != 0)
-                                {
-                                    failedMsgs.Add(new UserFailedMessage()
-                                    {
-                                        Row = row,
-                                        ErrMsg =rowErr 
-                                    });
-                                }
-                                else
-                                {
-                                    var newUser = userRecord.ToUserDto();
-                                    var existingUser = await unitOfWork.Repository<User, Guid>()
-                                        .GetWithSpecAsync(new BaseSpecification<User>(u => u.Email == user.Email));
-                                    var password = Utils.HashUtils.GenerateRandomPassword();
-                                    var role = (SystemRoleDto)result.Data!;
-                                    newUser.RoleId = role.RoleId;
-                                    newUser.PasswordHash = password;
-                                    userToAdd.Add(newUser);
-                                    emailPasswords.Add(newUser.Email, password);
-                                }
-                            }
+		                    if (isSendEmail) // Not process add random password for user when mark as send email
+		                    {
+			                    var password = HashUtils.GenerateRandomPassword();
+			                    newUser.PasswordHash = HashUtils.HashPassword(password);
+			                    
+			                    // Add key-pair (email, password) 
+								emailPasswords.Add(newUser.Email, password);
+		                    }
+		                    
+		                    // Add user
+		                    userToAdd.Add(newUser);
+		                }
+		            }
 
-                            if (failedMsgs.Count > 0)
-                            {
-                                // Gửi thông báo lỗi qua Hub
-                                await hubContext.Clients.User(email).SendAsync("ReceiveFailErrorMessage", failedMsgs);
-                            }
+		            if (failedMsgs.Count > 0 && isSendEmail)
+		            {
+		                await hubContext.Clients.User(email).SendAsync("ReceiveFailErrorMessage", failedMsgs);
+		            }
 
-                            // add available users
-                            await unitOfWork.Repository<User, Guid>().AddRangeAsync(mapper.Map<List<User>>(userToAdd));
-                            await unitOfWork.SaveChangesAsync();
-                            //send email to users
-                            foreach (var userDto in userToAdd)
-                            {
-                                var emailMessageDto = new EmailMessageDto(
-                                    new List<string> { userDto.Email },
-                                    "ELibrary - Change password notification",
-                                    $@"
-                                    <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
-                                    <p>Your account has been created. Your password is:</p>
-                                    <h1>{emailPasswords[userDto.Email]}</h1>");
-                                await emailService.SendEmailAsync(emailMessageDto, true);
-                            }
+		            // Update total import data
+		            totalImportData = userToAdd.Count;
+		            
+		            // Process add range
+		            await unitOfWork.Repository<User, Guid>().AddRangeAsync(mapper.Map<List<User>>(userToAdd));
+		            await unitOfWork.SaveChangesAsync();
 
-                            await hubContext.Clients.User(email).SendAsync("ReceiveCompleteNotification",
-                                "All emails sent successfully.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Error(ex, "An error occurred while processing accounts");
-                    }
-                }
-            });
-            return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+
+		            if (isSendEmail) // Only process send message to hub when mark as send email 
+		            {
+			            foreach (var userDto in userToAdd)
+			            {
+			                var emailMessageDto = new EmailMessageDto(
+			                    new List<string> { userDto.Email },
+			                    "ELibrary - Change password notification",
+			                    $@"
+			                    <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
+			                    <p>Your account has been created. Your password is:</p>
+			                    <h1>{emailPasswords[userDto.Email]}</h1>");
+			                await emailService.SendEmailAsync(emailMessageDto, true);
+			            }
+			            await hubContext.Clients.User(email).SendAsync("ReceiveCompleteNotification",
+				            "All emails sent successfully.");
+		            }
+		        }
+		        catch (Exception ex)
+		        {
+		            logger.Error(ex, "An error occurred while processing accounts");
+		        }
+		    }
+
+		    if (isSendEmail)
+		    {
+		        _ = Task.Run(ProcessAccountsAsync);
+		        
+		        return new ServiceResult(ResultCodeConst.SYS_Success0001,
+			        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+		    }
+		    else
+		    {
+		        await ProcessAccountsAsync();
+		        
+		        var respMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+		        return new ServiceResult(ResultCodeConst.SYS_Success0005, 
+			        StringUtils.Format(respMsg, totalImportData.ToString()), true);
+		    }
         }
 
-        private async Task<List<string>> DetectWrongRecord(UserExcelRecord record, IUnitOfWork unitOfWork)
+        private async Task<List<string>> DetectWrongRecord(UserExcelRecord record, IUnitOfWork unitOfWork, SystemLanguage? lang)
         {
-            var errMsgs = new List<string>();
-            //check validation
-
-            //for DOB
+	        var isEng = lang == SystemLanguage.English;
+	        var errMsgs = new List<string>();
+		
             DateTime dob;
             if (!DateTime.TryParseExact(
                     record.Dob,
@@ -1110,25 +1249,31 @@ namespace FPTU_ELibrary.Application.Services
                 errMsgs.Add("BirthDay is not valid");
             }
 
-            //email
-            if (!Regex.IsMatch(record.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            // Detect validations
+            if (!Regex.IsMatch(record.Email, @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"))
             {
-                errMsgs.Add("Email is not valid");
+	            errMsgs.Add(isEng ? "Invalid email address" : "Email không hợp lệ");
             }
 
             if (!Regex.IsMatch(record.FirstName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
             {
-                errMsgs.Add("First name is not valid");
+	            errMsgs.Add(isEng
+		            ? "Firstname should start with an uppercase letter for each word"
+		            : "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
             }
 
             if (!Regex.IsMatch(record.LastName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
             {
-                errMsgs.Add("Last name is not valid");
+	            errMsgs.Add(isEng
+		            ? "Lastname should start with an uppercase letter for each word"
+		            : "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
             }
-
+				
             if (record.Phone is not null && !Regex.IsMatch(record.Phone, @"^0\d{9,10}$"))
             {
-                errMsgs.Add("Phone is not valid");
+	            errMsgs.Add(isEng
+		            ? "Phone not valid"
+		            : "SĐT không hợp lệ");
             }
 
             var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(record.Email));

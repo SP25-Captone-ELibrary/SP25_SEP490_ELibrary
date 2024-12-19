@@ -641,8 +641,14 @@ namespace FPTU_ELibrary.Application.Services
 				if (checkUserAnyResult.Data is true 
 				    || checkEmployeeAnyResult.Data is true)
 				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+					// Initialize custom errors dic
+					var customErrors = new Dictionary<string, string[]>();
+					// Add email exist error
+					customErrors.Add(
+						StringUtils.ToCamelCase(nameof(User.Email)),
+						[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
+					
+					throw new UnprocessableEntityException("Invalid Data", customErrors);
 				}
 
 				// Hash password

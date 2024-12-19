@@ -1,10 +1,15 @@
+using System.Globalization;
+using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
-using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -14,6 +19,7 @@ using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using Mapster;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -31,6 +37,61 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
     {
     }
 
+    public override async Task<IServiceResult> CreateAsync(AuthorDto dto)
+    {
+	    // Initiate service result
+        var serviceResult = new ServiceResult();
+
+        try
+        {
+        	// Validate inputs using the generic validator
+        	var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+        	// Check for valid validations
+        	if (validationResult != null && !validationResult.IsValid)
+        	{
+        		// Convert ValidationResult to ValidationProblemsDetails.Errors
+        		var errors = validationResult.ToProblemDetails().Errors;
+        		throw new UnprocessableEntityException("Invalid Validations", errors);
+        	}
+        	
+	        // Custom errors
+	        var customErrors = new Dictionary<string, string[]>();
+	        // Check exist author code 
+	        var isExistAuthorCode = await _unitOfWork.Repository<Author, int>().AnyAsync(x => x.AuthorCode == dto.AuthorCode);
+	        if (isExistAuthorCode)
+	        {
+		        customErrors.Add(
+			        StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
+			        [await _msgService.GetMessageAsync(ResultCodeConst.Author_Warning0001)]);
+		        
+		        throw new UnprocessableEntityException("Invalid Data", customErrors);
+	        }
+	        
+        	// Process add new entity
+        	await _unitOfWork.Repository<Author, int>().AddAsync(_mapper.Map<Author>(dto));
+        	// Save to DB
+        	if (await _unitOfWork.SaveChangesAsync() > 0)
+        	{
+        		serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
+        		serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
+        		serviceResult.Data = true;
+        	}
+        	else
+        	{
+        		serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
+        		serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+        		serviceResult.Data = false;
+        	}
+        }
+        catch(Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw;
+        }
+        
+        return serviceResult;
+    }
+    
     public override async Task<IServiceResult> GetAllWithSpecAsync(
 	    ISpecification<Author> specification, 
 	    bool tracked = true)
@@ -47,11 +108,11 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			}				
 			
 			// Count total authors
-			var totalEmployeeWithSpec = await _unitOfWork.Repository<Author, int>().CountAsync(authorSpec);
+			var totalAuthorWithSpec = await _unitOfWork.Repository<Author, int>().CountAsync(authorSpec);
 			// Count total page
-			var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / authorSpec.PageSize);
+			var totalPage = (int)Math.Ceiling((double)totalAuthorWithSpec / authorSpec.PageSize);
 			
-			// Set pagination to specification after count total employees 
+			// Set pagination to specification after count total authors 
 			if (authorSpec.PageIndex > totalPage 
 			    || authorSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
 			{
@@ -162,7 +223,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			if (author == null) // Not found author
 			{
 				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 			}
 			
 			// Process add author book related details
@@ -257,7 +318,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
     	catch (Exception ex)
     	{
     		_logger.Error(ex.Message);	
-    		throw new Exception("Error invoke when process soft delete employee");	
+    		throw new Exception("Error invoke when process soft delete authors");	
     	}
     }
 
@@ -333,7 +394,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 	    catch (Exception ex)
 	    {
 		    _logger.Error(ex.Message);	
-		    throw new Exception("Error invoke when process soft delete employee");	
+		    throw new Exception("Error invoke when process soft delete author");	
 	    }
     }
 
@@ -428,5 +489,302 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		    _logger.Error(ex.Message);
 		    throw new Exception("Error invoke when process delete range author");
 	    }
+    }
+
+    public async Task<IServiceResult> ImportAsync(
+	    IFormFile? file,
+	    DuplicateHandle duplicateHandle,
+	    string[]? scanningFields)
+    {
+	    try
+		{
+			// Check exist file
+			if (file == null || file.Length == 0)
+			{
+				return new ServiceResult(ResultCodeConst.File_Warning0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0002));
+			}
+
+			// Validate import file 
+			var validationResult = await ValidatorExtensions.ValidateAsync(file);
+			if (validationResult != null && !validationResult.IsValid)
+			{
+				// Response the uploaded file is not supported
+				throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+			}
+
+			// Csv config
+			var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+			{
+				HasHeaderRecord = true,
+				HeaderValidated = null,
+				MissingFieldFound = null
+			};
+
+			// Process read csv file
+			List<AuthorCsvRecord> records =
+				CsvUtils.ReadCsvOrExcel<AuthorCsvRecord>(file, csvConfig, null);
+
+			// Determine system lang
+			var lang =
+				(SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+					.CurrentLanguage);
+
+			// Detect record errors
+			var detectResult = await DetectWrongDataAsync(records, scanningFields, (SystemLanguage) lang!);
+			if (detectResult.Any())
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008),
+					new ImportErrorResultDto
+					{
+						Errors = detectResult
+					});
+			}
+
+			// Additional message
+			var additionalMsg = string.Empty;
+			// Detect duplicates
+			var detectDuplicateResult = DetectDuplicates(records, scanningFields);
+			if (detectDuplicateResult.Any())
+			{
+				var handleResult = CsvUtils.HandleDuplicates(records, detectDuplicateResult, duplicateHandle, lang);
+				// Update records
+				records = handleResult.handledRecords;
+				// Update msg 
+				additionalMsg = handleResult.msg;
+			}
+
+			// Convert to author dto collection
+			var authorDtos = records.ToAuthorDtosForImport();
+
+			// Progress import data
+			await _unitOfWork.Repository<Author, int>().AddRangeAsync(_mapper.Map<List<Author>>(authorDtos));
+			// Save to DB
+			if (await _unitOfWork.SaveChangesAsync() > 0)
+			{
+				var respMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+				respMsg = !string.IsNullOrEmpty(additionalMsg)
+					? $"{StringUtils.Format(respMsg, authorDtos.Count.ToString())}, {additionalMsg}"
+					: StringUtils.Format(respMsg, authorDtos.Count.ToString());
+				return new ServiceResult(ResultCodeConst.SYS_Success0005, respMsg, true);
+			}
+
+			return new ServiceResult(ResultCodeConst.SYS_Warning0005,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0005), false);
+		}
+		catch (UnprocessableEntityException)
+		{
+			throw;
+		}
+		catch (TypeConverterException ex)
+		{
+			var lang =
+				(SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+					.CurrentLanguage);
+			// Extract row information if available
+			var rowNumber = ex.Data.Contains("Row") ? ex.Data["Row"] : "unknown";
+
+			// Generate an appropriate error message
+			var errMsg = lang == SystemLanguage.English
+				? $"Wrong data type at row {rowNumber}"
+				: $"Sai kiểu dữ liệu ở dòng {rowNumber}";
+
+			throw new BadRequestException(errMsg);
+		}
+		catch (ReaderException ex)
+		{
+			_logger.Error(ex.Message);
+			// Invalid column separator selection
+			return new ServiceResult(ResultCodeConst.File_Warning0003,
+				await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0003));
+		}
+		catch (NotSupportedException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke while import authors");
+		}
+    }
+
+    public async Task<IServiceResult> ExportAsync(ISpecification<Author> spec)
+    {
+	    try
+		{
+			// Try to parse specification to AuthorSpecification
+			var authorSpec = spec as AuthorSpecification;
+			// Check if specification is null
+			if (authorSpec == null)
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+			}				
+			
+			// Get all with spec
+			var entities = await _unitOfWork.Repository<Author, int>()
+				.GetAllWithSpecAsync(authorSpec, tracked: false);
+			if (entities.Any()) // Exist data
+			{
+				// Map entities to dtos 
+				var authorDtos = _mapper.Map<List<AuthorDto>>(entities);
+				// Process export data to file
+				var fileBytes = CsvUtils.ExportToExcel(
+					authorDtos.ToAuthorCsvRecords());
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+					fileBytes);
+			}
+			
+			return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process export author to excel");
+		}
+    }
+    
+    private async Task<List<string>> DetectWrongDataAsync(
+	    List<AuthorCsvRecord> records,
+	    string[]? scanningFields,
+	    SystemLanguage lang)
+    {
+	    // Check system lang
+	    var isEng = lang == SystemLanguage.English;
+			
+	    // Initialize list of errors
+	    var errorMessages = new List<string>();
+	    // Default row index set to second row, as first row is header
+	    var currDataRow = 2;
+
+	    foreach (var record in records)
+	    {
+		    // Set default as correct
+		    var isError = false;
+		    // Initialize error msg
+		    var errMsg = string.Empty;
+		    
+		    // Check valid datetime
+		    if (!string.IsNullOrEmpty(record.Dob) // Invalid date of birth
+		        && (!DateTime.TryParse(record.Dob, out var dob) // Cannot parse
+		            || dob < new DateTime(1900, 1, 1)     // Too old
+		            || dob > DateTime.Now))                            // In the future
+		    {
+			    isError = true;
+			    errMsg = isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ";
+		    }else if (!string.IsNullOrEmpty(record.DateOfDeath) // Invalid hire date
+		              && !DateTime.TryParse(record.DateOfDeath, out _))
+		    {
+			    isError = true;
+			    errMsg = isEng ? "Not valid date of date" : "Ngày mất tác giả không hợp lệ";
+		    }
+
+		    if (scanningFields != null)
+		    {
+			    // Initialize base spec
+			    BaseSpecification<Author>? baseParam = null;
+			    
+			    // Iterate each fields to add criteria scanning logic
+			    foreach (var field in scanningFields)
+			    {
+				    var normalizedField = field.ToUpperInvariant();
+				    
+				    // Building query to check duplicates on Author entity
+				    var newSpec = normalizedField switch
+				    {
+					    var authorCode when authorCode == nameof(Author.AuthorCode).ToUpperInvariant() =>
+						    new BaseSpecification<Author>(e => e.AuthorCode != null && e.AuthorCode.Equals(record.AuthorCode)),
+					    _ => null
+				    };
+				    
+				    if (newSpec != null) // Found new author spec
+				    {
+					    // Combine specifications with AND logic
+					    baseParam = baseParam == null
+						    ? newSpec
+						    : baseParam.Or(newSpec);
+				    }
+			    }
+			    
+			    // Check exist with spec
+			    if (baseParam != null && await _unitOfWork.Repository<Author, int>().AnyAsync(baseParam))
+			    {
+				    isError = true;
+				    errMsg = isEng ? "Duplicate author code" : "Trùng mã tác giả";
+			    }
+			    
+			    if (isError) // Error found
+			    {
+				    // Custom message
+				    errMsg = isEng 
+					    ? $"At row {currDataRow}: {errMsg}"
+					    : $"Dòng {currDataRow}: {errMsg}";
+				    // Add error msg
+				    errorMessages.Add(errMsg);
+			    }
+			    // Increase curr row
+			    currDataRow++;
+		    }
+	    }
+	    
+	    return errorMessages;
+    }
+    
+    private Dictionary<int, List<int>> DetectDuplicates(List<AuthorCsvRecord> records, string[]? scanningFields)
+    {
+	    if (scanningFields == null || scanningFields.Length == 0)
+		    return new Dictionary<int, List<int>>();
+
+	    var duplicates = new Dictionary<int, List<int>>();
+	    var keyToIndexMap = new Dictionary<string, int>();
+	    var seenKeys = new HashSet<string>();
+
+	    for (int i = 0; i < records.Count; i++)
+	    {
+		    var record = records[i];
+
+		    // Generate a unique key based on scanning fields
+		    var key = string.Join("|", scanningFields.Select(field => 
+		    {
+			    var normalizedField = field.ToUpperInvariant();
+			    return normalizedField switch
+			    {
+				    var authorCode when authorCode == nameof(Author.AuthorCode).ToUpperInvariant() => record.AuthorCode?.Trim().ToUpperInvariant(),
+				    _ => null
+			    };
+		    }).Where(value => !string.IsNullOrEmpty(value)));
+
+		    if (string.IsNullOrEmpty(key))
+			    continue;
+
+		    // Check if the key is already seen
+		    if (seenKeys.Contains(key))
+		    {
+			    // Find the first item of the duplicate key
+			    var firstItemIndex = keyToIndexMap[key];
+
+			    // Add the current index to the list of duplicates for this key
+			    if (!duplicates.ContainsKey(firstItemIndex))
+			    {
+				    duplicates[firstItemIndex] = new List<int>();
+			    }
+
+			    duplicates[firstItemIndex].Add(i);
+		    }
+		    else
+		    {
+			    // Add the key
+			    seenKeys.Add(key);
+			    // map it to the current index
+			    keyToIndexMap[key] = i;
+		    }
+	    }
+
+	    return duplicates;
     }
 }

@@ -1,15 +1,29 @@
+using CsvHelper.Configuration.Attributes;
 using FPTU_ELibrary.Application.Dtos;
 
 namespace FPTU_ELibrary.Application;
 
 public class UserExcelRecord
 {
+    [Name("Email")]
     public string Email { get; set; } = null!;
+    
+    [Name("FirstName")]
     public string FirstName { get; set; } = null!;
+    
+    [Name("LastName")]
     public string LastName { get; set; } = null!;
+    
+    [Name("Phone")]
     public string? Phone { get; set; }
+    
+    [Name("Address")]
     public string? Address { get; set; }
+    
+    [Name("Gender")]
     public string? Gender { get; set; }
+    
+    [Name("Dob")]
     public string? Dob { get; set; }
 }
 
@@ -39,5 +53,22 @@ public static class UserExcelRecordExtension
             TwoFactorEnabled = false,
             PhoneNumberConfirmed = false
         };
+    }
+    
+    public static List<UserExcelRecord> ToUserExcelRecords(this IEnumerable<UserDto> users)
+    {
+        return users.Select(e =>
+        {
+            return new UserExcelRecord()
+            {
+                Email = e.Email,
+                FirstName = e.FirstName ?? string.Empty,
+                LastName = e.LastName ?? string.Empty,
+                Phone = e.Phone,
+                Address = e.Address,
+                Gender = e.Gender,
+                Dob = e.Dob?.ToString("yyyy-MM-dd"),
+            };
+        }).ToList();
     }
 }

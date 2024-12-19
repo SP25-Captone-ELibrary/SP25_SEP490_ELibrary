@@ -61,9 +61,10 @@
 			// [GET]
 			public const string GetById = Base + "/management/users/{id}";
 			public const string GetAll = Base + "/management/users";
+			public const string Export = Base + "/management/users/export";
 			// [POST]
 			public const string Create = Base + "/management/users";
-			public const string CreateManyWithSendEmail = Base + "/management/users/create-many-with-send-mails";
+			public const string Import = Base + "/management/users/import";
 			// [PUT]
 			public const string Update = Base + "/management/users";
 			// [PATCH]
@@ -98,13 +99,13 @@
 			#region Management
 			// [GET]
 			public const string GetAll = Base + "/management/employees";
+			public const string GetById = Base + "/management/employees/{id}";
 			public const string Export = Base + "/management/employees/export";
 			// [POST]
 			public const string Create = Base + "/management/employees";
 			public const string Import = Base + "/management/employees/import";
 			// [PUT]
 			public const string Update = Base + "/management/employees/{id}";
-			public const string UpdateProfile = Base + "/management/employees/{id}/profile";
 			// [PATCH]
 			public const string ChangeActiveStatus = Base + "/management/employees/{id}/status";
 			public const string SoftDelete = Base + "/management/employees/{id}/soft-delete";
@@ -126,18 +127,12 @@
 			//	[GET]
 			public const string GetAll = Base + "/management/authors";
 			public const string GetById = Base + "/management/authors/{id}";
+			public const string Export = Base + "/management/authors/export";
 			//	[POST]
 			public const string Create = Base + "/management/authors";
+			public const string Import = Base + "/management/authors/import";
 			//	[PUT] | [PATCH]
 			public const string Update = Base + "/management/authors/{id}";
-			//	[DELETE]
-	
-			#endregion
-			
-			//	[GET]
-			public const string GetAuthorDetail = Base + "/authors/{id}";
-			//	[POST]
-			//	[PUT] | [PATCH]
 			public const string UndoDelete = Base + "/management/authors/{id}/undo-delete";
 			public const string UndoDeleteRange = Base + "/management/authors/undo-delete-range";
 			public const string SoftDelete = Base + "/management/authors/{id}/soft-delete";
@@ -145,6 +140,14 @@
 			//	[DELETE]
 			public const string Delete = Base + "/management/authors/{id}";
 			public const string DeleteRange = Base + "/management/authors";
+			
+			#endregion
+			
+			//	[GET]
+			public const string GetAuthorDetail = Base + "/authors/{id}";
+			//	[POST]
+			//	[PUT] | [PATCH]
+			//	[DELETE]
 		}
 		
 		/// <summary>

@@ -39,16 +39,6 @@ public class UserController:ControllerBase
              pageSize: req.PageSize ?? _appSettings.PageSize), tracked: false));
     }
      
-    // [HttpGet(APIRoute.User.Search, Name = nameof(SearchUserAsync))]
-    //[AllowAnonymous]
-    //public async Task<IActionResult> SearchUserAsync([FromQuery] 
-    //    string searchString)
-    //{
-    //    var result = await _userService.SearchAccount(searchString);
-    //    if (result.Status == ResultConst.WARNING_NO_DATA_CODE) return BadRequest("There is no user matched");
-    //    return Ok(result);
-    //}
-    
     [Authorize]
     [HttpGet(APIRoute.User.GetById, Name = nameof(GetUserByIdAsync))]
     public async Task<IActionResult> GetUserByIdAsync([FromRoute] Guid id)
@@ -119,19 +109,28 @@ public class UserController:ControllerBase
         return Ok(await _userService.DeleteRangeAsync(req.Ids));
     }
     
-    // [HttpPost(APIRoute.User.CreateMany,Name = nameof(CreateManyAccountByAdmin))]
-    // [AllowAnonymous]
-    // public async Task<IActionResult> CreateManyAccountByAdmin([FromForm] CreateManyUsersRequest req)
-    // {
-    //     return Ok(await _userService.CreateManyAccountsByAdmin(req.File));
-    // }
-    
-    [HttpPost(APIRoute.User.CreateManyWithSendEmail, Name = nameof(CreateManyAccountByAdminWithSendEmail))]
     [Authorize]
-    public async Task<IActionResult> CreateManyAccountByAdminWithSendEmail([FromForm] CreateManyUsersRequest req)
+    [HttpPost(APIRoute.User.Import, Name = nameof(ImportUserAsync))]
+    public async Task<IActionResult> ImportUserAsync([FromForm] CreateManyUsersRequest req)
     { 
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _userService.CreateManyAccountsWithSendEmail(email,req.File, 
-            Enum.Parse<DuplicateHandle>(req.DuplicateHandle)));
+        return Ok(await _userService.CreateManyAccountsWithSendEmail(
+            email: email, excelFile: req.File, 
+            duplicateHandle: req.DuplicateHandle, isSendEmail: req.IsSendEmail));
     }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.Export, Name = nameof(ExportUserAsync))]
+    public async Task<IActionResult> ExportUserAsync([FromQuery] UserSpecParams specParams)
+    {
+        var exportResult = await _userService.ExportAsync(new UserSpecification(
+            userSpecParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize));
+
+        return exportResult.Data is byte[] fileStream
+            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Employees.xlsx")
+            : Ok(exportResult);
+    }
+    
 }

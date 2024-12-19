@@ -723,7 +723,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					EmployeeCode = "EM270925",
-					Email = "librian@gmail.com",
+					Email = "librarian@gmail.com",
 					// Password: @Employee123
 					PasswordHash = "$2a$13$2bD1T7g/kstNMw0LWEksKuUaGhuAXCXkftsfIURf7yJ6Hr20I2Aae",
 					FirstName = "Nguyen Van",

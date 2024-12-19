@@ -1,5 +1,7 @@
-﻿using System.Globalization;
+﻿using System.Collections;
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
@@ -25,6 +27,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OfficeOpenXml.Export.ToCollection.Exceptions;
 using Serilog;
 
@@ -45,6 +48,45 @@ namespace FPTU_ELibrary.Application.Services
 			_roleService = roleService;
 		}
 
+		public override async Task<IServiceResult> GetByIdAsync(Guid id)
+		{
+			try
+			{
+				// Build spec
+				var baseSpec = new BaseSpecification<Employee>(x => x.EmployeeId == id);
+				// Include role
+				baseSpec.ApplyInclude(q => q
+					.Include(e => e.Role));
+				var entity = await _unitOfWork.Repository<Employee, Guid>().GetWithSpecAsync(baseSpec);
+				if (entity == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+				}
+				
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<Employee, EmployeeDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!);
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+					_mapper.Map<EmployeeDto>(entity));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process get data");
+			}
+		}
+
 		public override async Task<IServiceResult> CreateAsync(EmployeeDto dto)
 		{
 			// Initiate service result
@@ -52,14 +94,6 @@ namespace FPTU_ELibrary.Application.Services
 
 			try
 			{
-				// Check exist email
-				var isExistEmail = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.Email == dto.Email);
-				if (isExistEmail)
-				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
-				}
-				
 				// Check exist and valid role
 				var getRoleResult = await _roleService.GetByIdAsync(dto.RoleId);
 				if (getRoleResult.Data is SystemRoleDto roleDto)
@@ -87,6 +121,28 @@ namespace FPTU_ELibrary.Application.Services
 					var errors = validationResult.ToProblemDetails().Errors;
 					throw new UnprocessableEntityException("Invalid Validations", errors);
 				}
+				
+				// Custom validation result
+				var customErrors = new Dictionary<string, string[]>();
+				// Check exist email & employee code
+				var isExistEmployeeEmail = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.Email == dto.Email);
+				var isExistUserEmail = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Email == dto.Email);
+				var isExistEmployeeCode = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.EmployeeCode == dto.EmployeeCode);
+				if (isExistEmployeeEmail || isExistUserEmail) // Already exist email
+				{
+					customErrors.Add(
+						StringUtils.ToCamelCase(nameof(Employee.Email)),
+						[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
+				}
+				if (isExistEmployeeCode) // Already exist employee code
+				{
+					customErrors.Add(
+						StringUtils.ToCamelCase(nameof(Employee.EmployeeCode)), 
+						[await _msgService.GetMessageAsync(ResultCodeConst.Employee_Warning0001)]);
+				}
+				// Check whether invoke errors
+				if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
+				
 				
 				// Process add new entity
 				await _unitOfWork.Repository<Employee, Guid>().AddAsync(_mapper.Map<Employee>(dto));
@@ -265,59 +321,6 @@ namespace FPTU_ELibrary.Application.Services
 
 			return serviceResult;
 		}
-
-		public async Task<IServiceResult> DeleteRangeAsync(Guid[] employeeIds)
-		{
-			try
-            {
-                // Get all matching employee 
-                // Build spec
-                var baseSpec = new BaseSpecification<Employee>(e => employeeIds.Contains(e.EmployeeId));
-                var employeeEntities = await _unitOfWork.Repository<Employee, Guid>()
-            	    .GetAllWithSpecAsync(baseSpec);
-                // Check if any data already soft delete
-                var employeeList = employeeEntities.ToList();
-                if (employeeList.Any(x => !x.IsDeleted))
-                {
-            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-                }
-    
-                // Process delete range
-                await _unitOfWork.Repository<Employee, Guid>().DeleteRangeAsync(employeeIds);
-                // Save to DB
-                if (await _unitOfWork.SaveChangesAsync() > 0)
-                {
-            	    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
-            	    return new ServiceResult(ResultCodeConst.SYS_Success0008,
-            		    StringUtils.Format(msg, employeeList.Count.ToString()), true);
-                }
-    
-                // Fail to delete
-                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-            }
-            catch (DbUpdateException ex)
-            {
-                if (ex.InnerException is SqlException sqlEx)
-                {
-            	    switch (sqlEx.Number)
-            	    {
-            		    case 547: // Foreign key constraint violation
-            			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-            				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-            	    }
-                }
-            		
-                // Throw if other issues
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.Message);
-                throw new Exception("Error invoke when process delete range employee");
-            }
-		}
 		
 		public override async Task<IServiceResult> GetAllWithSpecAsync(
 			ISpecification<Employee> specification,
@@ -396,6 +399,59 @@ namespace FPTU_ELibrary.Application.Services
 				_logger.Error(ex.Message);
 				throw new Exception("Error invoke when progress get all data");
 			}
+		}
+
+		public async Task<IServiceResult> DeleteRangeAsync(Guid[] employeeIds)
+		{
+			try
+            {
+                // Get all matching employee 
+                // Build spec
+                var baseSpec = new BaseSpecification<Employee>(e => employeeIds.Contains(e.EmployeeId));
+                var employeeEntities = await _unitOfWork.Repository<Employee, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var employeeList = employeeEntities.ToList();
+                if (employeeList.Any(x => !x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Process delete range
+                await _unitOfWork.Repository<Employee, Guid>().DeleteRangeAsync(employeeIds);
+                // Save to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0)
+                {
+            	    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+            	    return new ServiceResult(ResultCodeConst.SYS_Success0008,
+            		    StringUtils.Format(msg, employeeList.Count.ToString()), true);
+                }
+    
+                // Fail to delete
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException is SqlException sqlEx)
+                {
+            	    switch (sqlEx.Number)
+            	    {
+            		    case 547: // Foreign key constraint violation
+            			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+            				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+            	    }
+                }
+            		
+                // Throw if other issues
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when process delete range employee");
+            }
 		}
 		
 		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
@@ -940,12 +996,10 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Validate import file 
 				var validationResult = await ValidatorExtensions.ValidateAsync(file);
-				if (validationResult != null && validationResult.IsValid)
+				if (validationResult != null && !validationResult.IsValid)
 				{
 					// Response the uploaded file is not supported
-					throw new UnprocessableEntityException(
-						await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001),
-						validationResult.ToProblemDetails().Errors);
+					throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
 				}
 
 				// Csv config
@@ -972,12 +1026,12 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Determine system lang
 				var lang =
-					(SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+					(SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
 						.CurrentLanguage);
-				var isEng = lang == SystemLanguage.English;
 
 				// Detect record errors
-				var detectResult = await DetectWrongDataAsync(records, scanningFields, employeeRoles, (SystemLanguage) lang!);
+				var detectResult =
+					await DetectWrongDataAsync(records, scanningFields, employeeRoles, (SystemLanguage)lang!);
 				if (detectResult.Any())
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
@@ -994,51 +1048,11 @@ namespace FPTU_ELibrary.Application.Services
 				var detectDuplicateResult = DetectDuplicates(records, scanningFields);
 				if (detectDuplicateResult.Any())
 				{
-					// Handling based on DuplicateHandle
-					switch (duplicateHandle)
-					{
-						case DuplicateHandle.Allow:
-							// Allow all duplicate items 
-							break;
-						case DuplicateHandle.Replace:
-							foreach (var duplicateIdx in detectDuplicateResult.Keys.OrderByDescending(idx => idx))
-							{
-								// Remove first duplicate element detected  
-								records.RemoveAt(duplicateIdx);
-							}
-
-							additionalMsg = isEng
-								? $"{detectDuplicateResult.Keys.Count} data have been replaced"
-								: $"{detectDuplicateResult.Keys.Count} đã bị lượt bỏ";
-							break;
-						case DuplicateHandle.Skip:
-							// Count total skip elements
-							var totalSkips = 0;
-							// Remove all duplicates 
-							foreach (var duplicateIdx in detectDuplicateResult.Keys.OrderByDescending(idx => idx))
-							{
-								// Remove all duplicates related to current key
-								foreach (var otherIdx in detectDuplicateResult[duplicateIdx]
-									         .OrderByDescending(idx => idx))
-								{
-									records.RemoveAt(otherIdx);
-
-									// Increase total skip
-									++totalSkips;
-								}
-
-								// Remove first element, after remove all its duplicates
-								records.RemoveAt(duplicateIdx);
-
-								// Increase total skip
-								++totalSkips;
-							}
-
-							additionalMsg = isEng
-								? $"{totalSkips} data have been replaced"
-								: $"{totalSkips} đã bị lượt bỏ";
-							break;
-					}
+					var handleResult = CsvUtils.HandleDuplicates(records, detectDuplicateResult, duplicateHandle, lang);
+					// Update records
+					records = handleResult.handledRecords;
+					// Update msg 
+					additionalMsg = handleResult.msg;
 				}
 
 				// Convert to employee dto collection
@@ -1049,14 +1063,15 @@ namespace FPTU_ELibrary.Application.Services
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0)
 				{
-					var respMsg = !string.IsNullOrEmpty(additionalMsg)
-						? $"Import {employeeDtos.Count} data successfully, {additionalMsg}"
-						: $"Import {employeeDtos.Count} data successfully";
+					var respMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+					respMsg = !string.IsNullOrEmpty(additionalMsg)
+						? $"{StringUtils.Format(respMsg, employeeDtos.Count.ToString())}, {additionalMsg}"
+						: StringUtils.Format(respMsg, employeeDtos.Count.ToString());
 					return new ServiceResult(ResultCodeConst.SYS_Success0005, respMsg, true);
 				}
 
 				return new ServiceResult(ResultCodeConst.SYS_Warning0005,
-					"No data effected", false);
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0005), false);
 			}
 			catch (UnprocessableEntityException)
 			{
@@ -1065,7 +1080,7 @@ namespace FPTU_ELibrary.Application.Services
 			catch (TypeConverterException ex)
 			{
 				var lang =
-					(SystemLanguage)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+					(SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
 						.CurrentLanguage);
 				// Extract row information if available
 				var rowNumber = ex.Data.Contains("Row") ? ex.Data["Row"] : "unknown";
@@ -1083,6 +1098,10 @@ namespace FPTU_ELibrary.Application.Services
 				// Invalid column separator selection
 				return new ServiceResult(ResultCodeConst.File_Warning0003,
 					await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0003));
+			}
+			catch (NotSupportedException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1205,6 +1224,33 @@ namespace FPTU_ELibrary.Application.Services
 					errMsg = isEng ? "Not valid hire date" : "Ngày nghỉ việc không hợp lệ";
 				}
 
+				// Detect validations
+				if (!Regex.IsMatch(record.Email, @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"))
+				{
+					errMsg = isEng ? "Invalid email address" : "Email không hợp lệ";
+				}
+
+				if (!Regex.IsMatch(record.FirstName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
+				{
+					errMsg = isEng
+						? "Firstname should start with an uppercase letter for each word"
+						: "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ";
+				}
+
+				if (!Regex.IsMatch(record.LastName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
+				{
+					errMsg = isEng
+						? "Lastname should start with an uppercase letter for each word"
+						: "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ";
+				}
+				
+				if (record.Phone is not null && !Regex.IsMatch(record.Phone, @"^0\d{9,10}$"))
+				{
+					errMsg = isEng
+						? "Phone not valid"
+						: "SĐT không hợp lệ";
+				}
+				
 				if (scanningFields != null)
 				{
 					// Initialize base spec
@@ -1275,6 +1321,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Add error msg
 					errorMessages.Add(errMsg);
 				}
+				
 				// Increase curr row
 				currDataRow++;
 			}

@@ -28,7 +28,6 @@ namespace FPTU_ELibrary.Application.Validations
 						validationProblemDetails.Errors[failure.PropertyName]
 						// Concat with new error
 						.Concat(new[] { failure.ErrorMessage }).ToArray();
-
 				}
 				else
 				{ // failure is not exist yet

@@ -101,6 +101,26 @@ public class AuthorController : ControllerBase
     {
         return Ok(await _authorService.DeleteRangeAsync(req.Ids));
     }
+
+    [Authorize]
+    [HttpPost(APIRoute.Author.Import, Name = nameof(ImportAuthorAsync))]
+    public async Task<IActionResult> ImportAuthorAsync([FromForm] ImportAuthorRequest req)
+    {
+        return Ok(await _authorService.ImportAsync(req.File, req.DuplicateHandle, req.ScanningFields));
+    }
+
+    [HttpGet(APIRoute.Author.Export, Name = nameof(ExportAuthorAsync))]
+    public async Task<IActionResult> ExportAuthorAsync([FromQuery] AuthorSpecParams specParams)
+    {
+        var exportResult = await _authorService.ExportAsync(new AuthorSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize));
+
+        return exportResult.Data is byte[] fileStream
+            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Authors.xlsx")
+            : Ok(exportResult);
+    }
     
     #endregion
     

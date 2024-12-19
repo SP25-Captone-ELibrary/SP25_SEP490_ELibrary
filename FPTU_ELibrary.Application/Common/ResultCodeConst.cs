@@ -291,7 +291,7 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region User
 		/// <summary>
-		/// [Warning] Require User code is missing  
+		/// [Warning] User code already exist
 		/// </summary>
 		public static string User_Warning0001 = "User.Warning0001";
 		/// <summary>
@@ -300,6 +300,23 @@ namespace FPTU_ELibrary.Application.Common
 		public static string User_Warning0002 = "User.Warning0002";
 
 		#endregion
+
+		#region Employee
+		/// <summary>
+		/// [Warning] Employee code already exist
+		/// </summary>
+		public const string Employee_Warning0001 = "Employee.Warning0001";
+		
+
+		#endregion
+
+		#region Author
+		/// <summary>
+		/// Author code already exist
+		/// </summary>
+		public const string Author_Warning0001 = "Author.Warning0001";
+		#endregion
+		
 		#region Notification
 
 		/// <summary>
