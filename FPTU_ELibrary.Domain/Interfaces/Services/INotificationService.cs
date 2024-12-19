@@ -3,11 +3,12 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services.Base;
 
-public interface INotificationService<TDto> : IGenericService<Notification, TDto, Guid>
+public interface INotificationService<TDto> : IGenericService<Notification, TDto, int>
     where TDto : class
 {
-    Task<IServiceResult> CreateNotification(TDto notification,string createBy,List<string>? recipients);
+    Task<IServiceResult> CreateNotification(TDto notification,List<string>? recipients);
     Task<IServiceResult> GetTypes();
+    Task<IServiceResult> GetById(string email,int id);
 
     Task<IServiceResult>GetAllWithSpecAsync(NotificationSpecParams specParams,
         string email,

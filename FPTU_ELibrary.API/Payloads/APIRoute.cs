@@ -212,6 +212,7 @@
 			#endregion
 			
 			//	[GET]
+			public const string GetById = Base + "/privacy/notifications/{id}";
 			//	[POST]
 			public const string GetNotificationNotByAdmin = Base + "/privacy/notifivations";
 			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; //filter unread notification
