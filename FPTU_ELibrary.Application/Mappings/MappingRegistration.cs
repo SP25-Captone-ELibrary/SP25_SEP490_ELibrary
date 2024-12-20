@@ -43,6 +43,9 @@ namespace FPTU_ELibrary.Application.Mappings
 				.Ignore(dest => dest.AuthorId)
 				.Ignore(dest => dest.CreateDate)
 				.IgnoreNullValues(true);
+			config.NewConfig<BookCategoryDto, BookCategory>()
+				.Ignore(dest => dest.CategoryId)
+				.IgnoreNullValues(true);
 		}
 	}
 }

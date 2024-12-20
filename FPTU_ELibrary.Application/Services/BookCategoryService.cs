@@ -63,7 +63,7 @@ public class BookCategoryService : GenericService<BookCategory, BookCategoryDto,
             var categoryEntities = await _unitOfWork.Repository<BookCategory, int>()
                 .GetAllWithSpecAsync(baseSpec);
             var categoryList = categoryEntities.ToList();
-            if (categoryList.Any(x => !x.Books.Any()))
+            if (categoryList.Any(x => x.Books.Any()))
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
