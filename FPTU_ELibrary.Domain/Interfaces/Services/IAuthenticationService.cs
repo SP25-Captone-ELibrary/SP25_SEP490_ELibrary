@@ -5,6 +5,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
     public interface IAuthenticationService<TDto>
         where TDto : class
     {
+        Task<IServiceResult> UpdateProfileAsync(TDto dto);
         Task<IServiceResult> GetCurrentUserAsync(string email);
         Task<IServiceResult> GetMfaBackupAsync(string email);
         Task<IServiceResult> SignInAsync(string email);

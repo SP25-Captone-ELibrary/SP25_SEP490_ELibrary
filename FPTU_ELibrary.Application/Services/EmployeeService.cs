@@ -74,11 +74,13 @@ namespace FPTU_ELibrary.Application.Services
 					.Ignore(dest => dest.TwoFactorBackupCodes!)
 					.Ignore(dest => dest.PhoneVerificationCode!)
 					.Ignore(dest => dest.EmailVerificationCode!)
-					.Ignore(dest => dest.PhoneVerificationExpiry!);
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role)
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
-					_mapper.Map<EmployeeDto>(entity));
+					entity.Adapt<EmployeeDto>(localConfig));
 			}
 			catch (Exception ex)
 			{
@@ -191,9 +193,14 @@ namespace FPTU_ELibrary.Application.Services
 				if (existingEntity == null)
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 						StringUtils.Format(errMsg, nameof(Employee).ToLower()));
 				}
+
+				// Current local datetime
+				var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+					// Vietnam timezone
+					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
 				// Update specific properties
 				existingEntity.EmployeeCode = dto.EmployeeCode;
@@ -203,9 +210,21 @@ namespace FPTU_ELibrary.Application.Services
 				existingEntity.Phone = dto.Phone;
 				existingEntity.Address = dto.Address;
 				existingEntity.Gender = dto.Gender;
-				existingEntity.HireDate = dto.HireDate;
-				existingEntity.TerminationDate = dto.TerminationDate;
+				existingEntity.ModifiedDate = currentLocalDateTime;
 				
+				// Update hire date
+				if (dto.HireDate != null && dto.HireDate != DateTime.MinValue) // when valid
+				{
+					existingEntity.HireDate = dto.HireDate;
+				}
+				
+				// Update termination date
+				if (dto.TerminationDate != null && dto.TerminationDate != DateTime.MinValue) // when valid
+				{
+					existingEntity.TerminationDate = dto.TerminationDate;
+				}
+				
+
 				// Check if there are any differences between the original and the updated entity
 				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
 				{
@@ -233,10 +252,14 @@ namespace FPTU_ELibrary.Application.Services
 				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 				serviceResult.Data = true;
 			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
-				throw;
+				throw new Exception("Error invoke when process update employee");
 			}
 
 			return serviceResult;
@@ -454,7 +477,7 @@ namespace FPTU_ELibrary.Application.Services
             }
 		}
 		
-		public async Task<IServiceResult> UpdateProfileAsync(Guid employeeId, EmployeeDto dto)
+		public async Task<IServiceResult> UpdateProfileAsync(string email, EmployeeDto dto)
 		{
 			// Initiate service result
 			var serviceResult = new ServiceResult();
@@ -472,11 +495,12 @@ namespace FPTU_ELibrary.Application.Services
 				}
 
 				// Retrieve the entity
-				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().GetByIdAsync(employeeId);
+				var existingEntity = await _unitOfWork.Repository<Employee, Guid>().
+					GetWithSpecAsync(new BaseSpecification<Employee>(e => e.Email == email));
 				if (existingEntity == null)
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 						StringUtils.Format(errMsg, nameof(Employee).ToLower()));
 				}
 
@@ -488,7 +512,7 @@ namespace FPTU_ELibrary.Application.Services
 				existingEntity.Address = dto.Address;
 				existingEntity.Gender = dto.Gender;
 				existingEntity.Avatar = dto.Avatar;
-				
+
 				// Check if there are any differences between the original and the updated entity
 				if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(existingEntity))
 				{
@@ -515,6 +539,10 @@ namespace FPTU_ELibrary.Application.Services
 				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
 				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
 				serviceResult.Data = true;
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{

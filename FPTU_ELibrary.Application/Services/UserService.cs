@@ -257,8 +257,164 @@ namespace FPTU_ELibrary.Application.Services
 
 			return serviceResult;
 		}
-        
-        public async Task<IServiceResult> DeleteRangeAsync(Guid[] userIds)
+
+		public override async Task<IServiceResult> UpdateAsync(Guid id, UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(id);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, typeof(User).ToString().ToLower()));
+				}
+
+				// Current local datetime
+				var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+					// Vietnam timezone
+					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+				// Update properties
+				existingEntity.UserCode = dto.UserCode;
+				existingEntity.FirstName = dto.FirstName ?? string.Empty;
+				existingEntity.LastName = dto.LastName ?? string.Empty;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				existingEntity.ModifiedDate = currentLocalDateTime;
+
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update user");
+			}
+
+			return serviceResult;
+		}
+
+		public async Task<IServiceResult> UpdateProfileAsync(string email, UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(
+					new BaseSpecification<User>(u => u.Email == email));
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, nameof(User).ToLower()));
+				}
+
+				// Update specific properties
+				existingEntity.FirstName = dto.FirstName ?? string.Empty;
+				existingEntity.LastName = dto.LastName ?? string.Empty;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				existingEntity.Avatar = dto.Avatar;
+
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw;
+			}
+
+			return serviceResult;
+		}
+		
+		public async Task<IServiceResult> DeleteRangeAsync(Guid[] userIds)
 		{
 			try
             {

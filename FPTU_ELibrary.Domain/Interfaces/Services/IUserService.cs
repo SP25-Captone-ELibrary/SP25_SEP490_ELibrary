@@ -15,8 +15,9 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> GetByEmailAsync(string email);
         Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile, DuplicateHandle duplicateHandle, bool isSendEmail = false);
         Task<IServiceResult> CreateAccountByAdmin(TDto user);
+        Task<IServiceResult> UpdateProfileAsync(string email, TDto user);
         Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId);
-        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
+        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto user);
         Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code);
         Task<IServiceResult> ChangeActiveStatusAsync(Guid userId);
         Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
