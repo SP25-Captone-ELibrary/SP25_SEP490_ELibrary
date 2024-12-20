@@ -1,8 +1,6 @@
-using FPTU_ELibrary.Domain.Common.Enums;
-
 namespace FPTU_ELibrary.API.Payloads.Requests.Employee;
 
-public class UpdateEmployeeRequest : UpdateEmployeeProfileRequest
+public class UpdateRequest : UpdateProfileRequest
 {
     public string? EmployeeCode { get; set; }
     public DateTime HireDate { get; set; }

@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Hubs;
@@ -15,6 +16,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -26,7 +28,6 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     private readonly IHubContext<NotificationHub> _hubContext;
     private readonly INotificationRecipientService<NotificationRecipientDto> _notificationRecipient;
     private readonly IUserService<UserDto> _userService;
-
     public NotificationService(
         IHubContext<NotificationHub> hubContext,
         ILogger logger,
@@ -34,7 +35,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         INotificationRecipientService<NotificationRecipientDto> notificationRecipient,
-        IUserService<UserDto> userService) : base(msgService, unitOfWork,
+        IUserService<UserDto> userService
+        ) : base(msgService, unitOfWork,
         mapper, logger)
     {
         _hubContext = hubContext;
@@ -43,27 +45,12 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     }
 
     public async Task<IServiceResult> CreateNotification(NotificationDto noti,
-        string createBy, List<string>? recipients)
+        List<string>? recipients)
     {
         //create parallel thread to handle create noti 
         //version 1: response when finished creating noti
         // update: like create many accounts func (UserService)
         var serviceResult = new ServiceResult();
-        List<string> availableRole = new List<string>()
-        {
-            nameof(Role.Administration),
-            nameof(Role.Librarian),
-            nameof(Role.HeadLibrarian),
-            nameof(Role.LibraryAssistant),
-            nameof(Role.LibraryManager),
-        };
-        if (!availableRole.Contains(createBy) || createBy.IsNullOrEmpty())
-        {
-            serviceResult.ResultCode = ResultCodeConst.Auth_Warning0001;
-            serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001);
-        }
-
-
         try
         {
             // Validate inputs using the generic validator
@@ -142,6 +129,37 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new { NotificationType = result });
     }
 
+    public async Task<IServiceResult> GetById(string email, int id)
+    {
+        var userResult = await _userService.GetByEmailAsync(email);
+        var user = (UserDto)userResult.Data!;
+        //check if the 
+        var recipientBaseSpec = new BaseSpecification<NotificationRecipient>(nr
+            => nr.RecipientId == user.UserId
+               && nr.NotificationId == id);
+        
+        //check the existed noti
+        var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
+        baseSpec.ApplyInclude(q => q.Include(n => n.NotificationRecipients));
+        // find the suitble noti
+        var noti = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
+        if (noti is null)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        if (!noti.IsPublic &&
+                 await _unitOfWork.Repository<NotificationRecipient, int>()
+                     .GetWithSpecAsync(recipientBaseSpec) is null)
+        {
+            return new ServiceResult(ResultCodeConst.Notification_Warning0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0002));
+        }
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), noti);
+    }
+
 
     private async Task SendPrivateNotification(string userId, NotificationDto dto)
     {
@@ -182,7 +200,11 @@ public class NotificationService : GenericService<Notification, NotificationDto,
 
             if (notificationSpec.PageIndex > totalPage || notificationSpec.PageIndex < 1)
             {
-                notificationSpec.PageIndex = 1;
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    new PaginatedResultDto<NotificationDto>( new List<NotificationDto>(),
+                        notificationSpec.PageIndex, notificationSpec.PageSize, totalPage)
+                );
             }
 
             notificationSpec.ApplyPaging(

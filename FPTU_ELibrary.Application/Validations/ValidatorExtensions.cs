@@ -1,7 +1,9 @@
 ﻿using FluentValidation;
 using FluentValidation.Results;
+using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Notifications;
@@ -12,29 +14,38 @@ namespace FPTU_ELibrary.Application.Validations
 {
     public static class ValidatorExtensions
 	{
-		// Define a dictionary to hold validators for each type.
-		private static readonly Dictionary<Type, IValidator> Validators = new()
+		
+		private static IValidator<T>? GetValidator<T>(string language) where T : class
 		{
-			{ typeof(IFormFile), new ExcelValidator() },
-			{ typeof(BookDto), new BookDtoValidator() },
-			{ typeof(UserDto), new UserDtoValidator() },
-			{ typeof(EmployeeDto), new EmployeeDtoValidator() },
-			{ typeof(SystemRoleDto), new SystemRoleDtoValidator() },
-			{ typeof(RefreshTokenDto), new RefreshTokenDtoValidator() },
-			{ typeof(AuthenticateUserDto), new AuthenticatedUserDtoValidator() },
-			{typeof(NotificationDto), new NotificationDtoValidator()},
-			{typeof(NotificationRecipientDto), new NotificationRecipientDtoValidator()},
-			{typeof(BookCategoryDto), new BookCategoryDtoValidator()}
-			
-			// Add other Validator pairs here.
-		};
-
+			return typeof(T) switch
+			{
+				// Create instances of the validators, passing the language 
+				{ } when typeof(T) == typeof(IFormFile) => (IValidator<T>)new ExcelValidator(language),
+				{ } when typeof(T) == typeof(AuthorDto) => (IValidator<T>)new AuthorDtoValidator(language),
+				{ } when typeof(T) == typeof(BookDto) => (IValidator<T>)new BookDtoValidator(),
+				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),
+				{ } when typeof(T) == typeof(EmployeeDto) => (IValidator<T>)new EmployeeDtoValidator(language),
+				{ } when typeof(T) == typeof(SystemRoleDto) => (IValidator<T>)new SystemRoleDtoValidator(),
+				{ } when typeof(T) == typeof(RefreshTokenDto) => (IValidator<T>)new RefreshTokenDtoValidator(),
+				{ } when typeof(T) == typeof(AuthenticateUserDto) => (IValidator<T>)new AuthenticatedUserDtoValidator(language),
+				{ } when typeof(T) == typeof(NotificationDto) => (IValidator<T>)new NotificationDtoValidator(language),
+				{ } when typeof(T) == typeof(NotificationRecipientDto) => (IValidator<T>)new NotificationRecipientDtoValidator(language),
+				_ => null
+			};
+		}
+		
 		public static async Task<ValidationResult?> ValidateAsync<T>(T dto) where T : class
 		{
+			// Retrieve current language
+			var currentLanguage = LanguageContext.CurrentLanguage;
+			
+			// Create a new validator instance for the given type, passing the language dynamically.
+			var validator = GetValidator<T>(currentLanguage);
+			
 			// Check if a validator exists for the given type.
-			if (Validators.TryGetValue(typeof(T), out var validator) && validator is IValidator<T> typedValidator)
+			if (validator != null)
 			{
-				var result = await typedValidator.ValidateAsync(dto);
+				var result = await validator.ValidateAsync(dto);
 				return !result.IsValid ? result : null;
 			}
 

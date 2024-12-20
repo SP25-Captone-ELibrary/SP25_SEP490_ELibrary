@@ -29,6 +29,35 @@ namespace FPTU_ELibrary.Application.Services
 		{
 		}
 
+		// Override get by id
+		public override async Task<IServiceResult> GetByIdAsync(int id)
+		{
+			try
+			{
+				// Initialize local ignore 
+				var localIgnore = new TypeAdapterConfig();
+				localIgnore.NewConfig<SystemRole, SystemRoleDto>()
+					.Ignore(s => s.RolePermissions);
+				
+				var entity = await _unitOfWork.Repository<SystemRole, int>().GetByIdAsync(id);
+
+				if (entity == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+				}
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+					entity.Adapt<SystemRoleDto>(localIgnore));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get data");
+			}
+		}
+
 		// Override get all
 		public override async Task<IServiceResult> GetAllAsync(bool tracked = true)
 		{

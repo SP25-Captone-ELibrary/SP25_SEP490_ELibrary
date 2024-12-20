@@ -1,25 +1,35 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Text.RegularExpressions;
+using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using RoleEnum = FPTU_ELibrary.Domain.Common.Enums.Role;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FPTU_ELibrary.Application.Services
@@ -55,15 +65,105 @@ namespace FPTU_ELibrary.Application.Services
 
             if (existedUser is null)
             {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
             }
+            
+            // Define a local Mapster configuration
+            var localConfig = new TypeAdapterConfig();
+            localConfig.NewConfig<User, UserDto>()
+	            .Ignore(dest => dest.PasswordHash!)
+	            .Ignore(dest => dest.RoleId)
+	            .Ignore(dest => dest.EmailConfirmed)
+	            .Ignore(dest => dest.TwoFactorEnabled)
+	            .Ignore(dest => dest.PhoneNumberConfirmed)
+	            .Ignore(dest => dest.TwoFactorSecretKey!)
+	            .Ignore(dest => dest.TwoFactorBackupCodes!)
+	            .Ignore(dest => dest.PhoneVerificationCode!)
+	            .Ignore(dest => dest.EmailVerificationCode!)
+	            .Ignore(dest => dest.PhoneVerificationExpiry!)
+	            .Map(dto => dto.Role, src => src.Role) 
+	            .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                existedUser.Adapt<UserDto>(localConfig));
         }
-        
+
+        public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<User> spec, bool tracked = true)
+        {
+	        try
+	        {
+		        // Try to parse specification to UserSpecification
+		        var userSpec = spec as UserSpecification;
+		        // Check if specification is null
+		        if (userSpec == null)
+		        {
+			        return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		        }		
+		        
+		        // Define a local Mapster configuration
+		        var localConfig = new TypeAdapterConfig();
+		        localConfig.NewConfig<User, UserDto>()
+			        .Ignore(dest => dest.PasswordHash!)
+			        .Ignore(dest => dest.RoleId)
+			        .Ignore(dest => dest.EmailConfirmed)
+			        .Ignore(dest => dest.TwoFactorEnabled)
+			        .Ignore(dest => dest.PhoneNumberConfirmed)
+			        .Ignore(dest => dest.TwoFactorSecretKey!)
+			        .Ignore(dest => dest.TwoFactorBackupCodes!)
+			        .Ignore(dest => dest.PhoneVerificationCode!)
+			        .Ignore(dest => dest.EmailVerificationCode!)
+			        .Ignore(dest => dest.PhoneVerificationExpiry!)
+			        .Map(dto => dto.Role, src => src.Role) 
+			        .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+		        
+		        // Count total users
+		        var totalEmployeeWithSpec = await _unitOfWork.Repository<User, Guid>().CountAsync(userSpec);
+		        // Count total page
+		        var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / userSpec.PageSize);
+				
+		        // Set pagination to specification after count total users 
+		        if (userSpec.PageIndex > totalPage 
+		            || userSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+		        {
+			        userSpec.PageIndex = 1; // Set default to first page
+		        }
+				
+		        // Apply pagination
+		        userSpec.ApplyPaging(
+			        skip: userSpec.PageSize * (userSpec.PageIndex - 1), 
+			        take: userSpec.PageSize);
+		        
+		        var entities = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(spec, tracked);
+		        if (entities.Any())
+		        {
+			        // Convert to dto collection 
+			        var userDtos = entities.Adapt<IEnumerable<UserDto>>(localConfig);
+					
+			        // Pagination result 
+			        var paginationResultDto = new PaginatedResultDto<UserDto>(userDtos,
+				        userSpec.PageIndex, userSpec.PageSize, totalPage);
+					
+			        // Response with pagination 
+			        return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+				        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+		        }
+
+		        // Not found any data
+		        return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+			        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+			        // Mapping entities to dto and ignore sensitive user data
+			        entities.Adapt<IEnumerable<UserDto>>(localConfig));
+	        }
+	        catch (Exception ex)
+	        {
+		        _logger.Error(ex.Message);
+		        throw new Exception("Error invoke when progress get all data");
+	        }
+        }
+		
         public override async Task<IServiceResult> CreateAsync(UserDto dto)
         {
             // Initiate service result
@@ -96,6 +196,277 @@ namespace FPTU_ELibrary.Application.Services
             return serviceResult;
         }
 
+        public override async Task<IServiceResult> DeleteAsync(Guid id)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(id);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, nameof(User)).ToLower());
+				}
+
+				// Check whether user in the trash bin
+				if (!existingEntity.IsDeleted)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+				}
+
+				// Process add delete entity
+				await _unitOfWork.Repository<User, Guid>().DeleteAsync(id);
+				// Save to DB
+				if (await _unitOfWork.SaveChangesAsync() > 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Success0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
+				}
+				else
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0004;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
+					serviceResult.Data = false;
+				}
+			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process delete user");
+			}
+
+			return serviceResult;
+		}
+
+		public override async Task<IServiceResult> UpdateAsync(Guid id, UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(id);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, typeof(User).ToString().ToLower()));
+				}
+
+				// Current local datetime
+				var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+					// Vietnam timezone
+					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+				// Update properties
+				existingEntity.UserCode = dto.UserCode;
+				existingEntity.FirstName = dto.FirstName ?? string.Empty;
+				existingEntity.LastName = dto.LastName ?? string.Empty;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				existingEntity.ModifiedDate = currentLocalDateTime;
+
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update user");
+			}
+
+			return serviceResult;
+		}
+
+		public async Task<IServiceResult> UpdateProfileAsync(string email, UserDto dto)
+		{
+			// Initiate service result
+			var serviceResult = new ServiceResult();
+
+			try
+			{
+				// Validate inputs using the generic validator
+				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+				// Check for valid validations
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Convert ValidationResult to ValidationProblemsDetails.Errors
+					var errors = validationResult.ToProblemDetails().Errors;
+					throw new UnprocessableEntityException("Invalid validations", errors);
+				}
+
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(
+					new BaseSpecification<User>(u => u.Email == email));
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, nameof(User).ToLower()));
+				}
+
+				// Update specific properties
+				existingEntity.FirstName = dto.FirstName ?? string.Empty;
+				existingEntity.LastName = dto.LastName ?? string.Empty;
+				existingEntity.Dob = dto.Dob;
+				existingEntity.Phone = dto.Phone;
+				existingEntity.Address = dto.Address;
+				existingEntity.Gender = dto.Gender;
+				existingEntity.Avatar = dto.Avatar;
+
+				// Check if there are any differences between the original and the updated entity
+				if (!_unitOfWork.Repository<User, Guid>().HasChanges(existingEntity))
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+					serviceResult.Data = true;
+					return serviceResult;
+				}
+
+				// Progress update when all require passed
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+					serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+					serviceResult.Data = false;
+					return serviceResult;
+				}
+
+				// Mark as update success
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw;
+			}
+
+			return serviceResult;
+		}
+		
+		public async Task<IServiceResult> DeleteRangeAsync(Guid[] userIds)
+		{
+			try
+            {
+                // Get all matching user 
+                // Build spec
+                var baseSpec = new BaseSpecification<User>(e => userIds.Contains(e.UserId));
+                var userEntities = await _unitOfWork.Repository<User, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var userList = userEntities.ToList();
+                if (userList.Any(x => !x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Process delete range
+                await _unitOfWork.Repository<User, Guid>().DeleteRangeAsync(userIds);
+                // Save to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0)
+                {
+            	    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+            	    return new ServiceResult(ResultCodeConst.SYS_Success0008,
+            		    StringUtils.Format(msg, userList.Count.ToString()), true);
+                }
+    
+                // Fail to delete
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+            }
+            catch (DbUpdateException ex)
+            {
+                if (ex.InnerException is SqlException sqlEx)
+                {
+            	    switch (sqlEx.Number)
+            	    {
+            		    case 547: // Foreign key constraint violation
+            			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+            				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+            	    }
+                }
+            		
+                // Throw if other issues
+                throw new Exception("Error invoke when process delete range user");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when process delete range user");
+            }
+		}
+        
         public async Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, UserDto dto)
         {
             // Initiate service result
@@ -312,20 +683,38 @@ namespace FPTU_ELibrary.Application.Services
         {
             try
             {
-                //query specification
-                var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(newUser));
-                // Include job role
-                baseSpec.ApplyInclude(u => u.Include(u => u.Role));
-
-                // Get user by query specification
-                var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-
-                if (existedUser is not null)
+	            // Validate inputs using the generic validator
+	            var validationResult = await ValidatorExtensions.ValidateAsync(newUser);
+	            // Check for valid validations
+	            if (validationResult != null && !validationResult.IsValid)
+	            {
+		            // Convert ValidationResult to ValidationProblemsDetails.Errors
+		            var errors = validationResult.ToProblemDetails().Errors;
+		            throw new UnprocessableEntityException("Invalid Validations", errors);
+	            }
+	            
+                // Custom validation result
+                var customErrors = new Dictionary<string, string[]>();
+                // Check exist email & employee code
+                var isExistUserEmail = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Email == newUser.Email);
+                var isExistEmployeeEmail = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.Email == newUser.Email);
+                var isExistUserCode = await _unitOfWork.Repository<User, Guid>().AnyAsync(e => e.UserCode == newUser.UserCode);
+                if (isExistEmployeeEmail || isExistUserEmail) // Already exist email
                 {
-                    return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-                        await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+                	customErrors.Add(
+                		StringUtils.ToCamelCase(nameof(User.Email)),
+                		[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
                 }
-
+                if (isExistUserCode) // Already exist employee code
+                {
+                	customErrors.Add(
+                		StringUtils.ToCamelCase(nameof(User.UserCode)), 
+                		[await _msgService.GetMessageAsync(ResultCodeConst.User_Warning0001)]);
+                }
+                // Check whether invoke errors
+                if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
+				
+                // Try to retrieve general member role
                 var result = await _roleService.GetByNameAsync(RoleEnum.GeneralMember);
                 if (result.ResultCode == ResultCodeConst.SYS_Success0002)
                 {
@@ -338,61 +727,24 @@ namespace FPTU_ELibrary.Application.Services
                     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                         StringUtils.Format(errorMsg, "role"));
                 }
-
-                //Define who create this account
-                newUser.ModifiedBy = nameof(RoleEnum.Administration);
-
-                //ResultCode of created account
-                newUser.IsActive = true;
-                newUser.IsDeleted = false;
-
-                //Create password and send email
-                var password = Utils.HashUtils.GenerateRandomPassword();
-
-                newUser.PasswordHash = Utils.HashUtils.HashPassword(password);
-                newUser.CreateDate = DateTime.Now;
-                // Progress create new user
-                var createdResult = await CreateAsync(newUser);
-
-                if (createdResult.Data is true)
+                
+                // Process add new entity
+                await _unitOfWork.Repository<User, Guid>().AddAsync(_mapper.Map<User>(newUser));
+                // Save to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0)
                 {
-                    #region Old User Sending Email handler
-
-                    //progress send current password for email
-                    //           // Define email message
-                    //           var emailMessageDto = new EmailMessageDto(
-                    //               // Define Recipient
-                    //               to: new List<string>() { newUser.Email },
-                    //               // Define subject
-                    //               // Add email body content
-                    //               subject: "ELibrary - Change password notification",
-                    //               // Add email body content
-                    //               content: $@"
-                    // <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-                    // 	<h3>Hi {newUser.FirstName} {newUser.LastName},</h3>
-                    // 	<p> ELibrary has created account with your email and here is your password:</p>
-                    // 	<h1 style='font-weight: bold; color: #2C3E50;'>{password}</h1>
-                    // 	<p> Please login and change the password as soon as posible.</p>
-                    // 	<br />
-                    // 	<p style='font-size: 16px;'>Thanks,</p>
-                    // <p style='font-size: 16px;'>The ELibrary Team</p>
-                    // </div>"
-                    //           );
-                    //           // Send email
-                    //           var isEmailSent = await _emailService.SendEmailAsync(message: emailMessageDto, isBodyHtml: true);
-
-                    #endregion
-
-                    await SendUserEmail(newUser, password);
-                    return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+	                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+		                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
                 }
-                else
-                {
-                    return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
-                }
+                
+                // Fail to create
+                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+	                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
             }
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
             catch (Exception ex)
             {
                 _logger.Error(ex.Message);
@@ -400,106 +752,44 @@ namespace FPTU_ELibrary.Application.Services
             }
         }
 
-        // public async Task<IServiceResult> SearchAccount(string searchString)
-        // {
-        //     //query specification
-        //     var baseSpec = new BaseSpecification<User>(x => x.UserCode!.Contains(searchString)
-        //                                                     || x.Email.Contains(searchString)
-        //                                                     || x.FirstName!.Contains(searchString)
-        //                                                     || x.LastName!.Contains(searchString)
-        //                                                     || x.Phone!.Contains(searchString)
-        //     );
-        //
-        //     var result = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(baseSpec);
-        //     if (!result.Any())
-        //         return new ServiceResult(ResultCodeConst.WARNING_NO_DATA_CODE, ResultCodeConst.WARNING_NO_DATA_MSG);
-        //
-        //     return new ServiceResult(ResultCodeConst.SUCCESS_READ_CODE, ResultCodeConst.SUCCESS_READ_MSG,
-        //         _mapper.Map<IEnumerable<UserDto>>(result));
-        // }
-        public async Task<IServiceResult> GetById(Guid id)
+        public async Task<IServiceResult> ChangeActiveStatusAsync(Guid userId)
         {
-            //query specification
-            var baseSpec = new BaseSpecification<User>(u => u.UserId.Equals(id));
-            // Include job role
-            baseSpec.ApplyInclude(u => u.Include(u => u.Role));
-            // Get user by query specification
-            var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
+        	try
+        	{
+        		// Check exist user
+        		var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+        		if (existingEntity == null)
+        		{
+        			var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+        			return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+        				StringUtils.Format(errMsg, "user"));
+        		}
+        		
+        		// Progress change active status
+        		existingEntity.IsActive = !existingEntity.IsActive;
+        		
+        		// Progress update when all require passed
+        		await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
 
-            if (existedUser is null)
-            {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
-            }
+        		// Save changes to DB
+        		var rowsAffected = await _unitOfWork.SaveChangesAsync();
+        		if (rowsAffected == 0)
+        		{
+        			return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+        				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        		}
 
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), existedUser);
+        		// Mark as update success
+        		return new ServiceResult(ResultCodeConst.SYS_Success0003,
+        			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+        	}
+        	catch (Exception ex)
+        	{
+        		_logger.Error(ex.Message);
+        		throw new Exception("Error invoke when progress change user active status");
+        	}
         }
-
-        public async Task<IServiceResult> ChangeAccountStatus(Guid userId)
-        {
-            var currentAccount = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
-            if (currentAccount is null)
-            {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
-            }
-
-            currentAccount.IsActive = !currentAccount.IsActive;
-            var dto = _mapper.Map<UserDto>(currentAccount);
-            await UpdateAsync(userId, dto);
-            return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003),
-                _mapper.Map<UserDto>(currentAccount));
-        }
-
-        public async Task<IServiceResult> UpdateAccount(Guid userId, UserDto userUpdateDetail, string roleName)
-        {
-            var currentAccount = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
-            if (currentAccount is null)
-            {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errorMsg, "account"));
-            }
-
-            if (roleName.Equals(nameof(RoleEnum.Administration)))
-            {
-                if (userUpdateDetail.UserCode!.Trim() == "" || userUpdateDetail.UserCode is null)
-                {
-                    return new ServiceResult(ResultCodeConst.User_Warning0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.User_Warning0001));
-                }
-
-                if (userUpdateDetail.RoleId <= 0 || userUpdateDetail.RoleId == 4 || userUpdateDetail.UserCode is null)
-                {
-                    return new ServiceResult(ResultCodeConst.User_Warning0002,
-                        await _msgService.GetMessageAsync(ResultCodeConst.User_Warning0002));
-                }
-
-                currentAccount.UserCode = userUpdateDetail.UserCode;
-                currentAccount.RoleId = userUpdateDetail.RoleId;
-                var dto = _mapper.Map<UserDto>(currentAccount);
-                await UpdateAsync(userId, dto);
-            }
-
-            else
-            {
-                currentAccount.FirstName = userUpdateDetail.FirstName ?? currentAccount.FirstName;
-                currentAccount.LastName = userUpdateDetail.LastName ?? currentAccount.LastName;
-                currentAccount.Dob = userUpdateDetail.Dob ?? currentAccount.Dob;
-                currentAccount.Phone = userUpdateDetail.Phone ?? currentAccount.Phone;
-                currentAccount.Avatar = userUpdateDetail.Avatar ?? currentAccount.Avatar;
-                var dto = _mapper.Map<UserDto>(currentAccount);
-                await UpdateAsync(userId, dto);
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0003, ResultCodeConst.SYS_Success0003,
-                _mapper.Map<UserDto>(currentAccount));
-        }
-
+        
         public async Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes)
         {
             try
@@ -571,8 +861,218 @@ namespace FPTU_ELibrary.Application.Services
                 throw new Exception("Error invoke when progress update MFA key");
             }    
         }
+
+        public async Task<IServiceResult> SoftDeleteAsync(Guid userId)
+        {
+            try
+            {
+            	// Check exist user
+            	var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+            	// Check if user account already mark as deleted
+            	if (existingEntity == null || existingEntity.IsDeleted)
+            	{
+            		var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            		return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+            			StringUtils.Format(errMsg, "user"));
+            	}
+            
+            	// Update delete status
+            	existingEntity.IsDeleted = true;
+            	
+            	// Save changes to DB
+            	var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            	if (rowsAffected == 0)
+            	{
+            		// Get error msg
+            		return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            	}
+
+            	// Mark as update success
+            	return new ServiceResult(ResultCodeConst.SYS_Success0007,
+            		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007));
+            }
+            catch (Exception ex)
+            {
+            	_logger.Error(ex.Message);	
+            	throw new Exception("Error invoke when process soft delete user");	
+            }
+        }
         
+        public async Task<IServiceResult> SoftDeleteRangeAsync(Guid[] userIds)
+        {
+            try
+            {
+                // Get all matching user 
+                // Build spec
+                var baseSpec = new BaseSpecification<User>(e => userIds.Contains(e.UserId));
+                var userEntities = await _unitOfWork.Repository<User, Guid>()
+                    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var userList = userEntities.ToList();
+                if (userList.Any(x => x.IsDeleted))
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+                
+                // Progress update deleted status to true
+                userList.ForEach(x => x.IsDeleted = true);
+            	
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    // Get error msg
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0007,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when remove range user");
+            }
+        }
         
+        public async Task<IServiceResult> UndoDeleteAsync(Guid userId)
+		{
+			try
+			{
+				// Check exist user
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				// Check if user account already mark as deleted
+				if (existingEntity == null || !existingEntity.IsDeleted)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, "user"));
+				}
+				
+				// Update delete status
+				existingEntity.IsDeleted = false;
+				
+				// Save changes to DB
+				var rowsAffected = await _unitOfWork.SaveChangesAsync();
+				if (rowsAffected == 0)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+				}
+
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0009,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);	
+				throw new Exception("Error invoke when process undo delete user");	
+			}
+		}
+
+		public async Task<IServiceResult> UndoDeleteRangeAsync(Guid[] userIds)
+		{
+			try
+            {
+                // Get all matching user 
+                // Build spec
+                var baseSpec = new BaseSpecification<User>(e => userIds.Contains(e.UserId));
+                var userEntities = await _unitOfWork.Repository<User, Guid>()
+            	    .GetAllWithSpecAsync(baseSpec);
+                // Check if any data already soft delete
+                var userList = userEntities.ToList();
+                if (userList.Any(x => !x.IsDeleted))
+                {
+            	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+            		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+                
+                // Progress undo deleted status to false
+                userList.ForEach(x => x.IsDeleted = false);
+                        
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    // Get error msg
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+                }
+    
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0009,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw new Exception("Error invoke when process undo delete range");
+            }
+		}
+        
+		public async Task<IServiceResult> ExportAsync(ISpecification<User> spec)
+		{
+			try
+			{
+				// Try to parse specification to UserSpecification
+				var userSpec = spec as UserSpecification;
+				// Check if specification is null
+				if (userSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+				
+				// Not apply paging 
+				
+				// Define a local Mapster configuration
+				var localConfig = new TypeAdapterConfig();
+				localConfig.NewConfig<User, UserDto>()
+					.Ignore(dest => dest.PasswordHash!)
+					.Ignore(dest => dest.RoleId)
+					.Ignore(dest => dest.EmailConfirmed)
+					.Ignore(dest => dest.TwoFactorEnabled)
+					.Ignore(dest => dest.PhoneNumberConfirmed)
+					.Ignore(dest => dest.TwoFactorSecretKey!)
+					.Ignore(dest => dest.TwoFactorBackupCodes!)
+					.Ignore(dest => dest.PhoneVerificationCode!)
+					.Ignore(dest => dest.EmailVerificationCode!)
+					.Ignore(dest => dest.PhoneVerificationExpiry!)
+					.Map(dto => dto.Role, src => src.Role) 
+					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+				
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<User, Guid>()
+					.GetAllWithSpecAsync(userSpec, tracked: false);
+				
+				if (entities.Any()) // Exist data
+				{
+					// Map entities to dtos 
+					var userDtos = _mapper.Map<List<UserDto>>(entities);
+					// Process export data to file
+					var fileBytes = CsvUtils.ExportToExcel(
+						userDtos.ToUserExcelRecords());
+
+					return new ServiceResult(ResultCodeConst.SYS_Success0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+						fileBytes);
+				}
+				
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process export employee to excel");
+			}
+		}
+		
         #region Temporary return. Offical return required worker to send many emails at the time.
 
         // public async Task<IServiceResult> CreateManyAccountsByAdmin(IFormFile excelFile)
@@ -680,12 +1180,6 @@ namespace FPTU_ELibrary.Application.Services
 
         #endregion
 
-        public async Task<IServiceResult> DeleteAccount(Guid id)
-        {
-            await DeleteAsync(id);
-            return new ServiceResult(ResultCodeConst.SYS_Success0004, ResultCodeConst.SYS_Success0004);
-        }
-
         //  #region User Own Sending Email and format function
         private async Task SendUserEmail(UserDto newUser, string rawPassword)
         {
@@ -712,181 +1206,188 @@ namespace FPTU_ELibrary.Application.Services
         }
 
         public async Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile,
-            DuplicateHandle duplicateHandle)
+            DuplicateHandle duplicateHandle, bool isSendEmail)
         {
-            // Query specification
-            var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
-            // Include job role
-            baseSpec.ApplyInclude(q =>
-                q.Include(u => u.Role));
-            var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-            if (user is null)
-            {
-                return new ServiceResult(ResultCodeConst.Auth_Warning0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0002));
-            }
-            else if (user.RoleId != 1)
-            {
-                return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-            }
+	        // Initialize fields
+	        var langEnum =
+		        (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
+	        var isEng = langEnum == SystemLanguage.English;
+	        var totalImportData = 0;
+	        
+            async Task ProcessAccountsAsync()
+		    {
+		        using var scope = _service.CreateScope();
+		        var roleService = scope.ServiceProvider.GetRequiredService<ISystemRoleService<SystemRoleDto>>();
+		        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+		        var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+		        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+		        var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
+		        var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AccountHub>>();
 
-            _ = Task.Run(async () =>
-            {
-                var scope = _service.CreateScope();
-                var rolerService = scope.ServiceProvider.GetRequiredService<ISystemRoleService<SystemRoleDto>>();
-                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
-                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                var genericService =
-                    scope.ServiceProvider.GetRequiredService<IGenericService<User, UserDto, Guid>>();
-                var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
-                var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AccountHub>>();
+		        if (excelFile == null || excelFile.Length == 0)
+		        {
+		            throw new BadRequestException(isEng
+		                ? "File is not valid"
+		                : "File không hợp lệ");
+		        }
 
-                if (excelFile == null || excelFile.Length == 0)
-                {
-                    throw new BadRequestException("File is empty or null");
-                }
+		        // Validate import file 
+		        var validationResult = await ValidatorExtensions.ValidateAsync(excelFile);
+		        if (validationResult != null && !validationResult.IsValid)
+		        {
+			        // Response the uploaded file is not supported
+			        throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+		        }
 
-                // Validate file format (e.g., only allow .xlsx files)
-                var allowedExtensions = new[] { ".xlsx" };
-                var fileExtension = Path.GetExtension(excelFile.FileName);
-                if (!allowedExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
-                {
-                    throw new BadRequestException("Invalid file type. Only .xlsx files are allowed.");
-                }
+		        using var memoryStream = new MemoryStream();
+		        await excelFile.CopyToAsync(memoryStream);
+		        memoryStream.Position = 0;
 
-                using (var memoryStream = new MemoryStream())
-                {
-                    await excelFile.CopyToAsync(memoryStream);
-                    memoryStream.Position = 0;
+		        try
+		        {
+		            var result = await roleService.GetByNameAsync(RoleEnum.GeneralMember);
+		            if (result.ResultCode != ResultCodeConst.SYS_Success0002)
+		            {
+		                logger.Error("Not found any role with nameof General user");
+		                throw new NotFoundException("Role", "General user");
+		            }
 
-                    try
-                    {
-                        var result = await rolerService.GetByNameAsync(RoleEnum.GeneralMember);
-                        if (result.ResultCode != ResultCodeConst.SYS_Success0002)
-                        {
-                            logger.Error("Not found any role with nameof General user");
-                            throw new NotFoundException("Role", "General user");
-                        }
+		            var failedMsgs = new List<UserFailedMessage>();
 
-                        var failedMsgs = new List<UserFailedMessage>();
+		            using var package = new OfficeOpenXml.ExcelPackage(memoryStream);
+		            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+		            if (worksheet == null)
+		            {
+		                throw new BadRequestException(isEng
+		                    ? "Excel file does not contain any worksheet"
+		                    : "Không tìm thấy worksheet");
+		            }
 
-                        // Đọc và xử lý file Excel
-                        using (var package = new OfficeOpenXml.ExcelPackage(memoryStream))
-                        {
-                            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                            if (worksheet == null)
-                            {
-                                throw new BadRequestException("Excel file does not contain any worksheet");
-                            }
+		            int rowCount = worksheet.Dimension.Rows;
+		            var processedEmails = new Dictionary<string, int>();
+		            var emailPasswords = new Dictionary<string, string>();
+		            var userToAdd = new List<UserDto>();
 
-                            int rowCount = worksheet.Dimension.Rows;
+		            for (int row = 2; row <= rowCount; row++)
+		            {
+		                var userRecord = new UserExcelRecord()
+		                {
+		                    Email = worksheet.Cells[row, 1].Text,
+		                    FirstName = worksheet.Cells[row, 2].Text,
+		                    LastName = worksheet.Cells[row, 3].Text,
+		                    Dob = worksheet.Cells[row, 4].Text,
+		                    Gender = worksheet.Cells[row, 5].Text,
+		                    Phone = worksheet.Cells[row, 6].Text,
+		                    Address = worksheet.Cells[row, 7].Text,
+		                };
 
-                            // Tập hợp lưu các email đã xử lý
-                            var processedEmails = new Dictionary<string, int>();
-                            // dictionary for email-password
-                            var emailPasswords = new Dictionary<string, string>();
-                            var userToAdd = new List<UserDto>();
-                            for (int row = 2; row <= rowCount; row++)
-                            {
-                                var userRecord = new UserExcelRecord()
-                                {
-                                    Email = worksheet.Cells[row, 1].Text,
-                                    FirstName = worksheet.Cells[row, 2].Text,
-                                    LastName = worksheet.Cells[row, 3].Text,
-                                    Dob = worksheet.Cells[row, 4].Text,
-                                    Gender = worksheet.Cells[row, 5].Text,
-                                    Phone = worksheet.Cells[row, 6].Text,
-                                    Address = worksheet.Cells[row, 7].Text,
-                                };
+		                if (processedEmails.ContainsKey(userRecord.Email))
+		                {
+		                    if (duplicateHandle.ToString().ToLower() == "skip")
+		                    {
+		                        continue;
+		                    }
+		                    else if (duplicateHandle.ToString().ToLower() == "replace")
+		                    {
+		                        failedMsgs.RemoveAll(f => f.Row == processedEmails[userRecord.Email]);
+		                        processedEmails[userRecord.Email] = row;
+		                    }
+		                }
+		                else
+		                {
+		                    processedEmails[userRecord.Email] = row;
+		                }
 
-                                // check the exist record if it has been add
-                                if (processedEmails.ContainsKey(userRecord.Email))
-                                {
-                                    if (duplicateHandle.ToString().ToLower() == "skip")
-                                    {
-                                        //  skip the current record
-                                        continue;
-                                    }
-                                    else if (duplicateHandle.ToString().ToLower() == "replace")
-                                    {
-                                        // Remove old record + failed msg of old msg
-                                        failedMsgs.RemoveAll(f => f.Row == processedEmails[userRecord.Email]);
-                                        processedEmails[userRecord.Email] = row;
-                                    }
-                                }
-                                else
-                                {
-                                    processedEmails[userRecord.Email] = row;
-                                }
+		                var rowErr = await DetectWrongRecord(userRecord, unitOfWork, langEnum);
+		                if (rowErr.Count != 0)
+		                {
+		                    failedMsgs.Add(new UserFailedMessage()
+		                    {
+		                        Row = row,
+		                        ErrMsg = rowErr
+		                    });
+		                }
+		                else
+		                {
+		                    // Convert to UserDto
+			                var newUser = userRecord.ToUserDto();
+		                    // Retrieve default role
+		                    var role = (SystemRoleDto) result.Data!;
+							// Assign role
+		                    newUser.RoleId = role.RoleId;
 
-                                // Error found
-                                var rowErr = await DetectWrongRecord(userRecord, unitOfWork);
-                                if (rowErr.Count != 0)
-                                {
-                                    failedMsgs.Add(new UserFailedMessage()
-                                    {
-                                        Row = row,
-                                        ErrMsg =rowErr 
-                                    });
-                                }
-                                else
-                                {
-                                    var newUser = userRecord.ToUserDto();
-                                    var existingUser = await unitOfWork.Repository<User, Guid>()
-                                        .GetWithSpecAsync(new BaseSpecification<User>(u => u.Email == user.Email));
-                                    var password = Utils.HashUtils.GenerateRandomPassword();
-                                    var role = (SystemRoleDto)result.Data!;
-                                    newUser.RoleId = role.RoleId;
-                                    newUser.PasswordHash = Utils.HashUtils.HashPassword(password);
-                                    userToAdd.Add(newUser);
-                                    emailPasswords.Add(newUser.Email, password);
-                                }
-                            }
+		                    if (isSendEmail) // Not process add random password for user when mark as send email
+		                    {
+			                    var password = HashUtils.GenerateRandomPassword();
+			                    newUser.PasswordHash = HashUtils.HashPassword(password);
+			                    
+			                    // Add key-pair (email, password) 
+								emailPasswords.Add(newUser.Email, password);
+		                    }
+		                    
+		                    // Add user
+		                    userToAdd.Add(newUser);
+		                }
+		            }
 
-                            if (failedMsgs.Count > 0)
-                            {
-                                // Gửi thông báo lỗi qua Hub
-                                await hubContext.Clients.User(email).SendAsync("ReceiveFailErrorMessage", failedMsgs);
-                            }
+		            if (failedMsgs.Count > 0 && isSendEmail)
+		            {
+		                await hubContext.Clients.User(email).SendAsync("ReceiveFailErrorMessage", failedMsgs);
+		            }
 
-                            // add available users
-                            await unitOfWork.Repository<User, Guid>().AddRangeAsync(mapper.Map<List<User>>(userToAdd));
-                            await unitOfWork.SaveChangesAsync();
-                            //send email to users
-                            foreach (var userDto in userToAdd)
-                            {
-                                var emailMessageDto = new EmailMessageDto(
-                                    new List<string> { userDto.Email },
-                                    "ELibrary - Change password notification",
-                                    $@"
-                                    <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
-                                    <p>Your account has been created. Your password is:</p>
-                                    <h1>{emailPasswords[userDto.Email]}</h1>");
-                                await emailService.SendEmailAsync(emailMessageDto, true);
-                            }
+		            // Update total import data
+		            totalImportData = userToAdd.Count;
+		            
+		            // Process add range
+		            await unitOfWork.Repository<User, Guid>().AddRangeAsync(mapper.Map<List<User>>(userToAdd));
+		            await unitOfWork.SaveChangesAsync();
 
-                            await hubContext.Clients.User(email).SendAsync("ReceiveCompleteNotification",
-                                "All emails sent successfully.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Error(ex, "An error occurred while processing accounts");
-                    }
-                }
-            });
-            return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+
+		            if (isSendEmail) // Only process send message to hub when mark as send email 
+		            {
+			            foreach (var userDto in userToAdd)
+			            {
+			                var emailMessageDto = new EmailMessageDto(
+			                    new List<string> { userDto.Email },
+			                    "ELibrary - Change password notification",
+			                    $@"
+			                    <h3>Hi {userDto.FirstName} {userDto.LastName},</h3>
+			                    <p>Your account has been created. Your password is:</p>
+			                    <h1>{emailPasswords[userDto.Email]}</h1>");
+			                await emailService.SendEmailAsync(emailMessageDto, true);
+			            }
+			            await hubContext.Clients.User(email).SendAsync("ReceiveCompleteNotification",
+				            "All emails sent successfully.");
+		            }
+		        }
+		        catch (Exception ex)
+		        {
+		            logger.Error(ex, "An error occurred while processing accounts");
+		        }
+		    }
+
+		    if (isSendEmail)
+		    {
+		        _ = Task.Run(ProcessAccountsAsync);
+		        
+		        return new ServiceResult(ResultCodeConst.SYS_Success0001,
+			        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+		    }
+		    else
+		    {
+		        await ProcessAccountsAsync();
+		        
+		        var respMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+		        return new ServiceResult(ResultCodeConst.SYS_Success0005, 
+			        StringUtils.Format(respMsg, totalImportData.ToString()), true);
+		    }
         }
 
-        private async Task<List<string>> DetectWrongRecord(UserExcelRecord record, IUnitOfWork unitOfWork)
+        private async Task<List<string>> DetectWrongRecord(UserExcelRecord record, IUnitOfWork unitOfWork, SystemLanguage? lang)
         {
-            var errMsgs = new List<string>();
-            //check validation
-
-            //for DOB
+	        var isEng = lang == SystemLanguage.English;
+	        var errMsgs = new List<string>();
+		
             DateTime dob;
             if (!DateTime.TryParseExact(
                     record.Dob,
@@ -904,25 +1405,31 @@ namespace FPTU_ELibrary.Application.Services
                 errMsgs.Add("BirthDay is not valid");
             }
 
-            //email
-            if (!Regex.IsMatch(record.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            // Detect validations
+            if (!Regex.IsMatch(record.Email, @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"))
             {
-                errMsgs.Add("Email is not valid");
+	            errMsgs.Add(isEng ? "Invalid email address" : "Email không hợp lệ");
             }
 
             if (!Regex.IsMatch(record.FirstName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
             {
-                errMsgs.Add("First name is not valid");
+	            errMsgs.Add(isEng
+		            ? "Firstname should start with an uppercase letter for each word"
+		            : "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
             }
 
             if (!Regex.IsMatch(record.LastName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
             {
-                errMsgs.Add("Last name is not valid");
+	            errMsgs.Add(isEng
+		            ? "Lastname should start with an uppercase letter for each word"
+		            : "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
             }
-
+				
             if (record.Phone is not null && !Regex.IsMatch(record.Phone, @"^0\d{9,10}$"))
             {
-                errMsgs.Add("Phone is not valid");
+	            errMsgs.Add(isEng
+		            ? "Phone not valid"
+		            : "SĐT không hợp lệ");
             }
 
             var baseSpec = new BaseSpecification<User>(u => u.Email.Equals(record.Email));

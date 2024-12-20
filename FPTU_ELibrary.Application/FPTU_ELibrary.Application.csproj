@@ -34,5 +34,10 @@
   <ItemGroup>
 	<Using Include="BCrypt.Net.BCrypt" Alias="BC" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Data.SqlClient">
+      <HintPath>..\FPTU_ELibrary.API\bin\Debug\net8.0\Microsoft.Data.SqlClient.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
 </Project>

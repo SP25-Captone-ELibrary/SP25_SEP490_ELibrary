@@ -53,5 +53,8 @@ namespace FPTU_ELibrary.Application.Elastic.Models
 
         [Keyword]
         public Guid CreateBy { get; set; }
+        
+        [Nested]
+        public List<ElasticAuthor> Authors { get; set; } = null!;
     }
 }

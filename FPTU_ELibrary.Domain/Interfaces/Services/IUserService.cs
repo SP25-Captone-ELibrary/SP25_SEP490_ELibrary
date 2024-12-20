@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Http;
 
@@ -12,15 +13,20 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
     {
         Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
         Task<IServiceResult> GetByEmailAsync(string email);
+        Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile, DuplicateHandle duplicateHandle, bool isSendEmail = false);
         Task<IServiceResult> CreateAccountByAdmin(TDto user);
+        Task<IServiceResult> UpdateProfileAsync(string email, TDto user);
         Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId);
-        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
+        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto user);
         Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code);
-        Task<IServiceResult> ChangeAccountStatus(Guid userId);
-        Task<IServiceResult> UpdateAccount(Guid userId, TDto userUpdateDetail,string roleName);
+        Task<IServiceResult> ChangeActiveStatusAsync(Guid userId);
         Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
         Task<IServiceResult> UpdateMfaStatusAsync(Guid userId);
-        Task<IServiceResult> DeleteAccount(Guid id);
-        Task<IServiceResult> CreateManyAccountsWithSendEmail(string email,IFormFile? excelFile, DuplicateHandle duplicateHandle);
+        Task<IServiceResult> SoftDeleteAsync(Guid userId);
+        Task<IServiceResult> SoftDeleteRangeAsync(Guid[] userIds);
+        Task<IServiceResult> UndoDeleteAsync(Guid userId);
+        Task<IServiceResult> UndoDeleteRangeAsync(Guid[] userIds);
+        Task<IServiceResult> DeleteRangeAsync(Guid[] userIds);
+        Task<IServiceResult> ExportAsync(ISpecification<User> spec);
     }
 }

@@ -1,9 +1,10 @@
-﻿using FPTU_ELibrary.API.Payloads.Requests;
-using FPTU_ELibrary.API.Payloads.Requests.Auth;
+﻿using FPTU_ELibrary.API.Payloads.Requests.Auth;
+using FPTU_ELibrary.API.Payloads.Requests.Author;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -53,26 +54,103 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		#endregion
 
+		#region Author
+		// Mapping from typeof(CreateAuthorRequest) to typeof(AuthorDto)
+		public static AuthorDto ToAuthorDto(this CreateAuthorRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+			return new AuthorDto()
+			{
+				AuthorCode = req.AuthorCode,
+				AuthorImage = req.AuthorImage,
+				FullName = req.FullName,
+				Biography = req.Biography,
+				Dob = req.Dob,
+				DateOfDeath = req.DateOfDeath,
+				Nationality = req.Nationality,
+				CreateDate = currentLocalDateTime,
+				IsDeleted = false
+			};
+		}		
+		
+		// Mapping from typeof(UpdateAuthorRequest) to typeof(AuthorDto)
+		public static AuthorDto ToAuthorDto(this UpdateAuthorRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new AuthorDto()
+			{
+				AuthorCode = req.AuthorCode,
+				AuthorImage = req.AuthorImage,
+				FullName = req.FullName,
+				Biography = req.Biography,
+				Dob = req.Dob,
+				DateOfDeath = req.DateOfDeath,
+				Nationality = req.Nationality,
+				UpdateDate = currentLocalDateTime,
+				IsDeleted = false
+			};
+		}		
+		
+		#endregion
+		
 		#region User
 		// Mapping from typeof(CreateUserRequest) to typeof(UserDto)
 		public static UserDto ToUser(this CreateUserRequest req)
-			=> new UserDto
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new UserDto
 			{
+				UserCode = req.UserCode,
 				Email = req.Email,
-				FirstName = req.FirstName,
-				LastName = req.LastName,
-			};
-
-		// Mapping from typeof(UpdateUserRequest) to typeof(UserDto)
-		public static UserDto ToUserForUpdate(this UpdateUserRequest req)
-			=> new UserDto()
-			{
 				FirstName = req.FirstName,
 				LastName = req.LastName,
 				Dob = req.Dob,
 				Phone = req.Phone,
-				UserCode = req.UserCode
+				Address = req.Address,
+				Gender = req.Gender.ToString(),
+
+				// Set default authorization values
+				CreateDate = currentLocalDateTime,
+				IsActive = false,
+				EmailConfirmed = false,
+				PhoneNumberConfirmed = false,
+				TwoFactorEnabled = false
 			};
+		}
+
+		// Mapping from typeof(UpdateUserRequest) to typeof(UserDto)
+		public static UserDto ToUserForUpdate(this UpdateUserRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new UserDto
+			{
+				UserCode = req.UserCode,
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Dob = req.Dob,
+				Phone = req.Phone,
+				Address = req.Address,
+				Gender = req.Gender.ToString(),
+				ModifiedDate = currentLocalDateTime
+			};
+		}
+
 		#endregion
 
 		#region Employee
@@ -106,7 +184,7 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		
-		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateEmployeeRequest req)
+		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateRequest req)
 		{
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
@@ -124,11 +202,11 @@ namespace FPTU_ELibrary.API.Extensions
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
 				TerminationDate = req.TerminationDate,
-				ModifiedDate = currentLocalDateTime,
+				ModifiedDate = currentLocalDateTime
 			};
 		}
 
-		public static EmployeeDto ToEmployeeDtoForUpdateProfile(this UpdateEmployeeProfileRequest req)
+		public static EmployeeDto ToEmployeeDtoForUpdateProfile(this UpdateProfileRequest req)
 		{
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
@@ -160,21 +238,6 @@ namespace FPTU_ELibrary.API.Extensions
 				VietnameseName = req.VietnameseName,
 				RoleType = ((Role)req.RoleTypeIdx).ToString()
 			};
-
-		#endregion
-
-		#region BookCategory
-
-		public static BookCategoryDto ToBookCategoryForUpdate(this UpdateBookCategoryRequest req)
-		{
-			return new BookCategoryDto()
-			{
-				VietnameseName = req.VietnameseName??"",
-				EnglishName = req.EnglishName??"",
-				Description = req.Description
-			};
-		}
-
 
 		#endregion
 	}

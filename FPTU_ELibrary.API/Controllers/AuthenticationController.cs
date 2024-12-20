@@ -10,6 +10,7 @@ using FPTU_ELibrary.Domain.Common.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using System.Security.Claims;
+using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.Application.Utils;
 using Microsoft.IdentityModel.Tokens;
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
@@ -170,8 +171,20 @@ namespace FPTU_ELibrary.API.Controllers
 		[HttpGet(APIRoute.Authentication.GetMfaBackupAsync, Name = nameof(GetMfaBackupAsyncAsync))]
 		public async Task<IActionResult> GetMfaBackupAsyncAsync()
 		{
+			// Retrieve user email from token
 			var email = User.FindFirst(ClaimTypes.Email)?.Value;
 			return Ok(await _authenticationService.GetMfaBackupAsync(email ?? string.Empty));
+		}
+
+		[Authorize]
+		[HttpPut(APIRoute.Authentication.UpdateProfile, Name = nameof(UpdateProfileAsync))]
+		public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateProfileRequest req)
+		{
+			// Retrieve user email & user type from token
+			var email = User.FindFirst(ClaimTypes.Email)?.Value;
+			var isEmployee = User.FindFirst(CustomClaimTypes.UserType)?.Value == ClaimValues.EMPLOYEE_CLAIMVALUE;
+			return Ok(await _authenticationService.UpdateProfileAsync(
+				req.ToAuthenticateUserDto(email ?? string.Empty, isEmployee)));
 		}
 	}
 }

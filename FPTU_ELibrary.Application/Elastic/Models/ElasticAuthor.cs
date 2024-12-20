@@ -19,10 +19,7 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public string? AuthorImage { get; set; }
 
         [Text]
-        public string FirstName { get; set; } = null!;
-
-        [Text]
-        public string LastName { get; set; } = null!;
+        public string FullName { get; set; } = null!;
 
         [Text]
         public string Biography { get; set; } = null!;

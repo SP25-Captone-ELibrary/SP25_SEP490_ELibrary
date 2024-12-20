@@ -1,6 +1,7 @@
 using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
+using FPTU_ELibrary.Domain.Common.Enums;
 using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Application.Utils;
@@ -124,5 +125,71 @@ public static class CsvUtils
             // Return the Excel file as a byte array
             return package.GetAsByteArray();
         }
+    }
+
+    public static (List<T> handledRecords, string msg) HandleDuplicates<T>(
+        List<T> records, 
+        Dictionary<int, List<int>> duplicateIndexes,
+        DuplicateHandle duplicateHandle,
+        SystemLanguage? lang)
+    {
+        // Initialize fields
+        var msg = string.Empty;
+        var isEng = lang == SystemLanguage.English;
+        
+        // Handling based on DuplicateHandle
+		switch (duplicateHandle)
+		{
+			case DuplicateHandle.Allow:
+				// Allow all duplicate items 
+				break;
+			case DuplicateHandle.Replace:
+				// Initialize to remove items						
+				var objectsToRemove = new HashSet<T>();
+				foreach (var duplicateIdx in duplicateIndexes.Keys)
+				{
+					// Get all other duplicate elements
+					var otherDuplicateElements = duplicateIndexes[duplicateIdx].Select(idx => records[idx]);
+					
+					// Remove duplicate
+					foreach (var obj in otherDuplicateElements)
+					{
+						objectsToRemove.Add(obj);
+					}
+				}
+
+				// Remove all marked duplicates
+				records.RemoveAll(record => objectsToRemove.Contains(record));
+				
+                msg = isEng
+					? $"{duplicateIndexes.Keys.Count} data have been replaced"
+					: $"{duplicateIndexes.Keys.Count} đã bị lượt bỏ";
+				break;
+			case DuplicateHandle.Skip:
+				// Initialize object to skip
+				var objectsToSkip = new HashSet<T>();
+				foreach (var duplicateIdx in duplicateIndexes.Keys)
+                {
+                    // Get all duplicate elements include the first one
+                    var allDuplicateObjects = new List<T> { records[duplicateIdx] };
+                    allDuplicateObjects.AddRange(duplicateIndexes[duplicateIdx].Select(idx => records[idx]));
+                
+                    foreach (var obj in allDuplicateObjects)
+                    {
+                        objectsToSkip.Add(obj);
+                    }
+                }
+				
+				// Remove all marked objects
+				records.RemoveAll(record => objectsToSkip.Contains(record));
+				
+                // Update the additional message
+				msg = isEng
+					? $"{objectsToSkip.Count} data have been replaced"
+					: $"{objectsToSkip.Count} đã bị lượt bỏ";
+				break;
+		}
+
+        return (records, msg);
     }
 }

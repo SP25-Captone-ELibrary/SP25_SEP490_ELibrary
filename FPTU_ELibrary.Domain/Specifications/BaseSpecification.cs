@@ -76,7 +76,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             {
                 GroupBy = groupByExpression;
             }
-        
+
             public void EnableSplitQuery()
             {
                 AsSplitQuery = true;

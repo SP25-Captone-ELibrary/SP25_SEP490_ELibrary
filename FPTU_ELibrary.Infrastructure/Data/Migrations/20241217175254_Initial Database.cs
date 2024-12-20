@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialdatabase : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,9 +19,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     author_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     author_image = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
-                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     biography = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     date_of_death = table.Column<DateTime>(type: "datetime", nullable: true),
@@ -453,30 +451,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Book_Author",
-                columns: table => new
-                {
-                    book_author_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    book_id = table.Column<int>(type: "int", nullable: false),
-                    author_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BookAuthor_BookAuthorId", x => x.book_author_id);
-                    table.ForeignKey(
-                        name: "FK_BookAuthor_AuthorId",
-                        column: x => x.author_id,
-                        principalTable: "Author",
-                        principalColumn: "author_id");
-                    table.ForeignKey(
-                        name: "FK_BookAuthor_BookId",
-                        column: x => x.book_id,
-                        principalTable: "Book",
-                        principalColumn: "book_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Book_Edition",
                 columns: table => new
                 {
@@ -578,6 +552,30 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.UpdatedByNavigationEmployeeId,
                         principalTable: "Employee",
                         principalColumn: "employee_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Book_Edition_Author",
+                columns: table => new
+                {
+                    book_edition_author_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_edition_id = table.Column<int>(type: "int", nullable: false),
+                    author_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BookAuthorEdition_BookEditionAuthorId", x => x.book_edition_author_id);
+                    table.ForeignKey(
+                        name: "FK_BookEditionAuthor_AuthorId",
+                        column: x => x.author_id,
+                        principalTable: "Author",
+                        principalColumn: "author_id");
+                    table.ForeignKey(
+                        name: "FK_BookEditionAuthor_BookId",
+                        column: x => x.book_edition_id,
+                        principalTable: "Book_Edition",
+                        principalColumn: "book_edition_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -928,16 +926,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "updated_by");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Book_Author_author_id",
-                table: "Book_Author",
-                column: "author_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Book_Author_book_id",
-                table: "Book_Author",
-                column: "book_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Book_Edition_book_id",
                 table: "Book_Edition",
                 column: "book_id");
@@ -946,6 +934,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "IX_Book_Edition_create_by",
                 table: "Book_Edition",
                 column: "create_by");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Book_Edition_Author_author_id",
+                table: "Book_Edition_Author",
+                column: "author_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Book_Edition_Author_book_edition_id",
+                table: "Book_Edition_Author",
+                column: "book_edition_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Book_Edition_Copy_book_edition_id",
@@ -1163,7 +1161,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Book_Author");
+                name: "Book_Edition_Author");
 
             migrationBuilder.DropTable(
                 name: "Book_Edition_Inventory");

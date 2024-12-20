@@ -641,8 +641,14 @@ namespace FPTU_ELibrary.Application.Services
 				if (checkUserAnyResult.Data is true 
 				    || checkEmployeeAnyResult.Data is true)
 				{
-					return new ServiceResult(ResultCodeConst.Auth_Warning0006,
-						await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006));
+					// Initialize custom errors dic
+					var customErrors = new Dictionary<string, string[]>();
+					// Add email exist error
+					customErrors.Add(
+						StringUtils.ToCamelCase(nameof(User.Email)),
+						[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
+					
+					throw new UnprocessableEntityException("Invalid Data", customErrors);
 				}
 
 				// Hash password
@@ -1233,7 +1239,6 @@ namespace FPTU_ELibrary.Application.Services
 					userDto.TwoFactorBackupCodes = null;
 					userDto.PhoneVerificationCode = null;
 					userDto.PhoneVerificationExpiry = null;
-					userDto.UserId = Guid.Empty;
 					userDto.PasswordHash = null;
 					userDto.RoleId = 0;
 					userDto.Role.RoleId = 0;
@@ -1249,7 +1254,6 @@ namespace FPTU_ELibrary.Application.Services
 					employeeDto.TwoFactorBackupCodes = null;
 					employeeDto.PhoneVerificationCode = null;
 					employeeDto.PhoneVerificationExpiry = null;
-					employeeDto.EmployeeId = Guid.Empty;
 					employeeDto.PasswordHash = null;
 					employeeDto.RoleId = 0;
 					employeeDto.Role.RoleId = 0;
@@ -1744,6 +1748,30 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				_logger.Error(ex.Message);
 				throw new Exception("Error invoke while process get MFA backup codes");
+			}
+		}
+
+		public async Task<IServiceResult> UpdateProfileAsync(AuthenticateUserDto dto)
+		{
+			try
+			{
+				if (dto.IsEmployee)
+				{
+					return await _employeeService.UpdateProfileAsync(dto.Email, dto.ToEmployeeDto());
+				}
+				else
+				{
+					return await _userService.UpdateProfileAsync(dto.Email, dto.ToUserDto());
+				}
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update profile");
 			}
 		}
 		

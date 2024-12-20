@@ -11,13 +11,16 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 	{
 		Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
 		Task<IServiceResult> GetByEmailAsync(string email);
-		Task<IServiceResult> UpdateProfileAsync(Guid employeeId, TDto employee);
+		Task<IServiceResult> UpdateProfileAsync(string email, TDto employee);
 		Task<IServiceResult> UpdateRoleAsync(Guid employeeId, int roleId);
 		Task<IServiceResult> UpdateWithoutValidationAsync(Guid employeeId, TDto dto);
 		Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid employeeId, string code);
 		Task<IServiceResult> ChangeActiveStatusAsync(Guid employeeId);
 		Task<IServiceResult> SoftDeleteAsync(Guid employeeId);
+		Task<IServiceResult> SoftDeleteRangeAsync(Guid[] employeeIds);
 		Task<IServiceResult> UndoDeleteAsync(Guid employeeId);
+		Task<IServiceResult> UndoDeleteRangeAsync(Guid[] employeeIds);
+		Task<IServiceResult> DeleteRangeAsync(Guid[] employeeIds);
 		Task<IServiceResult> ImportAsync(IFormFile? file, DuplicateHandle duplicateHandle, 
 			string? columnSeparator, string? encodingType, string[]? scanningFields);
 		Task<IServiceResult> ExportAsync(ISpecification<Employee> spec);

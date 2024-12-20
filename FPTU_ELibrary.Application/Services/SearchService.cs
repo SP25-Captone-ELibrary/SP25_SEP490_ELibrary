@@ -5,11 +5,6 @@ using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Nest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -104,28 +99,28 @@ namespace FPTU_ELibrary.Application.Services
 						//.MustNot(s => s
 						//	.Term(t => t.IsDraft, true)
 						//)
-						.Should(s => s
-							.Nested(nst => nst
-								.Path(p => p.Authors)
-								.Query(q => q
-									.Bool(b => b
-										.Should(s => s
-											.MultiMatch(m => m
-												.Fields(f => f
-													.Field(ff => ff.Authors.First().FirstName)
-													.Field(ff => ff.Authors.First().LastName)
-													.Field(ff => ff.Authors.First().Biography)
-													.Field(ff => ff.Authors.First().Nationality)
-												)
-												.Query(parameters.SearchText)
-												//.Fuzziness(Fuzziness.AutoLength(1, 1))
-											)
-										)
-									)
-								)
-								.ScoreMode(NestedScoreMode.Average)
-							)
-						)
+						// .Should(s => s
+						// 	.Nested(nst => nst
+						// 		.Path(p => p.Authors)
+						// 		.Query(q => q
+						// 			.Bool(b => b
+						// 				.Should(s => s
+						// 					.MultiMatch(m => m
+						// 						.Fields(f => f
+						// 							.Field(ff => ff.Authors.First().FirstName)
+						// 							.Field(ff => ff.Authors.First().LastName)
+						// 							.Field(ff => ff.Authors.First().Biography)
+						// 							.Field(ff => ff.Authors.First().Nationality)
+						// 						)
+						// 						.Query(parameters.SearchText)
+						// 						//.Fuzziness(Fuzziness.AutoLength(1, 1))
+						// 					)
+						// 				)
+						// 			)
+						// 		)
+						// 		.ScoreMode(NestedScoreMode.Average)
+						// 	)
+						// )
 						.Should(s => s
 							.Nested(nst => nst
 								.Path(p => p.BookEditions)

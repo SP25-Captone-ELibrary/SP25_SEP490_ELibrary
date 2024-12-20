@@ -26,7 +26,7 @@ namespace FPTU_ELibrary.Application.Dtos.Books
 
         public Guid? UpdatedBy { get; set; }
 
-        public ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+        public ICollection<BookEditionAuthor> BookAuthors { get; set; } = new List<BookEditionAuthor>();
 
         public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
 
