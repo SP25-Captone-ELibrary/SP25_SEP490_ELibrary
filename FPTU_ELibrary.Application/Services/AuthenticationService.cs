@@ -1750,6 +1750,30 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke while process get MFA backup codes");
 			}
 		}
+
+		public async Task<IServiceResult> UpdateProfileAsync(AuthenticateUserDto dto)
+		{
+			try
+			{
+				if (dto.IsEmployee)
+				{
+					return await _employeeService.UpdateProfileAsync(dto.Email, dto.ToEmployeeDto());
+				}
+				else
+				{
+					return await _userService.UpdateProfileAsync(dto.Email, dto.ToUserDto());
+				}
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update profile");
+			}
+		}
 		
 		// Authenticate user
 		private async Task<ServiceResult> AuthenticateUserAsync(AuthenticateUserDto? user)

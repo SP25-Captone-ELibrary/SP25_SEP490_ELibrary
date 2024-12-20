@@ -94,7 +94,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Dob = req.Dob,
 				DateOfDeath = req.DateOfDeath,
 				Nationality = req.Nationality,
-				CreateDate = currentLocalDateTime,
+				UpdateDate = currentLocalDateTime,
 				IsDeleted = false
 			};
 		}		
@@ -184,7 +184,7 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		
-		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateEmployeeRequest req)
+		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateRequest req)
 		{
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
@@ -202,11 +202,11 @@ namespace FPTU_ELibrary.API.Extensions
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
 				TerminationDate = req.TerminationDate,
-				ModifiedDate = currentLocalDateTime,
+				ModifiedDate = currentLocalDateTime
 			};
 		}
 
-		public static EmployeeDto ToEmployeeDtoForUpdateProfile(this UpdateEmployeeProfileRequest req)
+		public static EmployeeDto ToEmployeeDtoForUpdateProfile(this UpdateProfileRequest req)
 		{
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,

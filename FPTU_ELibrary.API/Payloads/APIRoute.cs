@@ -34,6 +34,8 @@
 			public const string ConfirmRegistration = Base + "/auth/sign-up/confirm";
 			public const string ChangePassword = Base + "/auth/change-password";
             public const string ChangePasswordAsEmployee = Base + "/auth/employee/change-password";
+            // [PUT]
+            public const string UpdateProfile = Base + "/auth/profile";
 		}
 
 		/// <summary>
@@ -66,7 +68,7 @@
 			public const string Create = Base + "/management/users";
 			public const string Import = Base + "/management/users/import";
 			// [PUT]
-			public const string Update = Base + "/management/users";
+			public const string Update = Base + "/management/users/{id}";
 			// [PATCH]
 			public const string ChangeAccountStatus = Base + "/management/users/{id}/status";
 			public const string SoftDelete = Base + "/management/users/{id}/soft-delete";
@@ -246,7 +248,7 @@
 			//	[GET]
 			public const string GetById = Base + "/privacy/notifications/{id}";
 			//	[POST]
-			public const string GetNotificationNotByAdmin = Base + "/privacy/notifivations";
+			public const string GetNotificationNotByAdmin = Base + "/privacy/notifications";
 			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; //filter unread notification
 			//	[PUT]
 			public const string UpdateReadStatus = Base + "/privacy/notifications";

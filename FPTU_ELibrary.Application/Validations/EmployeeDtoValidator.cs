@@ -25,8 +25,7 @@ public class EmployeeDtoValidator : AbstractValidator<EmployeeDto>
                 : "Mã nhân viên phải bắt đầu bằng hai chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
         // Email
         RuleFor(u => u.Email)
-            .Matches(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$")
-            .NotNull()
+            .EmailAddress()
             .WithMessage(isEng ? "Not valid email address" : "Email không hợp lệ");
         // FirstName
         RuleFor(u => u.FirstName)

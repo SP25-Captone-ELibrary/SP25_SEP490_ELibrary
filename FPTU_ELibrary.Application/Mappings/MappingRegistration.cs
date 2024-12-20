@@ -37,13 +37,12 @@ namespace FPTU_ELibrary.Application.Mappings
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
 			config.NewConfig<EmployeeDto, Employee>()
-				.Ignore(dest => dest.EmployeeId)
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
 			config.NewConfig<AuthorDto, Author>()
-				.Ignore(dest => dest.AuthorId);
-			config.NewConfig<UserDto, User>()
-				.Ignore(dest => dest.UserId);
+				.Ignore(dest => dest.AuthorId)
+				.Ignore(dest => dest.CreateDate)
+				.IgnoreNullValues(true);
 		}
 	}
 }

@@ -11,7 +11,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 	{
 		Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
 		Task<IServiceResult> GetByEmailAsync(string email);
-		Task<IServiceResult> UpdateProfileAsync(Guid employeeId, TDto employee);
+		Task<IServiceResult> UpdateProfileAsync(string email, TDto employee);
 		Task<IServiceResult> UpdateRoleAsync(Guid employeeId, int roleId);
 		Task<IServiceResult> UpdateWithoutValidationAsync(Guid employeeId, TDto dto);
 		Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid employeeId, string code);

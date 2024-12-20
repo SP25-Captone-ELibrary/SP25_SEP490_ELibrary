@@ -155,6 +155,86 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		}
     }
 
+    public override async Task<IServiceResult> UpdateAsync(int id, AuthorDto dto)
+    {
+	    // Initiate service result
+		var serviceResult = new ServiceResult();
+
+		try
+		{
+			// Validate inputs using the generic validator
+			var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+			// Check for valid validations
+			if (validationResult != null && !validationResult.IsValid)
+			{
+				// Convert ValidationResult to ValidationProblemsDetails.Errors
+				var errors = validationResult.ToProblemDetails().Errors;
+				throw new UnprocessableEntityException("Invalid validations", errors);
+			}
+
+			// Retrieve the entity
+			var existingEntity = await _unitOfWork.Repository<Author, int>().GetByIdAsync(id);
+			if (existingEntity == null)
+			{
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+					StringUtils.Format(errMsg, typeof(Author).ToString().ToLower()));
+			}
+
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			// Update text properties
+			existingEntity.AuthorCode = dto.AuthorCode;
+			existingEntity.AuthorImage = dto.AuthorImage;
+			existingEntity.FullName = dto.FullName;
+			existingEntity.Biography = dto.Biography;
+			existingEntity.Nationality = dto.Nationality;
+			existingEntity.Dob = dto.Dob;
+			existingEntity.DateOfDeath = dto.DateOfDeath;
+			existingEntity.UpdateDate = currentLocalDateTime;
+
+			// Check if there are any differences between the original and the updated entity
+			if (!_unitOfWork.Repository<Author, int>().HasChanges(existingEntity))
+			{
+				serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+				serviceResult.Data = true;
+				return serviceResult;
+			}
+
+			// Progress update when all require passed
+			await _unitOfWork.Repository<Author, int>().UpdateAsync(existingEntity);
+
+			// Save changes to DB
+			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			if (rowsAffected == 0)
+			{
+				serviceResult.ResultCode = ResultCodeConst.SYS_Fail0003;
+				serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
+				serviceResult.Data = false;
+			}
+
+			// Mark as update success
+			serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
+			serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
+			serviceResult.Data = true;
+		}
+		catch (UnprocessableEntityException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw;
+		}
+
+		return serviceResult;
+    }
+
     public override async Task<IServiceResult> DeleteAsync(int id)
     {
 	    try

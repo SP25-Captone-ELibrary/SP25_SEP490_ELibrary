@@ -75,7 +75,7 @@ public class EmployeeController : ControllerBase
     
     [Authorize]
     [HttpPut(APIRoute.Employee.Update, Name = nameof(UpdateEmployeeAsync))]
-    public async Task<IActionResult> UpdateEmployeeAsync([FromRoute] Guid id, [FromBody] UpdateEmployeeRequest req)
+    public async Task<IActionResult> UpdateEmployeeAsync([FromRoute] Guid id, [FromBody] UpdateRequest req)
     {
         return Ok(await _employeeService.UpdateAsync(id, req.ToEmployeeDtoForUpdate()));
     }
