@@ -24,9 +24,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 				.HasColumnName("vietnamese_name");
 
             #region Add IsDeleted Field Quang Huy 16-12-2024
-            builder.Property(e => e.IsDelete)
+            builder.Property(e => e.IsDeleted)
                 .HasMaxLength(155)
-                .HasColumnName("is_delete");
+                .HasColumnName("is_deleted");
             #endregion
         }
     }

@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.API.Payloads.Requests.Auth;
+﻿using FPTU_ELibrary.API.Payloads.Requests;
+using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
@@ -239,6 +240,18 @@ namespace FPTU_ELibrary.API.Extensions
 				RoleType = ((Role)req.RoleTypeIdx).ToString()
 			};
 
+		#endregion
+		#region BookCategory
+
+		public static BookCategoryDto ToBookCategoryForUpdate(this UpdateBookCategoryRequest req)
+		{
+			return new BookCategoryDto()
+			{
+				VietnameseName = req.VietnameseName??"",
+				EnglishName = req.EnglishName??"",
+				Description = req.Description
+			};
+		}
 		#endregion
 	}
 }

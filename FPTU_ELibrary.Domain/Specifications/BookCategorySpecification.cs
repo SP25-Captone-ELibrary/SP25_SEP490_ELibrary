@@ -24,12 +24,12 @@ public class BookCategorySpecification : BaseSpecification<BookCategory>
 
         if (bookCategorySpecParams.EnglishName != null)
         {
-            AddFilter(x => x.IsDelete == bookCategorySpecParams.IsDelete &&
+            AddFilter(x => x.IsDeleted == bookCategorySpecParams.IsDelete &&
                            x.EnglishName.Contains(bookCategorySpecParams.EnglishName));
         }
         if (bookCategorySpecParams.VietnameseName != null)
         {
-            AddFilter(x => x.IsDelete == bookCategorySpecParams.IsDelete &&
+            AddFilter(x => x.IsDeleted == bookCategorySpecParams.IsDelete &&
                            x.VietnameseName.Contains(bookCategorySpecParams.VietnameseName));
         }
         if (!string.IsNullOrEmpty(bookCategorySpecParams.Sort))

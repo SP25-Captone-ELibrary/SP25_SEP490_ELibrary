@@ -261,10 +261,20 @@
 		/// </summary>
 		public static class BookCategory
 		{
-			public const string Create = Base + "/book-categories";
-			public const string Update = Base + "/book-categories/{id}";
-			public const string Delete = Base + "/book-categories/{id}";
-			public const string GetAll = Base + "/book-categories";
+			// [CREATE]
+			public const string Create = Base + "/management/categories";
+			//	[PUT] | [PATCH]
+			public const string Update = Base + "/management/categories/{id}";
+			public const string SoftDelete = Base + "/management/categories/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/categories/soft-delete-range";
+			public const string UndoDelete = Base + "/management/categories/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/categories/undo-delete-range";
+			// [DELETE]
+			public const string HardDelete = Base + "/management/categories/{id}";
+			public const string HardDeleteRange = Base + "/management/categories";
+			// public const string Delete = Base + "/management/categories/{id}";
+			// [GET]
+			public const string GetAll = Base + "/management/categories";
 		}
 	}
 }
