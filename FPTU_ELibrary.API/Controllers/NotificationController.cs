@@ -58,7 +58,7 @@ public class NotificationController: ControllerBase
     }
 
     [HttpGet(APIRoute.Notification.GetNotificationByAdmin, Name = nameof(GetAllNotification))]
-    [Authorize]
+    [Authorize] 
     public async Task<IActionResult> GetAllNotification([FromQuery] NotificationSpecParams specParams)
     {
         // define who are using this 

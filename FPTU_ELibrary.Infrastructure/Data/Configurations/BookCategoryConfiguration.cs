@@ -22,6 +22,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 			builder.Property(e => e.VietnameseName)
 				.HasMaxLength(155)
 				.HasColumnName("vietnamese_name");
-		}
+        }
     }
 }
