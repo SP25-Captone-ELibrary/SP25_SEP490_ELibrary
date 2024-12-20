@@ -15,6 +15,7 @@ using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
@@ -53,7 +54,8 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
-
+            services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
+			
             services
                 .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary

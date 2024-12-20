@@ -43,8 +43,10 @@
 		/// </summary>
 		public static class Book
 		{
+			#region management
 			// [GET]
-			public const string GetAll = Base + "/books";
+			public const string GetCreateInformation = Base + "/management/create-information";
+			public const string GetAll = Base + "/management/books";
 			public const string Search = Base + "/books/q";
 			// [POST]
 			public const string Create = Base + "/books";
@@ -52,6 +54,7 @@
 			public const string Update = Base + "/books";
 			// [PATCH]
 			// [DELETE]
+			#endregion
 		}
 
 		/// <summary>

@@ -13,10 +13,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.ToTable("Book");
 
             builder.Property(e => e.BookId).HasColumnName("book_id");
-            builder.Property(e => e.CanBorrow)
-                .HasDefaultValue(true)
-                .HasColumnName("can_borrow");
-            builder.Property(e => e.CategoryId).HasColumnName("category_id");
             builder.Property(e => e.CreateBy).HasColumnName("create_by");
             builder.Property(e => e.CreateDate)
                 .HasColumnType("datetime")
@@ -36,11 +32,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("datetime")
                 .HasColumnName("updated_date");
 
-            builder.HasOne(d => d.Category).WithMany(p => p.Books)
-                .HasForeignKey(d => d.CategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Book_CategoryId");
-
             builder.HasOne(d => d.CreateByNavigation).WithMany(p => p.BookCreateByNavigations)
                 .HasForeignKey(d => d.CreateBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -49,6 +40,23 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.HasOne(d => d.UpdatedByNavigation).WithMany(p => p.BookUpdatedByNavigations)
                 .HasForeignKey(d => d.UpdatedBy)
                 .HasConstraintName("FK_Book_UpdateBy");
+
+            #region Update at 20/12/2024 by Le Xuan Phuoc
+            // builder.Property(e => e.CanBorrow)
+            //     .HasDefaultValue(true)
+            //     .HasColumnName("can_borrow");
+            
+            // builder.Property(e => e.CategoryId).HasColumnName("category_id");
+            // builder.HasOne(d => d.Category).WithMany(p => p.Books)
+            //     .HasForeignKey(d => d.CategoryId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_Book_CategoryId");
+            
+            builder.Property(e => e.SubTitle)
+                .HasMaxLength(100)
+                .HasColumnName("sub_title");
+            #endregion
+            
         }
     }
 }

@@ -13,14 +13,16 @@ public class BookEdition
     // Edition detail information
     public string EditionTitle { get; set; } = null!;
     public int EditionNumber { get; set; }
-    public int PublicationYear { get; set; }
     public int PageCount { get; set; }
     public string Language { get; set; } = null!;
+	public int PublicationYear { get; set; }
+    public string? EditionSummary { get; set; }
     public string? CoverImage { get; set; }
     public string? Format { get; set; }
     public string? Publisher { get; set; }
     public string Isbn { get; set; } = null!;
     public bool IsDeleted { get; set; }
+    public bool CanBorrow { get; set; }
 
 	// Creation, update datetime and employee is charge of 
 	public DateTime CreateDate { get; set; }

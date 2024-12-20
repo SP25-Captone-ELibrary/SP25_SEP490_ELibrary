@@ -95,16 +95,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
-                    b.Property<bool>("CanBorrow")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true)
-                        .HasColumnName("can_borrow");
-
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int")
-                        .HasColumnName("category_id");
-
                     b.Property<Guid>("CreateBy")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("create_by");
@@ -122,6 +112,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("is_draft");
+
+                    b.Property<string>("SubTitle")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("sub_title");
 
                     b.Property<string>("Summary")
                         .HasMaxLength(2000)
@@ -145,8 +140,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasKey("BookId")
                         .HasName("PK_Book_BookId");
 
-                    b.HasIndex("CategoryId");
-
                     b.HasIndex("CreateBy");
 
                     b.HasIndex("UpdatedBy");
@@ -156,32 +149,27 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookCategory", b =>
                 {
-                    b.Property<int>("CategoryId")
+                    b.Property<int>("BookCategoryId")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("book_category_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookCategoryId"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("int")
+                        .HasColumnName("book_id");
+
+                    b.Property<int>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("category_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryId"));
+                    b.HasKey("BookCategoryId")
+                        .HasName("PK_BookCategory_BookCategoryId");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .HasColumnName("description");
+                    b.HasIndex("BookId");
 
-                    b.Property<string>("EnglishName")
-                        .IsRequired()
-                        .HasMaxLength(155)
-                        .HasColumnType("nvarchar(155)")
-                        .HasColumnName("english_name");
-
-                    b.Property<string>("VietnameseName")
-                        .IsRequired()
-                        .HasMaxLength(155)
-                        .HasColumnType("nvarchar(155)")
-                        .HasColumnName("vietnamese_name");
-
-                    b.HasKey("CategoryId")
-                        .HasName("PK_BookCategory_CategoryId");
+                    b.HasIndex("CategoryId");
 
                     b.ToTable("Book_Category", (string)null);
                 });
@@ -199,6 +187,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("book_id");
 
+                    b.Property<bool>("CanBorrow")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("can_borrow");
+
                     b.Property<string>("CoverImage")
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)")
@@ -215,6 +209,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("EditionNumber")
                         .HasColumnType("int")
                         .HasColumnName("edition_number");
+
+                    b.Property<string>("EditionSummary")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("edition_summary");
 
                     b.Property<string>("EditionTitle")
                         .IsRequired()
@@ -676,6 +675,38 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_BorrowRequest_BookOrMaterial", "(book_edition_id IS NOT NULL AND learning_material_id IS NULL) OR (book_edition_id IS NULL AND learning_material_id IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Category", b =>
+                {
+                    b.Property<int>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("category_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryId"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(155)
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("english_name");
+
+                    b.Property<string>("VietnameseName")
+                        .IsRequired()
+                        .HasMaxLength(155)
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("vietnamese_name");
+
+                    b.HasKey("CategoryId")
+                        .HasName("PK_Category_CategoryId");
+
+                    b.ToTable("Category", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.CopyConditionHistory", b =>
@@ -1284,9 +1315,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("created_by");
 
-                    b.Property<Guid?>("EmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsPublic")
                         .HasColumnType("bit")
                         .HasColumnName("is_public");
@@ -1309,8 +1337,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.HasKey("NotificationId")
                         .HasName("PK_Notification_NotificationId");
-
-                    b.HasIndex("EmployeeId");
 
                     b.ToTable("Notification", (string)null);
                 });
@@ -1801,12 +1827,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Book", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.BookCategory", "Category")
-                        .WithMany("Books")
-                        .HasForeignKey("CategoryId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Book_CategoryId");
-
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreateByNavigation")
                         .WithMany("BookCreateByNavigations")
                         .HasForeignKey("CreateBy")
@@ -1818,11 +1838,28 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasForeignKey("UpdatedBy")
                         .HasConstraintName("FK_Book_UpdateBy");
 
-                    b.Navigation("Category");
-
                     b.Navigation("CreateByNavigation");
 
                     b.Navigation("UpdatedByNavigation");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookCategory", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Book", "Book")
+                        .WithMany("BookCategories")
+                        .HasForeignKey("BookId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BookCategory_BookId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Category", "Category")
+                        .WithMany("BookCategories")
+                        .HasForeignKey("CategoryId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BookCategory_CategoryId");
+
+                    b.Navigation("Book");
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEdition", b =>
@@ -2137,13 +2174,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Floor");
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", null)
-                        .WithMany("Notifications")
-                        .HasForeignKey("EmployeeId");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.NotificationRecipient", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Notification", "Notification")
@@ -2268,12 +2298,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Book", b =>
                 {
-                    b.Navigation("BookEditions");
-                });
+                    b.Navigation("BookCategories");
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookCategory", b =>
-                {
-                    b.Navigation("Books");
+                    b.Navigation("BookEditions");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEdition", b =>
@@ -2314,6 +2341,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("BorrowRecords");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Category", b =>
+                {
+                    b.Navigation("BookCategories");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
                     b.Navigation("BookCreateByNavigations");
@@ -2331,8 +2363,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("FineCreateByNavigations");
 
                     b.Navigation("LearningMaterialCreateByNavigations");
-
-                    b.Navigation("Notifications");
 
                     b.Navigation("RefreshTokens");
                 });

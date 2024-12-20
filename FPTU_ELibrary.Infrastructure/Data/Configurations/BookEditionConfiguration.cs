@@ -24,6 +24,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.EditionTitle)
                 .HasMaxLength(255)
                 .HasColumnName("edition_title");
+            builder.Property(e => e.EditionSummary)
+                .HasMaxLength(500)
+                .HasColumnName("edition_summary");
             builder.Property(e => e.EditionNumber).HasColumnName("edition_number");
             builder.Property(e => e.Format)
                 .HasMaxLength(50)
@@ -53,6 +56,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.CreateBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BookEdition_CreateBy");
+
+            #region Update at 20/12/2024 by Le Xuan Phuoc
+            builder.Property(e => e.CanBorrow)
+                .HasDefaultValue(false)
+                .HasColumnName("can_borrow");
+            #endregion
         }
     }
 }

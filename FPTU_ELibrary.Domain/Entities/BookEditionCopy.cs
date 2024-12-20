@@ -37,5 +37,4 @@ public class BookEditionCopy
     public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
 
     public ICollection<CopyConditionHistory> CopyConditionHistories { get; set; } = new List<CopyConditionHistory>();
-
 }

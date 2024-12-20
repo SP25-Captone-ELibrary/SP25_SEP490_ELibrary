@@ -7,6 +7,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 	public interface IBookService<TDto> : IGenericService<Book, TDto, int>
 		where TDto : class
 	{
-		Task<IServiceResult> GetAllWithEditionsAndAuthorsAsync(ISpecification<Book> spec);
+		Task<IServiceResult> GetCreateInformationAsync();
 	}
 }

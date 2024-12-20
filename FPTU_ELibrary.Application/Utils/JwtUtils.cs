@@ -246,13 +246,13 @@ namespace FPTU_ELibrary.Application.Utils
 				
 				return (JwtSecurityToken?) validatedToken;
 			}
-			catch (SecurityTokenExpiredException ex)
+			catch (SecurityTokenExpiredException)
 			{
 				// Converts a string into an instance of JwtSecurityToken
 				var decryptedToken = tokenHandler.ReadJwtToken(token) ?? null;
 				return decryptedToken;
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 				return null;
 			}

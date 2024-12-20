@@ -14,7 +14,6 @@ namespace FPTU_ELibrary.API.Mappings
 				BookId = booKDto.BookId,
 				Title = booKDto.Title,
 				Summary = booKDto.Summary,
-				CategoryId = booKDto.CategoryId,
 				IsDeleted = booKDto.IsDeleted,
 				IsDraft = booKDto.IsDraft,
 				CanBorrow = booKDto.CanBorrow,
@@ -22,13 +21,13 @@ namespace FPTU_ELibrary.API.Mappings
 				CreateBy = booKDto.CreateBy,
 				UpdatedDate = booKDto.UpdatedDate,
 				UpdatedBy = booKDto.UpdatedBy,
-				BookCategory = new ElasticBookCategory
+				Categories = booKDto.BookCategories.Select(bc => new ElasticCategory()
 				{
-					CategoryId = booKDto.CategoryId,
-					EnglishName = booKDto.Category.EnglishName,
-					VietnameseName = booKDto.Category.VietnameseName,
-					Description = booKDto.Category.Description ?? string.Empty,
-				},
+					CategoryId = bc.CategoryId,
+					EnglishName = bc.Category.EnglishName,
+					VietnameseName = bc.Category.VietnameseName,
+					Description = bc.Category.Description ?? string.Empty
+				}).ToList(),
 				BookEditions = booKDto.BookEditions.Select(be => new ElasticBookEdition
 				{
 					BookEditionId = be.BookEditionId,

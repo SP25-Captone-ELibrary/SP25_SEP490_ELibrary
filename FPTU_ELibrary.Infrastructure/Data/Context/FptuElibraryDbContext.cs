@@ -15,6 +15,7 @@ public partial class FptuElibraryDbContext : DbContext
 
     public DbSet<Author> Authors { get; set; }
     public DbSet<Book> Books { get; set; }
+    public DbSet<Category> Categories { get; set; }
     public DbSet<BookCategory> BookCategories { get; set; }
     public DbSet<BookEdition> BookEditions { get; set; }
     public DbSet<BookEditionCopy> BookEditionCopies { get; set; }
@@ -50,7 +51,7 @@ public partial class FptuElibraryDbContext : DbContext
 	{
 		IConfigurationBuilder builder = new ConfigurationBuilder()
 			.SetBasePath(Directory.GetCurrentDirectory())
-			.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 			.AddEnvironmentVariables();
 
 		string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? null!;

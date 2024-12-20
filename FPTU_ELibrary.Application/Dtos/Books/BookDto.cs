@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Domain.Entities;
+﻿using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Domain.Entities;
 
 namespace FPTU_ELibrary.Application.Dtos.Books
 {
@@ -26,14 +27,10 @@ namespace FPTU_ELibrary.Application.Dtos.Books
 
         public Guid? UpdatedBy { get; set; }
 
-        public ICollection<BookEditionAuthor> BookAuthors { get; set; } = new List<BookEditionAuthor>();
-
-        public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
-
-        public BookCategory Category { get; set; } = null!;
-
-        public Employee CreateByNavigation { get; set; } = null!;
-
-        public Employee? UpdatedByNavigation { get; set; }
+        public ICollection<BookEditionAuthorDto> BookAuthors { get; set; } = new List<BookEditionAuthorDto>();
+        public ICollection<BookEditionDto> BookEditions { get; set; } = new List<BookEditionDto>();
+        public ICollection<BookCategoryDto> BookCategories { get; set; } = new List<BookCategoryDto>();
+        public EmployeeDto CreateByNavigation { get; set; } = null!;
+        public EmployeeDto? UpdatedByNavigation { get; set; }
     }
 }

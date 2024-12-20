@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDatabase : Migration
+    public partial class InititalDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,7 +34,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Book_Category",
+                name: "Category",
                 columns: table => new
                 {
                     category_id = table.Column<int>(type: "int", nullable: false)
@@ -45,7 +45,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BookCategory_CategoryId", x => x.category_id);
+                    table.PrimaryKey("PK_Category_CategoryId", x => x.category_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -78,6 +78,24 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LibraryFloor_FloorId", x => x.floor_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notification",
+                columns: table => new
+                {
+                    notification_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    is_public = table.Column<bool>(type: "bit", nullable: false),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    notification_type = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -250,7 +268,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newsequentialid())"),
                     user_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     role_id = table.Column<int>(type: "int", nullable: false),
-                    modified_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     first_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     last_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
@@ -264,6 +281,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     modified_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    modified_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
                     phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
                     email_confirmed = table.Column<bool>(type: "bit", nullable: false),
@@ -343,11 +361,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
                     is_draft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    can_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    category_id = table.Column<int>(type: "int", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
@@ -356,11 +373,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Book_BookId", x => x.book_id);
-                    table.ForeignKey(
-                        name: "FK_Book_CategoryId",
-                        column: x => x.category_id,
-                        principalTable: "Book_Category",
-                        principalColumn: "category_id");
                     table.ForeignKey(
                         name: "FK_Book_CreateBy",
                         column: x => x.create_by,
@@ -374,27 +386,29 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Notification",
+                name: "Notification_Recipient",
                 columns: table => new
                 {
-                    notification_id = table.Column<int>(type: "int", nullable: false)
+                    notification_recipient_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    message = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    is_public = table.Column<bool>(type: "bit", nullable: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    notification_type = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    notification_id = table.Column<int>(type: "int", nullable: false),
+                    recipient_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    is_read = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
+                    table.PrimaryKey("PK_NotificationRecipient_NotificationRecipientId", x => x.notification_recipient_id);
                     table.ForeignKey(
-                        name: "FK_Notification_Employee_EmployeeId",
-                        column: x => x.EmployeeId,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
+                        name: "FK_NotificationRecipient_NotificationId",
+                        column: x => x.notification_id,
+                        principalTable: "Notification",
+                        principalColumn: "notification_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_NotificationRecipient_UserId",
+                        column: x => x.recipient_id,
+                        principalTable: "User",
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -451,6 +465,30 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Book_Category",
+                columns: table => new
+                {
+                    book_category_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_id = table.Column<int>(type: "int", nullable: false),
+                    category_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BookCategory_BookCategoryId", x => x.book_category_id);
+                    table.ForeignKey(
+                        name: "FK_BookCategory_BookId",
+                        column: x => x.book_id,
+                        principalTable: "Book",
+                        principalColumn: "book_id");
+                    table.ForeignKey(
+                        name: "FK_BookCategory_CategoryId",
+                        column: x => x.category_id,
+                        principalTable: "Category",
+                        principalColumn: "category_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Book_Edition",
                 columns: table => new
                 {
@@ -459,14 +497,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_id = table.Column<int>(type: "int", nullable: false),
                     edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     edition_number = table.Column<int>(type: "int", nullable: false),
-                    publication_year = table.Column<int>(type: "int", nullable: false),
                     page_count = table.Column<int>(type: "int", nullable: false),
                     language = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    publication_year = table.Column<int>(type: "int", nullable: false),
+                    edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     cover_image = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
                     format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     publisher = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    can_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
@@ -484,32 +524,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.create_by,
                         principalTable: "Employee",
                         principalColumn: "employee_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Notification_Recipient",
-                columns: table => new
-                {
-                    notification_recipient_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    notification_id = table.Column<int>(type: "int", nullable: false),
-                    recipient_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    is_read = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_NotificationRecipient_NotificationRecipientId", x => x.notification_recipient_id);
-                    table.ForeignKey(
-                        name: "FK_NotificationRecipient_NotificationId",
-                        column: x => x.notification_id,
-                        principalTable: "Notification",
-                        principalColumn: "notification_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_NotificationRecipient_UserId",
-                        column: x => x.recipient_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -911,11 +925,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Book_category_id",
-                table: "Book",
-                column: "category_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Book_create_by",
                 table: "Book",
                 column: "create_by");
@@ -924,6 +933,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "IX_Book_updated_by",
                 table: "Book",
                 column: "updated_by");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Book_Category_book_id",
+                table: "Book_Category",
+                column: "book_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Book_Category_category_id",
+                table: "Book_Category",
+                column: "category_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Book_Edition_book_id",
@@ -1091,11 +1110,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "floor_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Notification_EmployeeId",
-                table: "Notification",
-                column: "EmployeeId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Notification_Recipient_notification_id",
                 table: "Notification_Recipient",
                 column: "notification_id");
@@ -1161,6 +1175,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Book_Category");
+
+            migrationBuilder.DropTable(
                 name: "Book_Edition_Author");
 
             migrationBuilder.DropTable(
@@ -1198,6 +1215,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "User_Favorites");
+
+            migrationBuilder.DropTable(
+                name: "Category");
 
             migrationBuilder.DropTable(
                 name: "Author");
@@ -1240,9 +1260,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Library_Section");
-
-            migrationBuilder.DropTable(
-                name: "Book_Category");
 
             migrationBuilder.DropTable(
                 name: "Employee");

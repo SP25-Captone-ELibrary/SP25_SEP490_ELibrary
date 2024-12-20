@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 
-namespace FPTU_ELibrary.Domain.Entities;
+namespace FPTU_ELibrary.Application.Dtos.Books;
 
-public class BookCategory
+public class BookCategoryDto
 {
     // Key
     public int BookCategoryId { get; set; }
@@ -14,8 +14,8 @@ public class BookCategory
     
     // Mapping fields
     [JsonIgnore]
-    public Book Book { get; set; } = null!;
+    public BookDto Book { get; set; } = null!;
     
     [JsonIgnore]
-    public Category Category { get; set; } = null!;
+    public CategoryDto Category { get; set; } = null!;
 }

@@ -50,8 +50,8 @@ namespace FPTU_ELibrary.Application.Services
 							.Bool(b => b
 								.Must(must => must
 									.Term(t => t
-										.Field(f => f.BookEditions.First().PublicationYear)
-										.Value(parameters.PublicationYear)
+										// .Field(f => f.BookEditions.First().PublicationYear)
+										// .Value(parameters.PublicationYear)
 									)
 								)
 							)

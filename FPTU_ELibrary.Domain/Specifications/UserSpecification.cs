@@ -50,16 +50,16 @@ namespace FPTU_ELibrary.Domain.Specifications
             // Build filter logic
             return x =>
                 (string.IsNullOrEmpty(userSpecParams.Search) ||
-                    x.UserCode.Contains(userSpecParams.Search) ||
+                    x.UserCode!.Contains(userSpecParams.Search) ||
                     x.Email.Contains(userSpecParams.Search) ||
                     x.FirstName.Contains(userSpecParams.Search) ||
                     x.LastName.Contains(userSpecParams.Search)) &&
-                (string.IsNullOrEmpty(userSpecParams.UserCode) || x.UserCode.Contains(userSpecParams.UserCode)) &&
+                (string.IsNullOrEmpty(userSpecParams.UserCode) || x.UserCode!.Contains(userSpecParams.UserCode)) &&
                 (string.IsNullOrEmpty(userSpecParams.Email) || x.Email.Contains(userSpecParams.Email)) &&
                 (string.IsNullOrEmpty(userSpecParams.FirstName) || x.FirstName.Contains(userSpecParams.FirstName)) &&
                 (string.IsNullOrEmpty(userSpecParams.LastName) || x.LastName.Contains(userSpecParams.LastName)) &&
-                (string.IsNullOrEmpty(userSpecParams.Phone) || x.Phone.Contains(userSpecParams.Phone)) &&
-                (string.IsNullOrEmpty(userSpecParams.Address) || x.Address.Contains(userSpecParams.Address));
+                (string.IsNullOrEmpty(userSpecParams.Phone) || x.Phone!.Contains(userSpecParams.Phone)) &&
+                (string.IsNullOrEmpty(userSpecParams.Address) || x.Address!.Contains(userSpecParams.Address));
         }
 
         private void ApplySorting(string propertyName, bool isDescending)

@@ -61,10 +61,9 @@ namespace FPTU_ELibrary.Application.Services
 							.Date(d => d.Name(e => e.UpdatedDate))
 							.Keyword(k => k.Name(e => e.CreateBy))
 							.Keyword(k => k.Name(e => e.UpdatedBy))
-							.Number(n => n.Name(e => e.CategoryId).Type(NumberType.Integer))
 							// Mapping book category
-							.Object<ElasticBookCategory>(o => o
-								.Name(e => e.BookCategory)
+							.Nested<ElasticCategory>(o => o
+								.Name(e => e.Categories)
 								.Properties(op => op
 									.Number(n => n.Name(c => c.CategoryId).Type(NumberType.Integer))
 									.Text(t => t.Name(c => c.EnglishName))
@@ -134,12 +133,13 @@ namespace FPTU_ELibrary.Application.Services
 			spec.EnableSplitQuery();
 			// Add includes 
 			spec.ApplyInclude(q => q
-				.Include(b => b.Category)
+				.Include(b => b.BookCategories)
+					.ThenInclude(cat => cat.Category)
 				.Include(b => b.BookEditions)
 				.Include(b => b.BookEditions));
 
 			// Get all books with specification
-			var getBookResp = await _bookService.GetAllWithEditionsAndAuthorsAsync(spec);
+			var getBookResp = await _bookService.GetAllWithSpecAsync(spec);
 		
 			// Check success result
 			if(getBookResp.ResultCode == ResultCodeConst.SYS_Success0002)
@@ -149,16 +149,16 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Map to elastic list object
 				var elasticBooks = books?.Select(b => b.ToElasticBook());
-
+				var toBookList = elasticBooks?.ToList();
 				// Check exist
-				if (elasticBooks != null && elasticBooks.Any())
+				if (toBookList != null && toBookList.Any())
 				{
 					// Process Bulk API to seeding data to elastic
 					await _elasticClient.BulkAsync(x => x
 						// Default index name
 						.Index(index)
 						// Index with many books
-						.IndexMany(elasticBooks, (descriptor, elasticBook) => descriptor
+						.IndexMany(toBookList, (descriptor, elasticBook) => descriptor
 							// Assign BookId as elastic document key '_id'
 							.Id(elasticBook.BookId)));
 				}

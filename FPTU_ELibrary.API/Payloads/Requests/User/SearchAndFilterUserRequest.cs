@@ -5,7 +5,7 @@ namespace FPTU_ELibrary.API.Payloads.Requests.Auth;
 
 public class SearchAndFilterUserRequest : BaseSpecParams
 {
-    public MultipleFieldSearch MultipleFieldSearch { get; set; }
+    public MultipleFieldSearch MultipleFieldSearch { get; set; } = null!;
 }
 
 public record MultipleFieldSearch

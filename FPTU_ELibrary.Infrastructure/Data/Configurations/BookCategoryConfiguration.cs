@@ -1,27 +1,32 @@
-﻿using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace FPTU_ELibrary.Infrastructure.Data.Configurations
+namespace FPTU_ELibrary.Infrastructure.Data.Configurations;
+
+public class BookCategoryConfiguration : IEntityTypeConfiguration<BookCategory>
 {
-    public class BookCategoryConfiguration : IEntityTypeConfiguration<BookCategory>
+    public void Configure(EntityTypeBuilder<BookCategory> builder)
     {
-        public void Configure(EntityTypeBuilder<BookCategory> builder)
-        {
-            builder.HasKey(e => e.CategoryId).HasName("PK_BookCategory_CategoryId");
+        #region Update at 20/12/2024
+        builder.HasKey(e => e.BookCategoryId).HasName("PK_BookCategory_BookCategoryId");
+        
+        builder.ToTable("Book_Category");
 
-            builder.ToTable("Book_Category");
+        builder.Property(e => e.BookCategoryId).HasColumnName("book_category_id");
+        builder.Property(e => e.BookId).HasColumnName("book_id");
+        builder.Property(e => e.CategoryId).HasColumnName("category_id");
 
-            builder.Property(e => e.CategoryId).HasColumnName("category_id");
-            builder.Property(e => e.Description)
-                .HasMaxLength(255)
-                .HasColumnName("description");
-            builder.Property(e => e.EnglishName)
-                .HasMaxLength(155)
-                .HasColumnName("english_name");
-			builder.Property(e => e.VietnameseName)
-				.HasMaxLength(155)
-				.HasColumnName("vietnamese_name");
-		}
+        builder.HasOne(d => d.Book).WithMany(p => p.BookCategories)
+            .HasForeignKey(d => d.BookId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_BookCategory_BookId");
+        
+        builder.HasOne(d => d.Category).WithMany(p => p.BookCategories)
+            .HasForeignKey(d => d.CategoryId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_BookCategory_CategoryId");
+        
+        #endregion
     }
 }

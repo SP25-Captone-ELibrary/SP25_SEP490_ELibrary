@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.Reflection;
 using Microsoft.VisualBasic.CompilerServices;
 using Serilog;
-
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
 using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
@@ -99,7 +98,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				else _logger.Information("Already seed data for table {0}", "Role_Permission");
 				
 				// [Book Categories]
-				if (!await _context.BookCategories.AnyAsync()) await SeedBookCategoryAsync();
+				if (!await _context.BookCategories.AnyAsync()) await SeedCategoryAsync();
 				else _logger.Information("Already seed data for table {0}", "Book_Category");
 
 				// [Employees]
@@ -378,10 +377,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		
 		//  Summary:
 		//      Seeding Book Category
-		private async Task SeedBookCategoryAsync()
+		private async Task SeedCategoryAsync()
         {
 			// Initialize book category entities
-            List<BookCategory> bookCategories = new()
+            List<Category> categories = new()
             {
                 new()
                 {
@@ -496,7 +495,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			};
         
 			// Add range
-			await _context.BookCategories.AddRangeAsync(bookCategories);
+			await _context.Categories.AddRangeAsync(categories);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
 			if (saveSucc) _logger.Information("Seed book category success.");
@@ -512,7 +511,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				.FirstOrDefaultAsync(e => e.Role.EnglishName == Role.Librarian.ToString());
 
 			// Get book categories
-			var categories = await _context.BookCategories.ToListAsync();
+			var categories = await _context.Categories.ToListAsync();
 
 			if(librarian == null || !categories.Any())
 			{
@@ -530,11 +529,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					Title = "Harry Potter and the Sorcerer's Stone",
 					Summary = "A young wizard's journey begins.",
-					CanBorrow = true,
 					IsDeleted = false,
 					IsDraft = false,
-					CategoryId = categories.First(x => 
-						x.EnglishName == BookCategoryEnum.FantasyAndScienceFiction.ToString()).CategoryId,
 					CreateDate = DateTime.Now,
 					CreateBy = librarian.EmployeeId,
 					UpdatedDate = null,
@@ -546,17 +542,27 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
 						new() { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
 						new() { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
+					},
+					BookCategories = new List<BookCategory>()
+					{
+						new()
+						{
+							CategoryId = categories.First(x => 
+								x.EnglishName == BookCategoryEnum.FantasyAndScienceFiction.ToString()).CategoryId,
+						},
+						new()
+						{
+							CategoryId = categories.First(x =>
+								x.EnglishName == BookCategoryEnum.Novels.ToString()).CategoryId
+						}
 					}
 				},
 				new Book
 				{
 					Title = "The Hobbit",
 					Summary = "A hobbit's adventurous journey to reclaim a lost kingdom.",
-					CanBorrow = true,
 					IsDeleted = false,
 					IsDraft = false,
-					CategoryId = categories.First(x =>
-						x.EnglishName == BookCategoryEnum.Novels.ToString()).CategoryId,
 					CreateDate = DateTime.Now,
 					CreateBy = librarian.EmployeeId,
 					BookEditions = new List<BookEdition>
@@ -566,6 +572,19 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
 						new() { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
 						new() { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
+					},
+					BookCategories = new List<BookCategory>()
+					{
+						new()
+						{
+							CategoryId = categories.First(x => 
+								x.EnglishName == BookCategoryEnum.History.ToString()).CategoryId
+						},
+						new()
+						{
+							CategoryId = categories.First(x =>
+								x.EnglishName == BookCategoryEnum.Mystery.ToString()).CategoryId
+						}
 					}
 				}
 			};
