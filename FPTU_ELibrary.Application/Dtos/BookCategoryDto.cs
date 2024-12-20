@@ -10,7 +10,6 @@ public class BookCategoryDto
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
-    public bool? IsDelete { get; set; }
     public ICollection<BookDto> BookDtos { get; set; } = new List<BookDto>();
 
 }

@@ -19,19 +19,21 @@ public class BookCategorySpecification : BaseSpecification<BookCategory>
     {
         PageIndex = pageIndex;
         PageSize = pageSize;
-        
+
         EnableSplitQuery();
 
         if (bookCategorySpecParams.EnglishName != null)
         {
-            AddFilter(x => x.IsDeleted == bookCategorySpecParams.IsDelete &&
-                           x.EnglishName.Contains(bookCategorySpecParams.EnglishName));
+            AddFilter(x =>
+                x.EnglishName.Contains(bookCategorySpecParams.EnglishName));
         }
+
         if (bookCategorySpecParams.VietnameseName != null)
         {
-            AddFilter(x => x.IsDeleted == bookCategorySpecParams.IsDelete &&
+            AddFilter(x => 
                            x.VietnameseName.Contains(bookCategorySpecParams.VietnameseName));
         }
+
         if (!string.IsNullOrEmpty(bookCategorySpecParams.Sort))
         {
             var sortBy = bookCategorySpecParams.Sort.Trim();
@@ -41,6 +43,7 @@ public class BookCategorySpecification : BaseSpecification<BookCategory>
             ApplySorting(propertyName, isDescending);
         }
     }
+
     private void ApplySorting(string propertyName, bool isDescending)
     {
         if (string.IsNullOrEmpty(propertyName)) return;
@@ -48,7 +51,8 @@ public class BookCategorySpecification : BaseSpecification<BookCategory>
         // Use Reflection to dynamically apply sorting
         var parameter = Expression.Parameter(typeof(BookCategory), "x");
         var property = Expression.Property(parameter, propertyName);
-        var sortExpression = Expression.Lambda<Func<BookCategory, object>>(Expression.Convert(property, typeof(object)), parameter);
+        var sortExpression =
+            Expression.Lambda<Func<BookCategory, object>>(Expression.Convert(property, typeof(object)), parameter);
 
         if (isDescending)
         {

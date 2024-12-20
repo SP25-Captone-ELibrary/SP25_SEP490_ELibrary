@@ -53,6 +53,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
+            services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
 
             services
                 .ConfigureMapster() // Add mapster

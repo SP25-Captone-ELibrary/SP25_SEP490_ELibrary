@@ -52,40 +52,11 @@ public class BookCategoryController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetAll([FromQuery] BookCategorySpecParams bookCategorySpecParams)
     {
-        bookCategorySpecParams.IsDelete = false;
         return Ok(await _bookCategoryService.GetAllWithSpecAsync(new BookCategorySpecification(
             bookCategorySpecParams: bookCategorySpecParams, pageIndex: bookCategorySpecParams.PageIndex ?? 1,
             pageSize: bookCategorySpecParams.PageSize ?? _appSettings.PageSize), false));
     }
-
-    [HttpPatch(APIRoute.BookCategory.SoftDelete, Name = nameof(SoftDeleteAsync))]
-    [Authorize]
-    public async Task<IActionResult> SoftDeleteAsync([FromRoute] int id)
-    {
-        return Ok(await _bookCategoryService.SoftDeleteAsync(id));
-    }
-
-    [HttpPatch(APIRoute.BookCategory.SoftDeleteRange, Name = nameof(SoftDeleteRangeAsync))]
-    [Authorize]
-    public async Task<IActionResult> SoftDeleteRangeAsync([FromBody] DeleteRangeRequest<int> req)
-    {
-        return Ok(await _bookCategoryService.SoftDeleteRangeAsync(req.Ids));
-    }
-
-    [HttpPatch(APIRoute.BookCategory.UndoDelete, Name = nameof(UndoDeleteAsync))]
-    [Authorize]
-    public async Task<IActionResult> UndoDeleteAsync([FromRoute] int id)
-    {
-        return Ok(await _bookCategoryService.UndoDeleteAsync(id));
-    }
-
-    [HttpPatch(APIRoute.BookCategory.UndoDeleteRange, Name = nameof(UndoDeleteRangeAsync))]
-    [Authorize]
-    public async Task<IActionResult> UndoDeleteRangeAsync([FromBody] DeleteRangeRequest<int> req)
-    {
-        return Ok(await _bookCategoryService.UndoDeleteRangeAsync(req.Ids));
-    }
-
+    
     [HttpDelete(APIRoute.BookCategory.HardDeleteRange, Name = nameof(DeleteRangeAsync))]
     [Authorize]
     public async Task<IActionResult> DeleteRangeAsync([FromBody] DeleteRangeRequest<int> req)
