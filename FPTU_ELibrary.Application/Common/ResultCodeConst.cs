@@ -323,7 +323,18 @@ namespace FPTU_ELibrary.Application.Common
 		/// There is no important message 
 		/// </summary>
 		public static string Notification_Warning0001 = "Notification.Warning0001";
+		/// <summary>
+		/// Access to noti that not belongs to this account 
+		/// </summary>
+		public static string Notification_Warning0002 = "Notification.Warning0002";
 
+		#endregion
+
+		#region BookCategory
+		/// <summary>
+		/// This Category has been used. Cannot be deleted
+		/// </summary>
+		public static string Category_Warning0001 = "Category.Warning0001";
 		#endregion
 
 		#endregion

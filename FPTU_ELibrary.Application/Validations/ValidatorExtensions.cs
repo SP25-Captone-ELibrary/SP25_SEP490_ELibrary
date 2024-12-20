@@ -30,6 +30,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(AuthenticateUserDto) => (IValidator<T>)new AuthenticatedUserDtoValidator(language),
 				{ } when typeof(T) == typeof(NotificationDto) => (IValidator<T>)new NotificationDtoValidator(language),
 				{ } when typeof(T) == typeof(NotificationRecipientDto) => (IValidator<T>)new NotificationRecipientDtoValidator(language),
+				{ } when typeof(T) == typeof(CategoryDto) => (IValidator<T>)new CategoryDtoValidator(language),
 				_ => null
 			};
 		}

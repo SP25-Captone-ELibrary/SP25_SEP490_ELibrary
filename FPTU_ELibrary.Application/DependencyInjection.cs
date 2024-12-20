@@ -55,7 +55,8 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
-			
+            services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
+
             services
                 .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary
