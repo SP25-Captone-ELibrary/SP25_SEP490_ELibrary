@@ -52,7 +52,7 @@ public class AuthorController : ControllerBase
     {
         return Ok(await _authorService.CreateAsync(req.ToAuthorDto()));
     }
-
+    
     [Authorize]
     [HttpPut(APIRoute.Author.Update, Name = nameof(UpdateAuthorAsync))]
     public async Task<IActionResult> UpdateAuthorAsync([FromRoute] int id, [FromBody] UpdateAuthorRequest req)
