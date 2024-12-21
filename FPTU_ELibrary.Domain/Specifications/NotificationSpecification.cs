@@ -7,8 +7,8 @@ namespace FPTU_ELibrary.Domain.Specifications;
 
 public class NotificationSpecification :BaseSpecification<Notification>
 {
-    public int PageIndex { get; set; }
-    public int PageSize { get; set; }
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
 
     public NotificationSpecification(
         NotificationSpecParams notificationSpecParams, 

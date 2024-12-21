@@ -2,11 +2,13 @@
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
+using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -253,5 +255,20 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		#endregion
+
+		#region FinePolicy	
+		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
+		{
+			return new FinePolicyDto()
+			{
+				ConditionType = req.ConditionType,
+				FineAmountPerDay = req.FineAmountPerDay,
+				FixedFineAmount = req.FixedFineAmount,
+				Description = req.Description
+			};
+		}
+		
+		#endregion
+		
 	}
 }
