@@ -6,6 +6,7 @@ using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +32,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(NotificationDto) => (IValidator<T>)new NotificationDtoValidator(language),
 				{ } when typeof(T) == typeof(NotificationRecipientDto) => (IValidator<T>)new NotificationRecipientDtoValidator(language),
 				{ } when typeof(T) == typeof(BookCategoryDto) => (IValidator<T>)new BookCategoryDtoValidator(language),
+				{ } when typeof(T) == typeof(FinePolicyDto) => (IValidator<T>)new FinePolicyDtoValidator(language),
 				_ => null
 			};
 		}

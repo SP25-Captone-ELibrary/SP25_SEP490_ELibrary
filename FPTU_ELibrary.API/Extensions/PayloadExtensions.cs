@@ -2,11 +2,13 @@
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
+using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -245,13 +247,39 @@ namespace FPTU_ELibrary.API.Extensions
 
 		public static BookCategoryDto ToBookCategoryForUpdate(this UpdateBookCategoryRequest req)
 		{
-			return new BookCategoryDto()
+			var dto = new BookCategoryDto()
 			{
-				VietnameseName = req.VietnameseName??"",
-				EnglishName = req.EnglishName??"",
+				VietnameseName = req.VietnameseName,
+				EnglishName = req.EnglishName, 
+				Description = req.Description
+			};
+			return dto;
+		}
+		#endregion
+
+		#region FinePolicy	
+		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
+		{
+			return new FinePolicyDto()
+			{
+				ConditionType = req.ConditionType,
+				FineAmountPerDay = req.FineAmountPerDay,
+				FixedFineAmount = req.FixedFineAmount,
 				Description = req.Description
 			};
 		}
+		public static FinePolicyDto ToFinePolicyDto(this UpdateFinePolicyRequest req)
+		{
+			return new FinePolicyDto()
+			{
+				ConditionType = req.ConditionType,
+				FineAmountPerDay = req.FineAmountPerDay,
+				FixedFineAmount = req.FixedFineAmount,
+				Description = req.Description
+			};
+		}
+		
 		#endregion
+		
 	}
 }

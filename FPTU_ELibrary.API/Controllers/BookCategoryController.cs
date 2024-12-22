@@ -3,6 +3,7 @@ using CsvHelper.Configuration.Attributes;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
+using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -56,11 +57,18 @@ public class BookCategoryController : ControllerBase
             bookCategorySpecParams: bookCategorySpecParams, pageIndex: bookCategorySpecParams.PageIndex ?? 1,
             pageSize: bookCategorySpecParams.PageSize ?? _appSettings.PageSize), false));
     }
-    
+
     [HttpDelete(APIRoute.BookCategory.HardDeleteRange, Name = nameof(DeleteRangeAsync))]
     [Authorize]
     public async Task<IActionResult> DeleteRangeAsync([FromBody] DeleteRangeRequest<int> req)
     {
         return Ok(await _bookCategoryService.HardDeleteRangeAsync(req.Ids));
+    }
+
+    [HttpPost(APIRoute.BookCategory.Import, Name = nameof(ImportBookCategoryAsync))]
+    [Authorize]
+    public async Task<IActionResult> ImportBookCategoryAsync([FromForm] ImportBookCategoryRequest req)
+    {
+        return Ok(await _bookCategoryService.ImportBookCategoryAsync(req.File, req.DuplicateHandle));
     }
 }
