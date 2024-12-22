@@ -38,12 +38,13 @@ public class FinePolicySpecification : BaseSpecification<FinePolicy>
         }
         else if (!string.IsNullOrEmpty(finePolicyParams.ConditionType))
         {
-            AddFilter(x => x.ConditionType == finePolicyParams.ConditionType);
+            AddFilter(x => x.ConditionType.Contains(finePolicyParams.ConditionType));
         }
         else if (!string.IsNullOrEmpty(finePolicyParams.Description))
         {
-            AddFilter(x => x.Description == finePolicyParams.Description);
+            AddFilter(x => x.Description.Contains(finePolicyParams.Description));
         }
+
         if (!string.IsNullOrEmpty(finePolicyParams.Sort))
         {
             var sortBy = finePolicyParams.Sort.Trim();
@@ -56,8 +57,8 @@ public class FinePolicySpecification : BaseSpecification<FinePolicy>
         {
             AddOrderByDescending(n => n.FinePolicyId);
         }
-        
     }
+
     private void ApplySorting(string propertyName, bool isDescending)
     {
         if (string.IsNullOrEmpty(propertyName)) return;
@@ -65,7 +66,8 @@ public class FinePolicySpecification : BaseSpecification<FinePolicy>
         // Use Reflection to dynamically apply sorting
         var parameter = Expression.Parameter(typeof(FinePolicy), "x");
         var property = Expression.Property(parameter, propertyName);
-        var sortExpression = Expression.Lambda<Func<FinePolicy, object>>(Expression.Convert(property, typeof(object)), parameter);
+        var sortExpression =
+            Expression.Lambda<Func<FinePolicy, object>>(Expression.Convert(property, typeof(object)), parameter);
 
         if (isDescending)
         {

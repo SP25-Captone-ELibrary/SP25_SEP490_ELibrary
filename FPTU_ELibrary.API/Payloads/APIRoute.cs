@@ -272,6 +272,7 @@
 			// [GET]
 			public const string GetAll = Base + "/management/categories";
 			public const string GetById = Base + "/management/categories";
+			public const string Import = Base +"management/categories/import";
 		}
 
 		/// <summary>
@@ -288,8 +289,9 @@
 			public const string HardDeleteRange = Base + "/management/fines/policy";
 			// public const string Delete = Base + "/management/fines/policy/{id}";
 			// [GET]
-			public const string GetAll = Base + "/management/fines/policy";
-			public const string GetById = Base + "/management/fines/policy/{id}";
+			public const string GetAll = Base + "/fines/policy";
+			public const string GetById = Base + "/fines/policy/{id}";
+			public const string Import = Base + "management/fines/policy/import";
 		}
 	}
 }

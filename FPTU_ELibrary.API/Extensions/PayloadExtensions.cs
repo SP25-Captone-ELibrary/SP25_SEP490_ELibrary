@@ -247,17 +247,28 @@ namespace FPTU_ELibrary.API.Extensions
 
 		public static BookCategoryDto ToBookCategoryForUpdate(this UpdateBookCategoryRequest req)
 		{
-			return new BookCategoryDto()
+			var dto = new BookCategoryDto()
 			{
-				VietnameseName = req.VietnameseName??"",
-				EnglishName = req.EnglishName??"",
+				VietnameseName = req.VietnameseName,
+				EnglishName = req.EnglishName, 
 				Description = req.Description
 			};
+			return dto;
 		}
 		#endregion
 
 		#region FinePolicy	
 		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
+		{
+			return new FinePolicyDto()
+			{
+				ConditionType = req.ConditionType,
+				FineAmountPerDay = req.FineAmountPerDay,
+				FixedFineAmount = req.FixedFineAmount,
+				Description = req.Description
+			};
+		}
+		public static FinePolicyDto ToFinePolicyDto(this UpdateFinePolicyRequest req)
 		{
 			return new FinePolicyDto()
 			{
