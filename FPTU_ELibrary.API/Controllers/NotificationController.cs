@@ -63,7 +63,15 @@ public class NotificationController: ControllerBase
     {
         // define who are using this 
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email));
+        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email,true));
+    }
+    [HttpGet(APIRoute.Notification.GetNotificationNotByAdmin, Name = nameof(GetNotificationNotByAdmin))]
+    [Authorize] 
+    public async Task<IActionResult> GetNotificationNotByAdmin([FromQuery] NotificationSpecParams specParams)
+    {
+        // define who are using this 
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email, false));
     }
     [HttpGet(APIRoute.Notification.GetById, Name = nameof(GetById))]
     [Authorize]

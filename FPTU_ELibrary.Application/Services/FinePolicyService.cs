@@ -12,6 +12,7 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
@@ -38,6 +39,16 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
+            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>()
+                .AnyAsync(e => e.ConditionType == dto.ConditionType);
+            if (isExistConditionType)
+            {
+                throw new UnprocessableEntityException("Invalid validations", new Dictionary<string, string[]>()
+                {
+                    { nameof(FinePolicyDto.ConditionType), new[] { "Condition type is already exist" } }
+                });
+            }
+
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(dto);
             // Check for valid validations
@@ -47,14 +58,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 var errors = validationResult.ToProblemDetails().Errors;
                 throw new UnprocessableEntityException("Invalid Validations", errors);
             }
-            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>().AnyAsync(e => e.ConditionType == dto.ConditionType);
-            if (isExistConditionType) // Already exist employee code
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-                    StringUtils.Format(errMsg, "create", nameof(FinePolicy).ToLower()));
-            }
-            
+
             // Process add new entity
             await _unitOfWork.Repository<FinePolicy, int>().AddAsync(_mapper.Map<FinePolicy>(dto));
             // Save to DB
@@ -70,12 +74,12 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
                 serviceResult.Data = false;
             }
+
             return serviceResult;
         }
-        catch (UnprocessableEntityException ex)
+        catch (UnprocessableEntityException)
         {
-            return new ServiceResult(ResultCodeConst.SYS_Warning0001,
-                ex.Message);
+            throw;
         }
         catch (Exception ex)
         {
@@ -89,14 +93,14 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
-            // Validate inputs using the generic validator
-            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
-            // Check for valid validations
-            if (validationResult != null && !validationResult.IsValid)
+            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>()
+                .AnyAsync(e => e.ConditionType == dto.ConditionType);
+            if (isExistConditionType)
             {
-                // Convert ValidationResult to ValidationProblemsDetails.Errors
-                var errors = validationResult.ToProblemDetails().Errors;
-                throw new UnprocessableEntityException("Invalid validations", errors);
+                throw new UnprocessableEntityException("Invalid validations", new Dictionary<string, string[]>()
+                {
+                    { nameof(FinePolicyDto.ConditionType), new[] { "Condition type is already exist" } }
+                });
             }
             // Retrieve the entity
             var existingEntity = await _unitOfWork.Repository<FinePolicy, int>().GetByIdAsync(id);
@@ -106,16 +110,16 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, nameof(FinePolicy).ToLower()));
             }
-
-            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>().AnyAsync(e => e.ConditionType == dto.ConditionType);
-            if (isExistConditionType) // Already exist employee code
+            _mapper.Map(dto,existingEntity);
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(_mapper.Map(existingEntity,dto));
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
             {
-                   var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
-                    return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-                        StringUtils.Format(errMsg, "create", nameof(FinePolicy).ToLower()));
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid validations", errors);
             }
-            existingEntity = _mapper.Map(dto, existingEntity);
-            
             // Check if there are any differences between the original and the updated entity
             if (!_unitOfWork.Repository<FinePolicy, int>().HasChanges(existingEntity))
             {
@@ -124,6 +128,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 serviceResult.Data = true;
                 return serviceResult;
             }
+
             // Progress update when all require passed
             await _unitOfWork.Repository<FinePolicy, int>().UpdateAsync(existingEntity);
 
@@ -141,18 +146,17 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             serviceResult.ResultCode = ResultCodeConst.SYS_Success0003;
             serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003);
             serviceResult.Data = true;
-        
         }
-        catch (UnprocessableEntityException ex)
+        catch (UnprocessableEntityException)
         {
-            return new ServiceResult(ResultCodeConst.SYS_Warning0001,
-                ex.Message);
+            throw;
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process update fine policy");
         }
+
         return serviceResult;
     }
 
@@ -186,7 +190,8 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004);
                 serviceResult.Data = false;
             }
-            return serviceResult;    
+
+            return serviceResult;
         }
         catch (Exception ex)
         {
@@ -209,7 +214,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             if (categoryList.Count < finePolicyIds.Length)
             {
                 return new ServiceResult(ResultCodeConst.FinePolicy_Warning0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.FinePolicy_Warning0002));    
+                    await _msgService.GetMessageAsync(ResultCodeConst.FinePolicy_Warning0002));
             }
 
             if (categoryList.Any(x => x.Fines.Any()))
@@ -334,17 +339,18 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 else
                 {
                     // Convert to DTO
-                    
+
                     var newFinePolicy = finePolicyRecord.ToFinePolicyDto();
 
                     // Add Dto
                     categoryToAdd.Add(newFinePolicy);
                 }
             }
+
             if (failedMsgs.Any())
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), failedMsgs.Select(x=> x.ErrMsg));
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), failedMsgs.Select(x => x.ErrMsg));
             }
 
             // Process add new entity
@@ -377,8 +383,8 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
             || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
             || record.FineAmountPerDay <= 0
-            || record.FineAmountPerDay <0
-            )
+            || record.FineAmountPerDay < 0
+           )
         {
             return true;
         }
@@ -386,5 +392,56 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         return await _unitOfWork.Repository<FinePolicy, int>().AnyAsync(e
             => e.ConditionType == record.ConditionType);
     }
-        
+
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<FinePolicy> spec, bool tracked = true)
+    {
+        try
+        {
+            // Try to parse specification to FinePolicySpecification
+            var fineSpec = spec as FinePolicySpecification;
+            // Check if specification is null
+            if (fineSpec == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+            //count total records
+            var totalRecords = await _unitOfWork.Repository<FinePolicy, int>().CountAsync(fineSpec);
+            //count total pages
+            var totalPage = (int)Math.Ceiling((double)totalRecords / fineSpec.PageSize);
+            
+            if (fineSpec.PageIndex > totalPage 
+                || fineSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                fineSpec.PageIndex = 1; // Set default to first page
+            }
+            fineSpec.ApplyPaging(
+                skip: fineSpec.PageSize * (fineSpec.PageIndex - 1), 
+                take: fineSpec.PageSize);
+            
+            var entities = await _unitOfWork.Repository<FinePolicy, int>().GetAllWithSpecAsync(spec, tracked);
+            if (entities.Any())
+            {
+					
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<FinePolicyDto>(_mapper.Map<IEnumerable<FinePolicyDto>>(entities),
+                    fineSpec.PageIndex, fineSpec.PageSize, totalPage);
+					
+                // Response with pagination 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            // Not found any data
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                // Mapping entities to dto and ignore sensitive user data
+                _mapper.Map<IEnumerable<FinePolicyDto>>(entities));
+            
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all fine policy");
+        }
+    }
 }
