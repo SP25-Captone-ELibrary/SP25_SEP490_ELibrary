@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FPTU_ELibrary.Domain.Common.Enums;
 using Microsoft.EntityFrameworkCore.Query;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -89,6 +90,8 @@ namespace FPTU_ELibrary.Domain.Specifications
 
                 ApplySorting(propertyName, isDescending);
             }
+            
+            AddFilter(x => x.Role.EnglishName != nameof(Role.Administration));
         }
 
         private void ApplySorting(string propertyName, bool isDescending)

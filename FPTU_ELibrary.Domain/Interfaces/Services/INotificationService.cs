@@ -12,6 +12,7 @@ public interface INotificationService<TDto> : IGenericService<Notification, TDto
 
     Task<IServiceResult>GetAllWithSpecAsync(NotificationSpecParams specParams,
         string email,
+        bool isMangement,
         bool tracked = true
     );
 
