@@ -27,7 +27,6 @@ public class FinePolicyController : ControllerBase
     }
     
     [HttpGet(APIRoute.FinePolicy.GetAll, Name = nameof(GetAllFinePolicy))]
-    [Authorize]
     public async Task<IActionResult> GetAllFinePolicy([FromQuery] FinePolicyParams finePolicyParams)
     {
         return Ok(await _finePolicyService.GetAllWithSpecAsync(new FinePolicySpecification(
@@ -37,7 +36,6 @@ public class FinePolicyController : ControllerBase
     }
 
     [HttpGet(APIRoute.FinePolicy.GetById, Name = nameof(GetFinePolicyById))]
-    [Authorize]
     public async Task<IActionResult> GetFinePolicyById(int id)
     {
         return Ok(await _finePolicyService.GetByIdAsync(id));

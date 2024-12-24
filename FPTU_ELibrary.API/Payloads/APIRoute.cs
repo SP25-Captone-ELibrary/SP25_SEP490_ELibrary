@@ -291,7 +291,7 @@
 			// [GET]
 			public const string GetAll = Base + "/fines/policy";
 			public const string GetById = Base + "/fines/policy/{id}";
-			public const string Import = Base + "management/fines/policy/import";
+			public const string Import = Base + "/management/fines/policy/import";
 		}
 	}
 }

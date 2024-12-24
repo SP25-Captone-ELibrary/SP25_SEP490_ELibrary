@@ -93,9 +93,10 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
+            var baseSpec = new BaseSpecification<FinePolicy>(e => e.ConditionType == dto.ConditionType);
             var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>()
-                .AnyAsync(e => e.ConditionType == dto.ConditionType);
-            if (isExistConditionType)
+                .GetWithSpecAsync(baseSpec);
+            if (isExistConditionType.FinePolicyId != id)
             {
                 throw new UnprocessableEntityException("Invalid validations", new Dictionary<string, string[]>()
                 {
@@ -375,11 +376,15 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
 
     private async Task<bool> DetectWrongRecord(FinePolicyExcelRecord record, SystemLanguage? lang)
     {
+        // I want a regex that allow my conditiontype could include number
+        
+        
+        
         var isEng = lang == SystemLanguage.English;
         if (string.IsNullOrEmpty(record.ConditionType)
             || string.IsNullOrEmpty(record.FineAmountPerDay.ToString())
             || !Regex.IsMatch(record.ConditionType,
-                @"^([A-Z][a-z]*)(\s[A-Z][a-z]*)*$")
+            @"^[a-zA-Z0-9\s\p{P}]{1,100}$") 
             || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
             || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
             || record.FineAmountPerDay <= 0
