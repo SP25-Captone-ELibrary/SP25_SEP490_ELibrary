@@ -5,7 +5,6 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Reflection;
-using Microsoft.VisualBasic.CompilerServices;
 using Serilog;
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
@@ -177,12 +176,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					EnglishName = nameof(Role.LibraryAssistant),
 					VietnameseName = Role.LibraryAssistant.GetDescription(),
-					RoleType = nameof(RoleType.Employee)
-				},
-				new()
-				{
-					EnglishName = nameof(Role.TemporaryWorker),
-					VietnameseName = Role.TemporaryWorker.GetDescription(),
 					RoleType = nameof(RoleType.Employee)
 				}
 			};
@@ -531,17 +524,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					Summary = "A young wizard's journey begins.",
 					IsDeleted = false,
 					IsDraft = false,
-					CreateDate = DateTime.Now,
-					CreateBy = librarian.EmployeeId,
-					UpdatedDate = null,
-					UpdatedBy = null,
+					CreatedAt = DateTime.Now,
+					CreatedBy = librarian.Email,
 					BookEditions = new List<BookEdition>
 					{
-						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1997, PageCount = 309, Language = "English", Isbn = "9780747532699", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1998, PageCount = 320, Language = "English", Isbn = "9780747538493", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
+						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1997, PageCount = 309, Language = "English", Isbn = "9780747532699", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1998, PageCount = 320, Language = "English", Isbn = "9780747538493", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreatedAt = DateTime.Now, CreatedBy = librarian.Email }
 					},
 					BookCategories = new List<BookCategory>()
 					{
@@ -563,15 +554,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					Summary = "A hobbit's adventurous journey to reclaim a lost kingdom.",
 					IsDeleted = false,
 					IsDraft = false,
-					CreateDate = DateTime.Now,
-					CreateBy = librarian.EmployeeId,
+					CreatedAt = DateTime.Now,
+					CreatedBy = librarian.Email,
 					BookEditions = new List<BookEdition>
 					{
-						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1937, PageCount = 310, Language = "English", Isbn = "9780547928227", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1951, PageCount = 320, Language = "English", Isbn = "9780261102217", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId },
-						new() { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreateDate = DateTime.Now, CreateBy = librarian.EmployeeId }
+						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1937, PageCount = 310, Language = "English", Isbn = "9780547928227", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1951, PageCount = 320, Language = "English", Isbn = "9780261102217", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
+						new() { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreatedAt = DateTime.Now, CreatedBy = librarian.Email }
 					},
 					BookCategories = new List<BookCategory>()
 					{

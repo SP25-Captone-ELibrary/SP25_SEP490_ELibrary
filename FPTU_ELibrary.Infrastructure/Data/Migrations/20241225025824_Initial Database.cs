@@ -6,11 +6,31 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InititalDatabase : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Audit_Trail",
+                columns: table => new
+                {
+                    audit_trail_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    entity_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    entity_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    trail_type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
+                    old_values = table.Column<string>(type: "nvarchar(1500)", nullable: false),
+                    new_values = table.Column<string>(type: "nvarchar(1500)", nullable: false),
+                    changed_columns = table.Column<string>(type: "nvarchar(500)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditTrail_AuditTrailId", x => x.audit_trail_id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Author",
                 columns: table => new
@@ -31,6 +51,27 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Author_AuthorId", x => x.author_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Book",
+                columns: table => new
+                {
+                    book_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    is_draft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Book_BookId", x => x.book_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -154,6 +195,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     role_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     vietnamese_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     english_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     role_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
@@ -161,6 +206,62 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_SystemRole_RoleId", x => x.role_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Book_Resource",
+                columns: table => new
+                {
+                    resource_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_id = table.Column<int>(type: "int", nullable: false),
+                    resource_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    resource_url = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
+                    resource_size = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    file_format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    provider = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    provider_public_id = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    provider_metadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BookResource_BookResourceId", x => x.resource_id);
+                    table.ForeignKey(
+                        name: "FK_BookResource_BookId",
+                        column: x => x.book_id,
+                        principalTable: "Book",
+                        principalColumn: "book_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Book_Category",
+                columns: table => new
+                {
+                    book_category_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    book_id = table.Column<int>(type: "int", nullable: false),
+                    category_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BookCategory_BookCategoryId", x => x.book_category_id);
+                    table.ForeignKey(
+                        name: "FK_BookCategory_BookId",
+                        column: x => x.book_id,
+                        principalTable: "Book",
+                        principalColumn: "book_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BookCategory_CategoryId",
+                        column: x => x.category_id,
+                        principalTable: "Category",
+                        principalColumn: "category_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -239,7 +340,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     role_id = table.Column<int>(type: "int", nullable: false),
                     feature_id = table.Column<int>(type: "int", nullable: false),
-                    permission_id = table.Column<int>(type: "int", nullable: false)
+                    permission_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -355,37 +460,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Book",
-                columns: table => new
-                {
-                    book_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
-                    is_draft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Book_BookId", x => x.book_id);
-                    table.ForeignKey(
-                        name: "FK_Book_CreateBy",
-                        column: x => x.create_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                    table.ForeignKey(
-                        name: "FK_Book_UpdateBy",
-                        column: x => x.updated_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Notification_Recipient",
                 columns: table => new
                 {
@@ -465,51 +539,30 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Book_Category",
-                columns: table => new
-                {
-                    book_category_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    book_id = table.Column<int>(type: "int", nullable: false),
-                    category_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BookCategory_BookCategoryId", x => x.book_category_id);
-                    table.ForeignKey(
-                        name: "FK_BookCategory_BookId",
-                        column: x => x.book_id,
-                        principalTable: "Book",
-                        principalColumn: "book_id");
-                    table.ForeignKey(
-                        name: "FK_BookCategory_CategoryId",
-                        column: x => x.category_id,
-                        principalTable: "Category",
-                        principalColumn: "category_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Book_Edition",
                 columns: table => new
                 {
                     book_edition_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_id = table.Column<int>(type: "int", nullable: false),
-                    edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     edition_number = table.Column<int>(type: "int", nullable: false),
                     page_count = table.Column<int>(type: "int", nullable: false),
                     language = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     publication_year = table.Column<int>(type: "int", nullable: false),
-                    edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     cover_image = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
                     format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     publisher = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
                     can_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    estimated_price = table.Column<decimal>(type: "decimal(10,0)", nullable: false),
+                    ShelfId = table.Column<int>(type: "int", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -520,10 +573,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         principalTable: "Book",
                         principalColumn: "book_id");
                     table.ForeignKey(
-                        name: "FK_BookEdition_CreateBy",
-                        column: x => x.create_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
+                        name: "FK_BookEdition_ShelfId",
+                        column: x => x.ShelfId,
+                        principalTable: "Library_Shelf",
+                        principalColumn: "shelf_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -542,30 +595,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     available_quantity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
                     manufacturer = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     warranty_period = table.Column<DateOnly>(type: "date", nullable: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    create_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    updated_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    UpdatedByNavigationEmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LearningMaterial_LearningMaterialId", x => x.learning_material_id);
                     table.ForeignKey(
-                        name: "FK_LearningMaterial_CreateBy",
-                        column: x => x.create_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                    table.ForeignKey(
                         name: "FK_LearningMaterial_ShelfId",
                         column: x => x.shelf_id,
                         principalTable: "Library_Shelf",
                         principalColumn: "shelf_id");
-                    table.ForeignKey(
-                        name: "FK_Learning_Material_Employee_UpdatedByNavigationEmployeeId",
-                        column: x => x.UpdatedByNavigationEmployeeId,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -602,8 +644,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     shelf_id = table.Column<int>(type: "int", nullable: true),
                     code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -614,11 +658,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.book_edition_id,
                         principalTable: "Book_Edition",
                         principalColumn: "book_edition_id");
-                    table.ForeignKey(
-                        name: "FK_BookEditionCopy_ShelfId",
-                        column: x => x.shelf_id,
-                        principalTable: "Library_Shelf",
-                        principalColumn: "shelf_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -639,39 +678,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.book_edition_id,
                         principalTable: "Book_Edition",
                         principalColumn: "book_edition_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Book_Resource",
-                columns: table => new
-                {
-                    resource_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    book_edition_id = table.Column<int>(type: "int", nullable: false),
-                    resource_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    resource_url = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
-                    resource_size = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    file_format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    provider = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    provider_public_id = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    provider_metadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BookResource_BookResourceId", x => x.resource_id);
-                    table.ForeignKey(
-                        name: "FK_BookResource_BookEditionId",
-                        column: x => x.book_edition_id,
-                        principalTable: "Book_Edition",
-                        principalColumn: "book_edition_id");
-                    table.ForeignKey(
-                        name: "FK_BookResource_CreatedBy",
-                        column: x => x.created_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -808,8 +814,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_edition_copy_id = table.Column<int>(type: "int", nullable: false),
                     condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    change_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    changed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -819,11 +827,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.book_edition_copy_id,
                         principalTable: "Book_Edition_Copy",
                         principalColumn: "book_edition_copy_id");
-                    table.ForeignKey(
-                        name: "FK_ConditionHistory_ChangedBy",
-                        column: x => x.changed_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -925,16 +928,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Book_create_by",
-                table: "Book",
-                column: "create_by");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Book_updated_by",
-                table: "Book",
-                column: "updated_by");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Book_Category_book_id",
                 table: "Book_Category",
                 column: "book_id");
@@ -950,9 +943,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "book_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Book_Edition_create_by",
+                name: "IX_Book_Edition_ShelfId",
                 table: "Book_Edition",
-                column: "create_by");
+                column: "ShelfId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Book_Edition_Author_author_id",
@@ -970,19 +963,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "book_edition_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Book_Edition_Copy_shelf_id",
-                table: "Book_Edition_Copy",
-                column: "shelf_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Book_Resource_book_edition_id",
+                name: "IX_Book_Resource_book_id",
                 table: "Book_Resource",
-                column: "book_edition_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Book_Resource_created_by",
-                table: "Book_Resource",
-                column: "created_by");
+                column: "book_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Book_Review_book_edition_id",
@@ -1045,11 +1028,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "book_edition_copy_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Copy_Condition_History_changed_by",
-                table: "Copy_Condition_History",
-                column: "changed_by");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Employee_role_id",
                 table: "Employee",
                 column: "role_id");
@@ -1070,19 +1048,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "fine_policy_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Learning_Material_create_by",
-                table: "Learning_Material",
-                column: "create_by");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Learning_Material_shelf_id",
                 table: "Learning_Material",
                 column: "shelf_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Learning_Material_UpdatedByNavigationEmployeeId",
-                table: "Learning_Material",
-                column: "UpdatedByNavigationEmployeeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Library_Path_from_zone_id",
@@ -1175,6 +1143,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Audit_Trail");
+
+            migrationBuilder.DropTable(
                 name: "Book_Category");
 
             migrationBuilder.DropTable(
@@ -1238,6 +1209,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "System_Permission");
 
             migrationBuilder.DropTable(
+                name: "Employee");
+
+            migrationBuilder.DropTable(
                 name: "Borrow_Request");
 
             migrationBuilder.DropTable(
@@ -1253,22 +1227,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Book_Edition");
 
             migrationBuilder.DropTable(
-                name: "Library_Shelf");
+                name: "System_Role");
 
             migrationBuilder.DropTable(
                 name: "Book");
 
             migrationBuilder.DropTable(
+                name: "Library_Shelf");
+
+            migrationBuilder.DropTable(
                 name: "Library_Section");
 
             migrationBuilder.DropTable(
-                name: "Employee");
-
-            migrationBuilder.DropTable(
                 name: "Library_Zone");
-
-            migrationBuilder.DropTable(
-                name: "System_Role");
 
             migrationBuilder.DropTable(
                 name: "Library_Floor");

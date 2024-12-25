@@ -7,5 +7,5 @@ public enum BookResourceType
     [Description("Sách điện tử")]
     Ebook,
     [Description("Sách nói")]
-    Audio
+    AudioBook
 }

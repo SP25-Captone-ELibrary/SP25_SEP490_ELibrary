@@ -1,7 +1,7 @@
 using FPTU_ELibrary.Application.Dtos.Authors;
 using Newtonsoft.Json;
 
-namespace FPTU_ELibrary.Application.Dtos.Books;
+namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
 public class BookEditionAuthorDto
 {

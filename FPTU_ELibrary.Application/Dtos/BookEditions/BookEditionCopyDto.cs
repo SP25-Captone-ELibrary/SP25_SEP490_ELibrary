@@ -1,8 +1,7 @@
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Borrows;
-using FPTU_ELibrary.Application.Dtos.Locations;
 
-namespace FPTU_ELibrary.Application.Dtos.Books;
+namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
 public class BookEditionCopyDto
 {
@@ -13,21 +12,23 @@ public class BookEditionCopyDto
     public int BookEditionId { get; set; }
     
     // Locate in which shelf
-    public int? ShelfId { get; set; }
+    // public int? ShelfId { get; set; }
 
     // Copy code and its status
     public string? Code { get; set; }
     public string Status { get; set; } = null!;
     
     // Creation and update datetime
-    public DateTime CreateDate { get; set; }
-    public DateTime? UpdateDate { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
 
     // Mark as delete
     public bool IsDeleted { get; set; }
 
     // Mapping entities
-    public LibraryShelfDto? Shelf { get; set; }
+    // public LibraryShelfDto? Shelf { get; set; }
 
     [JsonIgnore]
     public BookEditionDto BookEdition { get; set; } = null!;

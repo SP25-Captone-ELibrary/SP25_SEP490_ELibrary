@@ -22,6 +22,62 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AuditTrail", b =>
+                {
+                    b.Property<int>("AuditTrailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("audit_trail_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AuditTrailId"));
+
+                    b.Property<string>("ChangedColumns")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("changed_columns");
+
+                    b.Property<DateTime>("DateUtc")
+                        .HasColumnType("datetime")
+                        .HasColumnName("date_utc");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("entity_name");
+
+                    b.Property<string>("NewValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("new_values");
+
+                    b.Property<string>("OldValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnName("old_values");
+
+                    b.Property<string>("TrailType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("trail_type");
+
+                    b.HasKey("AuditTrailId")
+                        .HasName("PK_AuditTrail_AuditTrailId");
+
+                    b.ToTable("Audit_Trail", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Author", b =>
                 {
                     b.Property<int>("AuthorId")
@@ -95,13 +151,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
-                    b.Property<Guid>("CreateBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("create_by");
-
-                    b.Property<DateTime>("CreateDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("create_date");
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
@@ -129,20 +187,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("title");
 
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("updated_by");
-
-                    b.Property<DateTime?>("UpdatedDate")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("updated_date");
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("BookId")
                         .HasName("PK_Book_BookId");
-
-                    b.HasIndex("CreateBy");
-
-                    b.HasIndex("UpdatedBy");
 
                     b.ToTable("Book", (string)null);
                 });
@@ -198,13 +253,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("cover_image");
 
-                    b.Property<Guid>("CreateBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("create_by");
-
-                    b.Property<DateTime>("CreateDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("create_date");
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
 
                     b.Property<int>("EditionNumber")
                         .HasColumnType("int")
@@ -216,10 +273,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("edition_summary");
 
                     b.Property<string>("EditionTitle")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("edition_title");
+
+                    b.Property<decimal>("EstimatedPrice")
+                        .HasColumnType("decimal(10,0)")
+                        .HasColumnName("estimated_price");
 
                     b.Property<string>("Format")
                         .HasMaxLength(50)
@@ -255,16 +315,24 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("publisher");
 
-                    b.Property<DateTime?>("UpdatedDate")
+                    b.Property<int?>("ShelfId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("updated_date");
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("BookEditionId")
                         .HasName("PK_BookEdition_BookEditionId");
 
                     b.HasIndex("BookId");
 
-                    b.HasIndex("CreateBy");
+                    b.HasIndex("ShelfId");
 
                     b.ToTable("Book_Edition", (string)null);
                 });
@@ -314,9 +382,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("code");
 
-                    b.Property<DateTime>("CreateDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("create_date");
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
@@ -332,16 +406,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("status");
 
-                    b.Property<DateTime?>("UpdateDate")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("update_date");
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("BookEditionCopyId")
                         .HasName("PK_BookEditionCopy_BookEditionCopyId");
 
                     b.HasIndex("BookEditionId");
-
-                    b.HasIndex("ShelfId");
 
                     b.ToTable("Book_Edition_Copy", (string)null);
                 });
@@ -383,16 +460,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResourceId"));
 
-                    b.Property<int>("BookEditionId")
+                    b.Property<int>("BookId")
                         .HasColumnType("int")
-                        .HasColumnName("book_edition_id");
+                        .HasColumnName("book_id");
 
-                    b.Property<DateTime>("CreateDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("create_date");
+                        .HasColumnName("created_at");
 
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("created_by");
 
                     b.Property<string>("FileFormat")
@@ -400,6 +479,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("file_format");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Provider")
                         .IsRequired()
@@ -434,16 +519,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("resource_url");
 
-                    b.Property<DateTime?>("UpdateDate")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("update_date");
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("ResourceId")
                         .HasName("PK_BookResource_BookResourceId");
 
-                    b.HasIndex("BookEditionId");
-
-                    b.HasIndex("CreatedBy");
+                    b.HasIndex("BookId");
 
                     b.ToTable("Book_Resource", (string)null);
                 });
@@ -722,26 +810,35 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("book_edition_copy_id");
 
-                    b.Property<DateTime>("ChangeDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("change_date");
-
-                    b.Property<Guid>("ChangedBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("changed_by");
-
                     b.Property<string>("Condition")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("condition");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
+
                     b.HasKey("ConditionHistoryId")
                         .HasName("PK_Book_Condition_History");
 
                     b.HasIndex("BookEditionCopyId");
-
-                    b.HasIndex("ChangedBy");
 
                     b.ToTable("Copy_Condition_History", (string)null);
                 });
@@ -1020,13 +1117,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("condition");
 
-                    b.Property<Guid>("CreateBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("create_by");
-
-                    b.Property<DateTime>("CreateDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("create_date");
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -1065,16 +1164,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("total_quantity");
 
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("updated_by");
-
-                    b.Property<Guid?>("UpdatedByNavigationEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("UpdatedDate")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
-                        .HasColumnName("updated_date");
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.Property<DateOnly?>("WarrantyPeriod")
                         .HasColumnType("date")
@@ -1083,11 +1180,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasKey("LearningMaterialId")
                         .HasName("PK_LearningMaterial_LearningMaterialId");
 
-                    b.HasIndex("CreateBy");
-
                     b.HasIndex("ShelfId");
-
-                    b.HasIndex("UpdatedByNavigationEmployeeId");
 
                     b.ToTable("Learning_Material", (string)null);
                 });
@@ -1487,6 +1580,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RolePermissionId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
                     b.Property<int>("FeatureId")
                         .HasColumnType("int")
                         .HasColumnName("feature_id");
@@ -1498,6 +1601,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("RoleId")
                         .HasColumnType("int")
                         .HasColumnName("role_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("RolePermissionId")
                         .HasName("PK_RolePermission_RolePermissionId");
@@ -1640,6 +1752,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("EnglishName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1651,6 +1773,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("role_type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.Property<string>("VietnameseName")
                         .IsRequired()
@@ -1825,35 +1956,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("User_Favorites", (string)null);
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Book", b =>
-                {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreateByNavigation")
-                        .WithMany("BookCreateByNavigations")
-                        .HasForeignKey("CreateBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_Book_CreateBy");
-
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "UpdatedByNavigation")
-                        .WithMany("BookUpdatedByNavigations")
-                        .HasForeignKey("UpdatedBy")
-                        .HasConstraintName("FK_Book_UpdateBy");
-
-                    b.Navigation("CreateByNavigation");
-
-                    b.Navigation("UpdatedByNavigation");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookCategory", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Book", "Book")
                         .WithMany("BookCategories")
                         .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BookCategory_BookId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Category", "Category")
                         .WithMany("BookCategories")
                         .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BookCategory_CategoryId");
 
@@ -1870,15 +1985,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BookEdition_Book");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreateByNavigation")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryShelf", "Shelf")
                         .WithMany("BookEditions")
-                        .HasForeignKey("CreateBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_BookEdition_CreateBy");
+                        .HasForeignKey("ShelfId")
+                        .HasConstraintName("FK_BookEdition_ShelfId");
 
                     b.Navigation("Book");
 
-                    b.Navigation("CreateByNavigation");
+                    b.Navigation("Shelf");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionAuthor", b =>
@@ -1908,14 +2022,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BookEditionCopy_BookEditionId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryShelf", "Shelf")
-                        .WithMany("BookEditionCopies")
-                        .HasForeignKey("ShelfId")
-                        .HasConstraintName("FK_BookEditionCopy_ShelfId");
-
                     b.Navigation("BookEdition");
-
-                    b.Navigation("Shelf");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEditionInventory", b =>
@@ -1931,21 +2038,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookResource", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.BookEdition", "BookEdition")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Book", "Book")
                         .WithMany("BookResources")
-                        .HasForeignKey("BookEditionId")
+                        .HasForeignKey("BookId")
                         .IsRequired()
-                        .HasConstraintName("FK_BookResource_BookEditionId");
+                        .HasConstraintName("FK_BookResource_BookId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreatedByNavigation")
-                        .WithMany("BookResources")
-                        .HasForeignKey("CreatedBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_BookResource_CreatedBy");
-
-                    b.Navigation("BookEdition");
-
-                    b.Navigation("CreatedByNavigation");
+                    b.Navigation("Book");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookReview", b =>
@@ -2045,15 +2144,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_ConditionHistory_BookEditionCopyId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "ChangedByNavigation")
-                        .WithMany("CopyConditionHistories")
-                        .HasForeignKey("ChangedBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_ConditionHistory_ChangedBy");
-
                     b.Navigation("BookEditionCopy");
-
-                    b.Navigation("ChangedByNavigation");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
@@ -2097,26 +2188,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LearningMaterial", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreateByNavigation")
-                        .WithMany("LearningMaterialCreateByNavigations")
-                        .HasForeignKey("CreateBy")
-                        .IsRequired()
-                        .HasConstraintName("FK_LearningMaterial_CreateBy");
-
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryShelf", "Shelf")
                         .WithMany("LearningMaterials")
                         .HasForeignKey("ShelfId")
                         .HasConstraintName("FK_LearningMaterial_ShelfId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "UpdatedByNavigation")
-                        .WithMany()
-                        .HasForeignKey("UpdatedByNavigationEmployeeId");
-
-                    b.Navigation("CreateByNavigation");
-
                     b.Navigation("Shelf");
-
-                    b.Navigation("UpdatedByNavigation");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryPath", b =>
@@ -2301,6 +2378,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("BookCategories");
 
                     b.Navigation("BookEditions");
+
+                    b.Navigation("BookResources");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BookEdition", b =>
@@ -2310,8 +2389,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("BookEditionCopies");
 
                     b.Navigation("BookEditionInventory");
-
-                    b.Navigation("BookResources");
 
                     b.Navigation("BookReviews");
 
@@ -2348,21 +2425,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
-                    b.Navigation("BookCreateByNavigations");
-
-                    b.Navigation("BookEditions");
-
-                    b.Navigation("BookResources");
-
-                    b.Navigation("BookUpdatedByNavigations");
-
                     b.Navigation("BorrowRecords");
 
-                    b.Navigation("CopyConditionHistories");
-
                     b.Navigation("FineCreateByNavigations");
-
-                    b.Navigation("LearningMaterialCreateByNavigations");
 
                     b.Navigation("RefreshTokens");
                 });
@@ -2391,7 +2456,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryShelf", b =>
                 {
-                    b.Navigation("BookEditionCopies");
+                    b.Navigation("BookEditions");
 
                     b.Navigation("LearningMaterials");
                 });

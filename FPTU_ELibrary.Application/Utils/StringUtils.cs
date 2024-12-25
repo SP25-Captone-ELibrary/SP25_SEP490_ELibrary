@@ -168,5 +168,32 @@ namespace FPTU_ELibrary.Application.Utils
 			return new string(chars);
 		}
 		
+		// Validate numeric & datetime
+		public static bool IsNumeric(string text) => int.TryParse(text, out _);  
+		public static bool IsDateTime(string text) => DateTime.TryParse(text, out _);
+		
+		// Validate Http/Https Url
+		public static bool IsValidUrl(string url)
+		{
+			Uri? uriResult;
+			return Uri.TryCreate(url, UriKind.Absolute, out uriResult) 
+			              && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+		}
+		
+		// Get Public Id from Url 
+		public static string? GetPublicIdFromUrl(string url)
+		{
+			// Check whether URL is valid
+			if (!IsValidUrl(url)) return null;
+	        
+            var lastSlashIndex = url.LastIndexOf('/');
+            var lastDotIndex = url.LastIndexOf('.');
+			
+            // Check if both slash and dot exist in the URL
+            if (lastSlashIndex == -1 || lastDotIndex == -1 || lastDotIndex < lastSlashIndex) return null;
+    
+            // Extract the public ID
+            return url.Substring(lastSlashIndex + 1, lastDotIndex - lastSlashIndex - 1);
+        }
 	}
 }

@@ -13,11 +13,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.ToTable("Book_Resource");
 
             builder.Property(e => e.ResourceId).HasColumnName("resource_id");
-            builder.Property(e => e.BookEditionId).HasColumnName("book_edition_id");
-            builder.Property(e => e.CreateDate)
-                .HasColumnType("datetime")
-                .HasColumnName("create_date");
-            builder.Property(e => e.CreatedBy).HasColumnName("created_by");
             builder.Property(e => e.FileFormat)
                 .HasMaxLength(50)
                 .HasColumnName("file_format");
@@ -39,19 +34,55 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.ResourceUrl)
                 .HasMaxLength(2048)
                 .HasColumnName("resource_url");
-            builder.Property(e => e.UpdateDate)
+
+            #region Update at 23/12/2024 by Le Xuan Phuoc
+            // builder.Property(e => e.BookEditionId).HasColumnName("book_edition_id");
+            // builder.HasOne(d => d.BookEdition).WithMany(p => p.BookResources)
+            //     .HasForeignKey(d => d.BookEditionId)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_BookResource_BookEditionId");
+            
+            builder.Property(e => e.BookId).HasColumnName("book_id");
+            builder.HasOne(d => d.Book).WithMany(p => p.BookResources)
+                .HasForeignKey(d => d.BookId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_BookResource_BookId");
+            #endregion
+
+            #region Update at 24/12/2024 by Le Xuan Phuoc
+            // builder.Property(e => e.CreateDate)
+            //     .HasColumnType("datetime")
+            //     .HasColumnName("create_date");
+            // builder.Property(e => e.CreatedBy).HasColumnName("created_by");
+            // builder.Property(e => e.UpdateDate)
+            //     .HasColumnType("datetime")
+            //     .HasColumnName("update_date");
+            //
+            // builder.HasOne(d => d.CreatedByNavigation).WithMany(p => p.BookResources)
+            //     .HasForeignKey(d => d.CreatedBy)
+            //     .OnDelete(DeleteBehavior.ClientSetNull)
+            //     .HasConstraintName("FK_BookResource_CreatedBy");
+                
+            builder.Property(x => x.CreatedAt)
+                .IsRequired()
                 .HasColumnType("datetime")
-                .HasColumnName("update_date");
+                .HasColumnName("created_at");
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            builder.Property(x => x.CreatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("created_by");
+            builder.Property(x => x.UpdatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("updated_by");
+            #endregion
 
-            builder.HasOne(d => d.BookEdition).WithMany(p => p.BookResources)
-                .HasForeignKey(d => d.BookEditionId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_BookResource_BookEditionId");
-
-            builder.HasOne(d => d.CreatedByNavigation).WithMany(p => p.BookResources)
-                .HasForeignKey(d => d.CreatedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_BookResource_CreatedBy");
+            #region Update at 25/12/2024 by Le Xuan Phuoc
+            builder.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            #endregion
         }
     }
 }

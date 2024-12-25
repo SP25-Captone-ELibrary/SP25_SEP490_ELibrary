@@ -1,6 +1,8 @@
-﻿namespace FPTU_ELibrary.Domain.Entities;
+﻿using FPTU_ELibrary.Domain.Interfaces;
 
-public class Book
+namespace FPTU_ELibrary.Domain.Entities;
+
+public class Book : IAuditableEntity
 {
     // Key
     public int BookId { get; set; }
@@ -15,14 +17,13 @@ public class Book
     public bool IsDraft { get; set; }
         
     // Datetime and employee who create or update the book
-    public DateTime CreateDate { get; set; }
-    public Guid CreateBy { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public Guid? UpdatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; } 
 
     // Mapping entities
     public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
     public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
-    public Employee CreateByNavigation { get; set; } = null!;
-    public Employee? UpdatedByNavigation { get; set; }
+    public ICollection<BookResource> BookResources { get; set; } = new List<BookResource>();
 }

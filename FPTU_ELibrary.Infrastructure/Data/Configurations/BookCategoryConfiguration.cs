@@ -19,12 +19,10 @@ public class BookCategoryConfiguration : IEntityTypeConfiguration<BookCategory>
 
         builder.HasOne(d => d.Book).WithMany(p => p.BookCategories)
             .HasForeignKey(d => d.BookId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_BookCategory_BookId");
         
         builder.HasOne(d => d.Category).WithMany(p => p.BookCategories)
             .HasForeignKey(d => d.CategoryId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_BookCategory_CategoryId");
         
         #endregion

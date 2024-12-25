@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Borrows;
-using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
 
 namespace FPTU_ELibrary.Application.Dtos.Books;
@@ -29,20 +28,14 @@ public class LearningMaterialDto
     public DateOnly? WarrantyPeriod { get; set; }
 
     // Creation and update datetime, employee
-    public DateTime CreateDate { get; set; }
-    public Guid CreateBy { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public Guid? UpdatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
 
     // Mapping entities
     public LibraryShelfDto? Shelf { get; set; }
 
-    [JsonIgnore]
-    public EmployeeDto CreateByNavigation { get; set; } = null!;
-
-    [JsonIgnore]
-    public EmployeeDto? UpdatedByNavigation { get; set; }
-    
     [JsonIgnore]
     public ICollection<BorrowRecordDto> BorrowRecords { get; set; } = new List<BorrowRecordDto>();
 

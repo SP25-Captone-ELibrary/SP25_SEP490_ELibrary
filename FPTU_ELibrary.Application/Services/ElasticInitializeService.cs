@@ -57,9 +57,9 @@ namespace FPTU_ELibrary.Application.Services
 							.Boolean(b => b.Name(e => e.IsDeleted))
 							.Boolean(b => b.Name(e => e.IsDraft))
 							.Boolean(b => b.Name(e => e.CanBorrow))
-							.Date(d => d.Name(e => e.CreateDate))
-							.Date(d => d.Name(e => e.UpdatedDate))
-							.Keyword(k => k.Name(e => e.CreateBy))
+							.Date(d => d.Name(e => e.CreatedAt))
+							.Date(d => d.Name(e => e.UpdatedAt))
+							.Keyword(k => k.Name(e => e.CreatedBy))
 							.Keyword(k => k.Name(e => e.UpdatedBy))
 							// Mapping book category
 							.Nested<ElasticCategory>(o => o
@@ -87,9 +87,9 @@ namespace FPTU_ELibrary.Application.Services
 									.Text(t => t.Name(ee => ee.Publisher))
 									.Keyword(k => k.Name(ee => ee.Isbn))
 									.Boolean(b => b.Name(ee => ee.IsDeleted))
-									.Date(d => d.Name(ee => ee.CreateDate))
-									.Date(d => d.Name(ee => ee.UpdatedDate))
-									.Keyword(k => k.Name(ee => ee.CreateBy))
+									.Date(d => d.Name(ee => ee.CreatedAt))
+									.Date(d => d.Name(ee => ee.UpdatedAt))
+									.Keyword(k => k.Name(ee => ee.CreatedBy))
 									// Mapping author as nested documents
 									.Nested<ElasticAuthor>(n2 => n2
 										.Name(e => e.Authors)

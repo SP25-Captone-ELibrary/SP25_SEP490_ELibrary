@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using Azure.Identity;
 using CloudinaryDotNet;
 using FluentValidation;
 using FPTU_ELibrary.Application.HealthChecks;
+using FPTU_ELibrary.Application.Services;
 using Mapster;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
@@ -29,6 +31,8 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddEndpointsApiExplorer();
 			// Add swagger
 			services.AddSwaggerGen();
+			// Add HttpContextAccessor
+			services.AddHttpContextAccessor();
 
 			return services;
         }
@@ -67,7 +71,9 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
 			// Configure CloudinarySettings
 			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-				
+			// Configure AzureSettings
+			services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
+			
 			#region Development stage
 			if (env.IsDevelopment()) // Is Development env
 			{

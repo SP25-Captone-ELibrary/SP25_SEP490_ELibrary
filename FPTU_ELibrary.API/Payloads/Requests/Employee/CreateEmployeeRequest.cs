@@ -13,5 +13,6 @@ public class CreateEmployeeRequest
     public string Address { get; set; } = null!;
     public Gender Gender { get; set; }
     public DateTime HireDate { get; set; }
+    public DateTime? TerminationDate { get; set; }
     public int RoleId { get; set; }
 }

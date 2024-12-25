@@ -39,6 +39,7 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
                 ? "Invalid date of birth" 
                 : "Ngày sinh không hợp lệ");
         // Date of death
+        // TODO: Add constraint with DOB
         RuleFor(u => u.DateOfDeath)
             .Must(dod => !dod.HasValue || dod.Value.Date < DateTime.Now.Date)
             .WithMessage(isEng 

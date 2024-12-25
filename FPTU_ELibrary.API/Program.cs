@@ -33,15 +33,15 @@ builder.Services
     .ConfigureRedis(builder.Configuration, builder.Environment)
     // Configure Cloudinary
     .ConfigureCloudinary(builder.Configuration)
-    // Configure healthcheck 
+    // Configure HealthCheck 
     .ConfigureHealthCheckServices(builder.Configuration);
-
+    
 builder.Services
 	// Configure for application layer
 	.AddApplication(builder.Configuration)
 	// Configure for infrastructure layer
 	.AddInfrastructure(builder.Configuration);
-
+builder.Services.AddHttpClient();
 builder.Services
     // Add swagger
     .AddSwagger()

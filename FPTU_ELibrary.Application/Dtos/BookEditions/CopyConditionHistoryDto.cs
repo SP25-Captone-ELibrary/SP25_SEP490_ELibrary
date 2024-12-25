@@ -1,6 +1,4 @@
-using FPTU_ELibrary.Application.Dtos.Employees;
-
-namespace FPTU_ELibrary.Application.Dtos.Books;
+namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
 public class CopyConditionHistoryDto
 {
@@ -12,10 +10,13 @@ public class CopyConditionHistoryDto
 
     // Record management properties
     public string Condition { get; set; } = null!;
-    public DateTime ChangeDate { get; set; }
-    public Guid ChangedBy { get; set; }
+    
+    // Creation and update datetime
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
 
     // Mapping entities
     public BookEditionCopyDto BookEditionCopy { get; set; } = null!;
-    public EmployeeDto ChangedByNavigation { get; set; } = null!;
 }

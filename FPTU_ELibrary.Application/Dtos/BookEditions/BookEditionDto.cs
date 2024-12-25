@@ -1,7 +1,9 @@
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using Newtonsoft.Json;
 
-namespace FPTU_ELibrary.Application.Dtos.Books;
+namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
 public class BookEditionDto
 {
@@ -12,7 +14,8 @@ public class BookEditionDto
     public int BookId { get; set; }
 
     // Edition detail information
-    public string EditionTitle { get; set; } = null!;
+    public string? EditionTitle { get; set; }
+    public string? EditionSummary { get; set; }
     public int EditionNumber { get; set; }
     public int PublicationYear { get; set; }
     public int PageCount { get; set; }
@@ -22,21 +25,26 @@ public class BookEditionDto
     public string? Publisher { get; set; }
     public string Isbn { get; set; } = null!;
     public bool IsDeleted { get; set; }
+    public bool CanBorrow { get; set; }
+    public decimal EstimatedPrice { get; set; }
+    
+    // Locate in which shelf
+    public int? ShelfId { get; set; }
 
     // Creation, update datetime and employee is charge of 
-    public DateTime CreateDate { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public Guid CreateBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
 
     // Mapping entities
     [JsonIgnore]
     public BookDto Book { get; set; } = null!;
+    public LibraryShelfDto? Shelf { get; set; }
     public BookEditionInventoryDto? BookEditionInventory { get; set; }
-    public EmployeeDto CreateByNavigation { get; set; } = null!;
 
     public ICollection<BookEditionAuthorDto> BookEditionAuthors { get; set; } = new List<BookEditionAuthorDto>();
-    // public ICollection<BookEditionCopy> BookEditionCopies { get; set; } = new List<BookEditionCopy>();
-    // public ICollection<BookResource> BookResources { get; set; } = new List<BookResource>();
+    public ICollection<BookEditionCopyDto> BookEditionCopies { get; set; } = new List<BookEditionCopyDto>();
     public ICollection<BookReviewDto> BookReviews { get; set; } = new List<BookReviewDto>();
     
     // [JsonIgnore]

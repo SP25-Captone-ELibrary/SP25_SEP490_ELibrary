@@ -1,5 +1,4 @@
-﻿using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Dtos.Books;
+﻿using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Responses;
 using Nest;
@@ -16,10 +15,9 @@ namespace FPTU_ELibrary.API.Mappings
 				Summary = booKDto.Summary,
 				IsDeleted = booKDto.IsDeleted,
 				IsDraft = booKDto.IsDraft,
-				CanBorrow = booKDto.CanBorrow,
-				CreateDate = booKDto.CreateDate,
-				CreateBy = booKDto.CreateBy,
-				UpdatedDate = booKDto.UpdatedDate,
+				CreatedAt = booKDto.CreatedAt,
+				CreatedBy = booKDto.CreatedBy,
+				UpdatedAt = booKDto.UpdatedAt,
 				UpdatedBy = booKDto.UpdatedBy,
 				Categories = booKDto.BookCategories.Select(bc => new ElasticCategory()
 				{
@@ -42,10 +40,11 @@ namespace FPTU_ELibrary.API.Mappings
 					Publisher = be.Publisher,
 					Isbn = be.Isbn,
 					IsDeleted = be.IsDeleted,
-					CreateDate = be.CreateDate,
-					UpdatedDate = be.UpdatedDate,
-					CreateBy = be.CreateBy,
-					Authors = booKDto.BookAuthors.Select(ba => new ElasticAuthor
+					CanBorrow = be.CanBorrow,
+					CreatedAt = be.CreatedAt,
+					UpdatedAt = be.UpdatedAt,
+					CreatedBy = be.CreatedBy,
+					Authors = be.BookEditionAuthors.Select(ba => new ElasticAuthor
 					{
 						AuthorId = ba.Author.AuthorId,
 						AuthorCode = ba.Author.AuthorCode,

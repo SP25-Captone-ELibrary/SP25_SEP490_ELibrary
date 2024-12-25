@@ -16,6 +16,5 @@ public class BookCategoryDto
     [JsonIgnore]
     public BookDto Book { get; set; } = null!;
     
-    [JsonIgnore]
     public CategoryDto Category { get; set; } = null!;
 }

@@ -103,7 +103,8 @@ public static class UserPermissionTableDtoExtensions
                         PermissionId = rp.PermissionId,
                         RowId = isRoleVerticalLayout ? rp.RoleId : rp.FeatureId,
                         ColId = isRoleVerticalLayout ? rp.FeatureId : rp.RoleId,
-                        CellContent = rp.Permission.VietnameseName
+                        CellContent = rp.Permission.VietnameseName,
+                        IsModifiable = rolePermissionFeatureId != rp.FeatureId
                     }));
                     rows.Add(singleRow);
                 }

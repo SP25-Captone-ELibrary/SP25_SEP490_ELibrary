@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;

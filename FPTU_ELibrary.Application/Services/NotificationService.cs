@@ -195,6 +195,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 roleId
             );
 
+            // Count total actual items in DB
+            var totalActualItem = await _unitOfWork.Repository<Notification, int>().CountAsync();
             var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
             var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
 
@@ -203,7 +205,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
                     new PaginatedResultDto<NotificationDto>( new List<NotificationDto>(),
-                        notificationSpec.PageIndex, notificationSpec.PageSize, totalPage)
+                        notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalActualItem)
                 );
             }
 
@@ -219,7 +221,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             {
                 var paginationResultDto = new PaginatedResultDto<NotificationDto>(
                     _mapper.Map<IEnumerable<NotificationDto>>(entities),
-                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage);
+                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalActualItem);
 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);

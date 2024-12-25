@@ -23,16 +23,16 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public bool CanBorrow { get; set; }
 
         [Date]
-        public DateTime CreateDate { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         [Date]
-        public DateTime? UpdatedDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        [Keyword] 
+        public string CreatedBy { get; set; } = null!;
 
         [Keyword]
-        public Guid CreateBy { get; set; }
-
-        [Keyword]
-        public Guid? UpdatedBy { get; set; }
+        public string? UpdatedBy { get; set; }
 
         [Nested]
         public List<ElasticCategory> Categories { get; set; } = null!;

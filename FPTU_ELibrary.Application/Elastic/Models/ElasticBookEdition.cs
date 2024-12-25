@@ -16,7 +16,10 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public int BookId { get; set; }
 
         [Text]
-        public string EditionTitle { get; set; } = null!;
+        public string? EditionTitle { get; set; } 
+       
+        [Text] 
+        public string EditionSummary { get; set; } = null!;
 
         [Number(NumberType.Integer)]
         public int EditionNumber { get; set; }
@@ -45,14 +48,20 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Boolean]
         public bool IsDeleted { get; set; }
 
+        [Boolean]
+        public bool CanBorrow { get; set; }
+        
         [Date]
-        public DateTime CreateDate { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         [Date]
-        public DateTime? UpdatedDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+
+        [Keyword] 
+        public string CreatedBy { get; set; } = null!;
 
         [Keyword]
-        public Guid CreateBy { get; set; }
+        public string? UpdatedBy { get; set; }
         
         [Nested]
         public List<ElasticAuthor> Authors { get; set; } = null!;
