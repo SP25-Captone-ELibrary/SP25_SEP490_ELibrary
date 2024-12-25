@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class LearningMaterial
+public class LearningMaterial : IAuditableEntity
 {
     // Key
     public int LearningMaterialId { get; set; }
@@ -28,20 +27,14 @@ public class LearningMaterial
     public DateOnly? WarrantyPeriod { get; set; }
 
     // Creation and update datetime, employee
-    public DateTime CreateDate { get; set; }
-    public Guid CreateBy { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public Guid? UpdatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
 
     // Mapping entities
     public LibraryShelf? Shelf { get; set; }
 
-    [JsonIgnore]
-    public Employee CreateByNavigation { get; set; } = null!;
-
-    [JsonIgnore]
-    public Employee? UpdatedByNavigation { get; set; }
-    
     [JsonIgnore]
     public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
 

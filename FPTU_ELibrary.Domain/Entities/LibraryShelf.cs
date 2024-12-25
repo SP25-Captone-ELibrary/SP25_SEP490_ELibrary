@@ -21,7 +21,8 @@ public class LibraryShelf
     public bool IsDeleted { get; set; }
 
     [JsonIgnore]
-    public ICollection<BookEditionCopy> BookEditionCopies { get; set; } = new List<BookEditionCopy>();
+    // public ICollection<BookEditionCopy> BookEditionCopies { get; set; } = new List<BookEditionCopy>();
+    public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
 
     [JsonIgnore]
     public ICollection<LearningMaterial> LearningMaterials { get; set; } = new List<LearningMaterial>();

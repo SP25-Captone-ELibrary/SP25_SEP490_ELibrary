@@ -22,7 +22,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             #region Query, Filtering, Order Data
             // Filtering criteria
             public Expression<Func<TEntity, bool>> Criteria { get; } = null!;
-        
+            
             // Additional filters
             public List<Expression<Func<TEntity, bool>>> Filters { get; } = new();
             
@@ -35,6 +35,7 @@ namespace FPTU_ELibrary.Domain.Specifications
         
             // Grouping
             public Expression<Func<TEntity, object>> GroupBy { get; private set; } = null!;
+            
             #endregion
         
             #region Pagination

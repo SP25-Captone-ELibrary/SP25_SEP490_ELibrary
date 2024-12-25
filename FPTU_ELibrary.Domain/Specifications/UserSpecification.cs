@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using FPTU_ELibrary.Domain.Common.Enums;
-using Microsoft.EntityFrameworkCore.Query;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +80,7 @@ namespace FPTU_ELibrary.Domain.Specifications
                                x.ModifiedDate.Value.Date >= userSpecParams.ModifiedDateRange[0].Date 
                                && x.ModifiedDate.Value.Date <= userSpecParams.ModifiedDateRange[1].Date);       
             }
+            
             // Apply Sorting
             if (!string.IsNullOrEmpty(userSpecParams.Sort))
             {

@@ -410,9 +410,11 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 return new ServiceResult(ResultCodeConst.SYS_Fail0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
-            //count total records
+            // count total actual items
+            var totalActualItem = await _unitOfWork.Repository<FinePolicy, int>().CountAsync();
+            // count total records
             var totalRecords = await _unitOfWork.Repository<FinePolicy, int>().CountAsync(fineSpec);
-            //count total pages
+            // count total pages
             var totalPage = (int)Math.Ceiling((double)totalRecords / fineSpec.PageSize);
             
             if (fineSpec.PageIndex > totalPage 
@@ -430,7 +432,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
 					
                 // Pagination result 
                 var paginationResultDto = new PaginatedResultDto<FinePolicyDto>(_mapper.Map<IEnumerable<FinePolicyDto>>(entities),
-                    fineSpec.PageIndex, fineSpec.PageSize, totalPage);
+                    fineSpec.PageIndex, fineSpec.PageSize, totalPage, totalActualItem);
 					
                 // Response with pagination 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002, 

@@ -10,7 +10,6 @@ namespace FPTU_ELibrary.Application.Utils;
 //      This class is to provide procedures to handle two-factor authentication feature
 public class TwoFactorAuthUtils
 {
-    private readonly AppSettings _appSettings = null!;
     private static byte[] _key = null!;
     private static byte[] _iv = null!;
     

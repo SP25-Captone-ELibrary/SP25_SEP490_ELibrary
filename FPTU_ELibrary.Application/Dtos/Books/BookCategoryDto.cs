@@ -1,15 +1,20 @@
-using FPTU_ELibrary.Application.Dtos.Books;
+using System.Text.Json.Serialization;
 
-namespace FPTU_ELibrary.Application.Dtos;
+namespace FPTU_ELibrary.Application.Dtos.Books;
 
 public class BookCategoryDto
 {
     // Key
+    public int BookCategoryId { get; set; }
+    
+    // BookId
+    public int BookId { get; set; }
+    // CategoryId
     public int CategoryId { get; set; }
-    // Category detail
-    public string EnglishName { get; set; } = null!;
-    public string VietnameseName { get; set; } = null!;
-    public string? Description { get; set; }
-    public ICollection<BookDto> BookDtos { get; set; } = new List<BookDto>();
-
+    
+    // Mapping fields
+    [JsonIgnore]
+    public BookDto Book { get; set; } = null!;
+    
+    public CategoryDto Category { get; set; } = null!;
 }

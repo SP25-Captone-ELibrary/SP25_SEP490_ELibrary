@@ -196,7 +196,7 @@ public static class DistributedCacheExtensions
             var key = ConvertKeyToString(anyKey);
             await cache.SetStringAsync(key, JsonConvert.SerializeObject(value));
         }
-        catch (RedisConnectionException ex)
+        catch (RedisConnectionException)
         {
             logger.Error("Failed to connect with memory cache server, please re-try");
         }

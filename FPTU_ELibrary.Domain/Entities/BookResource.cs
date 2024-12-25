@@ -1,14 +1,15 @@
 ﻿using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class BookResource
+public class BookResource : IAuditableEntity
 {
     // Key
     public int ResourceId { get; set; }
 
-    // Resource of which edition
-    public int BookEditionId { get; set; }
+    // Resource of which book
+    public int BookId { get; set; }
 
     // Resource detail information
     public string ResourceType { get; set; } = null!;
@@ -18,15 +19,15 @@ public class BookResource
     public string Provider { get; set; } = null!;
     public string ProviderPublicId { get; set; } = null!;
     public string? ProviderMetadata { get; set; }
+    public bool IsDeleted { get; set; }
     
     // Creation, update datetime and employee who in charge of creation
-    public DateTime CreateDate { get; set; }
-    public DateTime? UpdateDate { get; set; }
-    public Guid CreatedBy { get; set; }
-
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
-    public BookEdition BookEdition { get; set; } = null!;
-
-    public Employee CreatedByNavigation { get; set; } = null!;
+    public Book Book { get; set; } = null!;
 }

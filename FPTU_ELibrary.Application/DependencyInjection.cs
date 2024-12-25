@@ -13,8 +13,10 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
@@ -42,21 +44,25 @@ namespace FPTU_ELibrary.Application
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
 			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
+			services.AddScoped<IAuthorService<AuthorDto>, AuthorService>();
 			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IBookService<BookDto>, BookService>();
+			services.AddScoped<IBookEditionService<BookEditionDto>, BookEditionService>();
+			services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
+			services.AddScoped<IBookResourceService<BookResourceDto>, BookResourceService>();
+            services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
-			services.AddScoped<IUserService<UserDto>, UserService>();
-			services.AddScoped<IAuthorService<AuthorDto>, AuthorService>();
-			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
+            services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
+            services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
-			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();	
 			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
+			services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();	
+            services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
+			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();	
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
-            services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
-            services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
-            services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
-		
+            services.AddScoped<IUserService<UserDto>, UserService>();
+            
             services
                 .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary

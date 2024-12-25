@@ -22,6 +22,22 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.VietnameseName)
                 .HasMaxLength(100)
                 .HasColumnName("vietnamese_name");
+
+            #region Update at 24/12/2024 by Le Xuan Phuoc
+            builder.Property(x => x.CreatedAt)
+                .IsRequired()
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            builder.Property(x => x.CreatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("created_by");
+            builder.Property(x => x.UpdatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("updated_by");
+            #endregion
         }
     }
 }

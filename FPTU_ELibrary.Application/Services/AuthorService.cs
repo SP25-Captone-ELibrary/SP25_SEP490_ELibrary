@@ -5,6 +5,7 @@ using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -107,6 +108,8 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
 			}				
 			
+			// Count total actual items in DB
+			var totalActualItem = await _unitOfWork.Repository<Author, int>().CountAsync();
 			// Count total authors
 			var totalAuthorWithSpec = await _unitOfWork.Repository<Author, int>().CountAsync(authorSpec);
 			// Count total page
@@ -135,7 +138,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				
 				// Pagination result 
 				var paginationResultDto = new PaginatedResultDto<AuthorDto>(authorDtos,
-					authorSpec.PageIndex, authorSpec.PageSize, totalPage);
+					authorSpec.PageIndex, authorSpec.PageSize, totalPage, totalActualItem);
 				
 				// Response with pagination 
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
@@ -369,16 +372,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
     				StringUtils.Format(errMsg, "author"));
     		}
     		
-		    // // Check if author has constraints data
-		    // var hasConstraints = await _unitOfWork.Repository<BookEditionAuthor, int>()
-			   //  .AnyAsync(ba => ba.AuthorId == id);
-		    // if (hasConstraints)
-		    // {
-			   //  // Cannot delete because it is bound to other data
-			   //  return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-				  //   await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-		    // }
-		    
     		// Update delete status
     		existingEntity.IsDeleted = true;
     		
@@ -474,7 +467,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 	    catch (Exception ex)
 	    {
 		    _logger.Error(ex.Message);	
-		    throw new Exception("Error invoke when process soft delete author");	
+		    throw new Exception("Error invoke when process undo delete author");	
 	    }
     }
 

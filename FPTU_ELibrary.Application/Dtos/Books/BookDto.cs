@@ -1,39 +1,31 @@
-﻿using FPTU_ELibrary.Domain.Entities;
+﻿using FPTU_ELibrary.Application.Dtos.BookEditions;
+using FPTU_ELibrary.Application.Dtos.Employees;
 
 namespace FPTU_ELibrary.Application.Dtos.Books
 {
     public class BookDto
     {
+        // Key
         public int BookId { get; set; }
 
+        // Book information
         public string Title { get; set; } = null!;
-
+        public string? SubTitle { get; set; }
         public string? Summary { get; set; }
-
-        public int CategoryId { get; set; }
-
+    
+        // Book management and borrow permission
         public bool IsDeleted { get; set; }
-
         public bool IsDraft { get; set; }
+        
+        // Datetime and employee who create or update the book
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public string CreatedBy { get; set; } = null!;
+        public string? UpdatedBy { get; set; } 
 
-        public bool CanBorrow { get; set; }
-
-        public DateTime CreateDate { get; set; }
-
-        public Guid CreateBy { get; set; }
-
-        public DateTime? UpdatedDate { get; set; }
-
-        public Guid? UpdatedBy { get; set; }
-
-        public ICollection<BookEditionAuthor> BookAuthors { get; set; } = new List<BookEditionAuthor>();
-
-        public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
-
-        public BookCategory Category { get; set; } = null!;
-
-        public Employee CreateByNavigation { get; set; } = null!;
-
-        public Employee? UpdatedByNavigation { get; set; }
+        // Mapping entities
+        public ICollection<BookEditionDto> BookEditions { get; set; } = new List<BookEditionDto>();
+        public ICollection<BookCategoryDto> BookCategories { get; set; } = new List<BookCategoryDto>();
+        public ICollection<BookResourceDto> BookResources { get; set; } = new List<BookResourceDto>();
     }
 }

@@ -139,6 +139,9 @@ public class CloudinaryService : ICloudinaryService
     {
         try
         {
+            var checkExistResult = await IsExistAsync(publicId, fileType);
+            if (checkExistResult.Data is false) return checkExistResult;
+            
             switch (fileType)
             {
                 // IMAGE
@@ -233,17 +236,17 @@ public class CloudinaryService : ICloudinaryService
         {
             // Check exist cloud resource by public id
             var existResource = await _cloudinary.GetResourceAsync(publicId);
-            if (existResource == null) // Not found
+            if (existResource == null || existResource.Error != null) // Not found
             {
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0003, 
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
                     // Not found video code
-                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0004, 
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
                     // File type is not valid
-                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0004)),
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002)),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
                 };
@@ -265,12 +268,12 @@ public class CloudinaryService : ICloudinaryService
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0003, 
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
                         // Not found video code
-                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0004, 
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
                         // File type is not valid
-                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0004)),
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002)),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
                 };
@@ -313,6 +316,38 @@ public class CloudinaryService : ICloudinaryService
         }
     }
 
+    public async Task<IServiceResult> IsExistAsync(string publicId, FileType fileType)
+    {
+        try
+        {
+            // Check exist cloud resource by public id
+            var existResource = await _cloudinary.GetResourceAsync(publicId);
+            if (existResource == null || existResource.Error != null) // Not found
+            {
+                return fileType switch
+                {
+                    // Not found image code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
+                        // Not found video code
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001), false),
+                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
+                        // File type is not valid
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002), false),
+                    _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001), false)
+                };
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process check exist cloud resource");
+        }
+    }
+    
     private string? GetDirectoryFromResourceType(ResourceType resourceType)
     {
         return resourceType switch

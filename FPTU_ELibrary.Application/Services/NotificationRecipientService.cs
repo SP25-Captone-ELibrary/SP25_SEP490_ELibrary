@@ -64,7 +64,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
                 serviceResult.Data = false;
             }
         }
-        catch (UnprocessableEntityException e)
+        catch (UnprocessableEntityException)
         {
             throw;
         }

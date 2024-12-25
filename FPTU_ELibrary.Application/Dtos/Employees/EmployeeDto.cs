@@ -51,30 +51,11 @@ namespace FPTU_ELibrary.Application.Dtos.Employees
 		public SystemRoleDto Role { get; set; } = null!;
 
 		//[JsonIgnore]
-		//public ICollection<Book> BookCreateByNavigations { get; set; } = new List<Book>();
-
-		//[JsonIgnore]
-		//public ICollection<Book> BookUpdatedByNavigations { get; set; } = new List<Book>();
-
-		//[JsonIgnore]
-		//public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
-
-		//[JsonIgnore]
-		//public ICollection<BookResource> BookResources { get; set; } = new List<BookResource>();
-
-		//[JsonIgnore]
 		//public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
-
-		//[JsonIgnore]
-		//public ICollection<CopyConditionHistory> CopyConditionHistories { get; set; } = new List<CopyConditionHistory>();
 
 		//[JsonIgnore]
 		//public ICollection<Fine> FineCreateByNavigations { get; set; } = new List<Fine>();
 
-		//[JsonIgnore]
-		//public ICollection<LearningMaterial> LearningMaterialCreateByNavigations { get; set; } = new List<LearningMaterial>();
-
-		//public ICollection<LearningMaterial> LearningMaterialUpdatedByNavigations { get; set; } = new List<LearningMaterial>();
 		//public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
 
 		//[JsonIgnore]

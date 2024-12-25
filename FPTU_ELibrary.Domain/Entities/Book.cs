@@ -1,31 +1,29 @@
-﻿namespace FPTU_ELibrary.Domain.Entities;
+﻿using FPTU_ELibrary.Domain.Interfaces;
 
-public class Book
+namespace FPTU_ELibrary.Domain.Entities;
+
+public class Book : IAuditableEntity
 {
     // Key
     public int BookId { get; set; }
 
     // Book information
     public string Title { get; set; } = null!;
+    public string? SubTitle { get; set; }
     public string? Summary { get; set; }
     
     // Book management and borrow permission
     public bool IsDeleted { get; set; }
     public bool IsDraft { get; set; }
-    public bool CanBorrow { get; set; }
-
-    // Book category
-    public int CategoryId { get; set; }
-    
+        
     // Datetime and employee who create or update the book
-    public DateTime CreateDate { get; set; }
-    public Guid CreateBy { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    public Guid? UpdatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; } 
 
     // Mapping entities
     public ICollection<BookEdition> BookEditions { get; set; } = new List<BookEdition>();
-    public BookCategory Category { get; set; } = null!;
-    public Employee CreateByNavigation { get; set; } = null!;
-    public Employee? UpdatedByNavigation { get; set; }
+    public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
+    public ICollection<BookResource> BookResources { get; set; } = new List<BookResource>();
 }

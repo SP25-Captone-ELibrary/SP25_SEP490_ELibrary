@@ -14,9 +14,14 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
 
         /// Retrieve with specifications
         Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification);
+        Task<TResult?> GetWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+            Expression<Func<TEntity, TResult>> selector);
         Task<IEnumerable<TEntity>> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
+        Task<IEnumerable<TResult>> GetAllWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+            Expression<Func<TEntity, TResult>> selector, bool tracked = true);
         Task<int> CountAsync();
         Task<int> CountAsync(ISpecification<TEntity> specification);
+        Task<bool> AllAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> AnyAsync(ISpecification<TEntity> specification);
         

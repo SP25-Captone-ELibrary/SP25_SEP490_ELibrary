@@ -25,6 +25,11 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
         }
         #region READ DATA
         
+        public async Task<TEntity?> GetByIdAsync(TKey id)
+        {
+	        return await _dbSet.FindAsync(id);
+        }
+        
         public async Task<IEnumerable<TEntity>> GetAllAsync(bool tracked = true)
         {
             IQueryable<TEntity> query = _dbSet;
@@ -37,6 +42,18 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             return await query.ToListAsync();
         }
 
+	    public async Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification)
+        {
+            return await ApplySpecification(specification).FirstOrDefaultAsync();
+        }
+
+	    public async Task<TResult?> GetWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+		    Expression<Func<TEntity, TResult>> selector)
+	    {
+		    // Apply specification
+		    return await ApplySpecification(specification).Select(selector).FirstOrDefaultAsync();
+	    }
+	    
         public async Task<IEnumerable<TEntity>> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
         {
             IQueryable<TEntity> query = _dbSet;
@@ -49,16 +66,24 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             return await ApplySpecification(query, specification).ToListAsync();
         }
 
-        public async Task<TEntity?> GetByIdAsync(TKey id)
+        public async Task<IEnumerable<TResult>> GetAllWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+	        Expression<Func<TEntity, TResult>> selector,
+	        bool tracked = true)
         {
-            return await _dbSet.FindAsync(id);
-        }
+	        IQueryable<TEntity> query = _dbSet;
 
-        public async Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification)
-        {
-            return await ApplySpecification(specification).FirstOrDefaultAsync();
-        }
+	        if (!tracked)
+	        {
+		        query = query.AsNoTracking();
+	        }
 
+	        // Apply specification
+	        query = ApplySpecification(query, specification);
+	        
+	        // Apply projection
+	        return await query.Select(selector).ToListAsync();
+        }
+        
         public async Task<int> CountAsync()
         {
 	        return await _dbSet.CountAsync();
@@ -67,6 +92,11 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
         public async Task<int> CountAsync(ISpecification<TEntity> specification)
         {
             return await ApplySpecification(specification).CountAsync();
+        }
+        
+        public async Task<bool> AllAsync(Expression<Func<TEntity, bool>> expression)
+        {
+	        return await _dbSet.AllAsync(expression);
         }
         
         public async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> expression)

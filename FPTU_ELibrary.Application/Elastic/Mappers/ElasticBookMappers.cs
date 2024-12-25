@@ -1,5 +1,4 @@
-﻿using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Dtos.Books;
+﻿using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Responses;
 using Nest;
@@ -14,21 +13,19 @@ namespace FPTU_ELibrary.API.Mappings
 				BookId = booKDto.BookId,
 				Title = booKDto.Title,
 				Summary = booKDto.Summary,
-				CategoryId = booKDto.CategoryId,
 				IsDeleted = booKDto.IsDeleted,
 				IsDraft = booKDto.IsDraft,
-				CanBorrow = booKDto.CanBorrow,
-				CreateDate = booKDto.CreateDate,
-				CreateBy = booKDto.CreateBy,
-				UpdatedDate = booKDto.UpdatedDate,
+				CreatedAt = booKDto.CreatedAt,
+				CreatedBy = booKDto.CreatedBy,
+				UpdatedAt = booKDto.UpdatedAt,
 				UpdatedBy = booKDto.UpdatedBy,
-				BookCategory = new ElasticBookCategory
+				Categories = booKDto.BookCategories.Select(bc => new ElasticCategory()
 				{
-					CategoryId = booKDto.CategoryId,
-					EnglishName = booKDto.Category.EnglishName,
-					VietnameseName = booKDto.Category.VietnameseName,
-					Description = booKDto.Category.Description ?? string.Empty,
-				},
+					CategoryId = bc.CategoryId,
+					EnglishName = bc.Category.EnglishName,
+					VietnameseName = bc.Category.VietnameseName,
+					Description = bc.Category.Description ?? string.Empty
+				}).ToList(),
 				BookEditions = booKDto.BookEditions.Select(be => new ElasticBookEdition
 				{
 					BookEditionId = be.BookEditionId,
@@ -43,10 +40,11 @@ namespace FPTU_ELibrary.API.Mappings
 					Publisher = be.Publisher,
 					Isbn = be.Isbn,
 					IsDeleted = be.IsDeleted,
-					CreateDate = be.CreateDate,
-					UpdatedDate = be.UpdatedDate,
-					CreateBy = be.CreateBy,
-					Authors = booKDto.BookAuthors.Select(ba => new ElasticAuthor
+					CanBorrow = be.CanBorrow,
+					CreatedAt = be.CreatedAt,
+					UpdatedAt = be.UpdatedAt,
+					CreatedBy = be.CreatedBy,
+					Authors = be.BookEditionAuthors.Select(ba => new ElasticAuthor
 					{
 						AuthorId = ba.Author.AuthorId,
 						AuthorCode = ba.Author.AuthorCode,

@@ -128,6 +128,7 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 { "ADDRESS", x => x.Address ?? string.Empty },
                 { "CREATEDATE", x => x.CreateDate },
                 { "HIREDATE", x => x.HireDate ?? null! },
+                { "TERMINATIONDATE", x => x.TerminationDate ?? null! },
                 { "ACTIVE", x => x.IsActive },
                 { "ROLE", x => x.Role.EnglishName },
             };

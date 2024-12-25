@@ -9,7 +9,7 @@ public class BookEditionInventory
     // Key
     public int BookEditionId { get; set; }
 
-    // Inventory ammount 
+    // Inventory amount 
     public int TotalCopies { get; set; }
     public int AvailableCopies { get; set; }
     public int RequestCopies { get; set; }

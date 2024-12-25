@@ -1,17 +1,14 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using FPTU_ELibrary.API.Extensions;
+﻿using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
-using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Common.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
-using FPTU_ELibrary.Application.Utils;
 using Microsoft.IdentityModel.Tokens;
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
 

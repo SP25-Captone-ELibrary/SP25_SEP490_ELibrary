@@ -2,14 +2,7 @@
 using FPTU_ELibrary.Domain.Interfaces.Repositories.Base;
 using FPTU_ELibrary.Infrastructure.Data.Context;
 using FPTU_ELibrary.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Infrastructure.Data
 {

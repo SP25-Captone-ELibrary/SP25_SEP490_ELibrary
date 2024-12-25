@@ -1,15 +1,21 @@
 ﻿using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
+using FPTU_ELibrary.API.Payloads.Requests.Book;
+using FPTU_ELibrary.API.Payloads.Requests.BookEdition;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.BookEditions;
+using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Extensions
@@ -102,6 +108,122 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}		
 		
+		#endregion
+
+		#region Book
+		// Mapping from typeof(CreateBookRequest) to typeof(BookDto)
+		public static BookDto ToBookDto(this CreateBookRequest req)
+		{
+			return new BookDto()
+			{
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				Summary = req.Summary,
+				// Categories
+				BookCategories = req.CategoryIds.Any() 
+					// Each item -> initialize BookCategoryDto
+					? req.CategoryIds.Select(catId => new BookCategoryDto()
+					{
+						// Assign category
+						CategoryId = catId
+					}).ToList() 
+					// Default 
+					: new List<BookCategoryDto>(),
+				// Book editions
+				BookEditions = req.BookEditions
+					.Select(be => be.ToBookEditionDto()).ToList(),
+				// Resources
+				BookResources = req.BookResources != null && req.BookResources.Any()
+					? req.BookResources.Select(br => br.ToBookResourceDto()).ToList()
+					: new List<BookResourceDto>()
+			};
+		}
+		
+		// Mapping from typeof(CreateBookEditionRequest) to typeof(BookEditionDto)
+		public static BookEditionDto ToBookEditionDto(this CreateBookEditionRequest req)
+		{
+			return new BookEditionDto()
+			{
+				EditionTitle = req.EditionTitle,
+				EditionNumber = req.EditionNumber,
+				EditionSummary = req.EditionSummary,
+				PageCount = req.PageCount,
+				Language = req.Language,
+				PublicationYear = req.PublicationYear,
+				Format = req.BookFormat,
+				CoverImage = req.CoverImage,
+				Publisher = req.Publisher,
+				Isbn = req.Isbn,
+				EstimatedPrice = req.EstimatedPrice,
+				// Copies
+				BookEditionCopies = req.BookCopies != null && req.BookCopies.Any()
+					? req.BookCopies.Select(bc => bc.ToBookEditionCopyDto()).ToList()
+					: new List<BookEditionCopyDto>(),
+				// Inventory
+				BookEditionInventory = new BookEditionInventoryDto()
+				{
+					TotalCopies	= req.BookCopies != null && req.BookCopies.Any() 
+						? req.BookCopies.Count : 0,
+					AvailableCopies = 0,
+					RequestCopies = 0,
+					ReservedCopies = 0
+				},
+				// Authors
+				BookEditionAuthors = req.AuthorIds.Any()
+					? req.AuthorIds.Select(id => new BookEditionAuthorDto() { AuthorId = id }).ToList()
+					: new List<BookEditionAuthorDto>()
+			};
+		}
+		
+		// Mapping from typeof(CreateBookEditionCopyRequest) to typeof(BookEditionCopyDto)
+		public static BookEditionCopyDto ToBookEditionCopyDto(this CreateBookEditionCopyRequest req)
+		{
+			return new BookEditionCopyDto()
+			{
+				Code = req.Code
+			};
+		}
+		
+		// Mapping from typeof(CreateBookResourceRequest) to typeof(BookResourceDto)
+		public static BookResourceDto ToBookResourceDto(this CreateBookResourceRequest req, DateTime? createDate = null)
+		{
+			return new BookResourceDto
+			{
+				Provider = req.Provider,
+				ProviderPublicId = req.ProviderPublicId,
+				ResourceType = req.ResourceType,
+				ResourceUrl = req.ResourceUrl,
+				ResourceSize = req.ResourceSize,
+				FileFormat = req.FileFormat,
+			};
+		}
+		
+		// Mapping from typeof(UpdateBookRequest) to typeof(BookDto)
+		public static BookDto ToBookDto(this UpdateBookRequest req)
+			=> new BookDto()
+			{
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				Summary = req.Summary,
+				BookCategories = req.CategoryIds.Select(catId => new BookCategoryDto()
+				{
+					CategoryId = catId
+				}).ToList()
+			};
+		
+		#endregion
+		
+		#region BookResource
+		// Mapping from typeof(UpdateBookResourceRequest) to typeof(BookResourceDto)
+		public static BookResourceDto ToBookResourceDto(this UpdateBookResourceRequest req)
+			=> new()
+			{
+				Provider = req.Provider,
+				ProviderPublicId = req.ProviderPublicId,
+				ResourceSize = req.ResourceSize,
+				ResourceUrl = req.ResourceUrl,
+				FileFormat = req.FileFormat
+			};
 		#endregion
 		
 		#region User
@@ -243,20 +365,19 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 
 		#endregion
-		#region BookCategory
-
-		public static BookCategoryDto ToBookCategoryForUpdate(this UpdateBookCategoryRequest req)
+		
+		#region Category
+		public static CategoryDto ToCategoryForUpdate(this UpdateCategoryRequest req)
 		{
-			var dto = new BookCategoryDto()
+			return new CategoryDto()
 			{
-				VietnameseName = req.VietnameseName,
-				EnglishName = req.EnglishName, 
+				VietnameseName = req.VietnameseName ?? null!,
+				EnglishName = req.EnglishName ?? null!,
 				Description = req.Description
 			};
-			return dto;
 		}
 		#endregion
-
+		
 		#region FinePolicy	
 		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
 		{
@@ -280,6 +401,5 @@ namespace FPTU_ELibrary.API.Extensions
 		}
 		
 		#endregion
-		
 	}
 }

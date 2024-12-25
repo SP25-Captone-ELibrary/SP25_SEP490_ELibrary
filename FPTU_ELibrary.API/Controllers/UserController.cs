@@ -132,5 +132,4 @@ public class UserController:ControllerBase
             ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Employees.xlsx")
             : Ok(exportResult);
     }
-    
 }

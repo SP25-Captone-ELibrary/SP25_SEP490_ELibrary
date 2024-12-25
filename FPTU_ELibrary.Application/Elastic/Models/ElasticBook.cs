@@ -1,10 +1,4 @@
 ﻿using Nest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Application.Elastic.Models
 {
@@ -28,23 +22,20 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Boolean]
         public bool CanBorrow { get; set; }
 
-        [Number(NumberType.Integer)]
-        public int CategoryId { get; set; }
+        [Date]
+        public DateTime CreatedAt { get; set; }
 
         [Date]
-        public DateTime CreateDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
-        [Date]
-        public DateTime? UpdatedDate { get; set; }
-
-        [Keyword]
-        public Guid CreateBy { get; set; }
+        [Keyword] 
+        public string CreatedBy { get; set; } = null!;
 
         [Keyword]
-        public Guid? UpdatedBy { get; set; }
+        public string? UpdatedBy { get; set; }
 
-        [Object]
-        public ElasticBookCategory BookCategory { get; set; } = null!;
+        [Nested]
+        public List<ElasticCategory> Categories { get; set; } = null!;
 
         [Nested]
         public List<ElasticBookEdition> BookEditions { get; set; } = null!;

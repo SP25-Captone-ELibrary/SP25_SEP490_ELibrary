@@ -145,7 +145,6 @@ namespace FPTU_ELibrary.Application.Services
 				// Check whether invoke errors
 				if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
 				
-				
 				// Process add new entity
 				await _unitOfWork.Repository<Employee, Guid>().AddAsync(_mapper.Map<Employee>(dto));
 				// Save to DB
@@ -376,6 +375,8 @@ namespace FPTU_ELibrary.Application.Services
 					.Map(dto => dto.Role, src => src.Role) 
 					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 				
+				// Count total actual items in DB
+				var totalActualItem = await _unitOfWork.Repository<Employee, Guid>().CountAsync();
 				// Count total employees
 				var totalEmployeeWithSpec = await _unitOfWork.Repository<Employee, Guid>().CountAsync(employeeSpec);
 				// Count total page
@@ -404,7 +405,7 @@ namespace FPTU_ELibrary.Application.Services
 					
 					// Pagination result 
 					var paginationResultDto = new PaginatedResultDto<EmployeeDto>(employeeDtos,
-						employeeSpec.PageIndex, employeeSpec.PageSize, totalPage);
+						employeeSpec.PageIndex, employeeSpec.PageSize, totalPage, totalActualItem);
 					
 					// Response with pagination 
 					return new ServiceResult(ResultCodeConst.SYS_Success0002, 

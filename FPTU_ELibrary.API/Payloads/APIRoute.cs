@@ -43,17 +43,60 @@
 		/// </summary>
 		public static class Book
 		{
+			#region management
 			// [GET]
-			public const string GetAll = Base + "/books";
-			public const string Search = Base + "/books/q";
+			public const string GetCreateInformation = Base + "/management/create-information";
+			public const string GetById = Base + "/management/books/{id}";
 			// [POST]
-			public const string Create = Base + "/books";
-			// [PUT]
-			public const string Update = Base + "/books";
-			// [PATCH]
+			public const string Create = Base + "/management/books";
+			// [PUT] / [PATCH]
+			public const string Update = Base + "/management/books/{id}";
 			// [DELETE]
+			#endregion
+			
+			public const string Search = Base + "/books/q";
 		}
 
+		/// <summary>
+		/// Book edition endpoints
+		/// </summary>
+		public static class BookEdition
+		{
+			#region management
+			// [GET]
+			// [POST]
+			public const string GetAllEdition = Base + "/management/books/editions";
+			// [PUT] / [PATCH]
+			public const string GetEditionById = Base + "/management/books/editions/{id}";
+			public const string UpdateBookEdition = Base + "/management/books/editions/{id}";
+			// [DELETE]
+			#endregion
+		}
+
+		/// <summary>
+		/// Book resource endpoints
+		/// </summary>
+		public static class BookResource
+		{
+			#region management
+			// [GET]
+			public const string GetAll = Base + "/management/books/resources";
+			public const string GetById = Base + "/management/books/resources/{id}";
+			public const string AddToBook = Base + "/management/books/{bookId}/resources";
+			// [POST]
+			// [PUT] / [PATCH]
+			public const string Update = Base + "/management/books/resources/{id}";
+			public const string SoftDelete = Base + "/management/books/resources/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/books/resources/soft-delete-range";
+			public const string UndoDelete = Base + "/management/books/resources/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/books/resources/undo-delete-range";
+			// [DELETE]
+			public const string Delete = Base + "/management/books/resources/{id}";
+			public const string DeleteRange = Base + "/management/books/resources";
+
+			#endregion
+		}
+		
 		/// <summary>
 		/// User endpoints
 		/// </summary>
@@ -259,7 +302,7 @@
 		/// <summary>
 		/// BookCategory endpoints
 		/// </summary>
-		public static class BookCategory
+		public static class Category
 		{
 			// [CREATE]
 			public const string Create = Base + "/management/categories";

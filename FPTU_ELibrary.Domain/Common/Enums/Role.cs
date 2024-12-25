@@ -5,6 +5,8 @@ namespace FPTU_ELibrary.Domain.Common.Enums
 	public enum Role
 	{
 		//	RoleType: [USER]
+        [Description("Siêu quản trị hệ thống")]
+        SuperAdministration,
 		[Description("Quản trị hệ thống")]
 		Administration,
 		[Description("Sinh viên")]
@@ -28,12 +30,5 @@ namespace FPTU_ELibrary.Domain.Common.Enums
 
 		[Description("Trợ lý thư viện")]
 		LibraryAssistant,
-
-		//[Description("Nhân viên lưu thông")]
-		//CirculationStaff,
-
-		// Group 3: Temporary or Seasonal Workers
-		[Description("Nhân viên thời vụ")]
-		TemporaryWorker
 	}
 }

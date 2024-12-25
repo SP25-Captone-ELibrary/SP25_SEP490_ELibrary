@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 
 namespace FPTU_ELibrary.Application.Dtos.Authors;

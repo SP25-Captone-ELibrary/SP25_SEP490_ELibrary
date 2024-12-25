@@ -1,5 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace FPTU_ELibrary.Domain.Entities;
@@ -7,14 +5,17 @@ namespace FPTU_ELibrary.Domain.Entities;
 public class BookCategory
 {
     // Key
+    public int BookCategoryId { get; set; }
+    
+    // BookId
+    public int BookId { get; set; }
+    // CategoryId
     public int CategoryId { get; set; }
-
-    // Category detail
-    public string EnglishName { get; set; } = null!;
-    public string VietnameseName { get; set; } = null!;
-    public string? Description { get; set; }
-
-    // Mapping entity
+    
+    // Mapping fields
     [JsonIgnore]
-    public ICollection<Book> Books { get; set; } = new List<Book>();
+    public Book Book { get; set; } = null!;
+    
+    [JsonIgnore]
+    public Category Category { get; set; } = null!;
 }
