@@ -6,6 +6,7 @@ using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Domain.Entities;
@@ -30,6 +31,7 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<CopyConditionHistory, CopyConditionHistoryDto>();
 			config.NewConfig<User, UserDto>();
 			config.NewConfig<Employee, EmployeeDto>();
+			config.NewConfig<FinePolicy, FinePolicyDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
 			config.NewConfig<RolePermission, RolePermissionDto>();
 			config.NewConfig<SystemRole, SystemRoleDto>();
@@ -55,6 +57,12 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<AuthorDto, Author>()
 				.Ignore(dest => dest.AuthorId)
 				.Ignore(dest => dest.CreateDate)
+				.IgnoreNullValues(true);
+			config.NewConfig<CategoryDto, Category>()
+				.Ignore(dest => dest.CategoryId)
+				.IgnoreNullValues(true);
+			config.NewConfig<FinePolicyDto, FinePolicy>()
+				.Ignore(dest => dest.FinePolicyId)
 				.IgnoreNullValues(true);
 		}
 	}

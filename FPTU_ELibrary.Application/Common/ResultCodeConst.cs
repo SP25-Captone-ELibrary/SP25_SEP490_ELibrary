@@ -271,9 +271,9 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Cloud_Warning0002 = "Cloud.Warning0002";
 		/// <summary>
-        /// [WARNING] One or more resources not found
-        /// </summary>
-        public const string Cloud_Warning0003 = "Cloud.Warning0003";
+		/// [WARNING] One or more resources not found
+		/// </summary>
+		public const string Cloud_Warning0003 = "Cloud.Warning0003";
 		/// <summary>
         /// [FAIL] Fail to upload image
         /// </summary>
@@ -359,8 +359,28 @@ namespace FPTU_ELibrary.Application.Common
 		/// This Category has been used. Cannot be deleted
 		/// </summary>
 		public static string Category_Warning0001 = "Category.Warning0001";
+		/// <summary>
+		/// Cannot delete be cause it contains undefined id
+		/// </summary>
+		public static string Category_Warning0002 = "Category.Warning0002";
 		#endregion
+			
+		#region FinePolicy
+		/// <summary>
+		/// This FinePolicy has been existed
+		/// </summary>
+		public static string FinePolicy_Warning0001 = "FinePolicy.Warning0001";
 
+		/// <summary>
+		/// This FinePolicy has been used
+		/// </summary>
+		public static string FinePolicy_Warning0002 = "FinePolicy.Warning0002";
+		/// <summary>
+		/// Cannot delete be cause it contains undefined id
+		/// </summary>
+		public static string FinePolicy_Warning0003 = "FinePolicy.Warning0003";
+		#endregion
+		
 		#endregion
 	}
 }

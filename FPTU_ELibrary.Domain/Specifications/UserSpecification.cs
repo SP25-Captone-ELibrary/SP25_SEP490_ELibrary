@@ -32,13 +32,11 @@ namespace FPTU_ELibrary.Domain.Specifications
         {
             PageIndex = pageIndex;
             PageSize = pageSize;
-            
             // Enable split query
             EnableSplitQuery();
             // Include role 
             ApplyInclude(q => q
                 .Include(e => e.Role));
-            
             // Default order by first name
             AddOrderBy(e => e.FirstName);
             if (!string.IsNullOrEmpty(userSpecParams.FirstName)) // With first name
@@ -92,6 +90,8 @@ namespace FPTU_ELibrary.Domain.Specifications
 
                 ApplySorting(propertyName, isDescending);
             }
+            
+            AddFilter(x => x.Role.EnglishName != nameof(Role.Administration));
         }
 
         private void ApplySorting(string propertyName, bool isDescending)

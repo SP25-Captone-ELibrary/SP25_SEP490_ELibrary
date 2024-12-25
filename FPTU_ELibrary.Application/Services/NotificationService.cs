@@ -1,3 +1,4 @@
+using System.Collections;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
@@ -69,6 +70,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             {
                 if (noti.IsPublic == true)
                 {
+                    await SendPublicNotification(noti);
                     serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
                     serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
                     serviceResult.Data = true;
@@ -174,9 +176,25 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         });
     }
 
+    private async Task SendPublicNotification(NotificationDto dto)
+    {
+        if ((await _userService.GetAllAsync()).Data is IEnumerable<UserDto> generalUsers)
+            foreach (var user in generalUsers.Where(x =>x.RoleId == (int)Role.GeneralMember+1))
+            {
+                await _hubContext.Clients.User(user.Email).SendAsync("ReceiveNotification", new
+                {
+                    NotificationId = dto.NotificationId,
+                    Title = dto.Title,
+                    Message = dto.Message,
+                    IsPublic = true,
+                    Timestamp = dto.CreateDate,
+                    NotificationType = dto.NotificationType
+                });
+            }
+    }
     public async Task<IServiceResult> GetAllWithSpecAsync(
         NotificationSpecParams specParams,
-        string email,
+        string email,bool isMangement,
         bool tracked = true
     )
     {
@@ -192,7 +210,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 specParams.PageIndex ?? 1,
                 specParams.PageSize ?? 5,
                 email,
-                roleId
+                roleId,
+                isMangement
             );
 
             // Count total actual items in DB

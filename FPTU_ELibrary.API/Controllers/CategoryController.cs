@@ -1,6 +1,7 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
+using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -24,41 +25,48 @@ public class CategoryController : ControllerBase
         _appSettings = appSettings.CurrentValue;
     }
 
-    [HttpPost(APIRoute.BookCategory.Create, Name = nameof(Create))]
+    [HttpPost(APIRoute.Category.Create, Name = nameof(CreateCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> Create([FromBody] CreateCategoryRequest req)
+    public async Task<IActionResult> CreateCategoryAsync([FromBody] CreateCategoryRequest req)
     {
         return Ok(await _categoryService.CreateAsync(req.ToCategoryDto()));
     }
 
-    [HttpPatch(APIRoute.BookCategory.Update, Name = nameof(Update))]
+    [HttpPatch(APIRoute.Category.Update, Name = nameof(UpdateCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateCategoryRequest req)
+    public async Task<IActionResult> UpdateCategoryAsync([FromRoute] int id, [FromBody] UpdateCategoryRequest req)
     {
         return Ok(await _categoryService.UpdateAsync(id, req.ToCategoryForUpdate()));
     }
 
-    [HttpDelete(APIRoute.BookCategory.HardDelete, Name = nameof(Delete))]
+    [HttpDelete(APIRoute.Category.HardDelete, Name = nameof(DeleteCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    public async Task<IActionResult> DeleteCategoryAsync([FromRoute] int id)
     {
         return Ok(await _categoryService.DeleteAsync(id));
     }
 
 
-    [HttpGet(APIRoute.BookCategory.GetAll, Name = nameof(GetAll))]
+    [HttpGet(APIRoute.Category.GetAll, Name = nameof(GetAllCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> GetAll([FromQuery] CategorySpecParams categorySpecParams)
+    public async Task<IActionResult> GetAllCategoryAsync([FromQuery] CategorySpecParams categorySpecParams)
     {
         return Ok(await _categoryService.GetAllWithSpecAsync(new CategorySpecification(
             categorySpecParams: categorySpecParams, pageIndex: categorySpecParams.PageIndex ?? 1,
             pageSize: categorySpecParams.PageSize ?? _appSettings.PageSize), false));
     }
-    
-    [HttpDelete(APIRoute.BookCategory.HardDeleteRange, Name = nameof(DeleteRangeAsync))]
+
+    [HttpDelete(APIRoute.Category.HardDeleteRange, Name = nameof(DeleteRangeCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> DeleteRangeAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> DeleteRangeCategoryAsync([FromBody] DeleteRangeRequest<int> req)
     {
         return Ok(await _categoryService.HardDeleteRangeAsync(req.Ids));
+    }
+
+    [HttpPost(APIRoute.Category.Import, Name = nameof(ImportCategoryAsync))]
+    [Authorize]
+    public async Task<IActionResult> ImportCategoryAsync([FromForm] ImportBookCategoryRequest req)
+    {
+        return Ok(await _categoryService.ImportCategoryAsync(req.File, req.DuplicateHandle));
     }
 }

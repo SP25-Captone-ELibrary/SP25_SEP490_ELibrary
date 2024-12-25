@@ -17,6 +17,7 @@ using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
@@ -51,6 +52,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IBookResourceService<BookResourceDto>, BookResourceService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
+            services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
 			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
@@ -59,8 +61,8 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();	
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
-			services.AddScoped<IUserService<UserDto>, UserService>();
-
+            services.AddScoped<IUserService<UserDto>, UserService>();
+            
             services
                 .ConfigureMapster() // Add mapster
 				.ConfigureCloudinary() // Add cloudinary

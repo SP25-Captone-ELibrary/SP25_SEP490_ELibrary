@@ -302,22 +302,39 @@
 		/// <summary>
 		/// BookCategory endpoints
 		/// </summary>
-		public static class BookCategory
+		public static class Category
 		{
 			// [CREATE]
 			public const string Create = Base + "/management/categories";
 			//	[PUT] | [PATCH]
 			public const string Update = Base + "/management/categories/{id}";
-			public const string SoftDelete = Base + "/management/categories/{id}/soft-delete";
-			public const string SoftDeleteRange = Base + "/management/categories/soft-delete-range";
-			public const string UndoDelete = Base + "/management/categories/{id}/undo-delete";
-			public const string UndoDeleteRange = Base + "/management/categories/undo-delete-range";
 			// [DELETE]
 			public const string HardDelete = Base + "/management/categories/{id}";
 			public const string HardDeleteRange = Base + "/management/categories";
 			// public const string Delete = Base + "/management/categories/{id}";
 			// [GET]
 			public const string GetAll = Base + "/management/categories";
+			public const string GetById = Base + "/management/categories";
+			public const string Import = Base +"management/categories/import";
+		}
+
+		/// <summary>
+		/// FinePolicy endpoints
+		/// </summary>
+		public static class FinePolicy
+		{
+			// [CREATE]
+			public const string Create = Base + "/management/fines/policy";
+			//	[PUT] | [PATCH]
+			public const string Update = Base + "/management/fines/policy/{id}";
+			// [DELETE]
+			public const string HardDelete = Base + "/management/fines/policy/{id}";
+			public const string HardDeleteRange = Base + "/management/fines/policy";
+			// public const string Delete = Base + "/management/fines/policy/{id}";
+			// [GET]
+			public const string GetAll = Base + "/fines/policy";
+			public const string GetById = Base + "/fines/policy/{id}";
+			public const string Import = Base + "/management/fines/policy/import";
 		}
 	}
 }
