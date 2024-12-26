@@ -2,8 +2,12 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -12,25 +16,34 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using Exception = System.Exception;
+using UnprocessableEntityException = FPTU_ELibrary.Application.Exceptions.UnprocessableEntityException;
 
 namespace FPTU_ELibrary.Application.Services;
 
 public class BookEditionService : GenericService<BookEdition, BookEditionDto, int>, 
     IBookEditionService<BookEditionDto>
 {
-    public BookEditionService(
+	private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
+	private readonly ICloudinaryService _cloudService;
+
+	public BookEditionService(
+		ICloudinaryService cloudService,
+	    ILibraryShelfService<LibraryShelfDto> libShelfService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) 
     : base(msgService, unitOfWork, mapper, logger)
-    {
+	{
+		_cloudService = cloudService;
+	    _libShelfService = libShelfService;
     }
 
-    public override async Task<IServiceResult> GetByIdAsync(int id)
+	public async Task<IServiceResult> GetDetailAsync(int id)
     {
         try
         {
@@ -127,8 +140,6 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
             
-            // Count total actual items in DB
-            var totalActualItem = await _unitOfWork.Repository<BookEdition, int>().CountAsync();
             // Count total book editions
             var totalBookEditionWithSpec = await _unitOfWork.Repository<BookEdition, int>().CountAsync(bookEditionSpec);
             // Count total page
@@ -214,7 +225,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
              
                 // Pagination result 
                 var paginationResultDto = new PaginatedResultDto<BookEditionTableRowDto>(tableRows,
-                	bookEditionSpec.PageIndex, bookEditionSpec.PageSize, totalPage, totalActualItem);
+                	bookEditionSpec.PageIndex, bookEditionSpec.PageSize, totalPage, totalBookEditionWithSpec);
                 
                 // Response with pagination 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002, 
@@ -233,7 +244,174 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             throw new Exception("Error invoke process when get all book");
         }
     }
-    
+
+    public override async Task<IServiceResult> UpdateAsync(int id, BookEditionDto dto)
+    {
+		try
+		{
+			// Determine current lang context
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+			
+			// Validate inputs using the generic validator
+			var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+			// Check for valid validations
+			if (validationResult != null && !validationResult.IsValid)
+			{
+				// Convert ValidationResult to ValidationProblemsDetails.Errors
+				var errors = validationResult.ToProblemDetails().Errors;
+				throw new UnprocessableEntityException("Invalid validations", errors);
+			}
+
+			// Check exist shelf location
+			if (dto.ShelfId != null 
+			    && int.TryParse(dto.ShelfId.ToString(), out var validShelfId)) // ShelfId must be numeric
+			{
+				var checkExistShelfRes = await _libShelfService.AnyAsync(x => x.ShelfId == validShelfId);
+				if (checkExistShelfRes.Data is false)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng ? "shelf location to process update" : "vị trí kệ sách để sửa"));
+				}
+			}		
+			
+			// Retrieve the entity
+			var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetByIdAsync(id);
+			if (existingEntity == null)
+			{
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+					StringUtils.Format(errMsg, isEng ? "book edition to process update" : "ấn bản để sửa"));
+			}
+			
+			// Initialize custom errors
+			var customErrs = new Dictionary<string, string[]>();
+			
+			// Check duplicate edition number (if change)
+			if (!Equals(existingEntity.EditionNumber, dto.EditionNumber))
+			{
+				var isEditionNumDuplicate = await _unitOfWork.Repository<BookEdition, int>()
+					.AnyAsync(x => x.EditionNumber == dto.EditionNumber && // Any other edition number match 
+					               x.BookId == existingEntity.BookId); // from book that possessed the edition
+				if (isEditionNumDuplicate)
+				{
+					customErrs.Add("editionNumber", [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003)]);
+				}
+			}
+			
+			// Check exist isbn (if change)
+			if (!Equals(existingEntity.Isbn, dto.Isbn))
+			{
+				var isIsbnExist = await _unitOfWork.Repository<BookEdition, int>()
+					.AnyAsync(be => be.Isbn == existingEntity.Isbn && // Any ISBN found 
+					                be.BookEditionId != id); // Except request book edition
+				if (isIsbnExist)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007);
+					customErrs.Add("isbn", [StringUtils.Format(errMsg, $"'{dto.Isbn}'")]);
+				}
+			}
+			
+			// Check exist cover image
+			if (!Equals(existingEntity.CoverImage, dto.CoverImage) // Detect as cover image change 
+			    && !string.IsNullOrEmpty(dto.CoverImage)) 
+			{
+				// Initialize field
+				var isImageExist = true;
+				
+				// Extract public id from update entity
+				var updatePublicId = StringUtils.GetPublicIdFromUrl(dto.CoverImage);
+				if (string.IsNullOrEmpty(updatePublicId)) // Provider public id must be existed
+				{
+					isImageExist = false;
+				}
+				else // Exist public id
+				{
+					// Check existence on cloud
+					var isImageOnCloud = (await _cloudService.IsExistAsync(updatePublicId, FileType.Image)).Data is true;
+					if (!isImageOnCloud)
+					{
+						isImageExist = false;
+					}
+				}
+				
+				// Check if existing entity already has image
+				if (!string.IsNullOrEmpty(existingEntity.CoverImage))
+				{
+					// Extract public id from current entity
+					var currentPublicId	= StringUtils.GetPublicIdFromUrl(existingEntity.CoverImage);
+					if (!Equals(currentPublicId, updatePublicId)) // Error invoke when update provider update id 
+					{
+						// Mark as fail to update
+						return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+					}
+				}
+
+				if (!isImageExist) // Invoke error image not found
+				{
+					// Return as not found image resource
+					return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+						await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+				}
+			}
+			
+			// Check if any errors invoke
+			if (customErrs.Any())
+			{
+				throw new UnprocessableEntityException("Invalid data", customErrs);
+			}
+			
+			// Process update entity
+			existingEntity.EditionTitle = dto.EditionTitle;
+			existingEntity.EditionSummary = dto.EditionSummary;
+			existingEntity.EditionNumber = dto.EditionNumber;
+			existingEntity.PublicationYear = dto.PublicationYear;
+			existingEntity.Publisher = dto.Publisher;
+			existingEntity.PageCount = dto.PageCount;
+			existingEntity.Language = dto.Language;
+			existingEntity.CoverImage = dto.CoverImage;
+			existingEntity.Format = dto.Format;
+			existingEntity.Isbn = dto.Isbn;
+			existingEntity.CanBorrow = dto.CanBorrow;
+			existingEntity.EstimatedPrice = dto.EstimatedPrice;
+			existingEntity.ShelfId = dto.ShelfId;
+			
+			// Check if there are any differences between the original and the updated entity
+			if (!_unitOfWork.Repository<BookEdition, int>().HasChanges(existingEntity))
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+			}
+
+			// Progress update when all require passed
+			await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(existingEntity);
+
+			// Save changes to DB
+			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			if (rowsAffected == 0)
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+			}
+
+			// Mark as update success
+			return new ServiceResult(ResultCodeConst.SYS_Success0003,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+		}
+		catch (UnprocessableEntityException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw;
+		}
+    }
+
     private List<BookEditionDto> HandleEnumTextForEditions(List<BookEditionDto> dtos)
     {
         // Determine current system lang

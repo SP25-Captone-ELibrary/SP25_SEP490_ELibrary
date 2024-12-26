@@ -108,8 +108,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
 			}				
 			
-			// Count total actual items in DB
-			var totalActualItem = await _unitOfWork.Repository<Author, int>().CountAsync();
 			// Count total authors
 			var totalAuthorWithSpec = await _unitOfWork.Repository<Author, int>().CountAsync(authorSpec);
 			// Count total page
@@ -138,7 +136,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				
 				// Pagination result 
 				var paginationResultDto = new PaginatedResultDto<AuthorDto>(authorDtos,
-					authorSpec.PageIndex, authorSpec.PageSize, totalPage, totalActualItem);
+					authorSpec.PageIndex, authorSpec.PageSize, totalPage, totalAuthorWithSpec);
 				
 				// Response with pagination 
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, 

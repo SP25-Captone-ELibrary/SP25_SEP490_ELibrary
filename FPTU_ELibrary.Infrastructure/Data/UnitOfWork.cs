@@ -8,10 +8,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly FptuElibraryDbContext _context;
+        private readonly ElibraryDbContext _context;
         private Hashtable _repositories;
 
-        public UnitOfWork(FptuElibraryDbContext context)
+        public UnitOfWork(ElibraryDbContext context)
         {
             _context = context;
 

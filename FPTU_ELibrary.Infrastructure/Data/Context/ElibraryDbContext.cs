@@ -12,12 +12,12 @@ using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
 
 namespace FPTU_ELibrary.Infrastructure.Data.Context;
 
-public class FptuElibraryDbContext : DbContext
+public class ElibraryDbContext : DbContext
 {
 	private readonly IHttpContextAccessor _contextAccessor;
-	public FptuElibraryDbContext() { }
+	public ElibraryDbContext() { }
 
-    public FptuElibraryDbContext(DbContextOptions<FptuElibraryDbContext> options, IHttpContextAccessor contextAccessor)
+    public ElibraryDbContext(DbContextOptions<ElibraryDbContext> options, IHttpContextAccessor contextAccessor)
 	    : base(options)
     {
 	    _contextAccessor = contextAccessor;
@@ -275,7 +275,7 @@ public class FptuElibraryDbContext : DbContext
 	{
 		var auditEnabledEntityTypes = new HashSet<Type>
 		{
-			typeof(Book), typeof(BookEdition), typeof(BookResource),
+			typeof(Book), typeof(BookEdition), typeof(BookEditionCopy), typeof(BookResource),
 			typeof(CopyConditionHistory), typeof(LearningMaterial),
 			typeof(SystemRole), typeof(RolePermission)
 		};

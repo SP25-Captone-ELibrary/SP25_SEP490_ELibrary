@@ -1,7 +1,8 @@
+using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests.BookEdition;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -39,6 +40,13 @@ public class BookEditionController : ControllerBase
     [HttpGet(APIRoute.BookEdition.GetEditionById, Name = nameof(GetBookEditionByIdAsync))]
     public async Task<IActionResult> GetBookEditionByIdAsync([FromRoute] int id)
     {
-        return Ok(await _bookEditionService.GetByIdAsync(id));
+        return Ok(await _bookEditionService.GetDetailAsync(id));
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.BookEdition.Update, Name = nameof(UpdateBookEditionAsync))]
+    public async Task<IActionResult> UpdateBookEditionAsync([FromRoute] int id, [FromBody] UpdateBookEditionRequest req)
+    {
+        return Ok(await _bookEditionService.UpdateAsync(id, req.ToBookEditionDto()));
     }
 }

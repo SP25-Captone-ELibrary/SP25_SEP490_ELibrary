@@ -17,11 +17,11 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	//		This class is to initialize database and seeding default data for the application
 	public class DatabaseInitializer : IDatabaseInitializer
     {
-        private readonly FptuElibraryDbContext _context;
+        private readonly ElibraryDbContext _context;
         private readonly ILogger _logger;
 
         public DatabaseInitializer(ILogger logger,
-            FptuElibraryDbContext context)
+            ElibraryDbContext context)
         {
             _context = context;
             _logger = logger;

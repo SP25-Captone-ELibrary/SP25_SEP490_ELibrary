@@ -48,8 +48,10 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IBookService<BookDto>, BookService>();
 			services.AddScoped<IBookEditionService<BookEditionDto>, BookEditionService>();
+			services.AddScoped<IBookEditionCopyService<BookEditionCopyDto>, BookEditionCopyService>();
 			services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
 			services.AddScoped<IBookResourceService<BookResourceDto>, BookResourceService>();
+			services.AddScoped<IBookEditionInventoryService<BookEditionInventoryDto>, BookEditionInventoryService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
             services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();

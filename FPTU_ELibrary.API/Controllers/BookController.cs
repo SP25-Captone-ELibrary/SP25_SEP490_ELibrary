@@ -46,10 +46,10 @@ namespace FPTU_ELibrary.API.Controllers
 		}
 
 		[Authorize]
-		[HttpGet(APIRoute.Book.GetCreateInformation, Name = nameof(GetBookCreateInformationAsync))]
-		public async Task<IActionResult> GetBookCreateInformationAsync()
+		[HttpGet(APIRoute.Book.GetEnums, Name = nameof(GetBookEnumsAsync))]
+		public async Task<IActionResult> GetBookEnumsAsync()
 		{
-			return Ok(await _bookService.GetCreateInformationAsync());
+			return Ok(await _bookService.GetBookEnumsAsync());
 		}
 
 		[Authorize]

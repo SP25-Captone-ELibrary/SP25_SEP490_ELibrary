@@ -344,14 +344,30 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Book_Warning0002 = "Book.Warning0002";
 		/// <summary>
-		/// [WARNING] Book edition must be unique
+		/// [WARNING] Book edition number must be unique
 		/// </summary>
 		public const string Book_Warning0003 = "Book.Warning0003";
 		/// <summary>
 		/// [WARNING] Book resources must not have duplicate content
 		/// </summary>
 		public const string Book_Warning0004 = "Book.Warning0004";
-
+		/// <summary>
+		/// [WARNING] Book edition copy code must be unique
+		/// </summary>
+		public const string Book_Warning0005 = "Book.Warning0005";
+		/// <summary>
+		/// [WARNING] Code {0} already exist
+		/// </summary>
+		public const string Book_Warning0006 = "Book.Warning0006";
+		/// <summary>
+		/// [WARNING] ISBN Code {0} already exist
+		/// </summary>
+		public const string Book_Warning0007 = "Book.Warning0007";
+		/// <summary>
+		/// [WARNING] Cannot change data that is on borrowing or reserved
+		/// </summary>
+		public const string Book_Warning0008 = "Book.Warning0008";
+		
 		#endregion
 		
 		#region BookCategory

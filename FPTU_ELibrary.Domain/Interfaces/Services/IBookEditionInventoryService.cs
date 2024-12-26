@@ -3,8 +3,8 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services;
 
-public interface IBookEditionService<TDto> : IGenericService<BookEdition, TDto, int>
+public interface IBookEditionInventoryService<TDto> : IGenericService<BookEditionInventory, TDto, int>
     where TDto : class
 {
-    Task<IServiceResult> GetDetailAsync(int id);
+    Task<IServiceResult> UpdateWithoutSaveChangesAsync(TDto dto);
 }

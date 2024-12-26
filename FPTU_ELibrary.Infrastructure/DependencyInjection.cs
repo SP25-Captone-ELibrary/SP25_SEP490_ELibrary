@@ -21,7 +21,7 @@ namespace FPTU_ELibrary.Infrastructure
             var connectionString = configuration.GetConnectionString("DefaultConnection");
             
             // Add application DbContext 
-            services.AddDbContext<FptuElibraryDbContext>(options => options.UseSqlServer(connectionString));
+            services.AddDbContext<ElibraryDbContext>(options => options.UseSqlServer(connectionString));
 
             // Register DI 
             services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();

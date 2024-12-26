@@ -42,7 +42,7 @@ public class BookEditionDto
     public BookDto Book { get; set; } = null!;
     public LibraryShelfDto? Shelf { get; set; }
     public BookEditionInventoryDto? BookEditionInventory { get; set; }
-
+    
     public ICollection<BookEditionAuthorDto> BookEditionAuthors { get; set; } = new List<BookEditionAuthorDto>();
     public ICollection<BookEditionCopyDto> BookEditionCopies { get; set; } = new List<BookEditionCopyDto>();
     public ICollection<BookReviewDto> BookReviews { get; set; } = new List<BookReviewDto>();

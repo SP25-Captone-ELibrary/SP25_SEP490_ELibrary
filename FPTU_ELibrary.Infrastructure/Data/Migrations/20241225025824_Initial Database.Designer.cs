@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(FptuElibraryDbContext))]
+    [DbContext(typeof(ElibraryDbContext))]
     [Migration("20241225025824_Initial Database")]
     partial class InitialDatabase
     {

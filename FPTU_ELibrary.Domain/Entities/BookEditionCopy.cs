@@ -11,9 +11,6 @@ public class BookEditionCopy : IAuditableEntity
     // Copy of which edition
     public int BookEditionId { get; set; }
     
-    // Locate in which shelf
-    public int? ShelfId { get; set; }
-
     // Copy code and its status
     public string? Code { get; set; }
     public string Status { get; set; } = null!;
@@ -36,6 +33,6 @@ public class BookEditionCopy : IAuditableEntity
 
     [JsonIgnore]
     public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
-
+    
     public ICollection<CopyConditionHistory> CopyConditionHistories { get; set; } = new List<CopyConditionHistory>();
 }

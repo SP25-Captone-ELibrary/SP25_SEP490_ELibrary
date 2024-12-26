@@ -15,10 +15,10 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
     public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey>
         where TEntity : class
     {
-        private readonly FptuElibraryDbContext _context;
+        private readonly ElibraryDbContext _context;
         private readonly DbSet<TEntity> _dbSet;
 
-        public GenericRepository(FptuElibraryDbContext context)
+        public GenericRepository(ElibraryDbContext context)
         {
             _context = context;
             _dbSet = context.Set<TEntity>();
@@ -42,16 +42,21 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
             return await query.ToListAsync();
         }
 
-	    public async Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification)
+	    public async Task<TEntity?> GetWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
         {
-            return await ApplySpecification(specification).FirstOrDefaultAsync();
+			// Apply specification to retrieve data
+            return tracked
+	            ? await ApplySpecification(specification).FirstOrDefaultAsync()
+	            : await ApplySpecification(specification).AsNoTracking().FirstOrDefaultAsync();
         }
 
 	    public async Task<TResult?> GetWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
-		    Expression<Func<TEntity, TResult>> selector)
+		    Expression<Func<TEntity, TResult>> selector, bool tracked = true)
 	    {
-		    // Apply specification
-		    return await ApplySpecification(specification).Select(selector).FirstOrDefaultAsync();
+		    // Apply specification to retrieve data
+		    return tracked
+			    ? await ApplySpecification(specification).Select(selector).FirstOrDefaultAsync()
+			    : await ApplySpecification(specification).AsNoTracking().Select(selector).FirstOrDefaultAsync();
 	    }
 	    
         public async Task<IEnumerable<TEntity>> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)

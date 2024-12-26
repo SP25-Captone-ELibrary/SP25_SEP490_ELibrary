@@ -80,11 +80,11 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-		public virtual async Task<IServiceResult> GetWithSpecAsync(ISpecification<TEntity> specification)
+		public virtual async Task<IServiceResult> GetWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true)
 		{
 			try
 			{
-				var entity = await _unitOfWork.Repository<TEntity, TKey>().GetWithSpecAsync(specification);
+				var entity = await _unitOfWork.Repository<TEntity, TKey>().GetWithSpecAsync(specification, tracked);
 
 				if (entity == null)
 				{

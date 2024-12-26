@@ -11,7 +11,7 @@ public class CreateBookEditionRequest
     public string Language { get; set; } = null!;
     public int PublicationYear { get; set; }
     public string BookFormat { get; set; } = null!;
-    public string? CoverImage { get; set; }
+    public string CoverImage { get; set; } = null!;
     public string? Publisher { get; set; }
     public string Isbn { get; set; } = null!;
     public decimal EstimatedPrice { get; set; }

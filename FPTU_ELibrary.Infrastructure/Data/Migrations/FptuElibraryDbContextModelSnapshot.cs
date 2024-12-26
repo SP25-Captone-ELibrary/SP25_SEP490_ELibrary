@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(FptuElibraryDbContext))]
+    [DbContext(typeof(ElibraryDbContext))]
     partial class FptuElibraryDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
