@@ -7,10 +7,12 @@ public interface IBookEditionCopyService<TDto> : IGenericService<BookEditionCopy
     where TDto : class
 {
     Task<IServiceResult> AddRangeToBookEditionAsync(int bookEditionId, List<string> editionCopyCodes);
-    Task<IServiceResult> UpdateRangeAsync(List<int> bookEditionCopyIds, string status);
+    Task<IServiceResult> UpdateRangeAsync(int bookEditionId, List<int> bookEditionCopyIds, string status);
     Task<IServiceResult> SoftDeleteAsync(int bookEditionCopyId);
-    Task<IServiceResult> SoftDeleteRangeAsync(List<int> bookEditionCopyIds);
+    Task<IServiceResult> SoftDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
     Task<IServiceResult> UndoDeleteAsync(int bookEditionCopyId);
-    Task<IServiceResult> UndoDeleteRangeAsync(List<int> bookEditionCopyIds);
-    Task<IServiceResult> DeleteRangeAsync(List<int> bookEditionCopyIds);
+    Task<IServiceResult> UndoDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
+    Task<IServiceResult> DeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
+    Task<IServiceResult> CountTotalEditionCopyAsync(int bookEditionId);
+    Task<IServiceResult> CountTotalEditionCopyAsync(List<int> bookEditionIds);
 }

@@ -90,7 +90,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Warning0002 = "SYS.Warning0002";
 		/// <summary>
-		/// [WARNING] Already exist
+		/// [WARNING] Cannot progress {0} as {1} already exist
 		/// </summary>
 		public static string SYS_Warning0003 = "SYS.Warning0003";
 		/// <summary>
@@ -367,7 +367,19 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Cannot change data that is on borrowing or reserved
 		/// </summary>
 		public const string Book_Warning0008 = "Book.Warning0008";
-		
+		/// <summary>
+		/// [WARNING] Cannot delete, please move all edition copy status to inventory first
+		/// </summary>
+		public const string Book_Warning0009 = "Book.Warning0009";
+		/// <summary>
+		/// [WARNING] Cannot delete as there still exist copy within the book edition
+		/// </summary>
+		public const string Book_Warning0010 = "Book.Warning0010";
+
+		/// <summary>
+		/// [FAIL] An error occurred while updating the inventory data
+		/// </summary>
+		public const string Book_Fail0001 = "Book.Fail0001";
 		#endregion
 		
 		#region BookCategory

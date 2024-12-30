@@ -18,11 +18,6 @@ namespace FPTU_ELibrary.Application.Services
         where TEntity : class
         where TDto : class
     {
-        protected readonly IUnitOfWork _unitOfWork;
-        protected readonly ISystemMessageService _msgService;
-        protected readonly IMapper _mapper;
-        protected readonly ILogger _logger;
-        
         public GenericService(
 	        ISystemMessageService msgService,
 	        IUnitOfWork unitOfWork, 

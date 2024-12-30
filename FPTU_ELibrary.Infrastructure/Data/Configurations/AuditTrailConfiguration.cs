@@ -1,5 +1,5 @@
+using FPTU_ELibrary.Domain.Converters;
 using FPTU_ELibrary.Domain.Entities;
-using FPTU_ELibrary.Infrastructure.Data.Configurations.Converter;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -32,20 +32,20 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
             .HasConversion<string>()
             .HasColumnName("trail_type");
         builder.Property(e => e.ChangedColumns)
-            .HasColumnType("nvarchar(500)")
+            .HasColumnType("nvarchar(120)")
             .HasColumnName("changed_columns");
         builder.Property(e => e.OldValues)
-            .HasColumnType("nvarchar(1500)")
+            .HasColumnType("nvarchar(1000)")
             .HasColumnName("old_values")
-            .HasConversion(new DictionaryToJsonConverter())
+            .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved
-            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+            // .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(e => e.NewValues)
-            .HasColumnType("nvarchar(1500)")
+            .HasColumnType("nvarchar(1000)")
             .HasColumnName("new_values")
-            .HasConversion(new DictionaryToJsonConverter())
+            .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved
-            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+            // .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         #endregion
     }
 }

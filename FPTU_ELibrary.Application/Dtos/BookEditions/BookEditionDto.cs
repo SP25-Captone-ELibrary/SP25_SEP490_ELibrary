@@ -1,7 +1,6 @@
+using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Books;
-using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
-using Newtonsoft.Json;
 
 namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 

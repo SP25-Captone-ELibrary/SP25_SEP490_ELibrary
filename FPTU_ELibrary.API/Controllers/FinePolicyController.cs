@@ -64,7 +64,7 @@ public class FinePolicyController : ControllerBase
     
     [HttpDelete(APIRoute.FinePolicy.HardDeleteRange, Name = nameof(HardDeleteRangeFinePolicy))]
     [Authorize]
-    public async Task<IActionResult> HardDeleteRangeFinePolicy([FromBody] DeleteRangeRequest<int> ids)
+    public async Task<IActionResult> HardDeleteRangeFinePolicy([FromBody] RangeRequest<int> ids)
     {
         return Ok(await _finePolicyService.HardDeleteRangeAsync(ids.Ids));
     }

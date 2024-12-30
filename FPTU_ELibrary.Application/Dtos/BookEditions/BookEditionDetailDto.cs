@@ -1,5 +1,4 @@
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
 
 namespace FPTU_ELibrary.Application.Dtos.BookEditions;
@@ -52,9 +51,9 @@ public static class BookEditionDetailDtoExtensions
         {
             // Book information
             BookId = dto.BookId,
-            Title = dto.Book.Title,
-            SubTitle = dto.Book.SubTitle,
-            Summary = dto.Book.Summary,
+            Title = dto.Book != null! ?  dto.Book.Title : null!,
+            SubTitle = dto.Book != null! ?  dto.Book.SubTitle : null!,
+            Summary = dto.Book != null! ?  dto.Book.Summary : null!,
             
             // Book edition information
             BookEditionId = dto.BookEditionId,
@@ -80,6 +79,7 @@ public static class BookEditionDetailDtoExtensions
             BookEditionInventory = dto.BookEditionInventory,
             
             // Authors
+            // Authors = dto.BookEditionAuthors.Any() ? dto.BookEditionAuthors.Select(bea => bea.Author).ToList() : new(),
             Authors = dto.BookEditionAuthors.Select(bea => bea.Author).ToList(),
             
             // Edition copies

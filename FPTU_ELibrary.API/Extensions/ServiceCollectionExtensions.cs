@@ -33,7 +33,7 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddSwaggerGen();
 			// Add HttpContextAccessor
 			services.AddHttpContextAccessor();
-
+			
 			return services;
         }
 
@@ -230,5 +230,20 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
+		
+		public static IServiceCollection AddLazyResolution(this IServiceCollection services)
+        {
+            return services.AddTransient(
+                typeof(Lazy<>),
+                typeof(LazilyResolved<>));
+        }
+		
+        private class LazilyResolved<T> : Lazy<T>
+        {
+	        public LazilyResolved(IServiceProvider serviceProvider)
+		        : base(serviceProvider.GetRequiredService<T>)
+	        {
+	        }
+        }
     }
 }

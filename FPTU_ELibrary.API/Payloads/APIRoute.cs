@@ -39,6 +39,23 @@
 		}
 
 		/// <summary>
+		/// Audit trail endpoints
+		/// </summary>
+		public static class AuditTrail
+		{
+			#region BookManagement
+			public const string GetAllByEntityIdAndName = Base + "/management/books/audit-trails";
+			public const string GetDetailByDateUtc = Base + "/management/books/audit-trails/detail";
+			#endregion
+
+			#region RoleManagement
+
+			// 
+
+			#endregion
+		}
+		
+		/// <summary>
 		/// Book endpoints
 		/// </summary>
 		public static class Book
@@ -52,6 +69,7 @@
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/{id}";
 			// [DELETE]
+			public const string Delete = Base + "/management/books/{id}";
 			#endregion
 			
 			public const string Search = Base + "/books/q";
@@ -66,10 +84,21 @@
 			// [GET]
 			public const string GetAllEdition = Base + "/management/books/editions";
 			public const string GetEditionById = Base + "/management/books/editions/{id}";
+			public const string CountTotalCopy = Base + "/management/books/editions/{id}/total-copy";
+			public const string CountRangeTotalCopy = Base + "/management/books/editions/total-copy";
 			// [POST]
+			public const string Create = Base + "/management/books/{bookId}/editions";
+			public const string AddAuthor = Base + "/management/books/editions/add-author";
+			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/{id}";
+			public const string SoftDelete = Base + "/management/books/editions/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/books/editions/soft-delete-range";
+			public const string UndoDelete = Base + "/management/books/editions/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/books/editions/undo-delete-range";
 			// [DELETE]
+			public const string Delete = Base + "/management/books/editions/{id}";
+			public const string DeleteRange = Base + "/management/books/editions";
 
 			#endregion
 		}
@@ -107,14 +136,14 @@
 			public const string AddRange = Base + "/management/books/editions/{id}/copies";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/copies/{id}";
-			public const string UpdateRange = Base + "/management/books/editions/copies";
+			public const string UpdateRange = Base + "/management/books/editions/{bookEditionId}/copies";
 			public const string SoftDelete = Base + "/management/books/editions/copies/{id}/soft-delete";
-			public const string SoftDeleteRange = Base + "/management/books/editions/copies/soft-delete-range";
+			public const string SoftDeleteRange = Base + "/management/books/editions/{bookEditionId}/copies/soft-delete-range";
 			public const string UndoDelete = Base + "/management/books/editions/copies/{id}/undo-delete";
-			public const string UndoDeleteRange = Base + "/management/books/editions/copies/undo-delete-range";
+			public const string UndoDeleteRange = Base + "/management/books/editions/{bookEditionId}/copies/undo-delete-range";
 			// [DELETE]
 			public const string Delete = Base + "/management/books/editions/copies/{id}";
-			public const string DeleteRange = Base + "/management/books/editions/copies";
+			public const string DeleteRange = Base + "/management/books/editions/{bookEditionId}/copies";
 			#endregion
 		}
 		

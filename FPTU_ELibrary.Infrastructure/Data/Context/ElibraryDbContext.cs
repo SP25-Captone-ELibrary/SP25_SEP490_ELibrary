@@ -90,17 +90,96 @@ public class ElibraryDbContext : DbContext
 	{
 		// Try to retrieve user email from claims
 		var userEmail = _contextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-		
+
 		// Set auditable properties (createdAt, updatedAt, createdBy, updatedBy)
 		SetAuditableProperties(userEmail);
 
+		// Handle audit entries before save
 		var auditEntries = HandleAuditingBeforeSaveChanges(userEmail).ToList();
 		if (auditEntries.Count > 0)
 		{
 			await AuditTrails.AddRangeAsync(auditEntries, cancellationToken);
 		}
 		
-		return await base.SaveChangesAsync(cancellationToken);
+		// Save changes to the database
+		var rowsAffected = await base.SaveChangesAsync(cancellationToken);
+
+		// Update audit entries with primary key values
+		if (auditEntries.Any())
+		{
+			UpdateAuditEntriesWhenAdded(auditEntries);
+		
+			// Bulk update of the audit entries
+			AuditTrails.UpdateRange(auditEntries);
+			await base.SaveChangesAsync(cancellationToken);
+		}
+		
+		return rowsAffected;
+	}
+	
+	/// <summary>
+	/// Handle update primary key tracker entities, which mark as added after save changes success
+	/// </summary>
+	/// <param name="auditEntries"></param>
+	private void UpdateAuditEntriesWhenAdded(List<AuditTrail> auditEntries)
+	{
+		// Group audit entries by entity type
+		var groupedEntries = auditEntries
+			// Only retrieve added audit entries	
+			.Where(ae => ae.TrailType == TrailType.Added)
+			// Group by entity name
+			.GroupBy(entry => entry.EntityName)
+			// Convert to dictionary with type KeyPairValue<string, List<AuditTrail>>
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		// Get all tracked entries grouped by entity type
+		var trackedEntriesGrouped = ChangeTracker.Entries()
+			// Only retrieve entities, which name in groupEntries
+			.Where(entry => groupedEntries.Select(ge => ge.Key).Contains(entry.Entity.GetType().Name))
+			// Group by entity name
+			.GroupBy(entry => entry.Entity.GetType().Name)
+			// Convert to dictionary with type KeyPairValue<string, List<EntityEntry>>
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		// Iterate each element in audit entries grouped by entity name
+		foreach (var group in groupedEntries)
+		{
+			// Check whether audit entity name exist in tracked entities
+			if (!trackedEntriesGrouped.TryGetValue(group.Key, out var trackedEntries))
+				continue; // Continue if not found
+
+			// Retrieve List<AuditTrail> 
+			var auditEntryList = group.Value;
+
+			// Iterate each audit and tracked entries, ensuring that 2 collection have same length
+			for (int i = 0; i < auditEntryList.Count && i < trackedEntries.Count; i++)
+			{
+				var primaryKey = trackedEntries[i].Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
+				if (primaryKey != null)
+				{
+					var primaryKeyName = primaryKey.Metadata.Name;
+					var primaryKeyValue = primaryKey.CurrentValue?.ToString();
+					
+					auditEntryList[i].EntityId = primaryKey.CurrentValue?.ToString();
+					
+					// Add primary key details to the audit entry
+					auditEntryList[i].NewValues[primaryKeyName] = primaryKeyValue;
+				}
+				
+				// Handle foreign keys
+				foreach (var fk in trackedEntries[i].Properties.Where(p => p.Metadata.IsForeignKey()))
+				{
+					var foreignKeyName = fk.Metadata.Name;
+					var foreignKeyValue = fk.CurrentValue?.ToString();
+
+					if (!string.IsNullOrEmpty(foreignKeyName) && !string.IsNullOrEmpty(foreignKeyValue))
+					{
+						// Add foreign key details to the audit entry
+						auditEntryList[i].NewValues[foreignKeyName] = foreignKeyValue;
+					}
+				}
+			}
+		}
 	}
 	
 	/// <summary>
@@ -156,12 +235,13 @@ public class ElibraryDbContext : DbContext
 	private static void SetAuditTrailPropertyValues(EntityEntry entry, AuditTrail trailEntry)
 	{
 		// Skip temp fields (that will be assigned automatically by ef core engine, for example: when inserting an entity)
-		foreach (var property in entry.Properties.Where(x => !x.IsTemporary))
+		// foreach (var property in entry.Properties.Where(x => !x.IsTemporary))
+		foreach (var property in entry.Properties) // Include all properties mark as temporary (PK & FK)
 		{
 			if (property.Metadata.IsPrimaryKey())
 			{
 				trailEntry.EntityId = property.CurrentValue?.ToString();
-				continue;
+				// continue;
 			}
 
 			// Filter properties that should not appear in the audit list
@@ -213,6 +293,18 @@ public class ElibraryDbContext : DbContext
 		if (trailEntry.ChangedColumns.Count > 0)
 		{
 			trailEntry.TrailType = TrailType.Modified;
+
+			if (trailEntry.ChangedColumns.Count == 1 
+			    && trailEntry.ChangedColumns.Contains("UpdatedAt"))
+			{
+				trailEntry.TrailType = TrailType.None;
+			}
+			
+			if (trailEntry.ChangedColumns.Count == 2 && 
+			    trailEntry.ChangedColumns.All(column => column == "UpdatedAt" || column == "UpdatedBy"))
+			{
+				trailEntry.TrailType = TrailType.None;
+			}
 		}
 	}
 	
@@ -275,7 +367,7 @@ public class ElibraryDbContext : DbContext
 	{
 		var auditEnabledEntityTypes = new HashSet<Type>
 		{
-			typeof(Book), typeof(BookEdition), typeof(BookEditionCopy), typeof(BookResource),
+			typeof(Book), typeof(BookEdition), typeof(BookEditionCopy), typeof(BookResource), typeof(BookEditionAuthor), typeof(BookCategory),
 			typeof(CopyConditionHistory), typeof(LearningMaterial),
 			typeof(SystemRole), typeof(RolePermission)
 		};

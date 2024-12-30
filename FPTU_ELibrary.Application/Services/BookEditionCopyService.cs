@@ -16,6 +16,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Nest;
 using Serilog;
+using Exception = System.Exception;
 
 namespace FPTU_ELibrary.Application.Services;
 
@@ -25,10 +26,12 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
     private readonly IBookEditionService<BookEditionDto> _editionService;
     private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
     private readonly IBookEditionInventoryService<BookEditionInventoryDto> _inventoryService;
+    private readonly ICopyConditionHistoryService<CopyConditionHistoryDto> _conditionHistoryService;
 
     public BookEditionCopyService(
         IBookEditionService<BookEditionDto> editionService,
         IBookEditionInventoryService<BookEditionInventoryDto> inventoryService,
+        ICopyConditionHistoryService<CopyConditionHistoryDto> conditionHistoryService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
@@ -38,64 +41,92 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
         _editionService = editionService;
         _libShelfService = libShelfService;
         _inventoryService = inventoryService;
+        _conditionHistoryService = conditionHistoryService;
     }
 
     public override async Task<IServiceResult> DeleteAsync(int id)
     {
-        try
-        {
-            // Determine current lang context
-            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-            
-            // Build a base specification to filter by BookEditionCopyId
-            var baseSpec = new BaseSpecification<BookEditionCopy>(a => a.BookEditionCopyId == id);
+	    try
+	    {
+		    // Determine current lang context
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
 
-            // Retrieve book edition copy with specification
-            var editionCopyEntity = await _unitOfWork.Repository<BookEditionCopy, int>().GetWithSpecAsync(baseSpec);
-            if (editionCopyEntity == null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "book edition" : "ấn bản"));
-            }
+		    // Build a base specification to filter by BookEditionCopyId
+		    var baseSpec = new BaseSpecification<BookEditionCopy>(a => a.BookEditionCopyId == id);
+		    // Apply include
+		    baseSpec.ApplyInclude(q => q
+			    .Include(bec => bec.CopyConditionHistories));
 
-            // Check whether book edition copy in the trash bin
-            if (!editionCopyEntity.IsDeleted)
-            {
-        	    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-        		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-            }
+		    // Retrieve book edition copy with specification
+		    var editionCopyEntity = await _unitOfWork.Repository<BookEditionCopy, int>().GetWithSpecAsync(baseSpec);
+		    if (editionCopyEntity == null)
+		    {
+			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				    StringUtils.Format(errMsg, isEng ? "book edition copy" : "bản in"));
+		    }
 
-            // Process add delete entity
-            await _unitOfWork.Repository<BookEditionCopy, int>().DeleteAsync(id);
-            // Save to DB
-            if (await _unitOfWork.SaveChangesAsync() > 0)
-            {
-        	    return new ServiceResult(ResultCodeConst.SYS_Success0004,
-        		    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
-            }
+		    // Check whether book edition copy in the trash bin
+		    if (!editionCopyEntity.IsDeleted)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+		    }
 
-            // Fail to delete
-            return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-        	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-        }
-        catch (DbUpdateException ex)
-        {
-            if (ex.InnerException is SqlException sqlEx)
-            {
-        	    switch (sqlEx.Number)
-        	    {
-        		    case 547: // Foreign key constraint violation
-        			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-        				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-        	    }
-            }
-        		
-            // Throw if other issues
-            throw;
-        }
+		    // Check whether total copy condition monitoring
+		    // history equal 1 (default book condition when create)
+		    if (editionCopyEntity.CopyConditionHistories.Count == 1)
+		    {
+			    // Progress delete without save
+			    await _conditionHistoryService.DeleteWithoutSaveChangesAsync(
+				    // Retrieve first element id
+				    editionCopyEntity.CopyConditionHistories.First().ConditionHistoryId);
+		    } // Else: do not allow to delete
+
+		    // Process add delete entity
+		    await _unitOfWork.Repository<BookEditionCopy, int>().DeleteAsync(id);
+		    // Save to DB
+		    if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Success0004,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+		    }
+
+		    // Fail to delete
+		    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+	    }
+	    catch (DbUpdateException ex)
+	    {
+		    if (ex.InnerException is SqlException sqlEx)
+		    {
+			    switch (sqlEx.Number)
+			    {
+				    case 547: // Foreign key constraint violation
+					    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+						    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+			    }
+		    }
+
+		    // Throw if other issues
+		    throw;
+	    }
+	    catch (InvalidOperationException ex)
+	    {
+		    _logger.Error(ex.Message);
+
+		    // Handle delete constraint data
+		    if (ex.Message.Contains("required relationship") || ex.Message.Contains("severed"))
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+		    }
+			    
+		    // Throw for other issues 
+		    throw new Exception("Error invoke when progress delete data");
+	    }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
@@ -134,11 +165,11 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 			);
 			var existingEntity = await _unitOfWork.Repository<BookEditionCopy, int>()
 				.GetWithSpecAsync(baseSpec);
-			if (existingEntity == null)
+			if (existingEntity == null || existingEntity.IsDeleted)
 			{
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errMsg, isEng ? "book edition" : "ấn bản"));
+					StringUtils.Format(errMsg, isEng ? "book edition copy" : "bản in"));
 			}
 			
 			// Validate status
@@ -189,17 +220,47 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
 			}
 
+			// Retrieve current inventory data
+			var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+				// With specific book edition id
+				x => x.BookEditionId == existingEntity.BookEditionId))).Data as BookEditionInventoryDto;
+			if (currentInventory == null) // Not found inventory
+			{
+				// An error occurred while updating the inventory data
+				return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+			}
+			
+			// Check for typeof status update
+			if ((BookEditionCopyStatus)validStatus == BookEditionCopyStatus.OutOfShelf)
+			{
+				// Reduce current available value
+				currentInventory.AvailableCopies -= 1;
+			}else if ((BookEditionCopyStatus)validStatus == BookEditionCopyStatus.InShelf)
+			{
+				// Increase current available value
+				currentInventory.AvailableCopies += 1;
+			}
+			
 			// Progress update when all require passed
 			await _unitOfWork.Repository<BookEditionCopy, int>().UpdateAsync(existingEntity);
 
+			// Progress update inventory
+			await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+			
+			// Progress update can borrow status of book edition
+			await _editionService.UpdateBorrowStatusWithoutSaveChangesAsync(
+				id: existingEntity.BookEditionId,
+				canBorrow: currentInventory.AvailableCopies > 0);
+			
 			// Save changes to DB
-			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
 			if (rowsAffected == 0)
 			{
 				return new ServiceResult(ResultCodeConst.SYS_Fail0003,
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
 			}
-
+			
 			// Mark as update success
 			return new ServiceResult(ResultCodeConst.SYS_Success0003,
 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
@@ -326,8 +387,8 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             throw new Exception("Error invoke when process add range copy to book edition");
         }
     }
-    
-	public async Task<IServiceResult> UpdateRangeAsync(List<int> bookEditionCopyIds, string status)
+		
+	public async Task<IServiceResult> UpdateRangeAsync(int bookEditionId, List<int> bookEditionCopyIds, string status)
     {
         try
         {
@@ -415,28 +476,68 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             }
 
             // Build spec to retrieve all book edition copy match
-            var baseSpec =
-                new BaseSpecification<BookEditionCopy>(x => bookEditionCopyIds.Contains(x.BookEditionCopyId));
+            var baseSpec = new BaseSpecification<BookEditionCopy>(x =>
+		            // Must update within the same book edition
+					x.BookEditionId == bookEditionId &&
+		            // Exist in update list
+					bookEditionCopyIds.Contains(x.BookEditionCopyId)); 
+            // Get all book edition copy with spec
             var editionCopyEntities =
                 await _unitOfWork.Repository<BookEditionCopy, int>().GetAllWithSpecAsync(baseSpec);
             // Convert to list collection
             var editionCopyList = editionCopyEntities.ToList();
-            if (!editionCopyList.Any()) // Not found any
+            if (!editionCopyList.Any() // Not found any
+                || editionCopyList.Any(x => x.IsDeleted)) // Some are mark as deleted
             {
                 // Mark as fail to update
                 return new ServiceResult(ResultCodeConst.SYS_Fail0003,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
             }
             
+            // Retrieve current inventory data
+            var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+            	// With specific book edition id
+            	x => x.BookEditionId == bookEditionId))).Data as BookEditionInventoryDto;
+            if (currentInventory == null) // Not found inventory
+            {
+            	// An error occurred while updating the inventory data
+            	return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+            		await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+            }
+            
             // Process update edition copy status 
             foreach (var bec in editionCopyList)
             {
-                // Change status 
+				// Check whether status is change 
+				if (!Equals(bec.Status, status)) // Compare current with to update status
+				{
+					// Check for typeof status update
+					if ((BookEditionCopyStatus?)validStatus == BookEditionCopyStatus.OutOfShelf)
+					{
+						// Reduce current available value
+						currentInventory.AvailableCopies -= 1;
+					}else if ((BookEditionCopyStatus?)validStatus == BookEditionCopyStatus.InShelf)
+					{
+						// Increase current available value
+						currentInventory.AvailableCopies += 1;
+					}
+					
+				}
+				
+				// Assign update status 
                 bec.Status = status;
             }
 
+            // Progress update inventory
+            await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+            
+            // Progress update can borrow status of book edition
+            await _editionService.UpdateBorrowStatusWithoutSaveChangesAsync(
+	            id: bookEditionId,
+	            canBorrow: currentInventory.AvailableCopies > 0);
+            
             // Save changes to DB
-            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
             if (rowsAffected == 0)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0003,
@@ -457,54 +558,83 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             throw new Exception("Error invoke when process update range book edition copy");
         }
     }
-    
-	public async Task<IServiceResult> SoftDeleteAsync(int bookEditionId)
+		
+	public async Task<IServiceResult> SoftDeleteAsync(int bookEditionCopyId)
 	{
 		try
 		{
-            // Determine current lang context 
-            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-            
-            // Retrieve the entity
-            // Build specification query
-            var baseSpec = new BaseSpecification<BookEditionCopy>(x => x.BookEditionCopyId == bookEditionId);
-            // Include borrow records and requests relation
-            baseSpec.ApplyInclude(q => q
-	            // Include borrow records
-	            .Include(bec => bec.BorrowRecords)
-	            // Include borrow requests
-	            .Include(bec => bec.BorrowRequests)
-            );
-            var existingEntity = await _unitOfWork.Repository<BookEditionCopy, int>()
-	            .GetWithSpecAsync(baseSpec);
-            if (existingEntity == null)
-            {
-	            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-	            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-		            StringUtils.Format(errMsg, isEng ? "book edition" : "ấn bản"));
-            }
-		
-            // Check whether edition copy is borrowed or reserved
-            var hasConstraint = 
-	            existingEntity.BorrowRecords.Any(br => 
-		            // Check any record not current in RETURNED status
-		            br.Status != nameof(BorrowRecordStatus.Returned)) || 
-	            existingEntity.BorrowRequests.Any(br => 
-		            // Check any request not current in REJECTED or CANCELLED status
-		            br.Status != nameof(BorrowRequestStatus.Rejected) && br.Status != nameof(BorrowRequestStatus.Cancelled));
-            if (hasConstraint) // Has any constraint 
-            {
-	            return new ServiceResult(ResultCodeConst.Book_Warning0008,
-		            await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0008));
-            }
-            
+			// Determine current lang context 
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+
+			// Retrieve the entity
+			// Build specification query
+			var baseSpec = new BaseSpecification<BookEditionCopy>(x => x.BookEditionCopyId == bookEditionCopyId);
+			// Include borrow records and requests relation
+			baseSpec.ApplyInclude(q => q
+				// Include borrow records
+				.Include(bec => bec.BorrowRecords)
+				// Include borrow requests
+				.Include(bec => bec.BorrowRequests)
+			);
+			var existingEntity = await _unitOfWork.Repository<BookEditionCopy, int>()
+				.GetWithSpecAsync(baseSpec);
+			if (existingEntity == null || existingEntity.IsDeleted)
+			{
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMsg, isEng ? "book edition copy" : "bản in"));
+			}
+
+			// Check whether edition copy is borrowed or reserved
+			var hasConstraint =
+				existingEntity.BorrowRecords.Any(br =>
+					// Check any record not current in RETURNED status
+					br.Status != nameof(BorrowRecordStatus.Returned)) ||
+				existingEntity.BorrowRequests.Any(br =>
+					// Check any request not current in REJECTED or CANCELLED status
+					br.Status != nameof(BorrowRequestStatus.Rejected) &&
+					br.Status != nameof(BorrowRequestStatus.Cancelled));
+			if (hasConstraint) // Has any constraint 
+			{
+				return new ServiceResult(ResultCodeConst.Book_Warning0008,
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0008));
+			}
+
+			// Only book edition copy with status OutOfShelf allowed to delete
+			if (existingEntity.Status != nameof(BookEditionCopyStatus.OutOfShelf))
+			{
+				return new ServiceResult(ResultCodeConst.Book_Warning0009,
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0009));
+			}
+
 			// Update delete status
 			existingEntity.IsDeleted = true;
 			
+			// Update inventory
+			// Retrieve current inventory data
+			var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+				// With specific book edition id
+				x => x.BookEditionId == existingEntity.BookEditionId))).Data as BookEditionInventoryDto;
+			if (currentInventory == null) // Not found inventory
+			{
+				// An error occurred while updating the inventory data
+				return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+			}
+			
+			// Reduce total copy number
+			currentInventory.TotalCopies -= 1;
+			
+			// Process update book edition copy
+			await _unitOfWork.Repository<BookEditionCopy, int>().UpdateAsync(existingEntity);
+			
+			// Process update inventory
+			await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+			
 			// Save changes to DB
-			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
 			if (rowsAffected == 0)
 			{
 				// Get error msg
@@ -522,15 +652,18 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 			throw new Exception("Error invoke when process soft delete book edition copy");	
 		}
 	}
-
-	public async Task<IServiceResult> SoftDeleteRangeAsync(List<int> bookEditionCopyIds)
+	
+	public async Task<IServiceResult> SoftDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds)
 	{
 		try
 		{
 			// Get all matching book edition copy 
 			// Build spec
-			var baseSpec =
-				new BaseSpecification<BookEditionCopy>(e => bookEditionCopyIds.Contains(e.BookEditionCopyId));
+			var baseSpec = new BaseSpecification<BookEditionCopy>(e =>
+					// With specific book edition
+					e.BookEditionId == bookEditionId &&
+					// Any id match request list
+					bookEditionCopyIds.Contains(e.BookEditionCopyId));
 			// Include borrow records and requests relation
 			baseSpec.ApplyInclude(q => q
 				// Include borrow records
@@ -542,6 +675,11 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 				.GetAllWithSpecAsync(baseSpec);
 			// Check if any data already soft delete
 			var editionCopyList = editionCopyEntities.ToList();
+			if (!editionCopyList.Any()) // Check whether not exist any item
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
 			if (editionCopyList.Any(x => x.IsDeleted))
 			{
 				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
@@ -576,11 +714,36 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 				throw new UnprocessableEntityException("Invalid data", customErrs);
 			}
 
+			// Only book edition copy with status OutOfShelf allowed to delete
+			if (editionCopyList.Any(be => be.Status != nameof(BookEditionCopyStatus.OutOfShelf)))
+			{
+				return new ServiceResult(ResultCodeConst.Book_Warning0009,
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0009));
+			}
+			
 			// Change delete status
 			editionCopyList.ForEach(x => { x.IsDeleted = true; });
+			
+			// Update current total to inventory
+			// Retrieve current inventory data
+			var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+				// With specific book edition id
+				x => x.BookEditionId == bookEditionId))).Data as BookEditionInventoryDto;
+			if (currentInventory == null) // Not found inventory
+			{
+				// An error occurred while updating the inventory data
+				return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+			}
+			
+			// Reduce total copy in inventory with all copies have been deleted above
+			currentInventory.TotalCopies -= editionCopyList.Count;
 
+			// Update inventory
+			await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+			
 			// Save changes to DB
-			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
 			if (rowsAffected == 0)
 			{
 				// Get error msg
@@ -603,7 +766,7 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
         }
 	}
 	
-	public async Task<IServiceResult> UndoDeleteAsync(int bookEditionId)
+	public async Task<IServiceResult> UndoDeleteAsync(int bookEditionCopyId)
 	{
 		try
 		{
@@ -613,20 +776,41 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             var isEng = lang == SystemLanguage.English;
             
 			// Check exist book edition copy
-			var existingEntity = await _unitOfWork.Repository<BookEditionCopy, int>().GetByIdAsync(bookEditionId);
+			var existingEntity = await _unitOfWork.Repository<BookEditionCopy, int>().GetByIdAsync(bookEditionCopyId);
 			// Check if book edition already mark as deleted
 			if (existingEntity == null || !existingEntity.IsDeleted)
 			{
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "book edition" : "ấn bản"));
+                    StringUtils.Format(errMsg, isEng ? "book edition copy" : "bản in"));
 			}
 			
 			// Update delete status
 			existingEntity.IsDeleted = false;
 			
+			// Update inventory
+			// Retrieve current inventory data
+			var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+				// With specific book edition id
+				x => x.BookEditionId == existingEntity.BookEditionId))).Data as BookEditionInventoryDto;
+			if (currentInventory == null) // Not found inventory
+			{
+				// An error occurred while updating the inventory data
+				return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+					await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+			}
+			
+			// Reduce total copy number
+			currentInventory.TotalCopies += 1;
+			
+			// Process update book edition copy
+			await _unitOfWork.Repository<BookEditionCopy, int>().UpdateAsync(existingEntity);
+			
+			// Process update inventory
+			await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+			
 			// Save changes to DB
-			var rowsAffected = await _unitOfWork.SaveChangesAsync();
+			var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
 			if (rowsAffected == 0)
 			{
 				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
@@ -644,17 +828,26 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 		}
 	}
 
-	public async Task<IServiceResult> UndoDeleteRangeAsync(List<int> bookEditionCopyIds)
+	public async Task<IServiceResult> UndoDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds)
 	{
 		try
         {
             // Get all matching book edition copy 
             // Build spec
-            var baseSpec = new BaseSpecification<BookEditionCopy>(e => bookEditionCopyIds.Contains(e.BookEditionCopyId));
+            var baseSpec = new BaseSpecification<BookEditionCopy>(e => 
+	            // With specific book edition
+	            e.BookEditionId == bookEditionId &&
+	            // Any id match request
+	            bookEditionCopyIds.Contains(e.BookEditionCopyId));
             var editionCopyEntities = await _unitOfWork.Repository<BookEditionCopy, int>()
                 .GetAllWithSpecAsync(baseSpec);
             // Check if any data already soft delete
             var editionCopyList = editionCopyEntities.ToList();
+            if (!editionCopyList.Any()) // Check whether not exist any item
+            {
+	            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
             if (editionCopyList.Any(x => !x.IsDeleted))
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
@@ -664,8 +857,26 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             // Progress undo deleted status to false
             editionCopyList.ForEach(x => x.IsDeleted = false);
                     
+            // Update current total to inventory
+            // Retrieve current inventory data
+            var currentInventory = (await _inventoryService.GetWithSpecAsync(new BaseSpecification<BookEditionInventory>(
+            	// With specific book edition id
+            	x => x.BookEditionId == bookEditionId))).Data as BookEditionInventoryDto;
+            if (currentInventory == null) // Not found inventory
+            {
+            	// An error occurred while updating the inventory data
+            	return new ServiceResult(ResultCodeConst.Book_Fail0001, 
+            		await _msgService.GetMessageAsync(ResultCodeConst.Book_Fail0001));
+            }
+            
+            // Reserved total copy in inventory with all copies have been reversed above
+            currentInventory.TotalCopies += editionCopyList.Count;
+
+            // Update inventory
+            await _inventoryService.UpdateWithoutSaveChangesAsync(currentInventory);
+            
             // Save changes to DB
-            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            var rowsAffected = await _unitOfWork.SaveChangesWithTransactionAsync();
             if (rowsAffected == 0)
             {
                 // Get error msg
@@ -684,21 +895,51 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
         }
 	}
     
-	public async Task<IServiceResult> DeleteRangeAsync(List<int> bookEditionCopyIds)
+	public async Task<IServiceResult> DeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds)
     {
         try
         {
             // Get all matching book edition copy 
             // Build spec
-            var baseSpec = new BaseSpecification<BookEditionCopy>(e => bookEditionCopyIds.Contains(e.BookEditionCopyId));
+            var baseSpec = new BaseSpecification<BookEditionCopy>(e => 
+	            // With specific book edition
+	            e.BookEditionId == bookEditionId &&
+	            // Any book edition id match request list
+	            bookEditionCopyIds.Contains(e.BookEditionCopyId));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+	            .Include(bec => bec.CopyConditionHistories));
             var editionCopyEntities = await _unitOfWork.Repository<BookEditionCopy, int>()
             	.GetAllWithSpecAsync(baseSpec);
             // Check if any data already soft delete
             var editionCopyList = editionCopyEntities.ToList();
+            if (!editionCopyList.Any()) // Check whether not exist any item
+            {
+            	return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+            		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
             if (editionCopyList.Any(x => !x.IsDeleted))
             {
             	return new ServiceResult(ResultCodeConst.SYS_Fail0004,
             		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+            
+            // All copy must have only one condition copy history enabling to perform delete
+            if (editionCopyList.Select(x => x.CopyConditionHistories)
+                .Any(x => x.Count > 1)) // Exist at least one not match require
+            {
+	            // Return not allow to delete
+	            return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+            }
+            else // All require match -> Process delete range
+            {
+	            // Check whether total copy condition monitoring
+	            foreach (var cc in editionCopyList.SelectMany(x => x.CopyConditionHistories))
+	            {
+		            // Progress delete without save
+		            await _conditionHistoryService.DeleteWithoutSaveChangesAsync(cc.ConditionHistoryId);
+	            }
             }
 
             // Process delete range
@@ -736,4 +977,42 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             throw new Exception("Error invoke when process delete range book edition copy");
         }
     }
+
+	public async Task<IServiceResult> CountTotalEditionCopyAsync(int bookEditionId)
+	{
+		try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<BookEditionCopy>(x => x.BookEditionId == bookEditionId);
+			// Count all book copy of specific edition
+            var totalCopyOfEdition = await _unitOfWork.Repository<BookEditionCopy, int>().CountAsync(baseSpec);
+        	
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), totalCopyOfEdition);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process count total copy");
+        } 
+	}
+	
+	public async Task<IServiceResult> CountTotalEditionCopyAsync(List<int> bookEditionIds)
+	{
+		try
+		{
+			// Build spec
+			var baseSpec = new BaseSpecification<BookEditionCopy>(x => bookEditionIds.Contains(x.BookEditionId));
+			// Count all book copy of specific edition
+			var totalCopyOfEdition = await _unitOfWork.Repository<BookEditionCopy, int>().CountAsync(baseSpec);
+        	
+			return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), totalCopyOfEdition);
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process count total copy");
+		} 
+	}
 }

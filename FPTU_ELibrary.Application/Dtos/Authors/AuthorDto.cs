@@ -1,5 +1,5 @@
+using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
 
 namespace FPTU_ELibrary.Application.Dtos.Authors;
 
@@ -25,5 +25,6 @@ public class AuthorDto
     public bool IsDeleted { get; set; }
 
     // Mapping entity
+    [JsonIgnore]
     public ICollection<BookEditionAuthorDto> BookEditionAuthors { get; set; } = new List<BookEditionAuthorDto>();
 }

@@ -236,8 +236,7 @@ namespace FPTU_ELibrary.API.Extensions
 				CoverImage = req.CoverImage,
 				Format = req.Format,
 				Publisher = req.Publisher,
-				Isbn = req.Isbn,
-				CanBorrow = req.CanBorrow,
+				Isbn = ISBN.CleanIsbn(req.Isbn),
 				EstimatedPrice = req.EstimatedPrice,
 				ShelfId = req.ShelfId
 			};
@@ -366,6 +365,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
+				Avatar = req.Avatar,
 				TerminationDate = req.TerminationDate,
 				ModifiedDate = currentLocalDateTime
 			};

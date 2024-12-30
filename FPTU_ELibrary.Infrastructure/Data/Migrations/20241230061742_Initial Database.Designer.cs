@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20241225025824_Initial Database")]
+    [Migration("20241230061742_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -222,6 +222,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("category_id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
+
                     b.HasKey("BookCategoryId")
                         .HasName("PK_BookCategory_BookCategoryId");
 
@@ -357,6 +376,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("book_edition_id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
+
                     b.HasKey("BookEditionAuthorId")
                         .HasName("PK_BookAuthorEdition_BookEditionAuthorId");
 
@@ -398,10 +436,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
-
-                    b.Property<int?>("ShelfId")
-                        .HasColumnType("int")
-                        .HasColumnName("shelf_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2033,6 +2067,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BookEdition", "BookEdition")
                         .WithOne("BookEditionInventory")
                         .HasForeignKey("FPTU_ELibrary.Domain.Entities.BookEditionInventory", "BookEditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BookEditionInventory_BookEditionId");
 

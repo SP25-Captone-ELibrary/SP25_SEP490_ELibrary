@@ -58,7 +58,7 @@ public class CategoryController : ControllerBase
 
     [HttpDelete(APIRoute.Category.HardDeleteRange, Name = nameof(DeleteRangeCategoryAsync))]
     [Authorize]
-    public async Task<IActionResult> DeleteRangeCategoryAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> DeleteRangeCategoryAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _categoryService.HardDeleteRangeAsync(req.Ids));
     }

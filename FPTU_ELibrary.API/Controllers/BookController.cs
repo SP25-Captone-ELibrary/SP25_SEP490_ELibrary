@@ -6,7 +6,6 @@ using FPTU_ELibrary.API.Payloads.Requests.Book;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
-using FPTU_ELibrary.Application.Services;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -75,6 +74,13 @@ namespace FPTU_ELibrary.API.Controllers
 			// Retrieve user email from token
             var email = User.FindFirst(ClaimTypes.Email)?.Value;
 			return Ok(await _bookService.UpdateAsync(id, dto.ToBookDto(), email ?? string.Empty));
+		}
+
+		[Authorize]
+		[HttpDelete(APIRoute.Book.Delete, Name = nameof(DeleteBookAsync))]
+		public async Task<IActionResult> DeleteBookAsync([FromRoute] int id)
+		{
+			return Ok(await _bookService.DeleteAsync(id));
 		}
 	} 
 }

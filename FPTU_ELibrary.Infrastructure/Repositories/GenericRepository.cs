@@ -259,6 +259,5 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
         {
             return SpecificationEvaluator<TEntity>.GetQuery(query, specification);
         }
-
 	}
 }

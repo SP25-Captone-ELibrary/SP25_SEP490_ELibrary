@@ -12,7 +12,6 @@ public class UpdateBookEditionRequest
     public string? Format { get; set; }
     public string? Publisher { get; set; }
     public string Isbn { get; set; } = null!;
-    public bool CanBorrow { get; set; }
     public decimal EstimatedPrice { get; set; }
     public int? ShelfId { get; set; }
     public List<int> AuthorIds { get; set; } = new();

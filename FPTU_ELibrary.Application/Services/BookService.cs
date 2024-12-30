@@ -19,6 +19,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -143,6 +144,77 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public override async Task<IServiceResult> DeleteAsync(int id)
+		{
+			try
+			{
+				// Determine current system lang
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+
+				// Build specification
+				var baseSpec = new BaseSpecification<Book>(b => b.BookId == id);
+				// Apply including (book editions, book resources)
+				baseSpec.ApplyInclude(q => q
+					.Include(b => b.BookCategories)
+				);
+				// Retrieve book with specification
+				var existingBook = await _unitOfWork.Repository<Book, int>().GetWithSpecAsync(baseSpec);
+				if (existingBook == null) // not found
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng ? "book to process delete" : "sách để xóa"));
+				}
+
+				// Check whether book contains any categories
+				if (existingBook.BookCategories.Any())
+				{
+					// Clear and set to empty collection
+					existingBook.BookCategories.Clear();
+				}
+
+				// Invoke DbUpdateException <- If book still hold any edition or resource
+				// As foreign key of relation tables still exist -> required to delete all relations first
+				// Process delete
+				await _unitOfWork.Repository<Book, int>().DeleteAsync(existingBook.BookId);
+				
+				// Save change
+				var rowEffected = await _unitOfWork.SaveChangesAsync();
+				if (rowEffected == 0)
+				{
+					// Mark as fail to delete
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+				
+				// Mark as delete success
+                return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw new Exception("Error invoke when process delete book");
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process delete book");
+			}
+		}
+		
 		public async Task<IServiceResult> UpdateAsync(int id, BookDto dto, string byEmail)
 		{
 			try

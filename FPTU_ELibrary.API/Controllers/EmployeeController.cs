@@ -96,7 +96,7 @@ public class EmployeeController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.Employee.SoftDeleteRange, Name = nameof(SoftDeleteEmployeeRangeAsync))]
-    public async Task<IActionResult> SoftDeleteEmployeeRangeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> SoftDeleteEmployeeRangeAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _employeeService.SoftDeleteRangeAsync(req.Ids));
     }
@@ -110,7 +110,7 @@ public class EmployeeController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.Employee.UndoDeleteRange, Name = nameof(UndoDeleteRangeEmployeeAsync))]
-    public async Task<IActionResult> UndoDeleteRangeEmployeeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> UndoDeleteRangeEmployeeAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _employeeService.UndoDeleteRangeAsync(req.Ids));
     }
@@ -124,7 +124,7 @@ public class EmployeeController : ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.Employee.DeleteRange, Name = nameof(DeleteRangeEmployeeAsync))]
-    public async Task<IActionResult> DeleteRangeEmployeeAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> DeleteRangeEmployeeAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _employeeService.DeleteRangeAsync(req.Ids));
     }

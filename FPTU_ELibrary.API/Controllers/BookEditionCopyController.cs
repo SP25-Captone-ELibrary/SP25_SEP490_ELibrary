@@ -45,9 +45,11 @@ public class BookEditionCopyController : ControllerBase
     
     [Authorize]
     [HttpPut(APIRoute.BookEditionCopy.UpdateRange, Name = nameof(UpdateRangeEditionCopyAsync))]
-    public async Task<IActionResult> UpdateRangeEditionCopyAsync([FromBody] UpdateRangeBookEditionCopyRequest req)
+    public async Task<IActionResult> UpdateRangeEditionCopyAsync(
+        [FromRoute] int bookEditionId, 
+        [FromBody] UpdateRangeBookEditionCopyRequest req)
     {
-        return Ok(await _editionCopyService.UpdateRangeAsync(req.BookEditionCopyIds, req.Status));
+         return Ok(await _editionCopyService.UpdateRangeAsync(bookEditionId, req.BookEditionCopyIds, req.Status));
     }
     
     [Authorize]
@@ -59,9 +61,9 @@ public class BookEditionCopyController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.BookEditionCopy.SoftDeleteRange, Name = nameof(SoftDeleteRangeEditionCopyAsync))]
-    public async Task<IActionResult> SoftDeleteRangeEditionCopyAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> SoftDeleteRangeEditionCopyAsync([FromRoute] int bookEditionId, [FromBody] RangeRequest<int> req)
     {
-        return Ok(await _editionCopyService.SoftDeleteRangeAsync(req.Ids.ToList()));
+        return Ok(await _editionCopyService.SoftDeleteRangeAsync(bookEditionId, req.Ids.ToList()));
     }
     
     [Authorize]
@@ -73,9 +75,9 @@ public class BookEditionCopyController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.BookEditionCopy.UndoDeleteRange, Name = nameof(UndoDeleteRangeEditionCopyAsync))]
-    public async Task<IActionResult> UndoDeleteRangeEditionCopyAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> UndoDeleteRangeEditionCopyAsync([FromRoute] int bookEditionId, [FromBody] RangeRequest<int> req)
     {
-        return Ok(await _editionCopyService.UndoDeleteRangeAsync(req.Ids.ToList()));
+        return Ok(await _editionCopyService.UndoDeleteRangeAsync(bookEditionId, req.Ids.ToList()));
     }
     
     [Authorize]
@@ -87,8 +89,8 @@ public class BookEditionCopyController : ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.BookEditionCopy.DeleteRange, Name = nameof(DeleteRangeEditionCopyAsync))]
-    public async Task<IActionResult> DeleteRangeEditionCopyAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> DeleteRangeEditionCopyAsync([FromRoute] int bookEditionId, [FromBody] RangeRequest<int> req)
     {
-        return Ok(await _editionCopyService.DeleteRangeAsync(req.Ids.ToList()));
+        return Ok(await _editionCopyService.DeleteRangeAsync(bookEditionId, req.Ids.ToList()));
     }
 }
