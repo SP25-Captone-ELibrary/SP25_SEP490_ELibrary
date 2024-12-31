@@ -45,33 +45,96 @@ public class AuthorSpecification : BaseSpecification<Author>
         {
             AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
         }
-        if (specParams.DobRange != null 
+        if (specParams.ModifiedDateRange != null
+            && specParams.ModifiedDateRange.Length > 1) // With range of dob
+        {
+            if (specParams.ModifiedDateRange[0].HasValue && specParams.ModifiedDateRange[1].HasValue)
+            {
+                AddFilter(x => x.UpdateDate.HasValue &&
+                               x.UpdateDate.Value.Date >= specParams.ModifiedDateRange[0]!.Value.Date
+                               && x.UpdateDate.Value.Date <= specParams.ModifiedDateRange[1]!.Value.Date);
+            }
+            else if ((specParams.ModifiedDateRange[0] is null && specParams.ModifiedDateRange[1].HasValue))
+            {
+                AddFilter(x => x.UpdateDate <= specParams.ModifiedDateRange[1]);
+            }
+            else if (specParams.ModifiedDateRange[0].HasValue && specParams.ModifiedDateRange[1] is null)
+            {
+                AddFilter(x => x.UpdateDate >= specParams.ModifiedDateRange[0]);
+            }
+            else
+            {
+                AddFilter(x => x.UpdateDate == DateTime.Now);
+            }
+        }
+        
+        if (specParams.CreateDateRange != null
+            && specParams.CreateDateRange.Length > 1) // With range of dob
+        {
+            if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1].HasValue)
+            {
+                AddFilter(x =>
+                               x.CreateDate.Date >= specParams.CreateDateRange[0]!.Value.Date
+                               && x.CreateDate.Date <= specParams.CreateDateRange[1]!.Value.Date);
+            }
+            else if ((specParams.CreateDateRange[0] is null && specParams.CreateDateRange[1].HasValue))
+            {
+                AddFilter(x => x.CreateDate <= specParams.CreateDateRange[1]);
+            }
+            else if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1] is null)
+            {
+                AddFilter(x => x.CreateDate >= specParams.CreateDateRange[0]);
+            }
+            else
+            {
+                AddFilter(x => x.CreateDate == DateTime.Now);
+            }
+        }
+        
+        if (specParams.DobRange != null
             && specParams.DobRange.Length > 1) // With range of dob
         {
-            AddFilter(x => x.Dob.HasValue &&
-                           x.Dob.Value.Date >= specParams.DobRange[0].Date 
-                           && x.Dob.Value.Date <= specParams.DobRange[1].Date);       
+            if (specParams.DobRange[0].HasValue && specParams.DobRange[1].HasValue)
+            {
+                AddFilter(x => x.Dob.HasValue &&
+                               x.Dob.Value.Date >= specParams.DobRange[0]!.Value.Date
+                               && x.Dob.Value.Date <= specParams.DobRange[1]!.Value.Date);
+            }
+            else if ((specParams.DobRange[0] is null && specParams.DobRange[1].HasValue))
+            {
+                AddFilter(x => x.Dob <= specParams.DobRange[1]);
+            }
+            else if (specParams.DobRange[0].HasValue && specParams.DobRange[1] is null)
+            {
+                AddFilter(x => x.Dob >= specParams.DobRange[0]);
+            }
+            else
+            {
+                AddFilter(x => x.Dob == DateTime.Now);
+            }
         }
-        if (specParams.CreateDateRange != null 
-            && specParams.CreateDateRange.Length > 1) // With range of create date 
+        
+        if (specParams.DateOfDeathRange != null
+            && specParams.DateOfDeathRange.Length > 1) // With range of dob
         {
-            AddFilter(x => 
-                x.CreateDate >= specParams.CreateDateRange[0].Date 
-                && x.CreateDate <= specParams.CreateDateRange[1].Date);       
-        }
-        if (specParams.ModifiedDateRange != null 
-            && specParams.ModifiedDateRange.Length > 1) // With range of create date 
-        {
-            AddFilter(x => x.UpdateDate.HasValue &&
-                           x.UpdateDate.Value.Date >= specParams.ModifiedDateRange[0].Date 
-                           && x.UpdateDate.Value.Date <= specParams.ModifiedDateRange[1].Date);       
-        }
-        if (specParams.DateOfDeathRange != null 
-            && specParams.DateOfDeathRange.Length > 1) // With range of death date 
-        {
-            AddFilter(x => x.DateOfDeath.HasValue &&
-                           x.DateOfDeath.Value.Date >= specParams.DateOfDeathRange[0].Date 
-                           && x.DateOfDeath.Value.Date <= specParams.DateOfDeathRange[1].Date);       
+            if (specParams.DateOfDeathRange[0].HasValue && specParams.DateOfDeathRange[1].HasValue)
+            {
+                AddFilter(x => x.DateOfDeath.HasValue &&
+                               x.DateOfDeath.Value.Date >= specParams.DateOfDeathRange[0]!.Value.Date
+                               && x.DateOfDeath.Value.Date <= specParams.DateOfDeathRange[1]!.Value.Date);
+            }
+            else if ((specParams.DateOfDeathRange[0] is null && specParams.DateOfDeathRange[1].HasValue))
+            {
+                AddFilter(x => x.DateOfDeath <= specParams.DateOfDeathRange[1]);
+            }
+            else if (specParams.DateOfDeathRange[0].HasValue && specParams.DateOfDeathRange[1] is null)
+            {
+                AddFilter(x => x.DateOfDeath >= specParams.DateOfDeathRange[0]);
+            }
+            else
+            {
+                AddFilter(x => x.DateOfDeath == DateTime.Now);
+            }
         }
         
         // Progress sorting
