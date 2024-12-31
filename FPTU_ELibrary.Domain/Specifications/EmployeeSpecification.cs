@@ -56,11 +56,11 @@ public class EmployeeSpecification : BaseSpecification<Employee>
         }
         if (!string.IsNullOrEmpty(specParams.FirstName)) // With first name
         {
-            AddFilter(x => x.FirstName == specParams.FirstName);
+            AddFilter(x => x.FirstName.ToLower().Contains(specParams.FirstName.ToLower()));
         }
         if (!string.IsNullOrEmpty(specParams.LastName)) // With last name
         {
-            AddFilter(x => x.LastName == specParams.LastName);
+            AddFilter(x => x.LastName.ToLower().Contains(specParams.LastName.ToLower()));
         }
         if (!string.IsNullOrEmpty(specParams.Gender)) // With gender
         {

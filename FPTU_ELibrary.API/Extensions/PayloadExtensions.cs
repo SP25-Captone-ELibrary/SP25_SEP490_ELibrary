@@ -337,8 +337,9 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
+				TerminationDate = req.TerminationDate,
 				RoleId = req.RoleId,
-
+			
 				// Set default authorization values
 				CreateDate = currentLocalDateTime,
 				IsActive = false,
