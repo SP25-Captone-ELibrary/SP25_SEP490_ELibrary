@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -59,6 +59,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     book_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    bookcodeforai = table.Column<Guid>(name: "book-code-for-ai", type: "uniqueidentifier", nullable: true),
+                    istrained = table.Column<bool>(name: "is-trained", type: "bit", nullable: false, defaultValue: false),
+                    TrainedDay = table.Column<DateTime>(type: "datetime2", nullable: true),
                     title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
@@ -544,6 +547,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     book_edition_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    BookCodeForAITraining = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsTrained = table.Column<bool>(type: "bit", nullable: false),
                     book_id = table.Column<int>(type: "int", nullable: false),
                     edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),

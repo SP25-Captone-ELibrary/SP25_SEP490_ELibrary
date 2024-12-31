@@ -8,6 +8,11 @@ public class BookEdition : IAuditableEntity
     // Key
     public int BookEditionId { get; set; }
 
+    #region Update 26/12/2024 update AI field
+    public string? BookCodeForAITraining { get; set; } = null!;
+    public bool IsTrained { get; set; } = false;
+    #endregion    
+    
     // Edition of which book
     public int BookId { get; set; }
 

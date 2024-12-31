@@ -34,8 +34,10 @@ builder.Services
     // Configure Cloudinary
     .ConfigureCloudinary(builder.Configuration)
     // Configure HealthCheck 
-    .ConfigureHealthCheckServices(builder.Configuration);
-    
+    .ConfigureHealthCheckServices(builder.Configuration)
+    //Configure OCR
+    .ConfigureOCR(builder.Configuration);
+
 builder.Services
 	// Configure for application layer
 	.AddApplication(builder.Configuration)

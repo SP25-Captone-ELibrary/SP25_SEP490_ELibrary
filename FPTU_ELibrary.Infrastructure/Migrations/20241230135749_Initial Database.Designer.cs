@@ -4,16 +4,19 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(FptuElibraryDbContext))]
-    partial class FptuElibraryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241230135749_Initial Database")]
+    partial class InitialDatabase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -151,6 +154,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
+                    b.Property<Guid?>("BookCodeForAITraining")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("book-code-for-ai");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
@@ -171,6 +178,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_draft");
 
+                    b.Property<bool>("IsTrained")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is-trained");
+
                     b.Property<string>("SubTitle")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
@@ -186,6 +199,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("title");
+
+                    b.Property<DateTime?>("TrainedDay")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
@@ -238,6 +254,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionId"));
 
+                    b.Property<string>("BookCodeForAITraining")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("BookId")
                         .HasColumnType("int")
                         .HasColumnName("book_id");
@@ -289,6 +308,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsTrained")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Isbn")
                         .IsRequired()

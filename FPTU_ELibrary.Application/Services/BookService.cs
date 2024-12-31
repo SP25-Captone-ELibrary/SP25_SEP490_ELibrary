@@ -71,6 +71,8 @@ namespace FPTU_ELibrary.Application.Services
 						Summary = s.Summary,
 						IsDeleted = s.IsDeleted,
 						IsDraft = s.IsDraft,
+						IsTrained = s.IsTrained,
+						BookCodeForAITraining = s.BookCodeForAITraining,
 						CreatedAt = s.CreatedAt,
 						CreatedBy = s.CreatedBy,
 						UpdatedAt = s.UpdatedAt,
