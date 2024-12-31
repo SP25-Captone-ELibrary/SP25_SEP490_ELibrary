@@ -99,10 +99,6 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             {
                 AddFilter(x => x.Dob >= specParams.DobRange[0]);
             }
-            else
-            {
-                AddFilter(x => x.Dob == DateTime.Now);
-            }
         }
 
         if (specParams.CreateDateRange != null
@@ -122,11 +118,6 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             {
                 AddFilter(x => x.CreateDate >= specParams.CreateDateRange[0]);
             }
-            else
-            {
-                AddFilter(x => x.CreateDate == DateTime.Now);
-            }
-            
         }
         
         // With range of modified date like dob
@@ -147,10 +138,6 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             {
                 AddFilter(x => x.ModifiedDate >= specParams.ModifiedDateRange[0]);
             }
-            else
-            {
-                AddFilter(x => x.ModifiedDate == DateTime.Now);
-            }
         }
         
         if (specParams.HireDateRange != null
@@ -169,10 +156,6 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             else if (specParams.HireDateRange[0].HasValue && specParams.HireDateRange[1] is null)
             {
                 AddFilter(x => x.HireDate >= specParams.HireDateRange[0]);
-            }
-            else
-            {
-                AddFilter(x => x.HireDate == DateTime.Now);
             }
         }
 

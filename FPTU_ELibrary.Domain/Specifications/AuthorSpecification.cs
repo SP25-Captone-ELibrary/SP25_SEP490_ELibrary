@@ -62,10 +62,6 @@ public class AuthorSpecification : BaseSpecification<Author>
             {
                 AddFilter(x => x.UpdateDate >= specParams.ModifiedDateRange[0]);
             }
-            else
-            {
-                AddFilter(x => x.UpdateDate == DateTime.Now);
-            }
         }
         
         if (specParams.CreateDateRange != null
@@ -84,10 +80,6 @@ public class AuthorSpecification : BaseSpecification<Author>
             else if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1] is null)
             {
                 AddFilter(x => x.CreateDate >= specParams.CreateDateRange[0]);
-            }
-            else
-            {
-                AddFilter(x => x.CreateDate == DateTime.Now);
             }
         }
         
@@ -108,10 +100,6 @@ public class AuthorSpecification : BaseSpecification<Author>
             {
                 AddFilter(x => x.Dob >= specParams.DobRange[0]);
             }
-            else
-            {
-                AddFilter(x => x.Dob == DateTime.Now);
-            }
         }
         
         if (specParams.DateOfDeathRange != null
@@ -130,10 +118,6 @@ public class AuthorSpecification : BaseSpecification<Author>
             else if (specParams.DateOfDeathRange[0].HasValue && specParams.DateOfDeathRange[1] is null)
             {
                 AddFilter(x => x.DateOfDeath >= specParams.DateOfDeathRange[0]);
-            }
-            else
-            {
-                AddFilter(x => x.DateOfDeath == DateTime.Now);
             }
         }
         

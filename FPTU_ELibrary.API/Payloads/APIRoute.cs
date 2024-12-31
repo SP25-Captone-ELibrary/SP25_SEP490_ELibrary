@@ -386,5 +386,20 @@
 			public const string GetById = Base + "/fines/policy/{id}";
 			public const string Import = Base + "/management/fines/policy/import";
 		}
+
+		/// <summary>
+		/// AI endpoints
+		/// </summary>
+		public static class AIServices
+		{
+			// [GET]
+			//[POST]
+			public const string CheckBookEdition = Base + "/management/book/ai/check-book-edition";
+			public const string CheckImagesForTraining = Base + "/management/book/ai/check-images-for-training";
+			public const string Training = Base + "/management/book/ai/train";
+			//[PUT] | [PATCH]
+			//[DELETE]
+		}
+		
 	}
 }

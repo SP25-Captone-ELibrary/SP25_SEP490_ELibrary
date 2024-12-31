@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using System.Collections.Immutable;
+using System.Data.Common;
 using System.Reflection;
 using FPTU_ELibrary.Application.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,8 +11,10 @@ using CloudinaryDotNet;
 using FluentValidation;
 using FPTU_ELibrary.Application.HealthChecks;
 using FPTU_ELibrary.Application.Services;
+using FPTU_ELibrary.Application.Services.IServices;
 using Mapster;
 using MapsterMapper;
+using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog.Core;
@@ -22,11 +25,11 @@ namespace FPTU_ELibrary.API.Extensions
 	//  Summary:
 	//      This class is to configure services for presentation layer 
 	public static class ServiceCollectionExtensions
-    {
-        public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
-        {
+	{
+		public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
+		{
 			// Add controllers
-            services.AddControllers();
+			services.AddControllers();
 			// Configures ApiExplorer
 			services.AddEndpointsApiExplorer();
 			// Add swagger
@@ -35,26 +38,27 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddHttpContextAccessor();
 			
 			return services;
-        }
+		}
 
-        public static IServiceCollection ConfigureSerilog(this IServiceCollection services, WebApplicationBuilder builder)
-        {
+		public static IServiceCollection ConfigureSerilog(this IServiceCollection services,
+			WebApplicationBuilder builder)
+		{
 			Log.Logger = new LoggerConfiguration()
-	            .Enrich.FromLogContext()
-	            .WriteTo.Debug()
-	            .WriteTo.Console()
-	            .Enrich.WithProperty("Environment", builder.Environment)
-	            .ReadFrom.Configuration(builder.Configuration)
-	            .CreateLogger();
+				.Enrich.FromLogContext()
+				.WriteTo.Debug()
+				.WriteTo.Console()
+				.Enrich.WithProperty("Environment", builder.Environment)
+				.ReadFrom.Configuration(builder.Configuration)
+				.CreateLogger();
 
 			builder.Host.UseSerilog();
-			
+
 			// Register the Serilog logger
 			services.AddSingleton(Log.Logger);
 
 			return services;
 		}
-    
+
 		public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
 			IConfiguration configuration,
 			IWebHostEnvironment env)
@@ -73,30 +77,42 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
 			// Configure AzureSettings
 			services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
+			//Configure OCRSettings
+			services.Configure<AISettings>(configuration.GetSection("AISettings"));
+			//Configure CustomVisionSettings
+			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
 			
 			#region Development stage
+
 			if (env.IsDevelopment()) // Is Development env
 			{
-				
+
 			}
+
 			#endregion
+
 			#region Production stage
+
 			else if (env.IsProduction()) // Is Production env
 			{
 
 			}
+
 			#endregion
-			#region Staging 
+
+			#region Staging
+
 			else if (env.IsStaging()) // Is Staging env
 			{
 
 			}
+
 			#endregion
 
 			return services;
 		}
 
-		public static IServiceCollection ConfigureRedis(this IServiceCollection services, 
+		public static IServiceCollection ConfigureRedis(this IServiceCollection services,
 			IConfiguration configuration,
 			IWebHostEnvironment env)
 		{
@@ -106,10 +122,7 @@ namespace FPTU_ELibrary.API.Extensions
 				: $"{Environment.GetEnvironmentVariable("REDIS_URL")},abortConnect=false";
 
 			// Add Redis distributed caching services
-			services.AddStackExchangeRedisCache(config =>
-			{
-				config.Configuration = redisConfig;
-			});
+			services.AddStackExchangeRedisCache(config => { config.Configuration = redisConfig; });
 
 			try
 			{
@@ -120,7 +133,7 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				Logger.None.Error("Redis connection failed: {msg}", ex.Message);
 			}
-			
+
 			return services;
 		}
 
@@ -137,7 +150,22 @@ namespace FPTU_ELibrary.API.Extensions
 			return services;
 		}
 
-		public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
+		public static IServiceCollection ConfigureOCR(this IServiceCollection services, IConfiguration configuration)
+		{
+			services.AddSingleton<ComputerVisionClient>(sp =>
+			{
+
+				var aiSettings = configuration.GetSection("AISettings").Get<AISettings>();
+				return new ComputerVisionClient(new ApiKeyServiceClientCredentials(aiSettings.SubscriptionKey))
+				{
+					Endpoint = aiSettings.Endpoint
+				};
+			});
+			
+			return services;
+		}
+
+	public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
 		{
 			services.AddSignalR();
 			return services;

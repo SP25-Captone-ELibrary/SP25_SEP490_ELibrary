@@ -6,7 +6,12 @@ public class Book : IAuditableEntity
 {
     // Key
     public int BookId { get; set; }
-
+    
+    #region Update 30/12/2024 update AI field
+    public Guid? BookCodeForAITraining { get; set; }
+    public bool IsTrained { get; set; } = false;
+    public DateTime? TrainedDay { get; set; }
+    #endregion
     // Book information
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; }

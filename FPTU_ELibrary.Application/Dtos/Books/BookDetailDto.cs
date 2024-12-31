@@ -14,7 +14,11 @@ public class BookDetailDto
     public string? Summary { get; set; }
     public bool IsDeleted { get; set; }
     public bool IsDraft { get; set; }
-    
+
+    public Guid? BookCodeForAITraining { get; set; }
+
+    public bool IsTrained { get; set; } = false;
+        
     // Book editions
     public List<BookEditionDetailDto> BookEditions { get; set; } = new();
     
@@ -37,6 +41,8 @@ public static class BookDetailDtoExtensions
             Summary = dto.Summary,
             IsDeleted = dto.IsDeleted,
             IsDraft = dto.IsDraft,
+            IsTrained = dto.IsTrained,
+            BookCodeForAITraining = dto.BookCodeForAITraining,
             
             // Book Editions
             BookEditions = dto.BookEditions.Select(be => 

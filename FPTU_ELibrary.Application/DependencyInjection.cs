@@ -41,6 +41,8 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
 			services.AddScoped<IAuthorizationService, AuthorizationService>();
 			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
+			services.AddScoped<IOCRService, OCRService>();
+			services.AddScoped<IAIClassificationService, AIClassificationService>();
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
