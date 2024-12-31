@@ -114,33 +114,38 @@ namespace FPTU_ELibrary.Application.Services
 				// Handle authentication
 				if (authUser != null)
 				{
-					// Check email confirmation
-					if (!authUser.EmailConfirmed)
-					{
-						return new ServiceResult(ResultCodeConst.Auth_Warning0008,
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0008));
-					}
+					// UserType determination
+                    var userTypeResult = new UserTypeResultDto()
+                    {
+                    	UserType = isAdmin
+                    		// Admin
+                    		? UserTypeConstants.Admin
+                    		// User/Employee
+                    		: authUser.IsEmployee ? UserTypeConstants.Employee : UserTypeConstants.User
+                    };
 					
-					// User is not yet in-active
-					if (!authUser.IsActive)
-					{
-						return new ServiceResult(ResultCodeConst.Auth_Warning0001,
-							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
-					}
-					
+					// Check whether account of employee or admin has not updated password yet
+					var allowSkipAuthRequired = (
+						// Allow skip required when account password is empty and must be employee or admin
+						string.IsNullOrEmpty(authUser.PasswordHash) && (authUser.IsEmployee || isAdmin));
+							
+                    // Check email confirmation
+                    if (!authUser.EmailConfirmed && !allowSkipAuthRequired)
+                    {
+                    	return new ServiceResult(ResultCodeConst.Auth_Warning0008,
+                    		await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0008));
+                    }
+                    
+                    // User is not yet in-active or not in deleted status
+                    if ((!authUser.IsActive || authUser.IsDeleted) && !allowSkipAuthRequired)
+                    {
+                        return new ServiceResult(ResultCodeConst.Auth_Warning0001,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0001));
+                    }
+                    
 					// Response to keep on sign-in with username/password
 					if (!string.IsNullOrEmpty(authUser.PasswordHash)) // Exist password
 					{
-						// UserType determination
-						var userTypeResult = new UserTypeResultDto()
-						{
-							UserType = isAdmin
-								// Admin
-								? UserTypeConstants.Admin
-								// User/Employee
-								: authUser.IsEmployee ? UserTypeConstants.Employee : UserTypeConstants.User
-						};
-						
 						return new ServiceResult(ResultCodeConst.Auth_Success0003,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0003), userTypeResult);
 					}
@@ -169,7 +174,7 @@ namespace FPTU_ELibrary.Application.Services
 						if (isOtpSent) // Email sent
 						{
 							return new ServiceResult(ResultCodeConst.Auth_Success0005,
-								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005));
+								await _msgService.GetMessageAsync(ResultCodeConst.Auth_Success0005), userTypeResult);
 						}
 						else // Fail to send email
 						{
@@ -819,6 +824,8 @@ namespace FPTU_ELibrary.Application.Services
 	                employeeDto.EmailConfirmed = true;
 	                // Remove confirmation code
 	                employeeDto.EmailVerificationCode = null!;
+	                // Change account status
+	                employeeDto.IsActive = true;
 	                var isUpdated =
 		                (await _employeeService.UpdateWithoutValidationAsync(
 			                employeeDto.EmployeeId, employeeDto)).Data is true;

@@ -76,7 +76,7 @@ public class UserController:ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.User.SoftDeleteRange, Name = nameof(SoftDeleteRangeUserAsync))]
-    public async Task<IActionResult> SoftDeleteRangeUserAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> SoftDeleteRangeUserAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _userService.SoftDeleteRangeAsync(req.Ids));
     }
@@ -90,7 +90,7 @@ public class UserController:ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.User.UndoDeleteRange, Name = nameof(UndoDeleteRangeUserAsync))]
-    public async Task<IActionResult> UndoDeleteRangeUserAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> UndoDeleteRangeUserAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _userService.UndoDeleteRangeAsync(req.Ids));
     }
@@ -104,7 +104,7 @@ public class UserController:ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.User.HardDeleteRange, Name = nameof(DeleteRangeUserAsync))]
-    public async Task<IActionResult> DeleteRangeUserAsync([FromBody] DeleteRangeRequest<Guid> req)
+    public async Task<IActionResult> DeleteRangeUserAsync([FromBody] RangeRequest<Guid> req)
     {
         return Ok(await _userService.DeleteRangeAsync(req.Ids));
     }

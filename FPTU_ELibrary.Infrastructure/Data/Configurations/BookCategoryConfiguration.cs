@@ -8,7 +8,7 @@ public class BookCategoryConfiguration : IEntityTypeConfiguration<BookCategory>
 {
     public void Configure(EntityTypeBuilder<BookCategory> builder)
     {
-        #region Update at 20/12/2024
+        #region Update at 20/12/2024 by Le Xuan Phuoc
         builder.HasKey(e => e.BookCategoryId).HasName("PK_BookCategory_BookCategoryId");
         
         builder.ToTable("Book_Category");
@@ -25,6 +25,22 @@ public class BookCategoryConfiguration : IEntityTypeConfiguration<BookCategory>
             .HasForeignKey(d => d.CategoryId)
             .HasConstraintName("FK_BookCategory_CategoryId");
         
+        #endregion
+        
+        #region Update at 30/12/2024 by Le Xuan Phuoc
+        builder.Property(x => x.CreatedAt)
+            .IsRequired()
+            .HasColumnType("datetime")
+            .HasColumnName("created_at");
+        builder.Property(x => x.UpdatedAt)
+            .HasColumnType("datetime")
+            .HasColumnName("updated_at");
+        builder.Property(x => x.CreatedBy)
+            .HasMaxLength(255) // Email address
+            .HasColumnName("created_by");
+        builder.Property(x => x.UpdatedBy)
+            .HasMaxLength(255) // Email address
+            .HasColumnName("updated_by");
         #endregion
     }
 }

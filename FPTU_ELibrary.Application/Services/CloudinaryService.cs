@@ -7,7 +7,6 @@ using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -47,6 +46,9 @@ public class CloudinaryService : ICloudinaryService
         // var uniqueIdWithTimestamp = $"{directory}/{Guid.NewGuid().ToString()}";
         var uniqueIdWithTimestamp = Guid.NewGuid().ToString();
 
+        // Retrieve current language
+        var currentLanguage = LanguageContext.CurrentLanguage;
+        
         try
         {
             switch (fileType)
@@ -54,7 +56,7 @@ public class CloudinaryService : ICloudinaryService
                 // IMAGE
                 case FileType.Image:
                     // Validate image 
-                    var imageValidationRes = await new ImageTypeValidator().ValidateAsync(file);
+                    var imageValidationRes = await new ImageTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!imageValidationRes.IsValid)
                     {
                         throw new UnprocessableEntityException("Invalid image file type", 
@@ -88,7 +90,7 @@ public class CloudinaryService : ICloudinaryService
                 // VIDEO
                 case FileType.Video:
                     // Validate video 
-                    var videoValidationRes = await new VideoTypeValidator().ValidateAsync(file);
+                    var videoValidationRes = await new VideoTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!videoValidationRes.IsValid)
                     {
                         throw new UnprocessableEntityException("Invalid video file type", 
@@ -139,6 +141,9 @@ public class CloudinaryService : ICloudinaryService
     {
         try
         {
+            // Retrieve current language
+            var currentLanguage = LanguageContext.CurrentLanguage;
+            
             var checkExistResult = await IsExistAsync(publicId, fileType);
             if (checkExistResult.Data is false) return checkExistResult;
             
@@ -147,7 +152,7 @@ public class CloudinaryService : ICloudinaryService
                 // IMAGE
                 case FileType.Image:
                     // Validate image 
-                    var imageValidationRes = await new ImageTypeValidator().ValidateAsync(file);
+                    var imageValidationRes = await new ImageTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!imageValidationRes.IsValid)
                     {
                         throw new UnprocessableEntityException("Invalid image file type", 
@@ -182,7 +187,7 @@ public class CloudinaryService : ICloudinaryService
                 // VIDEO
                 case FileType.Video:
                     // Validate video 
-                    var videoValidationRes = await new VideoTypeValidator().ValidateAsync(file);
+                    var videoValidationRes = await new VideoTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!videoValidationRes.IsValid)
                     {
                         throw new UnprocessableEntityException("Invalid video file type", 
@@ -321,7 +326,9 @@ public class CloudinaryService : ICloudinaryService
         try
         {
             // Check exist cloud resource by public id
-            var existResource = await _cloudinary.GetResourceAsync(publicId);
+            var existResource = fileType == FileType.Video
+                ? await _cloudinary.GetResourceAsync(new GetResourceParams(publicId) { ResourceType = CloudinaryResourceType.Video })
+                : await _cloudinary.GetResourceAsync(new GetResourceParams(publicId) { ResourceType = CloudinaryResourceType.Image });
             if (existResource == null || existResource.Error != null) // Not found
             {
                 return fileType switch

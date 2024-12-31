@@ -1,5 +1,4 @@
 ﻿using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Employees;
 
 namespace FPTU_ELibrary.Application.Dtos.Books
 {

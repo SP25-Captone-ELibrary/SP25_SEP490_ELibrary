@@ -49,6 +49,8 @@ builder.Services
     .AddSwagger()
     // Add authentication
     .AddAuthentication(builder.Configuration)
+    // Add Lazy resolution
+    .AddLazyResolution()
     // Add signalR
     .AddSignalR();
 var app = builder.Build();

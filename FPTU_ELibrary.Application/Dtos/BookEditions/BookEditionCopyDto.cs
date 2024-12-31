@@ -11,9 +11,6 @@ public class BookEditionCopyDto
     // Copy of which edition
     public int BookEditionId { get; set; }
     
-    // Locate in which shelf
-    // public int? ShelfId { get; set; }
-
     // Copy code and its status
     public string? Code { get; set; }
     public string Status { get; set; } = null!;
@@ -28,7 +25,6 @@ public class BookEditionCopyDto
     public bool IsDeleted { get; set; }
 
     // Mapping entities
-    // public LibraryShelfDto? Shelf { get; set; }
 
     [JsonIgnore]
     public BookEditionDto BookEdition { get; set; } = null!;

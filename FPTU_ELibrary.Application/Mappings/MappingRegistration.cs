@@ -48,12 +48,6 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<NotificationRecipient, NotificationRecipientDto>();
 			
 			// From [Dto] to [Entity]
-			config.NewConfig<UserDto, User>()
-				.Ignore(dest => dest.Role)
-				.IgnoreNullValues(false);
-			config.NewConfig<EmployeeDto, Employee>()
-				.Ignore(dest => dest.Role)
-				.IgnoreNullValues(false);
 			config.NewConfig<AuthorDto, Author>()
 				.Ignore(dest => dest.AuthorId)
 				.Ignore(dest => dest.CreateDate)
@@ -61,9 +55,15 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<CategoryDto, Category>()
 				.Ignore(dest => dest.CategoryId)
 				.IgnoreNullValues(true);
+			config.NewConfig<EmployeeDto, Employee>()
+				.Ignore(dest => dest.Role)
+				.IgnoreNullValues(false);
 			config.NewConfig<FinePolicyDto, FinePolicy>()
 				.Ignore(dest => dest.FinePolicyId)
 				.IgnoreNullValues(true);
+			config.NewConfig<UserDto, User>()
+				.Ignore(dest => dest.Role)
+				.IgnoreNullValues(false);
 		}
 	}
 }

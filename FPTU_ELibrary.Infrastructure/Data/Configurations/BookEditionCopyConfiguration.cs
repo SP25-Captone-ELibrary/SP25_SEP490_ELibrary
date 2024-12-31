@@ -18,7 +18,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(50)
                 .HasColumnName("code");
             builder.Property(e => e.IsDeleted).HasColumnName("is_deleted");
-            builder.Property(e => e.ShelfId).HasColumnName("shelf_id");
             builder.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasColumnName("status");

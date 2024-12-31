@@ -55,8 +55,6 @@ public class BookResourceService : GenericService<BookResource, BookResourceDto,
         		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
         }
         
-        // Count total actual items in DB
-        var totalActualItem = await _unitOfWork.Repository<BookResource, int>().CountAsync();
         // Count total book resource
         var totalEmployeeWithSpec = await _unitOfWork.Repository<BookResource, int>().CountAsync(bookResourceSpec);
         // Count total page
@@ -85,7 +83,7 @@ public class BookResourceService : GenericService<BookResource, BookResourceDto,
         	
         	// Pagination result 
         	var paginationResultDto = new PaginatedResultDto<BookResourceDto>(bookResourceDtos,
-		        bookResourceSpec.PageIndex, bookResourceSpec.PageSize, totalPage, totalActualItem);
+		        bookResourceSpec.PageIndex, bookResourceSpec.PageSize, totalPage, totalEmployeeWithSpec);
         	
         	// Response with pagination 
         	return new ServiceResult(ResultCodeConst.SYS_Success0002, 

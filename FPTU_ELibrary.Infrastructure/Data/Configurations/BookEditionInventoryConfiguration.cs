@@ -22,7 +22,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.BookEdition).WithOne(p => p.BookEditionInventory)
                 .HasForeignKey<BookEditionInventory>(d => d.BookEditionId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_BookEditionInventory_BookEditionId");
         }
     }

@@ -61,19 +61,24 @@ public class AuthorizationService : IAuthorizationService
     private SystemFeatureEnum? GetCombinedRoute(SystemFeatureEnum requestFeature)
     {
         #region BookManagement 
-        // Route: [BookManagement] -> Combine with [AuthorManagement] and [CategoryManagement]
-        // Is [AuthorManagement]
+        // Route: [BookManagement] -> Combined with 
+        // [AuthorManagement]
         if (requestFeature.Equals(SystemFeatureEnum.AuthorManagement))
         {
             return SystemFeatureEnum.BookManagement;
         } 
-        // Is [CategoryManagement]
+        // [CategoryManagement]
         if (requestFeature.Equals(SystemFeatureEnum.CategoryManagement))
         {
             return SystemFeatureEnum.BookManagement;
         }
-        // Is [ResourceManagement]
+        // [ResourceManagement]
         if (requestFeature.Equals(SystemFeatureEnum.ResourceManagement))
+        {
+            return SystemFeatureEnum.BookManagement;
+        }
+        // [BookAuditTrailManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.BookAuditTrailManagement))
         {
             return SystemFeatureEnum.BookManagement;
         }
@@ -90,6 +95,15 @@ public class AuthorizationService : IAuthorizationService
         if (requestFeature.Equals(SystemFeatureEnum.NotificationManagement))
         {
             return SystemFeatureEnum.BorrowManagement;
+        }
+        #endregion
+
+        #region RoleManagement
+        // Route: [RoleManagement] -> Combine with [RoleAuditTrailManagement]
+        // [RoleAuditTrailManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.RoleAuditTrailManagement))
+        {
+            return SystemFeatureEnum.RoleManagement;
         }
         #endregion
         

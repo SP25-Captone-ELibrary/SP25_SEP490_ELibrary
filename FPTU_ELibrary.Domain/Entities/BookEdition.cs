@@ -17,7 +17,7 @@ public class BookEdition : IAuditableEntity
     public int BookId { get; set; }
 
     // Edition detail information
-    public string? EditionTitle { get; set; } = null!;
+    public string? EditionTitle { get; set; }
     public string? EditionSummary { get; set; }
     public int EditionNumber { get; set; }
     public int PageCount { get; set; }

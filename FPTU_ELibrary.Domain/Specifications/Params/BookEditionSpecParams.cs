@@ -6,10 +6,8 @@ public class BookEditionSpecParams : BaseSpecParams
     
     // Book properties
     public bool? IsDraft { get; set; }
-    public bool? IsDeleted { get; set; }
-    public Guid? CreateBy { get; set; }
-    public DateTime[]? CreateDateRange { get; set; } 
-    public DateTime[]? ModifiedDateRange { get; set; } 
+    public List<DateTime>? CreatedAtRange { get; set; } 
+    public List<DateTime>? UpdatedAtRange { get; set; } 
     
     // Book edition properties
     public int[]? EditionNumberRange { get; set; }
@@ -18,12 +16,13 @@ public class BookEditionSpecParams : BaseSpecParams
     public string? Format { get; set; }
     public string? Language { get; set; }
     public bool? CanBorrow { get; set; }
+    public bool? IsDeleted { get; set; }
     
     // Book edition author properties
     public string? AuthorCode { get; set; }
     public string? AuthorFullName { get; set; }
-    public DateTime[]? AuthorDobRange { get; set; }
-    public DateTime[]? AuthorDateOfDateRange { get; set; }
+    public List<DateTime>? AuthorDobRange { get; set; }
+    public List<DateTime>? AuthorDateOfDeathRange { get; set; }
     public string? AuthorNationality { get; set; }
     
     // Book edition copy properties

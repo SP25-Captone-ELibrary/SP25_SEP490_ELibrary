@@ -215,19 +215,16 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             );
 
             // Count total actual items in DB
-            var totalActualItem = await _unitOfWork.Repository<Notification, int>().CountAsync();
             var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
             var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
 
-            if (notificationSpec.PageIndex > totalPage || notificationSpec.PageIndex < 1)
+            // Set pagination to specification after count total notification 
+            if (notificationSpec.PageIndex > totalPage 
+                || notificationSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
             {
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                    new PaginatedResultDto<NotificationDto>( new List<NotificationDto>(),
-                        notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalActualItem)
-                );
+                notificationSpec.PageIndex = 1; // Set default to first page
             }
-
+            
             notificationSpec.ApplyPaging(
                 skip: notificationSpec.PageSize * (notificationSpec.PageIndex - 1),
                 take: notificationSpec.PageSize
@@ -240,7 +237,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             {
                 var paginationResultDto = new PaginatedResultDto<NotificationDto>(
                     _mapper.Map<IEnumerable<NotificationDto>>(entities),
-                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalActualItem);
+                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalNotification);
 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);

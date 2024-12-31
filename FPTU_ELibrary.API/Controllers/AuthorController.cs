@@ -69,7 +69,7 @@ public class AuthorController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.Author.SoftDeleteRange, Name = nameof(SoftDeleteRangeAuthorAsync))]
-    public async Task<IActionResult> SoftDeleteRangeAuthorAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> SoftDeleteRangeAuthorAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _authorService.SoftDeleteRangeAsync(req.Ids));
     }
@@ -83,7 +83,7 @@ public class AuthorController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.Author.UndoDeleteRange, Name = nameof(UndoDeleteRangeAuthorAsync))]
-    public async Task<IActionResult> UndoDeleteRangeAuthorAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> UndoDeleteRangeAuthorAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _authorService.UndoDeleteRangeAsync(req.Ids));
     }
@@ -97,7 +97,7 @@ public class AuthorController : ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.Author.DeleteRange, Name = nameof(DeleteRangeAuthorAsync))]
-    public async Task<IActionResult> DeleteRangeAuthorAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> DeleteRangeAuthorAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _authorService.DeleteRangeAsync(req.Ids));
     }
