@@ -8,7 +8,7 @@ public class BookEditionDto
 {
     // Key
     public int BookEditionId { get; set; }
-
+    
     // Edition of which book
     public int BookId { get; set; }
 

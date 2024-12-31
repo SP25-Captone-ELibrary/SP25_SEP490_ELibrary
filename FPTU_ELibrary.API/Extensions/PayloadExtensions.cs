@@ -7,6 +7,7 @@ using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
@@ -441,6 +442,22 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		
+		#endregion
+
+		#region AIService
+
+		public static CheckedBookEditionDto ToCheckedBookEditionDto(
+			this CheckBookEditionWithImageRequest req)
+		{
+				return new  CheckedBookEditionDto()
+				{
+					Title = req.Title,
+					Publisher = req.Publisher,
+					Authors = req.Authors,
+					Image = req.Image
+				};
+		}
+
 		#endregion
 	}
 }

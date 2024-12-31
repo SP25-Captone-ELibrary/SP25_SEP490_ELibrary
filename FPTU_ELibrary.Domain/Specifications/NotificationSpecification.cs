@@ -36,17 +36,12 @@ public class NotificationSpecification : BaseSpecification<Notification>
         {
             AddFilter(x => x.IsPublic);
         }
-        else
+        else if (isManagement)
         {
-            AddFilter(x => x.CreatedBy.Equals(email) ||  x.IsPublic);
+            AddFilter(x => x.CreatedBy.Equals(email) || x.IsPublic);
         }
 
-        if (!isManagement)
-        {
-            // Regular user
-
-            AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email == email));
-        }
+        AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email.Equals(email)));
 
         if (notificationSpecParams.Title != null)
         {

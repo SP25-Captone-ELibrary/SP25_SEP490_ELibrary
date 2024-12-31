@@ -68,11 +68,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             if (userSpecParams.DobRange != null
                 && userSpecParams.DobRange.Count > 1) // With range of dob
             {
-                if (userSpecParams.DobRange[0] is null && userSpecParams.DobRange[1] is null)
-                {
-                    AddFilter(x => x.Dob == DateTime.Now);
-                }
-                else if (userSpecParams.DobRange[0] is null && userSpecParams.DobRange[1].HasValue)
+                if (userSpecParams.DobRange[0] is null && userSpecParams.DobRange[1].HasValue)
                 {
                     AddFilter(x => x.Dob <= userSpecParams.DobRange[1]);
                 }
@@ -92,11 +88,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             if (userSpecParams.CreateDateRange != null
                 && userSpecParams.CreateDateRange.Count > 1)
             {
-                if (userSpecParams.CreateDateRange[0] is null && userSpecParams.CreateDateRange[1] is null)
-                {
-                    AddFilter(x => x.CreateDate == DateTime.Now);
-                }
-                else if (userSpecParams.CreateDateRange[0] is null && userSpecParams.CreateDateRange[1].HasValue)
+                if (userSpecParams.CreateDateRange[0] is null && userSpecParams.CreateDateRange[1].HasValue)
                 {
                     AddFilter(x => x.CreateDate <= userSpecParams.CreateDateRange[1]);
                 }
@@ -111,15 +103,12 @@ namespace FPTU_ELibrary.Domain.Specifications
                         && x.CreateDate.Date <= userSpecParams.CreateDateRange[1].Value.Date);
                 }
             }
+
             // With range of modified date like dob
             if (userSpecParams.ModifiedDateRange != null
                 && userSpecParams.ModifiedDateRange.Count > 1)
             {
-                if (userSpecParams.ModifiedDateRange[0] is null && userSpecParams.ModifiedDateRange[1] is null)
-                {
-                    AddFilter(x => x.ModifiedDate == DateTime.Now);
-                }
-                else if (userSpecParams.ModifiedDateRange[0] is null && userSpecParams.ModifiedDateRange[1].HasValue)
+                if (userSpecParams.ModifiedDateRange[0] is null && userSpecParams.ModifiedDateRange[1].HasValue)
                 {
                     AddFilter(x => x.ModifiedDate <= userSpecParams.ModifiedDateRange[1]);
                 }
@@ -130,8 +119,8 @@ namespace FPTU_ELibrary.Domain.Specifications
                 else
                 {
                     AddFilter(x => x.Dob.HasValue &&
-                        x.ModifiedDate!.Value.Date >= userSpecParams.ModifiedDateRange[0].Value.Date
-                        && x.ModifiedDate!.Value.Date <= userSpecParams.ModifiedDateRange[1].Value.Date);
+                                   x.ModifiedDate!.Value.Date >= userSpecParams.ModifiedDateRange[0].Value.Date
+                                   && x.ModifiedDate!.Value.Date <= userSpecParams.ModifiedDateRange[1].Value.Date);
                 }
             }
 

@@ -8,6 +8,7 @@ public static class HubMappingExtensions
     {
         endpoints.MapHub<NotificationHub>("/notificationHub");
         endpoints.MapHub<AccountHub>("/accountHub");
+        endpoints.MapHub<AiHub>("/ai-hub");
         // Add hub endpoint if needed
     }
 }

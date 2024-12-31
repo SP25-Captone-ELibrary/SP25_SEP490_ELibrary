@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -33,7 +33,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("ChangedColumns")
                         .IsRequired()
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("nvarchar(120)")
                         .HasColumnName("changed_columns");
 
                     b.Property<DateTime>("DateUtc")
@@ -59,12 +59,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("NewValues")
                         .IsRequired()
-                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("new_values");
 
                     b.Property<string>("OldValues")
                         .IsRequired()
-                        .HasColumnType("nvarchar(1500)")
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("old_values");
 
                     b.Property<string>("TrailType")
@@ -151,6 +151,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
+                    b.Property<Guid?>("BookCodeForAITraining")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("book-code-for-ai");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
@@ -171,6 +175,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_draft");
 
+                    b.Property<bool>("IsTrained")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is-trained");
+
                     b.Property<string>("SubTitle")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
@@ -186,6 +196,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("title");
+
+                    b.Property<DateTime?>("TrainedDay")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
@@ -257,6 +270,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionId"));
 
+                    b.Property<string>("BookCodeForAITraining")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("BookId")
                         .HasColumnType("int")
                         .HasColumnName("book_id");
@@ -308,6 +324,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsTrained")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Isbn")
                         .IsRequired()

@@ -6,77 +6,93 @@ using System.Threading.Tasks;
 
 namespace FPTU_ELibrary.Application.Common
 {
-	public class ResultCodeConst
-	{
-		#region ResultCode
-		
-		#region System
-		/// <summary>
-		/// [SUCCESS] Create success
-		/// </summary> 
-		public static string SYS_Success0001 = "SYS.Success0001"; 
-		/// <summary>
-		/// [SUCCESS] Read success
-		/// </summary> 
-		public static string SYS_Success0002 = "SYS.Success0002";
-		/// <summary>
-		/// [SUCCESS] Update success
-		/// </summary> 
-		public static string SYS_Success0003 = "SYS.Success0003";
-		/// <summary>
-		/// [SUCCESS] Delete success
-		/// </summary> 
-		public static string SYS_Success0004 = "SYS.Success0004";
-		/// <summary>
-		/// [SUCCESS] Import (number) data successfully
-		/// </summary> 
-		public static string SYS_Success0005 = "SYS.Success0005";
-		/// <summary>
-		/// [SUCCESS] Create new {0} successfully
-		/// </summary> 
-		public static string SYS_Success0006 = "SYS.Success0006";
-		/// <summary>
-		/// [SUCCESS] Deleted data to trash
-		/// </summary> 
-		public static string SYS_Success0007 = "SYS.Success0007";
-		/// <summary>
-		/// [SUCCESS] Deleted {0} data successfully
-		/// </summary> 
-		public static string SYS_Success0008 = "SYS.Success0008";
-		/// <summary>
-		/// [SUCCESS] Recovery data successfully
-		/// </summary> 
-		public static string SYS_Success0009 = "SYS.Success0009";
-		
-		/// <summary>
-		/// [FAIL] Create fail
-		/// </summary> 
-		public static string SYS_Fail0001 = "SYS.Fail0001";
-		/// <summary>
-		/// [FAIL] Read fail
-		/// </summary>
-		public static string SYS_Fail0002 = "SYS.Fail0002";
-		/// <summary>
-		/// [FAIL] Update fail
-		/// </summary>
-		public static string SYS_Fail0003 = "SYS.Fail0003";
-		/// <summary>
-		/// [FAIL] Delete fail
-		/// </summary>
-		public static string SYS_Fail0004 = "SYS.Fail0004";
-		/// <summary>
-		/// [FAIL] Fail to get data: {0}
-		/// </summary>
-		public static string SYS_Fail0005 = "SYS.Fail0005";
-		/// <summary>
-		/// [FAIL] Fail to create new {0}
-		/// </summary>
-		public static string SYS_Fail0006 = "SYS.Fail0006";
-		/// <summary>
-		/// [FAIL] Cannot delete because it is bound to other data
-		/// </summary>
-		public static string SYS_Fail0007 = "SYS.Fail0007";
-		/// <summary>
+    public class ResultCodeConst
+    {
+        #region ResultCode
+
+        #region System
+
+        /// <summary>
+        /// [SUCCESS] Create success
+        /// </summary> 
+        public static string SYS_Success0001 = "SYS.Success0001";
+
+        /// <summary>
+        /// [SUCCESS] Read success
+        /// </summary> 
+        public static string SYS_Success0002 = "SYS.Success0002";
+
+        /// <summary>
+        /// [SUCCESS] Update success
+        /// </summary> 
+        public static string SYS_Success0003 = "SYS.Success0003";
+
+        /// <summary>
+        /// [SUCCESS] Delete success
+        /// </summary> 
+        public static string SYS_Success0004 = "SYS.Success0004";
+
+        /// <summary>
+        /// [SUCCESS] Import (number) data successfully
+        /// </summary> 
+        public static string SYS_Success0005 = "SYS.Success0005";
+
+        /// <summary>
+        /// [SUCCESS] Create new {0} successfully
+        /// </summary> 
+        public static string SYS_Success0006 = "SYS.Success0006";
+
+        /// <summary>
+        /// [SUCCESS] Deleted data to trash
+        /// </summary> 
+        public static string SYS_Success0007 = "SYS.Success0007";
+
+        /// <summary>
+        /// [SUCCESS] Deleted {0} data successfully
+        /// </summary> 
+        public static string SYS_Success0008 = "SYS.Success0008";
+
+        /// <summary>
+        /// [SUCCESS] Recovery data successfully
+        /// </summary> 
+        public static string SYS_Success0009 = "SYS.Success0009";
+
+        /// <summary>
+        /// [FAIL] Create fail
+        /// </summary> 
+        public static string SYS_Fail0001 = "SYS.Fail0001";
+
+        /// <summary>
+        /// [FAIL] Read fail
+        /// </summary>
+        public static string SYS_Fail0002 = "SYS.Fail0002";
+
+        /// <summary>
+        /// [FAIL] Update fail
+        /// </summary>
+        public static string SYS_Fail0003 = "SYS.Fail0003";
+
+        /// <summary>
+        /// [FAIL] Delete fail
+        /// </summary>
+        public static string SYS_Fail0004 = "SYS.Fail0004";
+
+        /// <summary>
+        /// [FAIL] Fail to get data: {0}
+        /// </summary>
+        public static string SYS_Fail0005 = "SYS.Fail0005";
+
+        /// <summary>
+        /// [FAIL] Fail to create new {0}
+        /// </summary>
+        public static string SYS_Fail0006 = "SYS.Fail0006";
+
+        /// <summary>
+        /// [FAIL] Cannot delete because it is bound to other data
+        /// </summary>
+        public static string SYS_Fail0007 = "SYS.Fail0007";
+
+        /// <summary>
         /// [FAIL] Fail to import data
         /// </summary>
         public static string SYS_Fail0008 = "SYS.Fail0008";
@@ -399,16 +415,35 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string FinePolicy_Warning0001 = "FinePolicy.Warning0001";
 
-		/// <summary>
-		/// This FinePolicy has been used
-		/// </summary>
-		public static string FinePolicy_Warning0002 = "FinePolicy.Warning0002";
-		/// <summary>
-		/// Cannot delete be cause it contains undefined id
-		/// </summary>
-		public static string FinePolicy_Warning0003 = "FinePolicy.Warning0003";
-		#endregion
-		
-		#endregion
-	}
+        /// <summary>
+        /// This FinePolicy has been used
+        /// </summary>
+        public static string FinePolicy_Warning0002 = "FinePolicy.Warning0002";
+
+        /// <summary>
+        /// Cannot delete be cause it contains undefined id
+        /// </summary>
+        public static string FinePolicy_Warning0003 = "FinePolicy.Warning0003";
+
+        #endregion
+
+        #region AIService
+
+        /// <summary>
+        /// Data matched with image
+        /// </summary>
+        public static string AIService_Success0001 = "AIService.Success0001";
+        /// <summary>
+        /// Train sucessfully
+        /// </summary>
+        public static string AIService_Success0002 = "AIService.Success0002";
+        /// <summary>
+        /// Data did not match with image
+        /// </summary>
+        public static string AIService_Warning0001 = "AIService.Warning0001";
+
+        #endregion
+
+        #endregion
+    }
 }
