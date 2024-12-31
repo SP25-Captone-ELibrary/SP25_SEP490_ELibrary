@@ -12,6 +12,12 @@ public class BookCategoryDto
     // CategoryId
     public int CategoryId { get; set; }
     
+    // Creation & Update person, datetime
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
+    
     // Mapping fields
     [JsonIgnore]
     public BookDto Book { get; set; } = null!;

@@ -245,7 +245,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_category_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_id = table.Column<int>(type: "int", nullable: false),
-                    category_id = table.Column<int>(type: "int", nullable: false)
+                    category_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -617,7 +621,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_edition_author_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_edition_id = table.Column<int>(type: "int", nullable: false),
-                    author_id = table.Column<int>(type: "int", nullable: false)
+                    author_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -641,7 +649,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_edition_copy_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_edition_id = table.Column<int>(type: "int", nullable: false),
-                    shelf_id = table.Column<int>(type: "int", nullable: true),
                     code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
@@ -677,7 +684,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_BookEditionInventory_BookEditionId",
                         column: x => x.book_edition_id,
                         principalTable: "Book_Edition",
-                        principalColumn: "book_edition_id");
+                        principalColumn: "book_edition_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(

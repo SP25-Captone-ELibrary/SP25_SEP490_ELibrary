@@ -112,12 +112,10 @@ namespace FPTU_ELibrary.Application.Services
 			        .Map(dto => dto.Role, src => src.Role) 
 			        .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 		        
-		        // Count total actual items in DB
-		        var totalActualItem = await _unitOfWork.Repository<User, Guid>().CountAsync();
 		        // Count total users
-		        var totalEmployeeWithSpec = await _unitOfWork.Repository<User, Guid>().CountAsync(userSpec);
+		        var totalUserWithSpec = await _unitOfWork.Repository<User, Guid>().CountAsync(userSpec);
 		        // Count total page
-		        var totalPage = (int)Math.Ceiling((double)totalEmployeeWithSpec / userSpec.PageSize);
+		        var totalPage = (int)Math.Ceiling((double)totalUserWithSpec / userSpec.PageSize);
 				
 		        // Set pagination to specification after count total users 
 		        if (userSpec.PageIndex > totalPage 
@@ -139,7 +137,7 @@ namespace FPTU_ELibrary.Application.Services
 					
 			        // Pagination result 
 			        var paginationResultDto = new PaginatedResultDto<UserDto>(userDtos,
-				        userSpec.PageIndex, userSpec.PageSize, totalPage, totalActualItem);
+				        userSpec.PageIndex, userSpec.PageSize, totalPage, totalUserWithSpec);
 					
 			        // Response with pagination 
 			        return new ServiceResult(ResultCodeConst.SYS_Success0002, 

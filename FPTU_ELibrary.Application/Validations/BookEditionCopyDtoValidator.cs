@@ -17,5 +17,12 @@ public class BookEditionCopyDtoValidator : AbstractValidator<BookEditionCopyDto>
         // TODO: Determine code specific type
         // Validate book edition copy code
         RuleFor(x => x.Code);
+        
+        // Add copy history validators
+        RuleFor(x => x.CopyConditionHistories)
+            .ForEach(c =>
+            {
+                c.SetValidator(new CopyConditionHistoryDtoValidator(langContext));
+            });
     }
 }

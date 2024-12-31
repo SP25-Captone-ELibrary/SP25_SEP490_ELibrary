@@ -1,8 +1,9 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class BookCategory
+public class BookCategory : IAuditableEntity
 {
     // Key
     public int BookCategoryId { get; set; }
@@ -11,6 +12,12 @@ public class BookCategory
     public int BookId { get; set; }
     // CategoryId
     public int CategoryId { get; set; }
+    
+    // Creation & Update person, datetime
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
     
     // Mapping fields
     [JsonIgnore]

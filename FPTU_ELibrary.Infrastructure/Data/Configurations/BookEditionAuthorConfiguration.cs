@@ -27,6 +27,22 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BookEditionAuthor_BookId");
             #endregion
+            
+            #region Update at 30/12/2024 by Le Xuan Phuoc
+            builder.Property(x => x.CreatedAt)
+                .IsRequired()
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            builder.Property(x => x.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            builder.Property(x => x.CreatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("created_by");
+            builder.Property(x => x.UpdatedBy)
+                .HasMaxLength(255) // Email address
+                .HasColumnName("updated_by");
+            #endregion
         }
     }
 }

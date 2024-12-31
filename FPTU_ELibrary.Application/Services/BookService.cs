@@ -2,6 +2,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
@@ -18,6 +19,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -34,10 +36,12 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly IAuthorService<AuthorDto> _authorService;
 		private readonly IBookCategoryService<BookCategoryDto> _bookCateService;
 		private readonly ICloudinaryService _cloudService;
+		private readonly IBookEditionCopyService<BookEditionCopyDto> _editionCopyService;
 
 		public BookService(
 			IAuthorService<AuthorDto> authorService,
 			IBookCategoryService<BookCategoryDto> bookCateService,
+			IBookEditionCopyService<BookEditionCopyDto> editionCopyService,
 			ICategoryService<CategoryDto> cateService,
 			IEmployeeService<EmployeeDto> empService,
 			ILibraryShelfService<LibraryShelfDto> libShelfService,
@@ -51,6 +55,7 @@ namespace FPTU_ELibrary.Application.Services
 			_libShelfService = libShelfService;
 			_empService = empService;
 			_bookCateService = bookCateService;
+			_editionCopyService = editionCopyService;
 			_cateService = cateService;
 			_authorService = authorService;
 			_cloudService = cloudService;
@@ -139,6 +144,77 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public override async Task<IServiceResult> DeleteAsync(int id)
+		{
+			try
+			{
+				// Determine current system lang
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+
+				// Build specification
+				var baseSpec = new BaseSpecification<Book>(b => b.BookId == id);
+				// Apply including (book editions, book resources)
+				baseSpec.ApplyInclude(q => q
+					.Include(b => b.BookCategories)
+				);
+				// Retrieve book with specification
+				var existingBook = await _unitOfWork.Repository<Book, int>().GetWithSpecAsync(baseSpec);
+				if (existingBook == null) // not found
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng ? "book to process delete" : "sách để xóa"));
+				}
+
+				// Check whether book contains any categories
+				if (existingBook.BookCategories.Any())
+				{
+					// Clear and set to empty collection
+					existingBook.BookCategories.Clear();
+				}
+
+				// Invoke DbUpdateException <- If book still hold any edition or resource
+				// As foreign key of relation tables still exist -> required to delete all relations first
+				// Process delete
+				await _unitOfWork.Repository<Book, int>().DeleteAsync(existingBook.BookId);
+				
+				// Save change
+				var rowEffected = await _unitOfWork.SaveChangesAsync();
+				if (rowEffected == 0)
+				{
+					// Mark as fail to delete
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+				
+				// Mark as delete success
+                return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw new Exception("Error invoke when process delete book");
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process delete book");
+			}
+		}
+		
 		public async Task<IServiceResult> UpdateAsync(int id, BookDto dto, string byEmail)
 		{
 			try
@@ -313,6 +389,9 @@ namespace FPTU_ELibrary.Application.Services
 						await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0002));
 				}
 				
+				// Custom error responses
+				var customErrors = new Dictionary<string, string[]>();
+				
 				// Check resources existence
 				foreach (var br in dto.BookResources)
 				{
@@ -330,36 +409,103 @@ namespace FPTU_ELibrary.Application.Services
 				// Add boolean information
 				dto.IsDeleted = false;
 				dto.IsDraft = true;
+
 				// Add book edition creation information (if any)
 				// Initialize numeric collection to check edition unique num
-				HashSet<int> editionNums = new();
-				var existInvalidEditionNum = false; 
-				dto.BookEditions.ToList().ForEach(be =>
+				var editionNums = new HashSet<int>();
+				var editionCopyCodes = new HashSet<string>();
+				var listBookEdition = dto.BookEditions.ToList();
+				for (int i = 0; i < listBookEdition.Count; i++)
 				{
-					// Check unique book edition number
-					if (!editionNums.Add(be.EditionNumber)) existInvalidEditionNum = true;
-					
-					// Boolean
-					be.IsDeleted = false;
-					be.CanBorrow = false;
-					// Clear ISBN hyphens
-					be.Isbn = ISBN.CleanIsbn(be.Isbn);
+					var be = listBookEdition[i];
 
-					// Add book copy create information (if any)
-					be.BookEditionCopies.ToList().ForEach(bec =>
+					// Check unique book edition number
+					if (!editionNums.Add(be.EditionNumber))
 					{
-						// Default status
-						bec.Status = nameof(BookEditionCopyStatus.OutOfShelf);
-						// Boolean 
-						bec.IsDeleted = false;
-					});
-				});
+						// Add error 
+						customErrors.Add(
+							$"bookEditions[{i}].editionNumber", 
+							[await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003)]);
+					};
+					
+					// Check exist cover image
+					if (!string.IsNullOrEmpty(be.CoverImage))
+					{
+						// Initialize field
+						var isImageOnCloud = true;
+						
+						// Extract provider public id
+						var publicId = StringUtils.GetPublicIdFromUrl(be.CoverImage);
+						if (publicId != null) // Found
+						{
+							// Process check exist on cloud			
+							isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
+						}
+
+						if (!isImageOnCloud || publicId == null) // Not found image or public id
+						{
+							// Mark as not found image
+							return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+								await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+						}
+					}
+                    
+                    // Iterate each book edition copy (if any) to check valid data
+                    var listBookEditionCopy = be.BookEditionCopies.ToList();
+                    for (int j = 0; j < listBookEditionCopy.Count; j++)
+                    {
+	                    var bec = listBookEditionCopy[j];
+	                    
+                        if (editionCopyCodes.Add(bec.Code!)) // Add to hash set string to ensure uniqueness
+                        {
+							// Check already exist code in DB
+							var checkExistResult = await _editionCopyService.AnyAsync(
+								c => c.Code == bec.Code);
+							if (checkExistResult.Data is true)
+							{
+								var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
+								// Add error 
+								customErrors.Add(
+									$"bookEditions[{i}].bookCopies[{j}].code", 
+									[StringUtils.Format(errMsg, $"'{bec.Code!}'")]);
+							}
+                        }
+                        else // Duplicate found
+                        {
+	                        // Add error 
+	                        customErrors.Add(
+		                        $"bookEditions[{i}].bookCopies[{j}].code", 
+		                        [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0005)]);
+                        };
+                        
+                        // Default status
+                        bec.Status = nameof(BookEditionCopyStatus.OutOfShelf);
+                        // Boolean 
+                        bec.IsDeleted = false;
+                    }
+                    
+                    // Default value
+                    be.IsDeleted = false;
+                    be.CanBorrow = false;
+                    // Clear ISBN hyphens
+                    be.Isbn = ISBN.CleanIsbn(be.Isbn);
+                    // Check exist Isbn
+                    var isIsbnExist = await _unitOfWork.Repository<BookEdition, int>()
+	                    .AnyAsync(x => x.Isbn == be.Isbn);
+                    if (isIsbnExist) // already exist 
+                    {
+	                    // Add error
+	                    customErrors.Add(
+		                    $"bookEditions[{i}].isbn", 
+		                    // Isbn already exist message
+		                    [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007)]);
+                    }
+				}
 				
-				// Check edition number uniqueness
-				if (existInvalidEditionNum)
+				// Any errors invoke when checking valid data
+				if (customErrors.Any()) // exist errors
 				{
-					return new ServiceResult(ResultCodeConst.Book_Warning0003,
-						await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003));
+					throw new UnprocessableEntityException("Invalid data", customErrors);
 				}
 				
 				// Process create new book
@@ -390,7 +536,7 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-		public async Task<IServiceResult> GetCreateInformationAsync()
+		public async Task<IServiceResult> GetBookEnumsAsync()
 		{
 			try
 			{
@@ -421,6 +567,24 @@ namespace FPTU_ELibrary.Application.Services
 					nameof(ResourceProvider.Cloudinary)
 				};
 				
+				// Book copy statuses
+				var bookCopyStatuses = new List<string>()
+				{
+					nameof(BookEditionCopyStatus.InShelf),
+					nameof(BookEditionCopyStatus.OutOfShelf),
+					nameof(BookEditionCopyStatus.Borrowed),
+					nameof(BookEditionCopyStatus.Reserved),
+				};
+				
+				// Copy condition statuses
+				var conditionStatuses = new List<string>()
+				{
+					nameof(ConditionHistoryStatus.Good),
+					nameof(ConditionHistoryStatus.Worn),
+					nameof(ConditionHistoryStatus.Damaged),
+					nameof(ConditionHistoryStatus.Lost)
+				};
+				
 				// Get all shelves
 				var bookShelves = (await _libShelfService.GetAllAsync()).Data as List<LibraryShelfDto>;
 
@@ -433,6 +597,8 @@ namespace FPTU_ELibrary.Application.Services
 						BookShelves = bookShelves,
 						FileFormats = fileFormats,
 						ResourceProviders = resourceProviders,
+						BookCopyStatuses = bookCopyStatuses,
+						ConditionStatuses = conditionStatuses
 					});
 			}
 			catch (Exception ex)

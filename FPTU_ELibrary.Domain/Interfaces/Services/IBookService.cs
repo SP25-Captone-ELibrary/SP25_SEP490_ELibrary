@@ -9,6 +9,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
 	{
 		Task<IServiceResult> CreateAsync(TDto dto, string byEmail);
 		Task<IServiceResult> UpdateAsync(int id, TDto dto, string byEmail);
-		Task<IServiceResult> GetCreateInformationAsync();
+		Task<IServiceResult> GetBookEnumsAsync();
 	}
 }

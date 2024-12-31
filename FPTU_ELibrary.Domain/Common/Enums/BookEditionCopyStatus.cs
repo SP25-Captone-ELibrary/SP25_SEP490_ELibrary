@@ -6,7 +6,7 @@ public enum BookEditionCopyStatus
 {
     [Description("Có sẵn trên kệ")]
     InShelf,
-    [Description("Không có trên kệ")]
+    [Description("Trong kho")]
     OutOfShelf,
     [Description("Đang được mượn")]
     Borrowed,

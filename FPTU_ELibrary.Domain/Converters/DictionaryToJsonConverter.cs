@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace FPTU_ELibrary.Infrastructure.Data.Configurations.Converter;
+namespace FPTU_ELibrary.Domain.Converters;
 
 //  Summary:
 //      This class is to handle converting from dictionary to json and reverse 

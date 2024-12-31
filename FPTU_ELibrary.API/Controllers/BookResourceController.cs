@@ -73,7 +73,7 @@ public class BookResourceController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.BookResource.SoftDeleteRange, Name = nameof(SoftDeleteRangeBookResourceAsync))]
-    public async Task<IActionResult> SoftDeleteRangeBookResourceAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> SoftDeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _bookResourceService.SoftDeleteRangeAsync(req.Ids));
     }
@@ -87,7 +87,7 @@ public class BookResourceController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.BookResource.UndoDeleteRange, Name = nameof(UndoSoftDeleteRangeBookResourceAsync))]
-    public async Task<IActionResult> UndoSoftDeleteRangeBookResourceAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> UndoSoftDeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _bookResourceService.UndoDeleteRangeAsync(req.Ids));
     }
@@ -101,7 +101,7 @@ public class BookResourceController : ControllerBase
     
     [Authorize]
     [HttpDelete(APIRoute.BookResource.DeleteRange, Name = nameof(DeleteRangeBookResourceAsync))]
-    public async Task<IActionResult> DeleteRangeBookResourceAsync([FromBody] DeleteRangeRequest<int> req)
+    public async Task<IActionResult> DeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _bookResourceService.DeleteRangeAsync(req.Ids));
     }

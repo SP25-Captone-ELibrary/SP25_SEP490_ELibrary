@@ -9,11 +9,11 @@ public enum SystemFeature
     UserManagement,
     [Description("/management/employees")]
     EmployeeManagement,
-    [Description("/management/roles")] // Combine with permissions
+    [Description("/management/roles")] // Combine with permissions, audit trail
     RoleManagement,
     [Description("/management/fines")]
     FineManagement,
-    [Description("/management/books")] // Combine with authors, categories, resources
+    [Description("/management/books")] // Combine with authors, categories, resources, audit trail
     BookManagement,
     [Description("/management/borrows")] // Combine with notifications, returns
     BorrowManagement,
@@ -36,5 +36,9 @@ public enum SystemFeature
     [Description("/management/system-messages")]
     SystemMessageManagement,
     [Description("/management/resources")]
-    ResourceManagement
+    ResourceManagement,
+    [Description("/management/books/audit-trails")]
+    BookAuditTrailManagement,
+    [Description("/management/roles/audit-trails")]
+    RoleAuditTrailManagement,
 }

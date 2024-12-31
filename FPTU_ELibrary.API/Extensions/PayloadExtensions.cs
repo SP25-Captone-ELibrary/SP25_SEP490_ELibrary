@@ -180,7 +180,16 @@ namespace FPTU_ELibrary.API.Extensions
 		{
 			return new BookEditionCopyDto()
 			{
-				Code = req.Code
+				Code = req.Code,
+				
+				// Add default one history status
+				CopyConditionHistories = new List<CopyConditionHistoryDto>()
+				{
+					new()
+					{
+						Condition = req.ConditionStatus
+					}
+				}
 			};
 		}
 		
@@ -212,6 +221,27 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		
 		#endregion
+
+		#region Book Edition
+		// Mapping from typeof(UpdateBookEditionRequest) to typeof(BookEditionDto)
+		public static BookEditionDto ToBookEditionDto(this UpdateBookEditionRequest req)
+			=> new()
+			{
+				EditionTitle = req.EditionTitle,
+				EditionSummary = req.EditionSummary,
+				EditionNumber = req.EditionNumber,
+				PageCount = req.PageCount,
+				Language = req.Language,
+				PublicationYear = req.PublicationYear,
+				CoverImage = req.CoverImage,
+				Format = req.Format,
+				Publisher = req.Publisher,
+				Isbn = ISBN.CleanIsbn(req.Isbn),
+				EstimatedPrice = req.EstimatedPrice,
+				ShelfId = req.ShelfId
+			};
+
+		#endregion
 		
 		#region BookResource
 		// Mapping from typeof(UpdateBookResourceRequest) to typeof(BookResourceDto)
@@ -224,6 +254,15 @@ namespace FPTU_ELibrary.API.Extensions
 				ResourceUrl = req.ResourceUrl,
 				FileFormat = req.FileFormat
 			};
+		#endregion
+
+		#region Book Edition Copy
+		// Mapping from typeof(UpdateBookEditionCopyRequest) to typeof(BookEditionCopyDto)
+		public static BookEditionCopyDto ToBookEditionCopyDto(this UpdateBookEditionCopyRequest req)
+			=> new()
+			{
+				Status = req.Status 
+			};	
 		#endregion
 		
 		#region User
@@ -298,8 +337,9 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
+				TerminationDate = req.TerminationDate,
 				RoleId = req.RoleId,
-
+			
 				// Set default authorization values
 				CreateDate = currentLocalDateTime,
 				IsActive = false,
@@ -326,6 +366,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender.ToString(),
 				HireDate = req.HireDate,
+				Avatar = req.Avatar,
 				TerminationDate = req.TerminationDate,
 				ModifiedDate = currentLocalDateTime
 			};
