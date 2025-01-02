@@ -12,6 +12,7 @@ using System.Text.Json;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Hubs;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using Microsoft.AspNetCore.SignalR;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -48,6 +49,7 @@ public class AIClassificationService : IAIClassificationService
     {
         try
         {
+            // int images = imageList.Count;
             var projectId = Guid.Parse(_monitor.ProjectId);
             // Ensure that the tag exists for the book title
             var tags = await GetTagAsync();
@@ -59,18 +61,30 @@ public class AIClassificationService : IAIClassificationService
             var bookDetail = (BookDetailDto)book.Data;
             //Get All Book edition cover pages of the books
             var coverImages = bookDetail.BookEditions.Select(x => x.CoverImage).ToList();
-            foreach (var coverImage in coverImages)
+            for (int i = 0; i<coverImages.Count;i++)
             {
-                var response = await _httpClient.GetAsync(coverImage);
+                var response = await _httpClient.GetAsync(coverImages[i]);
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsByteArrayAsync();
+                //get public id
+                var publicId = StringUtils.GetPublicIdFromCloudinaryUrl(coverImages[i]);
+                //create temp file name
+                string fileName = $"{publicId}_{i}.jpg";
+                var memoryStream = new MemoryStream(content);
+                //Create IFormFile item
+                var formFile = new FormFile(memoryStream, 0, memoryStream.Length, "image", fileName)
+                {
+                    Headers = new HeaderDictionary(),
+                    ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream"
+                };
+                imageList.Add(formFile);
             }
 
             TagDto tag;
             if (bookDetail.BookCodeForAITraining is null)
             {
                 var trainingCode = Guid.NewGuid();
-                bookDetail.BookCodeForAITraining = trainingCode;
+                
                 tag = await CreateTagAsync(trainingCode);
             }
             else
@@ -95,7 +109,18 @@ public class AIClassificationService : IAIClassificationService
 
             //Send notification when finish
             await _hubContext.Clients.User(email).SendAsync("Trained Successfully");
-
+            
+            // Update the book to indicate that it has been trained
+            var updateResult =await _bookService.UpdateTrainingStatus(bookId,new BookDto()
+            {
+                IsTrained = true,
+                BookCodeForAITraining = bookDetail.BookCodeForAITraining
+            });
+            if (updateResult.ResultCode != ResultCodeConst.SYS_Success0003)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+            }
             return new ServiceResult(ResultCodeConst.AIService_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0002));
         }
@@ -273,7 +298,7 @@ public class AIClassificationService : IAIClassificationService
 
     private async Task UnpublishIterationAsync(Guid iterationId)
     {
-        var getPublishIteration = _baseUrl + $"iterations/{iterationId}/publish";
+        var getPublishIteration = _baseUrl + $"/iterations/{iterationId}/publish";
         _httpClient.DefaultRequestHeaders.Add("Training-Key", _monitor.TrainingKey);
 
         var response = await _httpClient.DeleteAsync(getPublishIteration);
@@ -282,7 +307,7 @@ public class AIClassificationService : IAIClassificationService
 
     private async Task DeleteIterationAsync(Guid iterationId)
     {
-        var deleteIterationUrl = _baseUrl + $"iterations/{iterationId}";
+        var deleteIterationUrl = _baseUrl + $"/iterations/{iterationId}";
         _httpClient.DefaultRequestHeaders.Add("Training-Key", _monitor.TrainingKey);
 
         var response = await _httpClient.DeleteAsync(deleteIterationUrl);

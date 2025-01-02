@@ -152,7 +152,7 @@ public class OCRService : IOCRService
                 return bookEditionResult;
             }
             var dto = (BookEditionDetailDto)bookEditionResult.Data!;
-            
+               
             var responseData = new TrainingImageMatchResultDto();
             foreach (var image in images)
             {
