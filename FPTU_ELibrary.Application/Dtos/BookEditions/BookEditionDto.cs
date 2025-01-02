@@ -8,7 +8,8 @@ public class BookEditionDto
 {
     // Key
     public int BookEditionId { get; set; }
-    
+    public bool IsTrained { get; set; } = false;
+    public DateTime? TrainedDay { get; set; }
     // Edition of which book
     public int BookId { get; set; }
 

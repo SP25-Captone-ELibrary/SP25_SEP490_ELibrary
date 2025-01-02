@@ -14,7 +14,10 @@ using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -45,52 +48,92 @@ public class AIClassificationService : IAIClassificationService
         _baseUrl = string.Format(_monitor.BaseAIUrl, _monitor.TrainingEndpoint, _monitor.ProjectId);
     }
 
-    public async Task<IServiceResult> TrainModel(int bookId, List<IFormFile> imageList, string email)
+    public async Task<IServiceResult> TrainModel(List<TrainedBookDetailDto> req, string email)
     {
         try
         {
+            if (!req.Any())
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001));
+            }
+
+            //get book to find training book code
+            var baseSpec = new BaseSpecification<Book>(b => b.BookEditions.Any(e
+                => e.BookEditionId == req[0].BookEditionId));
+            baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
+            var bookResult = await _bookService.GetWithSpecAsync(baseSpec, false);
+            if (bookResult.Data is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001));
+            }
+
+            var book = (BookDto)bookResult.Data;
+            var trainingBookCode = book.BookCodeForAITraining;
+
             // int images = imageList.Count;
             var projectId = Guid.Parse(_monitor.ProjectId);
             // Ensure that the tag exists for the book title
-            var tags = await GetTagAsync();
-            // get book to check if this book has trained or not
-            var book = await _bookService.GetByIdAsync(bookId);
-            if (book.Data is null)
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002
-                    , string.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "book"));
-            var bookDetail = (BookDetailDto)book.Data;
-            //Get All Book edition cover pages of the books
-            var coverImages = bookDetail.BookEditions.Select(x => x.CoverImage).ToList();
-            for (int i = 0; i<coverImages.Count;i++)
-            {
-                var response = await _httpClient.GetAsync(coverImages[i]);
-                response.EnsureSuccessStatusCode();
-                var content = await response.Content.ReadAsByteArrayAsync();
-                //get public id
-                var publicId = StringUtils.GetPublicIdFromCloudinaryUrl(coverImages[i]);
-                //create temp file name
-                string fileName = $"{publicId}_{i}.jpg";
-                var memoryStream = new MemoryStream(content);
-                //Create IFormFile item
-                var formFile = new FormFile(memoryStream, 0, memoryStream.Length, "image", fileName)
-                {
-                    Headers = new HeaderDictionary(),
-                    ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream"
-                };
-                imageList.Add(formFile);
-            }
-
+            List<TagDto> tags = await GetTagAsync();
             TagDto tag;
-            if (bookDetail.BookCodeForAITraining is null)
+            if (!tags.Select(x => x.Name).ToList().Contains(book.BookCodeForAITraining.ToString()!))
             {
-                var trainingCode = Guid.NewGuid();
-                
-                tag = await CreateTagAsync(trainingCode);
+                tag = await CreateTagAsync(book.BookCodeForAITraining??Guid.NewGuid());    
             }
             else
             {
-                tag = tags.FirstOrDefault(x => x.Name.Equals(bookDetail.BookCodeForAITraining));
+                tag = tags.FirstOrDefault(x => x.Name.Equals(book.BookCodeForAITraining.ToString()));
             }
+
+            var errMsg = new List<string>();
+            for (int i = 0; i < req.Count; i++)
+            {
+                var imageList = req[i].ImageList;
+                if (imageList.Count < 4)
+                {
+                    errMsg.Add($"Book Edition Id: {req[i].BookEditionId} has less than 4 images");
+                    continue;
+                }
+
+                var bookEdition = await _bookEditionService.GetByIdAsync(req[i].BookEditionId);
+                
+                // upload images with dynamic field names and filenames
+                await CreateImagesFromDataAsync(imageList, tag.Id);     
+            }
+
+
+            // var coverImages = bookDetail.BookEditions.Select(x => x.CoverImage).ToList();
+            // for (int i = 0; i<coverImages.Count;i++)
+            // {
+            // var response = await _httpClient.GetAsync(coverImages[i]);
+            // response.EnsureSuccessStatusCode();
+            //     var content = await response.Content.ReadAsByteArrayAsync();
+            //     //get public id
+            //     var publicId = StringUtils.GetPublicIdFromCloudinaryUrl(coverImages[i]);
+            //     //create temp file name
+            //     string fileName = $"{publicId}_{i}.jpg";
+            //     var memoryStream = new MemoryStream(content);
+            //     //Create IFormFile item
+            //     var formFile = new FormFile(memoryStream, 0, memoryStream.Length, "image", fileName)
+            //     {
+            //         Headers = new HeaderDictionary(),
+            //         ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream"
+            //     };
+            //     imageList.Add(formFile);
+            // }
+
+            // TagDto tag;
+            // if (bookDetail.BookCodeForAITraining is null)
+            // {
+            //     var trainingCode = Guid.NewGuid();
+            //     
+            //     tag = await CreateTagAsync(trainingCode);
+            // }
+            // else
+            // {
+            //     tag = tags.FirstOrDefault(x => x.Name.Equals(bookDetail.BookCodeForAITraining));
+            // }
 
             // upload images with dynamic field names and filenames
             await CreateImagesFromDataAsync(imageList, tag.Id);

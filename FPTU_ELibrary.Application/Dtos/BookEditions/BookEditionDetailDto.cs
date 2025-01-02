@@ -12,7 +12,8 @@ public class BookEditionDetailDto
     public string? Summary { get; set; }
     public DateTime BookCreateDate { get; set; }
     public DateTime? BookUpdatedDate { get; set; }
-    
+    public bool IsTrained { get; set; } = false;
+    public DateTime? TrainedDay { get; set; }
     // Edition detail information
     public int BookEditionId { get; set; }
     public string? EditionTitle { get; set; }
@@ -70,6 +71,8 @@ public static class BookEditionDetailDtoExtensions
             IsDeleted = dto.IsDeleted,
             CanBorrow = dto.CanBorrow,
             EstimatedPrice = dto.EstimatedPrice,
+            IsTrained = dto.IsTrained,
+            TrainedDay = dto.TrainedDay,
             
             // Shelf information
             ShelfId = dto.ShelfId,
@@ -113,6 +116,8 @@ public static class BookEditionDetailDtoExtensions
             IsDeleted = dto.IsDeleted,
             CanBorrow = dto.CanBorrow,
             EstimatedPrice = dto.EstimatedPrice,
+            IsTrained = dto.IsTrained,
+            TrainedDay = dto.TrainedDay,
             
             // Shelf information
             ShelfId = dto.ShelfId,

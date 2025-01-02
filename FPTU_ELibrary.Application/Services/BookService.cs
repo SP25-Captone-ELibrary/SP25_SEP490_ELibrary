@@ -76,7 +76,6 @@ namespace FPTU_ELibrary.Application.Services
 						Summary = s.Summary,
 						IsDeleted = s.IsDeleted,
 						IsDraft = s.IsDraft,
-						IsTrained = s.IsTrained,
 						BookCodeForAITraining = s.BookCodeForAITraining,
 						CreatedAt = s.CreatedAt,
 						CreatedBy = s.CreatedBy,
@@ -607,60 +606,6 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				_logger.Error(ex.Message);
 				throw new Exception("Error invoke when process get create information");
-			}
-		}
-
-		public async Task<IServiceResult> UpdateTrainingStatus(int id, BookDto dto)
-		{
-			try
-			{
-				// Determine system lang
-				var langEnum =
-					(SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
-						.CurrentLanguage);
-				var isEng = langEnum == SystemLanguage.English;
-				//build specification
-				var baseSpec = new BaseSpecification<Book>(b => b.BookId == id);
-				//get book that need to update
-				var book = await _unitOfWork.Repository<Book, int>().GetWithSpecAsync(baseSpec);
-				if (book == null)
-				{
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "book to update" : "sách để sửa"));
-				}
-
-				book.IsTrained = true;
-				book.BookCodeForAITraining = dto.BookCodeForAITraining;
-				
-
-				// Progress update when all require passed
-				await _unitOfWork.Repository<Book, int>().UpdateAsync(book);
-
-				// Save changes to DB
-				var rowsAffected = await _unitOfWork.SaveChangesAsync();
-				if (rowsAffected == 0)
-				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
-				}
-
-				// Mark as update success
-				return new ServiceResult(ResultCodeConst.SYS_Success0003,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-			}
-			catch (ForbiddenException)
-			{
-				throw;
-			}
-			catch (UnprocessableEntityException)
-			{
-				throw;
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when process update book");
 			}
 		}
 

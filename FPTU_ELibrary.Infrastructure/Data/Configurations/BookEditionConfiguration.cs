@@ -89,6 +89,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(255) // Email address
                 .HasColumnName("updated_by");
             #endregion
+
+            #region Update 2/1/2025 update AI field
+            builder.Property(e => e.IsTrained)
+                .HasDefaultValue(false)
+                .HasColumnName("is_trained");
+            builder.Property(e => e.TrainedDay)
+                .HasColumnType("datetime")
+                .HasColumnName("trained_day");
+            #endregion
         }
     }
 }

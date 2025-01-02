@@ -18,9 +18,9 @@ public class CustomVisionController : ControllerBase
 
     [HttpPost(APIRoute.AIServices.Training, Name = nameof(TrainModel))]
     [Authorize]
-    public async Task<IActionResult> TrainModel([FromForm] TrainModelRequest req)
+    public async Task<IActionResult> TrainModel([FromForm] List<TrainedModelRequest> req)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _aiClassificationService.TrainModel(req.BookId, req.ImageList,email));
+        return Ok(await _aiClassificationService.TrainModel(req.ToListTrainedBookDetailDto(),email));
     }
 }

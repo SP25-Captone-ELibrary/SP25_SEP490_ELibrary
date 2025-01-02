@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20241231102031_Initial Database")]
+    [Migration("20250102043410_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
