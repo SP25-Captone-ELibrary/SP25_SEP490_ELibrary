@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -24,7 +24,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
                     old_values = table.Column<string>(type: "nvarchar(1000)", nullable: false),
                     new_values = table.Column<string>(type: "nvarchar(1000)", nullable: false),
-                    changed_columns = table.Column<string>(type: "nvarchar(120)", nullable: false)
+                    changed_columns = table.Column<string>(type: "nvarchar(255)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,14 +59,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     book_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    bookcodeforai = table.Column<Guid>(name: "book-code-for-ai", type: "uniqueidentifier", nullable: true),
-                    istrained = table.Column<bool>(name: "is-trained", type: "bit", nullable: false, defaultValue: false),
-                    TrainedDay = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    book_code_for_ai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
-                    is_draft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -551,8 +548,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     book_edition_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    BookCodeForAITraining = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsTrained = table.Column<bool>(type: "bit", nullable: false),
+                    is_trained = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    trained_day = table.Column<DateTime>(type: "datetime", nullable: true),
                     book_id = table.Column<int>(type: "int", nullable: false),
                     edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
@@ -568,6 +565,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     can_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     estimated_price = table.Column<decimal>(type: "decimal(10,0)", nullable: false),
                     ShelfId = table.Column<int>(type: "int", nullable: true),
+                    status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -680,6 +678,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     total_copies = table.Column<int>(type: "int", nullable: false),
                     available_copies = table.Column<int>(type: "int", nullable: false),
                     request_copies = table.Column<int>(type: "int", nullable: false),
+                    borrowed_copies = table.Column<int>(type: "int", nullable: false),
                     reserved_copies = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>

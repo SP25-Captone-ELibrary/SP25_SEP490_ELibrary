@@ -25,6 +25,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.CognitiveServices.Vision.ComputerVision" Version="7.0.1" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.42.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.11" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
@@ -37,10 +38,4 @@
   <ItemGroup>
 	<Using Include="BCrypt.Net.BCrypt" Alias="BC" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Microsoft.Data.SqlClient">
-      <HintPath>..\FPTU_ELibrary.API\bin\Debug\net8.0\Microsoft.Data.SqlClient.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>

@@ -92,6 +92,8 @@
 			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/{id}";
+			public const string UpdateStatus = Base + "/management/books/editions/{id}/status";
+			public const string UpdateShelfLocation = Base + "/management/books/editions/{id}/shelf-location";
 			public const string SoftDelete = Base + "/management/books/editions/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/books/editions/soft-delete-range";
 			public const string UndoDelete = Base + "/management/books/editions/{id}/undo-delete";
@@ -309,6 +311,20 @@
 			//	[GET]
 			public const string GetAuthorizedUserFeatures = Base + "/features/authorized";
 			public const string GetFeaturePermission = Base + "/features/{id}/authorized-permission";
+		}
+
+		/// <summary>
+		/// Library shelf
+		/// </summary>
+		public static class LibraryLocation
+		{
+			#region Management
+			//	[GET]
+			public const string GetFloors = Base + "/management/location/floors";
+			public const string GetZonesByFloorId = Base + "/management/location/zones";
+			public const string GetSectionsByZoneId = Base + "/management/location/sections";
+			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
+			#endregion
 		}
 		
 		/// <summary>

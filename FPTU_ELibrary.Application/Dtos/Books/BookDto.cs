@@ -6,11 +6,8 @@ namespace FPTU_ELibrary.Application.Dtos.Books
     {
         // Key
         public int BookId { get; set; }
-
-        #region Update 30/12/2024 update AI field
         public Guid? BookCodeForAITraining { get; set; }
-        public bool IsTrained { get; set; } = false;
-        #endregion
+        
         // Book information
         public string Title { get; set; } = null!;
         public string? SubTitle { get; set; }
@@ -18,7 +15,6 @@ namespace FPTU_ELibrary.Application.Dtos.Books
     
         // Book management and borrow permission
         public bool IsDeleted { get; set; }
-        public bool IsDraft { get; set; }
         
         // Datetime and employee who create or update the book
         public DateTime CreatedAt { get; set; }

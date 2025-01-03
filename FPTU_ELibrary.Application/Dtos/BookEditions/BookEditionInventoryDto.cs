@@ -11,6 +11,7 @@ public class BookEditionInventoryDto
     public int TotalCopies { get; set; }
     public int AvailableCopies { get; set; }
     public int RequestCopies { get; set; }
+    public int BorrowedCopies { get; set; }
     public int ReservedCopies { get; set; }
 
     // Mapping entity

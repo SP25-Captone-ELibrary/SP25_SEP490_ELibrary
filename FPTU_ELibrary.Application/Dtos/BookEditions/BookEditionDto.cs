@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
@@ -8,6 +9,9 @@ public class BookEditionDto
 {
     // Key
     public int BookEditionId { get; set; }
+    
+    public bool IsTrained { get; set; }
+    public DateTime? TrainedDay { get; set; }
     
     // Edition of which book
     public int BookId { get; set; }
@@ -29,13 +33,16 @@ public class BookEditionDto
     
     // Locate in which shelf
     public int? ShelfId { get; set; }
+    
+    // Edition status (Draft, Published)
+    public BookEditionStatus Status { get; set; }
 
     // Creation, update datetime and employee is charge of 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
-
+    
     // Mapping entities
     [JsonIgnore]
     public BookDto Book { get; set; } = null!;

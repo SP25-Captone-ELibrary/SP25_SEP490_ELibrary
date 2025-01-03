@@ -77,6 +77,11 @@ public class AuthorizationService : IAuthorizationService
         {
             return SystemFeatureEnum.BookManagement;
         }
+        // [LibraryLocationManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryLocationManagement))
+        {
+            return SystemFeatureEnum.BookManagement;
+        }
         // [BookAuditTrailManagement]
         if (requestFeature.Equals(SystemFeatureEnum.BookAuditTrailManagement))
         {

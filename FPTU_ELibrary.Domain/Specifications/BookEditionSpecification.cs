@@ -77,6 +77,10 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
         {
             AddFilter(x => x.Language == specParams.Language);
         }
+        if (specParams.Status != null) // With specific status
+        {
+            AddFilter(x => x.Status == specParams.Status);
+        }
         if (specParams.CanBorrow != null) // Can borrow status
         {
             AddFilter(x => x.CanBorrow == specParams.CanBorrow);
@@ -111,20 +115,56 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                     .Any(a => a.Nationality == specParams.AuthorNationality));
         }
         if (specParams.AuthorDobRange != null 
-            && specParams.AuthorDobRange.Count > 1) // With range of author dob
+            && specParams.AuthorDobRange.Length > 1) // With range of author dob
         {
-            AddFilter(x => 
-                x.BookEditionAuthors.Select(bea => bea.Author)
-                    .Any(a => a.Dob >= specParams.AuthorDobRange[0].Date && 
-                              a.Dob <= specParams.AuthorDobRange[1].Date));
+            if (specParams.AuthorDobRange[0].HasValue && specParams.AuthorDobRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.Dob.HasValue &&
+                                  a.Dob.Value.Date >= specParams.AuthorDobRange[0]!.Value.Date && 
+                                  a.Dob.Value.Date <= specParams.AuthorDobRange[1]!.Value.Date));       
+            }
+            else if (specParams.AuthorDobRange[0] is null && specParams.AuthorDobRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.Dob.HasValue && 
+                                  a.Dob.Value.Date <= specParams.AuthorDobRange[1]!.Value.Date));   
+            }
+            else if (specParams.AuthorDobRange[0].HasValue && specParams.AuthorDobRange[1] is null)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.Dob.HasValue &&
+                                  a.Dob.Value.Date >= specParams.AuthorDobRange[0]!.Value.Date));        
+            }
         }
         if (specParams.AuthorDateOfDeathRange != null 
-            && specParams.AuthorDateOfDeathRange.Count > 1) // With range of author date of death
+            && specParams.AuthorDateOfDeathRange.Length > 1) // With range of author date of death
         {
-            AddFilter(x => 
-                x.BookEditionAuthors.Select(bea => bea.Author)
-                    .Any(a => a.DateOfDeath >= specParams.AuthorDateOfDeathRange[0].Date && 
-                              a.DateOfDeath <= specParams.AuthorDateOfDeathRange[1].Date));
+            if (specParams.AuthorDateOfDeathRange[0].HasValue && specParams.AuthorDateOfDeathRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.DateOfDeath.HasValue &&
+                                  a.DateOfDeath.Value.Date >= specParams.AuthorDateOfDeathRange[0]!.Value.Date && 
+                                  a.DateOfDeath.Value.Date <= specParams.AuthorDateOfDeathRange[1]!.Value.Date));       
+            }
+            else if (specParams.AuthorDateOfDeathRange[0] is null && specParams.AuthorDateOfDeathRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.DateOfDeath.HasValue && 
+                                  a.DateOfDeath.Value.Date <= specParams.AuthorDateOfDeathRange[1]!.Value.Date));   
+            }
+            else if (specParams.AuthorDateOfDeathRange[0].HasValue && specParams.AuthorDateOfDeathRange[1] is null)
+            {
+                AddFilter(x => 
+                    x.BookEditionAuthors.Select(bea => bea.Author)
+                        .Any(a => a.DateOfDeath.HasValue &&
+                                  a.DateOfDeath.Value.Date >= specParams.AuthorDateOfDeathRange[0]!.Value.Date));        
+            }
         }
         
         // Book edition copy properties
@@ -144,24 +184,48 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
         }
         
         // Book properties
-        // TODO: Update filter date range
-        if (specParams.IsDraft != null) // With status
-        {
-            AddFilter(x => x.Book.IsDraft == specParams.IsDraft);       
-        }
+        // TODO: Add filtering book with status
+        // if (specParams.IsDraft != null) // With status
+        // {
+        //     AddFilter(x => x.Book.IsDraft == specParams.IsDraft);       
+        // }
         if (specParams.CreatedAtRange != null 
-            && specParams.CreatedAtRange.Count > 1) // With range of create date 
+            && specParams.CreatedAtRange.Length > 1) // With range of create date 
         {
-            AddFilter(x => 
-                x.CreatedAt >= specParams.CreatedAtRange[0].Date 
-                && x.CreatedAt <= specParams.CreatedAtRange[1].Date);       
+            if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date 
+                    && x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);       
+            }
+            else if (specParams.CreatedAtRange[0] is null && specParams.CreatedAtRange[1].HasValue)
+            {
+                AddFilter(x => x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);
+            }
+            else if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1] is null)
+            {
+                AddFilter(x => x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date);
+            }
         }
         if (specParams.UpdatedAtRange != null 
-            && specParams.UpdatedAtRange.Count > 1) // With range of create date 
+            && specParams.UpdatedAtRange.Length > 1) // With range of update date 
         {
-            AddFilter(x => x.UpdatedAt.HasValue &&
-                           x.UpdatedAt.Value.Date >= specParams.UpdatedAtRange[0].Date 
-                           && x.UpdatedAt.Value.Date <= specParams.UpdatedAtRange[1].Date);       
+            if (specParams.UpdatedAtRange[0].HasValue && specParams.UpdatedAtRange[1].HasValue)
+            {
+                AddFilter(x => x.UpdatedAt.HasValue &&
+                               x.UpdatedAt.Value.Date >= specParams.UpdatedAtRange[0]!.Value.Date 
+                               && x.UpdatedAt.Value.Date <= specParams.UpdatedAtRange[1]!.Value.Date);       
+            }
+            else if (specParams.UpdatedAtRange[0] is null && specParams.UpdatedAtRange[1].HasValue)
+            {
+                AddFilter(x => x.UpdatedAt.HasValue && 
+                               x.UpdatedAt.Value.Date <= specParams.UpdatedAtRange[1]!.Value.Date);
+            }
+            else if (specParams.UpdatedAtRange[0].HasValue && specParams.UpdatedAtRange[1] is null)
+            {
+                AddFilter(x => x.UpdatedAt.HasValue && 
+                               x.UpdatedAt.Value.Date >= specParams.UpdatedAtRange[0]!.Value.Date);
+            }
         }
         
         // Progress sorting
@@ -182,10 +246,11 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                 { "EDITIONNUMBER", x => x.EditionNumber },
                 { "PUBLICATIONYEAR", x => x.PublicationYear },
                 { "PAGECOUNT", x => x.PageCount },
-                { "TOTALCOPIES", x => x.BookEditionInventory!.TotalCopies },
-                { "AVAILABLECOPIES", x => x.BookEditionInventory!.AvailableCopies },
-                { "REQUESTCOPIES", x => x.BookEditionInventory!.RequestCopies },
-                { "RESERVEDCOPIES", x => x.BookEditionInventory!.RequestCopies },
+                // { "TOTALCOPIES", x => x.BookEditionInventory!.TotalCopies },
+                // { "AVAILABLECOPIES", x => x.BookEditionInventory!.AvailableCopies },
+                // { "REQUESTCOPIES", x => x.BookEditionInventory!.RequestCopies },
+                // { "BORROWEDCOPIES", x => x.BookEditionInventory!.BorrowedCopies },
+                // { "RESERVEDCOPIES", x => x.BookEditionInventory!.ReservedCopies },
                 { "AUTHOR", x => x.BookEditionAuthors.Select(bea => bea.Author.FullName) },
                 { "TITLE", x => x.Book.Title },
                 { "EDITIONTITLE", x => x.EditionTitle! },

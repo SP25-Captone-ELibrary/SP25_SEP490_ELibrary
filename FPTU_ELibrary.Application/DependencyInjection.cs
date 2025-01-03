@@ -40,7 +40,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ICloudinaryService, CloudinaryService>();
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
 			services.AddScoped<IAuthorizationService, AuthorizationService>();
-			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
+			services.AddScoped<IElasticService, ElasticService>();
 			services.AddScoped<IOCRService, OCRService>();
 			services.AddScoped<IAIClassificationService, AIClassificationService>();
 			
@@ -61,6 +61,9 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ICopyConditionHistoryService<CopyConditionHistoryDto>, CopyConditionHistoryService>();
 			services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
             services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
+            services.AddScoped<ILibraryFloorService<LibraryFloorDto>, LibraryFloorService>();
+            services.AddScoped<ILibraryZoneService<LibraryZoneDto>, LibraryZoneService>();
+            services.AddScoped<ILibrarySectionService<LibrarySectionDto>, LibrarySectionService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
 			services.AddScoped<INotificationService<NotificationDto>, NotificationService>();	
 			services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();

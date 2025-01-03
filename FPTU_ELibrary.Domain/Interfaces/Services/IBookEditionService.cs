@@ -14,4 +14,6 @@ public interface IBookEditionService<TDto> : IGenericService<BookEdition, TDto, 
     Task<IServiceResult> UndoDeleteAsync(int id);
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
+    Task<IServiceResult> UpdateStatusAsync(int id);
+    Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId);
 }

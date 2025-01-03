@@ -68,6 +68,9 @@ artifacts/
 # Tye
 .tye/
 
+# Certificate file
+#FPTU_ELibrary.API/aspnetapp.pfx
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 

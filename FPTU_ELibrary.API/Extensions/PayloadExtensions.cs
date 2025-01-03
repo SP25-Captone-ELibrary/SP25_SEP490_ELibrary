@@ -166,6 +166,7 @@ namespace FPTU_ELibrary.API.Extensions
 					TotalCopies	= req.BookCopies != null && req.BookCopies.Any() 
 						? req.BookCopies.Count : 0,
 					AvailableCopies = 0,
+					BorrowedCopies = 0,
 					RequestCopies = 0,
 					ReservedCopies = 0
 				},
@@ -264,6 +265,20 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				Status = req.Status 
 			};	
+		
+		// Mapping from typeof(CreateRangeBookEditionCopyRequest) to typeof(BookEditionCopyDto)
+		public static List<BookEditionCopyDto> ToListBookEditionCopyDto(this CreateRangeBookEditionCopyRequest req)
+			=> req.BookEditionCopies.Select(bec => new BookEditionCopyDto()
+			{
+				Code = bec.Code,
+				CopyConditionHistories = new List<CopyConditionHistoryDto>()
+				{
+					new()
+					{
+						Condition = bec.ConditionStatus
+					}
+				}
+			}).ToList();
 		#endregion
 		
 		#region User

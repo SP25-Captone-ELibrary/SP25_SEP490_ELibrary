@@ -1,11 +1,14 @@
 ﻿using System.Text.Json;
+using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -21,6 +24,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -31,16 +35,14 @@ namespace FPTU_ELibrary.Application.Services
 	public class BookService : GenericService<Book, BookDto, int>, IBookService<BookDto>
 	{
 		private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
-		private readonly IEmployeeService<EmployeeDto> _empService;
 		private readonly ICategoryService<CategoryDto> _cateService;
+		private readonly IEmployeeService<EmployeeDto> _empService;
 		private readonly IAuthorService<AuthorDto> _authorService;
-		private readonly IBookCategoryService<BookCategoryDto> _bookCateService;
 		private readonly ICloudinaryService _cloudService;
 		private readonly IBookEditionCopyService<BookEditionCopyDto> _editionCopyService;
 
 		public BookService(
 			IAuthorService<AuthorDto> authorService,
-			IBookCategoryService<BookCategoryDto> bookCateService,
 			IBookEditionCopyService<BookEditionCopyDto> editionCopyService,
 			ICategoryService<CategoryDto> cateService,
 			IEmployeeService<EmployeeDto> empService,
@@ -54,9 +56,8 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			_libShelfService = libShelfService;
 			_empService = empService;
-			_bookCateService = bookCateService;
-			_editionCopyService = editionCopyService;
 			_cateService = cateService;
+			_editionCopyService = editionCopyService;
 			_authorService = authorService;
 			_cloudService = cloudService;
 		}
@@ -75,8 +76,6 @@ namespace FPTU_ELibrary.Application.Services
 						SubTitle = s.SubTitle,
 						Summary = s.Summary,
 						IsDeleted = s.IsDeleted,
-						IsDraft = s.IsDraft,
-						IsTrained = s.IsTrained,
 						BookCodeForAITraining = s.BookCodeForAITraining,
 						CreatedAt = s.CreatedAt,
 						CreatedBy = s.CreatedBy,
@@ -106,6 +105,7 @@ namespace FPTU_ELibrary.Application.Services
                             BookEditionCopies = be.BookEditionCopies,
                             BookReviews = be.BookReviews,
                             Shelf = be.Shelf,
+                            Status = be.Status,
                             BookEditionAuthors = be.BookEditionAuthors.Select(ba => new BookEditionAuthor()
                             {
 	                            BookEditionAuthorId = ba.BookEditionAuthorId,
@@ -408,9 +408,10 @@ namespace FPTU_ELibrary.Application.Services
 					} 
 				}
 				
+				// Generate default AI book training code
+				dto.BookCodeForAITraining = Guid.NewGuid();
 				// Add boolean information
 				dto.IsDeleted = false;
-				dto.IsDraft = true;
 
 				// Add book edition creation information (if any)
 				// Initialize numeric collection to check edition unique num
@@ -489,6 +490,8 @@ namespace FPTU_ELibrary.Application.Services
                     // Default value
                     be.IsDeleted = false;
                     be.CanBorrow = false;
+                    // Default as draft when create 
+                    be.Status = BookEditionStatus.Draft;
                     // Clear ISBN hyphens
                     be.Isbn = ISBN.CleanIsbn(be.Isbn);
                     // Check exist Isbn
@@ -496,11 +499,12 @@ namespace FPTU_ELibrary.Application.Services
 	                    .AnyAsync(x => x.Isbn == be.Isbn);
                     if (isIsbnExist) // already exist 
                     {
+	                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007);
 	                    // Add error
 	                    customErrors.Add(
 		                    $"bookEditions[{i}].isbn", 
 		                    // Isbn already exist message
-		                    [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007)]);
+		                    [StringUtils.Format(errMsg, $"'{be.Isbn}'")]);
                     }
 				}
 				
@@ -509,14 +513,19 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					throw new UnprocessableEntityException("Invalid data", customErrors);
 				}
-				
+
 				// Process create new book
 				await _unitOfWork.Repository<Book, int>().AddAsync(_mapper.Map<Book>(dto));
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0) // Save successfully
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Success0001,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), 
+						new
+						{
+							BookCodeForAITraining = dto.BookCodeForAITraining,
+							EditionImages = dto.BookEditions.Select(x => x.CoverImage).ToList()
+						});
 				}
 
 				// Fail to save

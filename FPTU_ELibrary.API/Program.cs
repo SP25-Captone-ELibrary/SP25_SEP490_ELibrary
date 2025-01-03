@@ -43,7 +43,7 @@ builder.Services
 	.AddApplication(builder.Configuration)
 	// Configure for infrastructure layer
 	.AddInfrastructure(builder.Configuration);
-builder.Services.AddHttpClient();
+
 builder.Services
     // Add swagger
     .AddSwagger()
@@ -53,6 +53,7 @@ builder.Services
     .AddLazyResolution()
     // Add signalR
     .AddSignalR();
+
 var app = builder.Build();
 
 // app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
@@ -65,11 +66,12 @@ app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
 }));
 
 // Configure swagger settings
-if (app.Environment.IsDevelopment())
-{
-    app.WithSwagger();
-}
+// if (app.Environment.IsDevelopment())
+// {
+//     app.WithSwagger();
+// }
 
+app.WithSwagger();
 app.UseHttpsRedirection();
 app.UseRouting(); 
 app.UseAuthentication();

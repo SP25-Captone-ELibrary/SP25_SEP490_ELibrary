@@ -5,6 +5,7 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Reflection;
+using Microsoft.Extensions.DependencyModel;
 using Serilog;
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using BookCategoryEnum = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
@@ -111,6 +112,22 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [Authors]
 				if (!await _context.Authors.AnyAsync()) await SeedAuthorAsync();
 				else _logger.Information("Already seed data for table {0}", "Author");
+				
+				// [LibraryFloors]
+				if (!await _context.LibraryFloors.AnyAsync()) await SeedLibraryFloorAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryFloor");
+				
+				// [LibraryZones]
+				if (!await _context.LibraryZones.AnyAsync()) await SeedLibraryZoneAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryZone");
+				
+				// [LibrarySections]
+				if (!await _context.LibrarySections.AnyAsync()) await SeedLibrarySectionAsync();
+				else _logger.Information("Already seed data for table {0}", "LibrarySection");
+				
+				// [LibraryShelves]
+				if (!await _context.LibraryShelves.AnyAsync()) await SeedLibraryShelvesAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryShelf");
 			}
             catch (Exception ex)
             {
@@ -523,16 +540,110 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					Title = "Harry Potter and the Sorcerer's Stone",
 					Summary = "A young wizard's journey begins.",
 					IsDeleted = false,
-					IsDraft = false,
 					CreatedAt = DateTime.Now,
 					CreatedBy = librarian.Email,
 					BookEditions = new List<BookEdition>
 					{
-						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1997, PageCount = 309, Language = "English", Isbn = "9780747532699", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1998, PageCount = 320, Language = "English", Isbn = "9780747538493", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1999, PageCount = 340, Language = "English", Isbn = "9780747546290", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Fourth Edition", EditionNumber = 4, PublicationYear = 2000, PageCount = 350, Language = "English", Isbn = "9780747549505", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Illustrated Edition", EditionNumber = 5, PublicationYear = 2015, PageCount = 256, Language = "English", Isbn = "9780545790352", CreatedAt = DateTime.Now, CreatedBy = librarian.Email }
+						new() 
+						{
+							EditionTitle = "First Edition", 
+							EditionNumber = 1, 
+							PublicationYear = 1997, 
+							PageCount = 309, 
+							Language = "English", 
+							Isbn = "9780747532699", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email, 
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Second Edition", 
+							EditionNumber = 2, 
+							PublicationYear = 1998, 
+							PageCount = 320, 
+							Language = "English", 
+							Isbn = "9780747538493", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email, 
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Third Edition", 
+							EditionNumber = 3, 
+							PublicationYear = 1999, 
+							PageCount = 340, 
+							Language = "English", 
+							Isbn = "9780747546290", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email, 
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Fourth Edition", 
+							EditionNumber = 4, 
+							PublicationYear = 2000, 
+							PageCount = 350, 
+							Language = "English", 
+							Isbn = "9780747549505", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email, 
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Illustrated Edition", 
+							EditionNumber = 5, 
+							PublicationYear = 2015, 
+							PageCount = 256, 
+							Language = "English", 
+							Isbn = "9780545790352", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email, 
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						}
 					},
 					BookCategories = new List<BookCategory>()
 					{
@@ -553,16 +664,109 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					Title = "The Hobbit",
 					Summary = "A hobbit's adventurous journey to reclaim a lost kingdom.",
 					IsDeleted = false,
-					IsDraft = false,
 					CreatedAt = DateTime.Now,
 					CreatedBy = librarian.Email,
 					BookEditions = new List<BookEdition>
 					{
-						new() { EditionTitle = "First Edition", EditionNumber = 1, PublicationYear = 1937, PageCount = 310, Language = "English", Isbn = "9780547928227", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Second Edition", EditionNumber = 2, PublicationYear = 1951, PageCount = 320, Language = "English", Isbn = "9780261102217", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Third Edition", EditionNumber = 3, PublicationYear = 1966, PageCount = 330, Language = "English", Isbn = "9780395071229", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Illustrated Edition", EditionNumber = 4, PublicationYear = 1976, PageCount = 340, Language = "English", Isbn = "9780395177112", CreatedAt = DateTime.Now, CreatedBy = librarian.Email },
-						new() { EditionTitle = "Anniversary Edition", EditionNumber = 5, PublicationYear = 2007, PageCount = 370, Language = "English", Isbn = "9780007262306", CreatedAt = DateTime.Now, CreatedBy = librarian.Email }
+						new() 
+						{
+						EditionTitle = "First Edition", 
+							EditionNumber = 1, 
+							PublicationYear = 1937, 
+							PageCount = 310, 
+							Language = "English", Isbn = "9780547928227", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email,
+							Status = BookEditionStatus.Draft,
+						BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Second Edition", 
+							EditionNumber = 2, 
+							PublicationYear = 1951, 
+							PageCount = 320, 
+							Language = "English", 
+							Isbn = "9780261102217", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email,
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Third Edition", 
+							EditionNumber = 3, 
+							PublicationYear = 1966, 
+							PageCount = 330, 
+							Language = "English", 
+							Isbn = "9780395071229", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email,
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Illustrated Edition", 
+							EditionNumber = 4, 
+							PublicationYear = 1976, 
+							PageCount = 340, 
+							Language = "English", 
+							Isbn = "9780395177112", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email,
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						},
+						new() 
+						{
+							EditionTitle = "Anniversary Edition", 
+							EditionNumber = 5, 
+							PublicationYear = 2007, 
+							PageCount = 370, 
+							Language = "English", 
+							Isbn = "9780007262306", 
+							CreatedAt = DateTime.Now, 
+							CreatedBy = librarian.Email,
+							Status = BookEditionStatus.Draft,
+							BookEditionInventory = new ()
+							{
+								TotalCopies = 0,
+								AvailableCopies = 0,
+								RequestCopies = 0,
+								ReservedCopies = 0,
+								BorrowedCopies = 0
+							}
+						}
 					},
 					BookCategories = new List<BookCategory>()
 					{
@@ -780,7 +984,200 @@ namespace FPTU_ELibrary.Infrastructure.Data
 
 			if (saveSucc) _logger.Information("Seed employees successfully.");
 		}
-	}
+		
+		//	Summary:
+		//		Seeding library floor
+		private async Task SeedLibraryFloorAsync()
+		{
+			List<LibraryFloor> floors = new()
+			{
+				new()
+				{
+					FloorNumber = "Floor 1", 
+					CreateDate = DateTime.Now
+				},
+				new()
+				{
+					FloorNumber = "Floor 2", 
+					CreateDate = DateTime.Now
+				}
+			};
+			
+			// Add Range
+			await _context.LibraryFloors.AddRangeAsync(floors);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library floors successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library zone
+		private async Task SeedLibraryZoneAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all current floor
+			var floors = await _context.LibraryFloors.ToListAsync();
+			
+			List<LibraryZone> zones = new()
+			{
+				new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Lounge",
+                    XCoordinate = 10.5,
+                    YCoordinate = 20.3,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Reading Room",
+                    XCoordinate = 15.2,
+                    YCoordinate = 25.8,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Study Area",
+                    XCoordinate = 5.0,
+                    YCoordinate = 10.0,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Computer Lab",
+                    XCoordinate = 30.7,
+                    YCoordinate = 40.2,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Rest Room",
+                    XCoordinate = 12.4,
+                    YCoordinate = 18.9,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                }			
+			};
+			
+			// Add Range
+			await _context.LibraryZones.AddRangeAsync(zones);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library zones successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library section
+		private async Task SeedLibrarySectionAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all zones
+			var zones = await _context.LibraryZones.ToListAsync();
+			
+			List<LibrarySection> sections = new()
+			{
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Fiction",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Non-Fiction",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Science",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "History",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Novel",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				}
+			};
+			
+			// Add Range
+			await _context.LibrarySections.AddRangeAsync(sections);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library sections successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library shelf
+		private async Task SeedLibraryShelvesAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all existing sections
+			var sections = await _context.LibrarySections.ToListAsync();
+
+			List<LibraryShelf> shelves = new();
+			
+			// Generate shelves
+			for (int i = 0; i < 20; i++) // Example: Create 20 shelves
+			{
+				// Generate random shelf number
+				string shelfNumber = $"{(char)('A' + rnd.Next(0, 26))}-{rnd.Next(1, 100):D2}";
+
+				// Create a new shelf
+				shelves.Add(new LibraryShelf
+				{
+					SectionId = sections[rnd.Next(sections.Count)].SectionId, // Random section
+					ShelfNumber = shelfNumber,
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				});
+			}
+			
+			// Add Range
+			await _context.LibraryShelves.AddRangeAsync(shelves);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library shelves successfully.");
+		}
+    }
 
 	//	Summary:
 	//		Extensions procedures for DatabaseInitializer

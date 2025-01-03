@@ -281,7 +281,6 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                 SubTitle = b.NewValues["SubTitle"]?.ToString(),
                 Summary = b.NewValues["Summary"]?.ToString(),
                 IsDeleted = bool.Parse(b.NewValues["IsDeleted"]?.ToString()!),
-                IsDraft = bool.Parse(b.NewValues["IsDraft"]?.ToString()!),
                 CreatedAt = DateTime.Parse(b.NewValues["CreatedAt"]?.ToString()!),
                 UpdatedAt = DateTime.Parse(b.NewValues["UpdatedAt"]?.ToString() ?? DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
                 CreatedBy = b.NewValues["CreatedBy"]?.ToString()!,
@@ -408,6 +407,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                     CanBorrow = bool.Parse(be.NewValues["CanBorrow"]?.ToString()!),
                     EstimatedPrice = decimal.Parse(be.NewValues["EstimatedPrice"]?.ToString()!),
                     ShelfId = int.Parse(be.NewValues["ShelfId"]?.ToString() ?? "0"),
+                    Status = (BookEditionStatus) Enum.Parse(typeof(BookEditionStatus), be.NewValues["Status"]?.ToString()!),
                     CreatedAt = DateTime.Parse(be.NewValues["CreatedAt"]?.ToString()!),
                     UpdatedAt = DateTime.Parse(be.NewValues["UpdatedAt"]?.ToString() ??
                                                DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),

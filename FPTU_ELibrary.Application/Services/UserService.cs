@@ -39,7 +39,7 @@ namespace FPTU_ELibrary.Application.Services
             ISystemRoleService<SystemRoleDto> roleService,
             IEmailService emailService,
             IUnitOfWork unitOfWork,
-            IMapper mapper, IServiceProvider service) // to get the service and not depend on http lifecycle) 
+            IMapper mapper, IServiceProvider service) // to get the service and not depend on http lifecycle
             : base(msgService, unitOfWork, mapper, logger)
         {
             _roleService = roleService;

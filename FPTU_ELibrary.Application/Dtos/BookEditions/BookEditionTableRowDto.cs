@@ -1,4 +1,5 @@
 using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.Locations;
 
 namespace FPTU_ELibrary.Application.Dtos.BookEditions;
 
@@ -11,6 +12,7 @@ public class BookEditionTableRowDto
     public int PageCount { get; set; }
     public int TotalCopies { get; set; }
     public int AvailableCopies { get; set; }
+    public int BorrowedCopies { get; set; }
     public int RequestCopies { get; set; }
     public int ReservedCopies { get; set; }
     public string Author { get; set; } = null!;
@@ -20,6 +22,7 @@ public class BookEditionTableRowDto
     public string? Format { get; set; } 
     public string Isbn { get; set; } = null!;
     public string Language { get; set; } = null!;
+    public string Status { get; set; } = null!;
     public string? CoverImage { get; set; }
     public string? Publisher { get; set; }
     public string CreateBy { get; set; } = null!;
@@ -46,6 +49,7 @@ public static class BookEditionTableRowDtoExtensions
             Format = be.Format,
             Isbn = be.Isbn,
             Language = be.Language,
+            Status = be.Status.ToString(),
             CoverImage = be.CoverImage,
             Publisher = be.Publisher,
             CreateBy = be.CreatedBy,
@@ -57,6 +61,7 @@ public static class BookEditionTableRowDtoExtensions
             TotalCopies = be.BookEditionInventory?.TotalCopies ?? 0,
             AvailableCopies = be.BookEditionInventory?.AvailableCopies ?? 0,
             RequestCopies = be.BookEditionInventory?.RequestCopies ?? 0,
+            BorrowedCopies = be.BookEditionInventory?.BorrowedCopies ?? 0,
             ReservedCopies = be.BookEditionInventory?.ReservedCopies ?? 0,
         }).ToList();
     }

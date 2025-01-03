@@ -36,6 +36,8 @@ namespace FPTU_ELibrary.API.Extensions
 			services.AddSwaggerGen();
 			// Add HttpContextAccessor
 			services.AddHttpContextAccessor();
+			// Add HttpClient
+			services.AddHttpClient();
 			
 			return services;
 		}
@@ -66,7 +68,7 @@ namespace FPTU_ELibrary.API.Extensions
 			// Configure AppSettings
 			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 			// Configure ElasticSettings
-			services.Configure<ElasticSettings>(configuration.GetSection("ElasticConfiguration"));
+			services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
 			// Configure WebTokenSettings
 			services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
 			// Configure GoogleAuthSettings
@@ -154,7 +156,6 @@ namespace FPTU_ELibrary.API.Extensions
 		{
 			services.AddSingleton<ComputerVisionClient>(sp =>
 			{
-
 				var aiSettings = configuration.GetSection("AISettings").Get<AISettings>();
 				return new ComputerVisionClient(new ApiKeyServiceClientCredentials(aiSettings.SubscriptionKey))
 				{
@@ -165,7 +166,7 @@ namespace FPTU_ELibrary.API.Extensions
 			return services;
 		}
 
-	public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
+		public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
 		{
 			services.AddSignalR();
 			return services;
@@ -258,7 +259,7 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
-		
+
 		public static IServiceCollection AddLazyResolution(this IServiceCollection services)
         {
             return services.AddTransient(

@@ -94,6 +94,20 @@ public class BookEditionController : ControllerBase
     }
     
     [Authorize]
+    [HttpPatch(APIRoute.BookEdition.UpdateStatus, Name = nameof(UpdateBookEditionStatusAsync))]
+    public async Task<IActionResult> UpdateBookEditionStatusAsync([FromRoute] int id)
+    {
+        return Ok(await _bookEditionService.UpdateStatusAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.BookEdition.UpdateShelfLocation, Name = nameof(UpdateBookEditionShelfLocationAsync))]
+    public async Task<IActionResult> UpdateBookEditionShelfLocationAsync([FromRoute] int id, [FromQuery] int? shelfId)
+    {
+        return Ok(await _bookEditionService.UpdateShelfLocationAsync(id, shelfId));
+    }
+    
+    [Authorize]
     [HttpPatch(APIRoute.BookEdition.SoftDelete, Name = nameof(SoftDeleteBookEditionAsync))]
     public async Task<IActionResult> SoftDeleteBookEditionAsync([FromRoute] int id)
     {
