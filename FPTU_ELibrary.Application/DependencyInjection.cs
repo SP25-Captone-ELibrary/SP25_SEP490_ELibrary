@@ -43,6 +43,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
 			services.AddScoped<IOCRService, OCRService>();
 			services.AddScoped<IAIClassificationService, AIClassificationService>();
+			services.AddScoped<IAIDetectionService, AIDetectionService>();
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));

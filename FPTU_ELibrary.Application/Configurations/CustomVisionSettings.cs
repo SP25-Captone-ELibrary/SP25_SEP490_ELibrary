@@ -13,4 +13,5 @@ public class CustomVisionSettings
     public string Account { get; set; }
     public string? PublishedName { get; set; }
     public string BaseAIUrl { get; set; }
+    public string BasePredictUrl { get; set; }
 }

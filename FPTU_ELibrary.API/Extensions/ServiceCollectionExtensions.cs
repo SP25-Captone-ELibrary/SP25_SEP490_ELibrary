@@ -81,6 +81,8 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<AISettings>(configuration.GetSection("AISettings"));
 			//Configure CustomVisionSettings
 			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
+			//Configure DetectSettings
+			services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
 			
 			#region Development stage
 

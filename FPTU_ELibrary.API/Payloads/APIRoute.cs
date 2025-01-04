@@ -397,6 +397,7 @@
 			public const string CheckBookEdition = Base + "/management/book/ai/check-book-edition";
 			public const string CheckImagesForTraining = Base + "/management/book/ai/check-images-for-training";
 			public const string Training = Base + "/management/book/ai/train";
+			public const string TrainingAfterCreate = Base + "/management/book/ai/train-after-create";
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}

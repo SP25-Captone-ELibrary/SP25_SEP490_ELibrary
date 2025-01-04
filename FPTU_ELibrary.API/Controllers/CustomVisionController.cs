@@ -16,11 +16,19 @@ public class CustomVisionController : ControllerBase
         _aiClassificationService = aiClassificationService;
     }
 
-    [HttpPost(APIRoute.AIServices.Training, Name = nameof(TrainModel))]
+    // [HttpPost(APIRoute.AIServices.Training, Name = nameof(TrainModel))]
+    // [Authorize]
+    // public async Task<IActionResult> TrainModel([FromForm] List<TrainedModelRequest> req)
+    // {
+    //     var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+    //     return Ok(await _aiClassificationService.TrainModel(req.ToListTrainedBookDetailDto(),email));
+    // }
+    
+    [HttpPost(APIRoute.AIServices.TrainingAfterCreate, Name = nameof(TrainModelAfterCreate))]
     [Authorize]
-    public async Task<IActionResult> TrainModel([FromForm] List<TrainedModelRequest> req)
+    public async Task<IActionResult> TrainModelAfterCreate([FromForm] TrainModelAfterCreateRequest req)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _aiClassificationService.TrainModel(req.ToListTrainedBookDetailDto(),email));
+        return Ok(await _aiClassificationService.TrainModelAfterCreate(req.BookCode,req.ImageList,email));
     }
 }

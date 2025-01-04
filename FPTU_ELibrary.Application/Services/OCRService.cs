@@ -151,7 +151,7 @@ public class OCRService : IOCRService
             {
                 return bookEditionResult;
             }
-            var dto = (BookEditionDetailDto)bookEditionResult.Data!;
+            var dto = (BookEditionDto)bookEditionResult.Data!;
                
             var responseData = new TrainingImageMatchResultDto();
             foreach (var image in images)
@@ -168,13 +168,14 @@ public class OCRService : IOCRService
                     new FieldMatchInputDto()
                     {
                         FieldName = "Title",
-                        Values = new List<string>() { dto.Title },
+                        Values = new List<string>() { dto.EditionTitle },
                         Weight = _monitor.TitlePercentage
                     },
                     new FieldMatchInputDto()
                     {
                         FieldName = "Authors",
-                        Values = dto.Authors.Select(x =>x.FullName).ToList(),
+                        Values = dto.BookEditionAuthors.Where(x => x.BookEditionId==bookEditionId)
+                            .Select(x =>x.Author.FullName).ToList(),
                         Weight = _monitor.AuthorNamePercentage
                     },
                     new FieldMatchInputDto()
