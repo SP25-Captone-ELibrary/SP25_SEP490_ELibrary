@@ -1,3 +1,7 @@
+using System.ComponentModel.DataAnnotations;
+using System.Drawing;
+using System.Globalization;
+using CsvHelper.Configuration;
 using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
@@ -5,6 +9,7 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Exceptions;
@@ -20,6 +25,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -40,8 +46,8 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 	
 	private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
 	private readonly ICloudinaryService _cloudService;
+	private readonly ICategoryService<CategoryDto> _cateService;
 	private readonly IAuthorService<AuthorDto> _authorService;
-	private readonly ElasticSettings _elasticSettings;
 
 	public BookEditionService(
 		// Lazy service
@@ -51,9 +57,9 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 		Lazy<IBookEditionCopyService<BookEditionCopyDto>> editionCopyService,
 		// Normal service
 		IAuthorService<AuthorDto> authorService,
+		ICategoryService<CategoryDto> cateService,
 		ICloudinaryService cloudService,
 	    ILibraryShelfService<LibraryShelfDto> libShelfService,
-		IOptionsMonitor<ElasticSettings> monitor,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
@@ -63,8 +69,8 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 		_authorService = authorService;
 		_bookService = bookService;
 		_cloudService = cloudService;
+		_cateService = cateService;
 	    _libShelfService = libShelfService;
-	    _elasticSettings = monitor.CurrentValue;
 	    _elasticService = elasticService;
 	    _editionCopyService = editionCopyService;
 	    _editionAuthorService = editionAuthorService;
@@ -137,6 +143,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                     Book = new Book()
                     {
                         BookId = be.Book.BookId,
+                        BookCode = be.Book.BookCode,
                         Title = be.Book.Title,
                         SubTitle = be.Book.SubTitle,
                         Summary = be.Book.Summary,
@@ -527,14 +534,14 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             for (int i = 0; i < listBookEditionCopy.Count; ++i)
             {
 	            var bec = listBookEditionCopy[i];
-	            // Check exist edition copy code within DB
+	            // Check exist edition copy barcode within DB
 	            var isCodeExist = await _unitOfWork.Repository<BookEditionCopy, int>()
-		            .AnyAsync(x => x.Code == bec.Code);
+		            .AnyAsync(x => x.Barcode == bec.Barcode);
 	            if (isCodeExist)
 	            {
 		            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
 		            // Add errors
-		            customErrors.Add($"bookCopies[{i}].code", [StringUtils.Format(errMsg, $"'{bec.Code}'")]);
+		            customErrors.Add($"bookCopies[{i}].barcode", [StringUtils.Format(errMsg, $"'{bec.Barcode}'")]);
 	            }
                     
 	            // Default status
@@ -633,6 +640,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                     Book = new Book()
                     {
                         BookId = be.Book.BookId,
+                        BookCode = be.Book.BookCode,
                         Title = be.Book.Title,
                         SubTitle = be.Book.SubTitle,
                         Summary = be.Book.Summary,
@@ -1338,4 +1346,740 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 		    throw new Exception("Error invoke when process delete range book edition");
 	    }
     }
+
+    public async Task<IServiceResult> ImportAsync(
+	    IFormFile? file, 
+	    List<IFormFile> coverImageFiles,
+	    string[]? scanningFields)
+    {
+	    try
+	    {
+		    // Determine system lang
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+			    .CurrentLanguage);
+
+		    // Check exist file
+		    if (file == null || file.Length == 0)
+		    {
+			    return new ServiceResult(ResultCodeConst.File_Warning0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0002));
+		    }
+
+		    // Validate import file 
+		    var validationResult = await ValidatorExtensions.ValidateAsync(file);
+		    if (validationResult != null && !validationResult.IsValid)
+		    {
+			    // Response the uploaded file is not supported
+			    throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+		    }
+
+		    // Csv config
+		    var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+		    {
+			    HasHeaderRecord = true,
+			    HeaderValidated = null,
+			    MissingFieldFound = null
+		    };
+
+		    // Process read csv file
+		    var readResp =
+			    CsvUtils.ReadCsvOrExcelWithErrors<BookEditionCsvRecord>(file, csvConfig, null, lang);
+			if(readResp.Errors.Any())
+			{
+				var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
+				{	
+					RowNumber = x.Key,
+					Errors = x.Value.ToList()
+				});
+			    
+				return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
+			}
+		    
+		    // Extract all cover image file name
+		    var imageFileNames = coverImageFiles.Select(f => f.FileName).ToList();
+		    // Find duplicate image file names
+		    var duplicateFileNames = imageFileNames
+			    .GroupBy(name => name)
+			    .Where(group => group.Count() > 1) // Filter groups with more than one occurrence
+			    .Select(group => group.Key)       // Select the duplicate file names
+			    .ToList();
+		    if (duplicateFileNames.Any())
+		    {
+			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0004);
+			    
+			    // Add single quotes to each file name
+			    var formattedFileNames = duplicateFileNames
+				    .Select(fileName => $"'{fileName}'"); 
+
+			    return new ServiceResult(
+				    ResultCodeConst.File_Warning0004,
+				    StringUtils.Format(errMsg, String.Join(", ", formattedFileNames))
+			    );
+		    }
+			
+		    // Detect record errors
+		    var detectResult =
+			    await DetectWrongDataAsync(readResp.Records, imageFileNames, scanningFields, (SystemLanguage)lang!);
+		    if (detectResult.Any())
+		    {
+			    var errorResps = detectResult.Select(x => new ImportErrorResultDto()
+			    {	
+					RowNumber = x.Key,
+					Errors = x.Value
+			    });
+			    
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
+		    }
+
+		    // Handle upload images (Image name | URL)
+		    var uploadFailList = new List<string>();
+		    var imageUrlDic = new Dictionary<string, string>();
+		    foreach (var coverImage in coverImageFiles)
+		    {
+			    // Try to validate file
+			    var validateResult = await 
+				    new ImageTypeValidator(lang.ToString() ?? SystemLanguage.English.ToString()).ValidateAsync(coverImage);
+			    if (!validateResult.IsValid)
+			    {
+				    var isEng = lang == SystemLanguage.English;
+				    return new ServiceResult(ResultCodeConst.SYS_Warning0001, isEng 
+					    ? $"File '{coverImage.FileName}' is not a image file " +
+					      $"Valid format such as (.jpeg, .png, .gif, etc.)" 
+					    : $"File '{coverImage.FileName}' không phải là file hình ảnh. " +
+					      $"Các loại hình ảnh được phép là: (.jpeg, .png, .gif, v.v.)");
+			    }
+			    
+			    // Upload image to cloudinary
+			    var uploadResult = (await _cloudService.UploadAsync(coverImage, FileType.Image, ResourceType.BookImage))
+				    .Data as CloudinaryResultDto;
+			    if (uploadResult == null)
+			    {
+				    // Add image that fail to upload
+				    uploadFailList.Add(coverImage.FileName);
+			    }
+			    else
+			    {
+				    // Add to dic
+				    imageUrlDic.Add(coverImage.FileName, uploadResult.SecureUrl);
+			    }
+		    }
+
+		    var totalImported = 0;
+		    var totalFailed = 0;
+		    // Process import book editions
+		    var successRecords = readResp.Records
+			    .Where(r => !uploadFailList.Contains(r.CoverImage))
+			    .ToList();
+		    var failRecords = new List<BookEditionCsvRecord>();
+		    if (successRecords.Any())
+		    {
+			    // Group all editions have the same book code
+			    var groupedRecords = successRecords
+				    .GroupBy(r => r.BookCode)
+				    .Select(e => new
+				    {
+					    Key = e.Key,
+						Values = e.ToList()
+				    });
+			    
+			    foreach (var record in groupedRecords)
+			    {
+				    // Initialize list editions
+				    var editionList = new List<BookEditionDto>();
+				    foreach (var bookEdition in record.Values)
+				    {
+					    // Extract all edition copy barcodes
+					    var editionCopyBarcodes = !string.IsNullOrWhiteSpace(bookEdition.EditionCopyBarcodes)
+						    ? bookEdition.EditionCopyBarcodes.Split("\n").Select(barcode => new BookEditionCopyDto()
+						    {
+							    Barcode = barcode,
+							    IsDeleted = false,
+							    Status = nameof(BookEditionCopyStatus.OutOfShelf)
+						    }).ToList()
+						    : new List<BookEditionCopyDto>();
+					    
+					    // Extract all edition authors
+					    var editionAuthorCodes = bookEdition.AuthorCodes.Split("\n").ToList();
+					    // Get all author by code
+					    var authorDtos = (await _authorService.GetAllByCodesAsync(editionAuthorCodes.ToArray())).Data as List<AuthorDto>;
+						
+					    // Get shelf location
+					    var shelfDto = 
+						    (await _libShelfService.GetWithSpecAsync(new BaseSpecification<LibraryShelf>(
+						    s => s.ShelfNumber.ToLower() == bookEdition.ShelfNumber.ToLower()))
+						    ).Data as LibraryShelfDto;
+					    
+					    // Add new edition
+					    editionList.Add(new BookEditionDto()
+					    {
+						    // Cover image
+						    CoverImage = imageUrlDic.TryGetValue(bookEdition.CoverImage, out var coverImageUrl) ? coverImageUrl : null,
+						    // Edition number
+						    EditionNumber = bookEdition.EditionNumber,
+						    // ISBN
+						    Isbn = bookEdition.Isbn,
+						    // Edition title
+						    EditionTitle = bookEdition.EditionTitle,
+						    // Summary
+						    EditionSummary = bookEdition.Summary,
+						    // Publication year
+						    PublicationYear = bookEdition.PublicationYear,
+						    // Page count
+						    PageCount = bookEdition.PageCount,
+						    // Language
+						    Language = bookEdition.Language,
+						    // Format
+						    Format = bookEdition.Format,
+						    // Publisher
+						    Publisher = bookEdition.Publisher,
+						    // Estimated price
+						    EstimatedPrice = bookEdition.EstimatedPrice,
+						    // Edition copies
+						    BookEditionCopies = editionCopyBarcodes.ToList(),
+						    // Authors
+						    BookEditionAuthors = authorDtos != null && authorDtos.Any() 
+							    ? authorDtos.Select(a => new BookEditionAuthorDto()
+								    {
+									    AuthorId = a.AuthorId
+								    }).ToList()
+							    : null!,
+						    // Library shelf 
+						    ShelfId = shelfDto?.ShelfId,
+						    // Book edition inventory
+						    BookEditionInventory = new()
+						    {
+							    TotalCopies = editionCopyBarcodes.Count, // Count total copies
+							    AvailableCopies = 0,
+							    BorrowedCopies = 0,
+							    RequestCopies = 0,
+							    ReservedCopies = 0
+						    },
+						    
+						    // Default values
+						    IsTrained = false,
+						    IsDeleted = false,
+						    CanBorrow = false,
+						    Status = BookEditionStatus.Draft,
+					    });
+				    }
+
+				    if (editionList.Any())
+				    {
+					    // Check for book code existence in DB
+					    if ((await _bookService.Value.GetWithSpecAsync(new BaseSpecification<Book>(
+						        b => b.BookCode.ToLower() == record.Key.ToLower()))).Data is BookDto bookDto) // already exist
+					    {
+						    // Add book id
+						    editionList.ForEach(e => e.BookId = bookDto.BookId);
+						    // Add range editions
+						    await _unitOfWork.Repository<BookEdition, int>().AddRangeAsync(_mapper.Map<List<BookEdition>>(editionList));
+					    }
+					    else // not exist yet
+					    {
+						    // Extract all categories of first edition 
+						    var editionCategoryNames = record.Values.First().Categories
+							    .Split(", ")
+							    .Select(x => x.Trim())
+							    .ToList();
+						    // Get all categories by name
+						    var categoryDtos = 
+							    (await _cateService.GetAllWithSpecAsync(new BaseSpecification<Category>(
+							    c => editionCategoryNames.Contains(c.EnglishName)))
+							    ).Data as IEnumerable<CategoryDto>;
+						    // Process add new editions with book
+						    bookDto = new BookDto()
+						    {
+							    // Title
+							    Title = editionList.First().EditionTitle ?? string.Empty,
+							    // Summary
+							    Summary = editionList.First().EditionSummary,
+							    // Book code
+							    BookCode = record.Key,
+							    // Book editions
+							    BookEditions = editionList,
+							    // Book categories
+							    BookCategories = categoryDtos?.Select(cate => new BookCategoryDto()
+							    {
+								    CategoryId = cate.CategoryId
+							    }).ToList() ?? null!,
+							    
+							    // Default value
+							    IsDeleted = false,
+							    BookCodeForAITraining = Guid.NewGuid()
+						    };
+						    
+						    // Add new book
+						    await _unitOfWork.Repository<Book, int>().AddAsync(_mapper.Map<Book>(bookDto));
+					    }
+					    
+					    // Save change to DB
+					    if(await _unitOfWork.SaveChangesAsync() > 0) totalImported = editionList.Count;
+					    else failRecords.AddRange(record.Values);
+				    }
+			    }
+		    }
+		    
+		    // Aggregate all book editions fail to upload & fail to save DB (if any)
+		    failRecords.AddRange(readResp.Records
+			    .Where(r => uploadFailList.Contains(r.CoverImage))
+			    .ToList());
+		    if (failRecords.Any()) totalFailed = failRecords.Count;
+			
+		    string message;
+		    byte[]? fileBytes;
+			// Generate a message based on the import and failure counts
+		    if (totalImported > 0 && totalFailed == 0)
+		    {
+			    // All records imported successfully
+			    message = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005), totalImported.ToString());
+			    return new ServiceResult(ResultCodeConst.SYS_Success0005, message);
+		    }
+
+		    if (totalImported > 0 && totalFailed > 0)
+		    {
+			    // Partial success with some failures
+			    fileBytes = CsvUtils.ExportToExcel(failRecords, sheetName: "FailImageUploadBooks");
+
+			    var baseMessage = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+			    var failMessage = lang == SystemLanguage.English
+				    ? $", {totalFailed} failed to import"
+				    : $", {totalFailed} thêm mới thất bại";
+
+			    message = StringUtils.Format(baseMessage, totalImported.ToString()) + failMessage;
+			    return new ServiceResult(ResultCodeConst.SYS_Success0005, message, Convert.ToBase64String(fileBytes));
+		    }
+
+		    if (totalImported == 0 && totalFailed > 0)
+		    {
+			    // Complete failure
+			    fileBytes = CsvUtils.ExportToExcel(failRecords, sheetName: "FailImageUploadBooks");
+			    message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008);
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0008, message, Convert.ToBase64String(fileBytes));
+		    }
+
+			// Default case: No records imported or failed
+		    message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008);
+		    return new ServiceResult(ResultCodeConst.SYS_Fail0008, message);
+	    }
+	    catch (UnprocessableEntityException)
+	    {
+		    throw;
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process import book editions");
+	    }
+    }
+
+    public async Task<IServiceResult> ExportAsync(ISpecification<BookEdition> spec)
+    {
+	    try
+	    {
+		    // Try to parse specification to BookEditionSpecification
+		    var bookSpec = spec as BookEditionSpecification;
+		    // Check if specification is null
+		    if (bookSpec == null)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		    }				
+			
+		    // Apply include
+		    bookSpec.ApplyInclude(q => q
+			    .Include(be => be.Shelf)
+			    .Include(be => be.Book)
+				    .ThenInclude(b => b.BookCategories)
+						.ThenInclude(bc => bc.Category)
+			    .Include(be => be.BookEditionAuthors)
+					.ThenInclude(bea => bea.Author)
+			    .Include(be => be.BookEditionCopies)
+		    );
+		    // Get all with spec
+		    var entities = await _unitOfWork.Repository<BookEdition, int>()
+			    .GetAllWithSpecAsync(bookSpec, tracked: false);
+		    if (entities.Any()) // Exist data
+		    {
+			    // Map entities to dtos 
+			    var bookEditionDtos = _mapper.Map<List<BookEditionDto>>(entities);
+			    // Process export data to file
+			    var fileBytes = CsvUtils.ExportToExcel(
+				    bookEditionDtos.ToBookEditionCsvRecords());
+
+			    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+				    fileBytes);
+		    }
+			
+		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+	    }
+	    catch (UnprocessableEntityException)
+	    {
+		    throw;
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process export book editions");
+	    }
+    }
+    
+    private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
+	    List<BookEditionCsvRecord> records,
+	    List<string> coverImageNames,
+	    string[]? scanningFields,
+	    SystemLanguage lang)
+	{
+	    // Check system lang
+	    var isEng = lang == SystemLanguage.English;
+
+	    // Initialize dictionary to hold errors
+	    var errorMessages = new Dictionary<int, List<string>>();
+	    // Initialize hashset to check uniqueness
+	    var coverImageSet = new HashSet<string>();
+	    var editionNumbers = new HashSet<int>();
+	    var editionCopyBarcodes = new HashSet<string>();
+	    var editionCategories = new Dictionary<string, string[]>();
+	    // Default row index set to second row, as first row is header
+	    var currDataRow = 2;
+
+	    foreach (var record in records)
+	    {
+	        // Initialize error list for the current row
+	        var rowErrors = new List<string>();
+
+	        // Validate edition number uniqueness
+	        if (!editionNumbers.Add(record.EditionNumber))
+	        {
+	            rowErrors.Add(isEng ? "Edition number must be unique" : "Số thứ thự ấn bản không được trùng");
+	        }
+
+	        // Validate existing ISBN
+	        var isExistIsbn = await _unitOfWork.Repository<BookEdition, int>()
+	            .AnyAsync(be => be.Isbn == ISBN.CleanIsbn(record.Isbn));
+	        if (isExistIsbn)
+	        {
+	            rowErrors.Add(isEng ? $"ISBN '{record.Isbn}' already exists" : $"Mã ISBN '{record.Isbn}' đã tồn tại");
+	        }
+
+	        // Validate existing cover image
+	        if (!coverImageNames.Exists(str => str.Equals(record.CoverImage)))
+	        {
+	            rowErrors.Add(isEng ? $"Image file name '{record.CoverImage}' does not exist" : $"Không tìm thấy file hình có tên '{record.CoverImage}'");
+	        }
+
+	        // Validate shelf location
+	        var isExistShelfLocation = (await _libShelfService.AnyAsync(x => x.ShelfNumber == record.ShelfNumber)).Data is true;
+	        if (!isExistShelfLocation)
+	        {
+	            rowErrors.Add(isEng ? $"Shelf number '{record.ShelfNumber}' does not exist" : $"Kệ số '{record.ShelfNumber}' không tồn tại");
+	        }
+
+	        // Validate author codes
+	        var authorCodes = record.AuthorCodes.Split("\n");
+	        if (authorCodes.Length < 1)
+	        {
+	            rowErrors.Add(isEng ? "Please add at least one author" : "Vui lòng thêm tác giả");
+	        }
+	        else
+	        {
+	            var duplicateCodes = authorCodes.GroupBy(x => x)
+	                .Where(g => g.Count() > 1)
+	                .Select(g => g.Key)
+	                .ToList();
+
+	            if (duplicateCodes.Any())
+	            {
+	                rowErrors.Add(isEng ? $"The following author codes are duplicated: {string.Join(", ", duplicateCodes)}" : $"Các mã tác giả sau đây bị trùng lặp: {string.Join(", ", duplicateCodes)}");
+	            }
+
+	            foreach (var authCode in authorCodes)
+	            {
+	                var isExist = (await _authorService.AnyAsync(x => x.AuthorCode != null 
+	                                                                && x.AuthorCode.ToLower() == authCode.ToLower())).Data is true;
+	                if (!isExist)
+	                {
+	                    rowErrors.Add(isEng ? $"Author code '{authCode}' does not exist" : $"Mã tác giả '{authCode}' không tồn tại");
+	                }
+	            }
+	        }
+			
+		    // Check exist copy codes
+		    var editionCopyLength = record.EditionCopyBarcodes != null ? record.EditionCopyBarcodes.Split("\n").Length : 0;
+		    if (editionCopyLength > 0)
+		    {
+			    var copyCodes = record.EditionCopyBarcodes!.Split("\n");
+			    var duplicateCodes = copyCodes.GroupBy(x => x)
+				    .Where(g => g.Count() > 1)
+				    .Select(g => g.Key)
+				    .ToList();
+
+			    // Check whether code is duplicate within a single cell
+			    if (duplicateCodes.Any())
+			    {
+				   rowErrors.Add(isEng
+						   ? $"The following barcodes are duplicated: {string.Join(", ", duplicateCodes)}"
+						   : $"Các mã barcode sau đây bị trùng lặp: {string.Join(", ", duplicateCodes)}");
+			    }
+			    
+			    // Check whether code is duplicate within all other cells
+			    foreach (var code in copyCodes)
+			    {
+				    if (!editionCopyBarcodes.Add(code)) 
+				    {
+					    rowErrors.Add(isEng
+						    ? $"Barcode '{code}' already exists in file"
+						    : $"Barcode '{code}' bị trùng trong file");
+				    }
+			    }
+			    
+			    // Check whether barcode already exist in DB
+			    foreach (var barcode in copyCodes)
+			    {
+				    var isExist = (await _editionCopyService.Value.AnyAsync(x => x.Barcode.ToLower() == barcode.ToLower())).Data is true;
+				    if (isExist)
+				    {
+					    rowErrors.Add(isEng
+						    ? $"Barcode '{barcode}' already not exist"
+						    : $"Barcode '{barcode}' đã tồn tại");
+				    }
+			    }
+		    }
+		    
+		    // Check exist categories
+		    if (record.Categories.Split(",").Length < 1)
+	        {
+		        rowErrors.Add(isEng
+			        ? "Please add at least one category"
+			        : "Vui lòng thêm thể loại");
+	        }
+		    else
+		    {
+			    var categoryNames = record.Categories.Split(",").Select(x => x.Trim()).ToList();
+			    var duplicateNames = categoryNames.GroupBy(x => x)
+				    .Where(g => g.Count() > 1)
+				    .Select(g => g.Key)
+				    .ToList();
+
+			    if (duplicateNames.Any())
+			    {
+				    rowErrors.Add(isEng
+					    ? $"The following categories are duplicated: {string.Join(", ", duplicateNames)}"
+					    : $"Các thể loại sau đây bị trùng lặp: {string.Join(", ", duplicateNames)}");
+			    }
+
+			    foreach (var cateName in categoryNames)
+			    {
+				    var isExist = (await _cateService.AnyAsync(x => x.EnglishName == cateName)).Data is true;
+				    if (!isExist)
+				    {
+					    rowErrors.Add(isEng
+						    ? $"Category '{cateName}' does not exist"
+						    : $"Thể loại '{cateName}' không tồn tại");
+				    }
+			    }
+
+			    // Check whether exist different categories in the same edition
+			    if (editionCategories.TryGetValue(record.BookCode, out var defaultCategoryNames)) // Exist book code value
+			    {
+				    // Check whether having different categories (ignoring order)
+				    if (!defaultCategoryNames.OrderBy(x => x).SequenceEqual(categoryNames.OrderBy(x => x)))
+				    {
+					    rowErrors.Add(isEng
+						    ? "Book categories must be shared the same within different editions in a single book"
+						    : "Các thể loại sách phải giống nhau trong các ấn bản khác nhau trong một cuốn sách");
+				    }
+			    }
+			    else // Not exist yet
+			    {
+				    // Add list category name as default to compare with others
+				    editionCategories.Add(record.BookCode, categoryNames.ToArray());
+			    }
+		    }
+		    
+			// Check duplicate ISBN
+			var isbnList = records.Select(x => x.Isbn).ToList();
+			var isIsbnDuplicate = isbnList.Count(x => x == record.Isbn) > 1;
+			if (isIsbnDuplicate)
+			{
+				rowErrors.Add(isEng ? $"IBSN '{record.Isbn}' is duplicated" : $"Mã ISBN '{record.Isbn}' bị trùng");
+			}
+		    
+			// Check duplicate edition number
+			// Not allow to have same edition with existing edition
+			var isDuplicateEditionNum = await _unitOfWork.Repository<BookEdition, int>().AnyAsync(be =>
+				be.Book.BookCode == record.BookCode && // Whether in same book
+				be.EditionNumber == record.EditionNumber); // Check for specific edition		
+			if (isDuplicateEditionNum)
+			{
+				rowErrors.Add(isEng 
+					? $"Edition number '{record.EditionNumber}' already exists in database with book code '{record.BookCode}'" 
+					: $"Số thự tự ấn bản '{record.EditionNumber}' đã tồn tại trong cơ sở dữ liệu với book code '{record.BookCode}'");
+			}
+			
+		    // Validations
+		    // TODO: Validate book code
+		    if (record.EditionTitle.Length > 150) // Edition title
+		    {
+			    rowErrors.Add(isEng
+				    ? "Book edition title must not exceed than 150 characters"
+				    : "Tiêu đề của ấn bản phải nhỏ hơn 150 ký tự");
+		    }
+		    if (record.Summary.Length > 500) // Edition summary
+		    {
+			    rowErrors.Add(isEng
+				    ? "Edition summary must not exceed 500 characters"
+				    : "Mô tả của ấn bản không vượt quá 500 ký tự");
+		    }
+		    if (record.EditionNumber <= 0 && record.PageCount < int.MaxValue) // Edition number
+		    {
+			    rowErrors.Add(isEng
+				    ? "Book edition number is not valid"
+				    : "Số thứ tự ấn bản không hợp lệ");
+		    }
+		    if (StringUtils.IsNumeric(record.Language) ||
+		        StringUtils.IsDateTime(record.Language)) // Language
+		    {
+			    rowErrors.Add(isEng
+				    ? "Language is not valid"
+				    : "Ngôn ngữ không hợp lệ");
+		    }
+		    if (StringUtils.IsNumeric(record.Format) || StringUtils.IsDateTime(record.Format)
+		        || !Enum.TryParse(typeof(BookFormat), record.Format, true, out _)) // Format
+		    {
+			    rowErrors.Add(isEng
+				    ? "Book format is not valid"
+				    : "Format sách không hợp lệ");
+		    }
+		    if (record.PageCount <= 0 && record.PageCount < int.MaxValue) // Page count
+		    {
+			    rowErrors.Add(isEng
+				    ? "Page count is not valid"
+				    : "Tổng số trang không hợp lệ");
+		    }
+		    if (!(int.TryParse(record.PublicationYear.ToString(), out var year) 
+		        && year > 0 && year <= DateTime.Now.Year)) // Publication year
+		    {
+			    rowErrors.Add(isEng
+				    ? "Publication year is not valid"
+				    : "Năm xuất bản không hợp lệ");
+		    }
+		    if (StringUtils.IsNumeric(record.Publisher) || 
+		        StringUtils.IsDateTime(record.Publisher)) // Publisher
+		    {
+			    rowErrors.Add(isEng
+				    ? "Publisher is not valid"
+				    : "Tên nhà xuất bản không hợp lệ");
+		    }
+
+		    if (record.EstimatedPrice < 1000 || record.EstimatedPrice > 9999999999)
+		    {
+			    if (record.EstimatedPrice < 1000)
+			    {
+				    rowErrors.Add(isEng
+                        ? "EstimatedPrice must be at least 1.000 VND"
+                        : "Giá phải ít nhất là 1.000 VND");
+			    }
+			    else if (record.EstimatedPrice > 9999999999)
+			    {
+				    rowErrors.Add(isEng
+					    ? "EstimatedPrice exceeds the maximum limit of 9.999.999.999 VND"
+					    : "Giá vượt quá giới hạn tối đa là 9.999.999.999 VND");
+			    }
+		    }
+		    if (!ISBN.IsValid(record.Isbn, out _)) // Isbn
+		    {
+			    rowErrors.Add(isEng
+	                ? "ISBN is not valid"
+	                : "Mã ISBN không hợp lệ");
+		    }
+		    
+		    if (scanningFields != null)
+		    {
+			    // Initialize book edition base spec
+			    BaseSpecification<BookEdition>? editionBaseSpec = null;
+			    // Initialize book base spec
+			    BaseSpecification<Book>? bookBaseSpec = null;
+			    // Initialize duplicate field
+			    var isImageDuplicate = false;
+			    
+			    // Iterate each fields to add criteria scanning logic
+			    foreach (var field in scanningFields)
+			    {
+				    var normalizedField = field.ToUpperInvariant();
+				    
+				    // Building query to check duplicates on BookEdition entity
+				    var newEditionSpec = normalizedField switch
+				    {
+					    var editionTitle when editionTitle == nameof(BookEdition.EditionTitle).ToUpperInvariant() =>
+						    new BaseSpecification<BookEdition>(e => e.EditionTitle != null && e.EditionTitle.Equals(record.EditionTitle)),
+					    _ => null
+				    };
+				    
+				    // Build query to check duplicates on Book entity
+				    var newBookSpec = normalizedField switch
+				    {
+					    var bookCode when bookCode == nameof(Book.BookCode).ToUpperInvariant() =>
+						    new BaseSpecification<Book>(b => b.BookCode.ToLower() == record.BookCode.ToLower()),
+					    _ => null
+				    };
+				    
+				    if (newEditionSpec != null) // Found new edition spec
+				    {
+					    // Combine specifications with AND logic
+					    editionBaseSpec = editionBaseSpec == null
+						    ? newEditionSpec
+						    : editionBaseSpec.Or(newEditionSpec);
+				    }
+				    
+				    if (newBookSpec != null) // Found new book spec
+				    {
+					    // Combine specifications with AND logic
+					    bookBaseSpec = bookBaseSpec == null
+						    ? newBookSpec
+						    : bookBaseSpec.Or(newBookSpec);
+				    }
+				    
+				    // Check whether existing scanning field (CoverImage) and cannot add to hashset due to duplicate
+				    if (normalizedField == nameof(BookEdition.CoverImage).ToUpperInvariant()
+				        && !coverImageSet.Add(record.CoverImage))
+					{
+						isImageDuplicate = true;
+					}
+			    }
+			    
+			    // Check exist with spec
+			    if (editionBaseSpec != null && await _unitOfWork.Repository<BookEdition, int>().AnyAsync(editionBaseSpec))
+			    {
+				    rowErrors.Add(isEng ? $"Title '{record.EditionTitle}'" : $"Tên sách '{record.EditionTitle}' đã tồn tại");
+			    }
+			    if (bookBaseSpec != null && await _unitOfWork.Repository<Book, int>().AnyAsync(bookBaseSpec))
+			    {
+				    rowErrors.Add(isEng ? $"Book code '{record.BookCode}' already exists" : $"Mã sách '{record.BookCode}' đã tồn tại");
+			    }
+			    
+			    // Check whether image is duplicate
+			    if (isImageDuplicate)
+			    {
+				    rowErrors.Add(isEng ? 
+					    $"Cover image '{record.CoverImage} is duplicated'" : 
+					    $"Hình '{record.CoverImage}' bị trùng");
+			    }
+		    }
+	        
+	        // if errors exist for the row, add to the dictionary
+	        if (rowErrors.Any())
+	        {
+	            errorMessages.Add(currDataRow, rowErrors);
+	        }
+
+	        // Increment the row counter
+	        currDataRow++;
+	    }
+
+	    return errorMessages;
+	}
 }

@@ -72,6 +72,7 @@ namespace FPTU_ELibrary.Application.Services
 					.GetWithSpecAndSelectorAsync(baseSpec, s => new Book()
 					{
 						BookId = s.BookId,
+						BookCode = s.BookCode,
 						Title = s.Title,
 						SubTitle = s.SubTitle,
 						Summary = s.Summary,
@@ -304,7 +305,29 @@ namespace FPTU_ELibrary.Application.Services
 	                toUpdateBook.BookCategories.Remove(bc);
                 }
                 
+				// Initialize custom errors
+				var customErrors = new Dictionary<string, string[]>();
+                // Check whether book code change
+                if (!Equals(toUpdateBook.BookCode, dto.BookCode))
+                {
+	                // Check uniqueness book code
+	                var isBookCodeExist =
+		                await _unitOfWork.Repository<Book, int>().AnyAsync(b => 
+			                b.BookCode.Equals(dto.BookCode, StringComparison.OrdinalIgnoreCase));
+	                if (isBookCodeExist)
+	                {
+		                // Add error 
+		                customErrors.Add("bookCode", [isEng ? "Book code already exist" : "Mã sách đã tồn tại"]);
+	                }
+                }
+
+                if (customErrors.Any()) // Throw 422 if data is not valid
+                {
+	                throw new UnprocessableEntityException("Invalid data", customErrors);
+                }
+                
                 // Update other properties
+                toUpdateBook.BookCode = dto.BookCode;
                 toUpdateBook.Title = dto.Title;
                 toUpdateBook.SubTitle = dto.SubTitle;
                 toUpdateBook.Summary = dto.Summary;
@@ -343,6 +366,11 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			try
 			{
+				// Determine current system lang 
+				var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+								
 				// Validate inputs using the generic validator
 				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
 				// Check for valid validations
@@ -394,6 +422,20 @@ namespace FPTU_ELibrary.Application.Services
 				// Custom error responses
 				var customErrors = new Dictionary<string, string[]>();
 				
+				// Check uniqueness book code
+				var isBookCodeExist =
+					await _unitOfWork.Repository<Book, int>().AnyAsync(b => 
+						b.BookCode.ToLower().Equals(dto.BookCode.ToLower()));
+				if (isBookCodeExist)
+				{
+					// Add error 
+					customErrors.Add("bookCode", [isEng ? "Book code already exist" : "Mã sách đã tồn tại"]);
+				}
+				
+				// Add book default information
+				dto.BookCodeForAITraining = Guid.NewGuid(); // Generate default AI book training code
+				dto.IsDeleted = false;
+								
 				// Check resources existence
 				foreach (var br in dto.BookResources)
 				{
@@ -407,11 +449,6 @@ namespace FPTU_ELibrary.Application.Services
 							await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
 					} 
 				}
-				
-				// Generate default AI book training code
-				dto.BookCodeForAITraining = Guid.NewGuid();
-				// Add boolean information
-				dto.IsDeleted = false;
 
 				// Add book edition creation information (if any)
 				// Initialize numeric collection to check edition unique num
@@ -459,25 +496,25 @@ namespace FPTU_ELibrary.Application.Services
                     {
 	                    var bec = listBookEditionCopy[j];
 	                    
-                        if (editionCopyCodes.Add(bec.Code!)) // Add to hash set string to ensure uniqueness
+                        if (editionCopyCodes.Add(bec.Barcode)) // Add to hash set string to ensure uniqueness
                         {
 							// Check already exist code in DB
 							var checkExistResult = await _editionCopyService.AnyAsync(
-								c => c.Code == bec.Code);
+								c => c.Barcode == bec.Barcode);
 							if (checkExistResult.Data is true)
 							{
 								var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
 								// Add error 
 								customErrors.Add(
-									$"bookEditions[{i}].bookCopies[{j}].code", 
-									[StringUtils.Format(errMsg, $"'{bec.Code!}'")]);
+									$"bookEditions[{i}].bookCopies[{j}].barcode", 
+									[StringUtils.Format(errMsg, $"'{bec.Barcode}'")]);
 							}
                         }
                         else // Duplicate found
                         {
 	                        // Add error 
 	                        customErrors.Add(
-		                        $"bookEditions[{i}].bookCopies[{j}].code", 
+		                        $"bookEditions[{i}].bookCopies[{j}].barcode", 
 		                        [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0005)]);
                         };
                         

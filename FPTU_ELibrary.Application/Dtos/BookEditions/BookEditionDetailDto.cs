@@ -7,6 +7,7 @@ public class BookEditionDetailDto
 {
     // Book information
     public int BookId { get; set; }
+    public string BookCode { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; }
     public string? Summary { get; set; }
@@ -54,6 +55,7 @@ public static class BookEditionDetailDtoExtensions
         {
             // Book information
             BookId = dto.BookId,
+            BookCode = dto.Book != null! ?  dto.Book.BookCode : null!,
             Title = dto.Book != null! ?  dto.Book.Title : null!,
             SubTitle = dto.Book != null! ?  dto.Book.SubTitle : null!,
             Summary = dto.Book != null! ?  dto.Book.Summary : null!,
@@ -95,12 +97,13 @@ public static class BookEditionDetailDtoExtensions
     }
     
     public static BookEditionDetailDto ToEditionDetailDtoWithBookDetail(this BookEditionDto dto,
-        string title, string? subTitle, string? summary)
+        string bookCode, string title, string? subTitle, string? summary)
     {
         return new BookEditionDetailDto()
         {
             // Book information
             BookId = dto.BookId,
+            BookCode = bookCode,
             Title = title,
             SubTitle = subTitle,
             Summary = summary,

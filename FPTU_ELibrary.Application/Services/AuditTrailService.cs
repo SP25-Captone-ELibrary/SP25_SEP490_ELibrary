@@ -277,6 +277,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
             .Select(b => new BookDto() 
             {
                 BookId = int.Parse(b.EntityId ?? "0"),
+                BookCode = b.NewValues["BookCode"]?.ToString()!,
                 Title = b.NewValues["Title"]?.ToString()!,
                 SubTitle = b.NewValues["SubTitle"]?.ToString(),
                 Summary = b.NewValues["Summary"]?.ToString(),
@@ -489,6 +490,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                 {
                     BookEditionId = int.Parse(bec.NewValues["BookEditionId"]?.ToString() ?? "0"),
                     BookEditionCopyId = int.Parse(bec.EntityId ?? "0"),
+                    Barcode = bec.NewValues["Barcode"]?.ToString()!,
                     Code = bec.NewValues["Code"]?.ToString(),
                     Status = bec.NewValues["Status"]?.ToString()!,
                     CreatedAt = DateTime.Parse(bec.NewValues["CreatedAt"]?.ToString()!),

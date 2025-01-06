@@ -35,7 +35,7 @@ public static class CsvUtils
                 }
             }
         }
-        else if (file.FileName.EndsWith(".xlsx"))
+        else if (file.FileName.EndsWith(".xlsx") || file.FileName.EndsWith(".xlsm"))
         {
             // Handle Excel file
             using (var stream = file.OpenReadStream())
@@ -60,6 +60,13 @@ public static class CsvUtils
                     var row = worksheet.Cells[rowIndex, 1, rowIndex, cols];
                     var record = new T();
 
+                    // Check if the row is empty (all cells are blank)
+                    var isRowEmpty = row.All(cell => string.IsNullOrEmpty(cell.Text));
+                    if (isRowEmpty)
+                    {
+                        continue; // Skip this row
+                    }
+                    
                     foreach (var prop in typeof(T).GetProperties())
                     {
                         if (!headers.Contains(prop.Name)) continue;
@@ -86,6 +93,155 @@ public static class CsvUtils
         }
 
         return records;
+    }
+    
+    public static (List<T> Records, Dictionary<int, string[]> Errors) ReadCsvOrExcelWithErrors<T>(
+        IFormFile file, 
+        CsvConfiguration config, 
+        string? encodingType,
+        SystemLanguage? systemLang = SystemLanguage.English)
+        where T : class, new()
+    {
+        // Determine current system lang
+        var isEng = systemLang == SystemLanguage.English;
+        // Initialize error dictionary
+        var errors = new Dictionary<int, string[]>();
+        // Initialize list of generic type
+        var records = new List<T>();
+        
+        if (file.FileName.EndsWith(".csv"))
+        {
+            // Handle CSV file
+            Encoding encoding = encodingType?.ToUpper() switch
+            {
+                "ASCII" => Encoding.ASCII,
+                "UTF-8" => Encoding.UTF8,
+                _ => Encoding.Default
+            };
+            
+            using (var reader = new StreamReader(file.OpenReadStream(), encoding))
+            using (var csv = new CsvReader(reader, config))
+            {
+                csv.Read();
+                csv.ReadHeader();
+                while (csv.Read())
+                {
+                    var record = csv.GetRecord<T>();
+                    records.Add(record);
+                }
+            }
+        }
+        else if (file.FileName.EndsWith(".xlsx") || file.FileName.EndsWith(".xlsm"))
+        {
+            // Handle Excel file
+            using (var stream = file.OpenReadStream())
+            using (var package = new OfficeOpenXml.ExcelPackage(stream))
+            {
+                // Get the first worksheet
+                var worksheet = package.Workbook.Worksheets[0];
+                // Get number of rows
+                var rows = worksheet.Dimension.Rows; 
+                // Get number of columns
+                var cols = worksheet.Dimension.Columns;
+
+                // First row as headers
+                var headerRow = worksheet.Cells[1, 1, 1, cols]; 
+                // Read header values
+                var headers = headerRow.Select(cell => cell.Text).ToList(); 
+
+                // Skip header row, start from 2nd row
+                for (int rowIndex = 2; rowIndex <= rows; rowIndex++) 
+                {
+                    // Get current row's cells
+                    var row = worksheet.Cells[rowIndex, 1, rowIndex, cols];
+                    var record = new T();
+
+                    // Check if the row is empty (all cells are blank)
+                    var isRowEmpty = row.All(cell => string.IsNullOrEmpty(cell.Text));
+                    if (isRowEmpty)
+                    {
+                        continue; // Skip this row
+                    }
+                    
+                    foreach (var prop in typeof(T).GetProperties())
+                    {
+                        if (!headers.Contains(prop.Name)) continue;
+
+                        // Get column index 
+                        var columnIndex = headers.IndexOf(prop.Name) + 1; 
+                        // Get the cell's value as text
+                        var cellValue = worksheet.Cells[rowIndex, columnIndex].Text; 
+
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            try
+                            {
+                                object convertedValue;
+                                // Add try-castch to catch whether the value of text not valid
+                                // such as: > int.MaxValue, wrong DateTime
+
+                                // Handle different property types explicitly
+                                if (prop.PropertyType == typeof(int))
+                                {
+                                    if (int.TryParse(cellValue, out var intValue))
+                                        convertedValue = intValue;
+                                    else
+                                        throw new FormatException(isEng
+                                            ? $"Invalid integer value: '{cellValue}' for column '{prop.Name}'"
+                                            : $"Số nhập vào không hợp lệ: '{cellValue}' cột '{prop.Name}'");
+                                }
+                                else if (prop.PropertyType == typeof(decimal))
+                                {
+                                    if (decimal.TryParse(cellValue, out var decimalValue))
+                                        convertedValue = decimalValue;
+                                    else
+                                        throw new FormatException(isEng
+                                            ? $"Invalid decimal value: '{cellValue}' for column '{prop.Name}'"
+                                            : $"Số nhập vào không hợp lệ: '{cellValue}' cột '{prop.Name}'");
+                                }
+                                else if (prop.PropertyType == typeof(DateTime))
+                                {
+                                    if (DateTime.TryParse(cellValue, out var dateValue))
+                                        convertedValue = dateValue;
+                                    else
+                                        throw new FormatException(isEng 
+                                            ? $"Invalid DateTime value: '{cellValue}' for column '{prop.Name}'" 
+                                            : $"Ngày không hợp lệ: '{cellValue}' cột '{prop.Name}'");
+                                }
+                                else
+                                {
+                                    // Use general conversion for other types
+                                    convertedValue = Convert.ChangeType(cellValue, prop.PropertyType);
+                                }
+
+                                // Set the property value
+                                prop.SetValue(record, convertedValue);
+                            }
+                            catch (Exception innerEx) // Invoke exception while read data
+                            {
+                                // Add error
+                                if (!errors.TryGetValue(rowIndex, out var addedErr))
+                                {
+                                    errors.Add(rowIndex, [innerEx.Message]);
+                                }
+                                else
+                                {
+                                    errors[rowIndex] = errors[rowIndex].Append(innerEx.Message).ToArray();
+                                }
+                            }
+                        }
+                    }
+
+                    records.Add(record);
+                }
+            }
+        }
+        else
+        {
+            throw new NotSupportedException("Only CSV and Excel (.xlsx) files are supported.");
+        }
+
+        return (records, errors);
     }
     
     public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1") where T : class

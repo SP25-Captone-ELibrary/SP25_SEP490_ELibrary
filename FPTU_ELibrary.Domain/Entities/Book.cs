@@ -6,12 +6,15 @@ public class Book : IAuditableEntity
 {
     // Key
     public int BookId { get; set; }
-    public Guid? BookCodeForAITraining { get; set; }
     
     // Book information
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; }
     public string? Summary { get; set; }
+    
+    // Unique string to manage books (group editions / AI training)
+    public string BookCode { get; set; } = null!;
+    public Guid? BookCodeForAITraining { get; set; }
     
     // Book management and borrow permission
     public bool IsDeleted { get; set; }

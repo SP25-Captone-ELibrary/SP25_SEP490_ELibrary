@@ -120,6 +120,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Title = req.Title,
 				SubTitle = req.SubTitle,
 				Summary = req.Summary,
+				BookCode = req.BookCode,
 				// Categories
 				BookCategories = req.CategoryIds.Any() 
 					// Each item -> initialize BookCategoryDto
@@ -182,7 +183,7 @@ namespace FPTU_ELibrary.API.Extensions
 		{
 			return new BookEditionCopyDto()
 			{
-				Code = req.Code,
+				Barcode = req.Barcode,
 				
 				// Add default one history status
 				CopyConditionHistories = new List<CopyConditionHistoryDto>()
@@ -270,7 +271,7 @@ namespace FPTU_ELibrary.API.Extensions
 		public static List<BookEditionCopyDto> ToListBookEditionCopyDto(this CreateRangeBookEditionCopyRequest req)
 			=> req.BookEditionCopies.Select(bec => new BookEditionCopyDto()
 			{
-				Code = bec.Code,
+				Barcode = bec.Barcode,
 				CopyConditionHistories = new List<CopyConditionHistoryDto>()
 				{
 					new()

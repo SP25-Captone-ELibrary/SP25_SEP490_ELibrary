@@ -14,6 +14,7 @@ public class ExcelValidator : AbstractValidator<IFormFile>
         var isEng = langEnum == SystemLanguage.English;
         
         RuleFor(x => x.ContentType).NotNull().Must(x => x.Equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                                                        || x.Equals("application/vnd.ms-excel.sheet.macroenabled.12")
                                                         || x.Equals("application/vnd.ms-excel")
                                                         || x.Equals("application/octet-stream")
                                                         || x.Equals("text/csv"))

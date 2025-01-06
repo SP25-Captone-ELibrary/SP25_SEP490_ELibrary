@@ -151,6 +151,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
+                    b.Property<string>("BookCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("book_code");
+
                     b.Property<Guid?>("BookCodeForAITraining")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("book_code_for_ai");
@@ -423,6 +429,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("book_edition_copy_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionCopyId"));
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("barcode");
 
                     b.Property<int>("BookEditionId")
                         .HasColumnType("int")

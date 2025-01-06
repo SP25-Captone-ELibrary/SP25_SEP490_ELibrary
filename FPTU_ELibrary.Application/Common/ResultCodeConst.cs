@@ -259,6 +259,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string File_Warning0003 = "File.Warning0003";
 		
+		/// <summary>
+		/// [WARNING] Tệp tải lên chứa các hình ảnh bị trùng tên: {0}
+		/// </summary>
+		public const string File_Warning0004 = "File.Warning0004";
+		
 		#endregion
 
 		#region Cloud

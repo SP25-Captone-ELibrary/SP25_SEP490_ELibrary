@@ -7,6 +7,8 @@ public interface IBookEditionAuthorService<TDto> : IGenericService<BookEditionAu
     where TDto : class
 {
     Task<IServiceResult> AddAuthorToBookEditionAsync(int bookEditionId, int authorId);
+    Task<IServiceResult> AddRangeAuthorToBookEditionAsync(int bookEditionId, int[] authorIds);
     Task<IServiceResult> DeleteAuthorFromBookEditionAsync(int bookEditionId, int authorId);
+    Task<IServiceResult> DeleteRangeAuthorFromBookEditionAsync(int bookEditionId, int[] authorIds);
     Task<IServiceResult> DeleteRangeWithoutSaveChangesAsync(int[] bookEditionAuthorIds);
 }

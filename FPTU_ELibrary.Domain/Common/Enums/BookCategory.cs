@@ -9,7 +9,7 @@ namespace FPTU_ELibrary.Domain.Common.Enums
 
 		[Description("Bí ẩn")]
 		Mystery,
-
+	
 		[Description("Khoa học viễn tưởng và giả tưởng")]
 		FantasyAndScienceFiction,
 

@@ -7,6 +7,7 @@ public class BookEditionTableRowDto
 {
     public int BookId { get; set; }
     public int BookEditionId { get; set; }
+    public string BookCode { get; set; } = null!;
     public int EditionNumber { get; set; }
     public int PublicationYear { get; set; }
     public int PageCount { get; set; }
@@ -40,6 +41,7 @@ public static class BookEditionTableRowDtoExtensions
         {
             BookId = be.BookId,
             Title = be.Book.Title,
+            BookCode = be.Book.BookCode,
             EditionTitle = be.EditionTitle,
             BookEditionId = be.BookEditionId,
             EditionNumber = be.EditionNumber,

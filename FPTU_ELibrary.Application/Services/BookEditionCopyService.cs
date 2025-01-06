@@ -324,25 +324,25 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 		            };
 	            }
 	            
-                if (uniqueList.Add(editionCopies[i].Code!)) // Valid code
+                if (uniqueList.Add(editionCopies[i].Barcode)) // Valid barcode
                 {
                     // Check exist code in DB
                     var isExist = await _unitOfWork.Repository<BookEditionCopy, int>().AnyAsync(x => 
-	                    x.Code == editionCopies[i].Code!);
+	                    x.Barcode == editionCopies[i].Barcode);
                     if (isExist) // already exist
                     {
                         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
                         // Add error 
                         customErrors.Add(
-                            $"bookEditionCopies[{i}].code", 
-                            [StringUtils.Format(errMsg, $"'{editionCopies[i].Code}'")]);
+                            $"bookEditionCopies[{i}].barcode", 
+                            [StringUtils.Format(errMsg, $"'{editionCopies[i].Barcode}'")]);
                     }
                 }
                 else
                 {
                     // Add error 
                     customErrors.Add(
-                        $"bookEditionCopies[{i}].code", 
+                        $"bookEditionCopies[{i}].barcode", 
                         [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0005)]);                    
                 }
             }
@@ -370,8 +370,8 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
                 {
                     // Assign to specific book edition
                     BookEditionId = bookEditionEntity.BookEditionId,
-                    // Assign copy code
-                    Code = bec.Code,
+                    // Assign copy barcode
+                    Barcode = bec.Barcode,
                     // Default status
                     Status = nameof(BookEditionCopyStatus.OutOfShelf),
                     // Boolean 

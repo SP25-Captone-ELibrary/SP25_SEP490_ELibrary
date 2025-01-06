@@ -9,12 +9,12 @@ public class BookDetailDto
 {
     // Book information
     public int BookId { get; set; }
+    public string BookCode { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; }
     public string? Summary { get; set; }
     public bool IsDeleted { get; set; }
     public Guid? BookCodeForAITraining { get; set; }
-    public bool IsTrained { get; set; } = false;
         
     // Book editions
     public List<BookEditionDetailDto> BookEditions { get; set; } = new();
@@ -33,6 +33,7 @@ public static class BookDetailDtoExtensions
         {
             // Book information
             BookId = dto.BookId,
+            BookCode = dto.BookCode,
             Title = dto.Title,
             SubTitle = dto.SubTitle,
             Summary = dto.Summary,
@@ -41,7 +42,7 @@ public static class BookDetailDtoExtensions
             
             // Book Editions
             BookEditions = dto.BookEditions.Select(be => 
-                be.ToEditionDetailDtoWithBookDetail(dto.Title, dto.SubTitle, dto.Summary)).ToList(),
+                be.ToEditionDetailDtoWithBookDetail(dto.BookCode, dto.Title, dto.SubTitle, dto.Summary)).ToList(),
             
             // Categories
             Categories = dto.BookCategories.Select(bc => bc.Category).ToList(),

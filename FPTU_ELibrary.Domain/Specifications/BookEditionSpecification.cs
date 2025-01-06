@@ -20,9 +20,15 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                 (!string.IsNullOrEmpty(be.Isbn) && be.Isbn.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(be.Publisher) && be.Publisher.Contains(specParams.Search)) || 
                 // Book
+                (!string.IsNullOrEmpty(be.Book.BookCode) && be.Book.BookCode.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(be.Book.Title) && be.Book.Title.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(be.Book.SubTitle) && be.Book.SubTitle.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(be.Book.Summary) && be.Book.Summary.Contains(specParams.Search)) ||
+                // BookCategories
+                be.Book.BookCategories.Any(bc => 
+                    !string.IsNullOrEmpty(bc.Category.EnglishName) && bc.Category.EnglishName.Contains(specParams.Search) ||
+                    !string.IsNullOrEmpty(bc.Category.VietnameseName) && bc.Category.VietnameseName.Contains(specParams.Search)
+                ) ||
                 // BookEditionAuthors
                 // BookEditions -> BookEditionAuthors
                 be.BookEditionAuthors.Any(a =>
@@ -30,6 +36,12 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                     !string.IsNullOrEmpty(a.Author.FullName) && a.Author.FullName.Contains(specParams.Search) || 
                     !string.IsNullOrEmpty(a.Author.Biography) && a.Author.Biography.Contains(specParams.Search) || 
                     !string.IsNullOrEmpty(a.Author.Nationality) && a.Author.Nationality.Contains(specParams.Search) 
+                ) ||
+                // BookEditionCopies
+                // BookEditions -> BookEditionCopies
+                be.BookEditionCopies.Any(bec => 
+                    !string.IsNullOrEmpty(bec.Barcode) && bec.Barcode.Contains(specParams.Search) || 
+                    !string.IsNullOrEmpty(bec.Code) && bec.Code.Contains(specParams.Search) 
                 )
             )
         )
@@ -45,6 +57,7 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
         ApplyInclude(q => q
             .Include(e => e.Book)
                 .ThenInclude(e => e.BookCategories)
+                    .ThenInclude(e => e.Category)
             .Include(e => e.BookEditionAuthors)
                 .ThenInclude(e => e.Author)
             .Include(b => b.BookEditionCopies)
@@ -253,6 +266,7 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                 // { "RESERVEDCOPIES", x => x.BookEditionInventory!.ReservedCopies },
                 { "AUTHOR", x => x.BookEditionAuthors.Select(bea => bea.Author.FullName) },
                 { "TITLE", x => x.Book.Title },
+                { "BOOKCODE", x => x.Book.BookCode },
                 { "EDITIONTITLE", x => x.EditionTitle! },
                 { "SHELF", x => x.Shelf != null ? x.Shelf.ShelfNumber : null! },
                 { "FORMAT", x => x.Format ?? null! },

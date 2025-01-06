@@ -50,7 +50,7 @@ namespace FPTU_ELibrary.Application.Mappings
 			// From [Dto] to [Entity]
 			config.NewConfig<AuthorDto, Author>()
 				.Ignore(dest => dest.AuthorId)
-				.Ignore(dest => dest.CreateDate)
+				// .Ignore(dest => dest.CreateDate)
 				.IgnoreNullValues(true);
 			config.NewConfig<CategoryDto, Category>()
 				.Ignore(dest => dest.CategoryId)

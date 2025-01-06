@@ -59,10 +59,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     book_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    book_code_for_ai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    book_code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    book_code_for_ai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
@@ -652,6 +653,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     book_edition_copy_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_edition_id = table.Column<int>(type: "int", nullable: false),
+                    barcode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),

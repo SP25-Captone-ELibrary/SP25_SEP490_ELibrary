@@ -86,10 +86,14 @@
 			public const string GetEditionById = Base + "/management/books/editions/{id}";
 			public const string CountTotalCopy = Base + "/management/books/editions/{id}/total-copy";
 			public const string CountRangeTotalCopy = Base + "/management/books/editions/total-copy";
+			public const string Export = Base + "/management/books/editions/export";
 			// [POST]
 			public const string Create = Base + "/management/books/{bookId}/editions";
 			public const string AddAuthor = Base + "/management/books/editions/add-author";
+			public const string AddRangeAuthor = Base + "/management/books/editions/add-range-author";
 			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
+			public const string DeleteRangeAuthor = Base + "/management/books/editions/delete-range-author";
+			public const string Import = Base + "/management/books/editions/import";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/{id}";
 			public const string UpdateStatus = Base + "/management/books/editions/{id}/status";
@@ -101,7 +105,6 @@
 			// [DELETE]
 			public const string Delete = Base + "/management/books/editions/{id}";
 			public const string DeleteRange = Base + "/management/books/editions";
-
 			#endregion
 		}
 

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250103131907_Initial Database")]
+    [Migration("20250104025243_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -153,6 +153,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("book_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
+
+                    b.Property<string>("BookCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("book_code");
 
                     b.Property<Guid?>("BookCodeForAITraining")
                         .HasColumnType("uniqueidentifier")
@@ -426,6 +432,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("book_edition_copy_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionCopyId"));
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("barcode");
 
                     b.Property<int>("BookEditionId")
                         .HasColumnType("int")

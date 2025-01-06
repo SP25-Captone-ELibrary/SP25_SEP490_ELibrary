@@ -80,7 +80,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
         {
             try
             {
-	            if (!await _context.Users.AnyAsync()) await SeedUserAsync();
 				// [System Roles]
 				if (!await _context.SystemRoles.AnyAsync()) await SeedSystemRoleAsync();
 				else _logger.Information("Already seed data for table {0}", "System_Role");
@@ -105,6 +104,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				if (!await _context.Employees.AnyAsync()) await SeedEmployeeAsync();
 				else _logger.Information("Already seed data for table {0}", "Employee");
 
+				// [Users]
+				if (!await _context.Users.AnyAsync()) await SeedUserAsync();
+				else _logger.Information("Already seed data for table {0}", "User");
+				
 				// [Books]
 				if (!await _context.Books.AnyAsync()) await SeedBookAsync();
 				else _logger.Information("Already seed data for table {0}", "Book");
@@ -206,11 +209,83 @@ namespace FPTU_ELibrary.Infrastructure.Data
 
 			if (saveSucc) _logger.Information("Seed system role successfully.");
 		}
+		
 		//  Summary:
 		//      Seeding User 
 		private async Task SeedUserAsync()
 		{
-			await Task.CompletedTask;
+			// Get admin role
+			var adminRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
+				x.EnglishName == Role.Administration.ToString());
+			
+			// Check for role existence
+			if(adminRole == null)
+			{
+				_logger.Error("Not found any admin role to seed User");
+				return;
+			}
+			
+			List<User> users = new()
+			{
+				new()
+				{
+					Email = "doanvietthanhhs@gmail.com",
+					// @Admin123
+					PasswordHash = "$2a$13$qUsCGtDD.dTou8YyhK.1YuKNjS7IM25cl/D0vd8EPaV40uvoG/l9u",
+					FirstName = "Chube",
+					LastName = "Thanh",
+					Dob = new DateTime(1995, 02, 10),
+					Phone = "099999999",
+					Gender = Gender.Male.ToString(),
+					IsActive = true,
+					CreateDate = DateTime.UtcNow,
+					TwoFactorEnabled = false,
+					PhoneNumberConfirmed = false,
+					EmailConfirmed = false,
+					RoleId = adminRole.RoleId 
+				},
+				new()
+				{
+					Email = "thanhdvse171867@fpt.edu.vn",
+					// @Admin123
+					PasswordHash = "$2a$13$qUsCGtDD.dTou8YyhK.1YuKNjS7IM25cl/D0vd8EPaV40uvoG/l9u",
+					FirstName = "Chube",
+					LastName = "Thanh",
+					Dob = new DateTime(1995, 02, 10),
+					Phone = "099999999",
+					Gender = Gender.Male.ToString(),
+					IsActive = true,
+					CreateDate = DateTime.UtcNow,
+					TwoFactorEnabled = false,
+					PhoneNumberConfirmed = false,
+					EmailConfirmed = false,
+					RoleId = adminRole.RoleId 
+				},
+				new()
+				{
+					Email = "kingchenobama711@gmail.com",
+					// @Admin123
+					PasswordHash = "$2a$13$qUsCGtDD.dTou8YyhK.1YuKNjS7IM25cl/D0vd8EPaV40uvoG/l9u",
+					FirstName = "King",
+					LastName = "Chen",
+					Dob = new DateTime(1995, 02, 10),
+					Phone = "099999999",
+					Gender = Gender.Male.ToString(),
+					IsActive = true,
+					CreateDate = DateTime.UtcNow,
+					TwoFactorEnabled = false,
+					PhoneNumberConfirmed = false,
+					EmailConfirmed = false,
+					RoleId = adminRole.RoleId 
+				}
+			};
+			
+			// Add range employee roles
+			await _context.Users.AddRangeAsync(users);	
+			
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed users successfully.");
 		}
 
 		//	Summary:
@@ -537,6 +612,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			{
 				new Book
 				{
+					BookCode = "HP2016",
 					Title = "Harry Potter and the Sorcerer's Stone",
 					Summary = "A young wizard's journey begins.",
 					IsDeleted = false,
@@ -661,6 +737,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				},
 				new Book
 				{
+					BookCode = "TH2008",
 					Title = "The Hobbit",
 					Summary = "A hobbit's adventurous journey to reclaim a lost kingdom.",
 					IsDeleted = false,

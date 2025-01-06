@@ -87,6 +87,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             //     .HasColumnType("datetime")
             //     .HasColumnName("trained_day");
             #endregion
+
+            #region Update at 04/01/2025 by Le Xuan Phuoc
+            builder.Property(e => e.BookCode)
+                .HasMaxLength(100)
+                .HasColumnName("book_code");
+            #endregion
         }
     }
 }
