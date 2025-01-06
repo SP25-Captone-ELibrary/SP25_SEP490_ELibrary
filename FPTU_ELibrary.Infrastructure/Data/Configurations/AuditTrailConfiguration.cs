@@ -32,7 +32,7 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
             .HasConversion<string>()
             .HasColumnName("trail_type");
         builder.Property(e => e.ChangedColumns)
-            .HasColumnType("nvarchar(120)")
+            .HasColumnType("nvarchar(255)")
             .HasColumnName("changed_columns");
         builder.Property(e => e.OldValues)
             .HasColumnType("nvarchar(1000)")

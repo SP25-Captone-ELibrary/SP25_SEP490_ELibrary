@@ -1,6 +1,7 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
+using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
@@ -23,9 +24,9 @@ public class OCRController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost(APIRoute.AIServices.CheckImagesForTraining, Name = nameof(CheckImagesForTraining))]
-    public async Task<IActionResult> CheckImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
+    [HttpPost(APIRoute.BookEdition.CheckImagesForTraining, Name = nameof(CheckImagesForTraining))]
+    public async Task<IActionResult> CheckImagesForTraining([FromForm] BaseTrainedModelRequest req,[FromRoute] int id)
     {
-        return Ok(await _ocrService.CheckTrainingInputAsync(req.BookEditionId, req.Images));
+        return Ok(await _ocrService.CheckTrainingInputAsync(id, req.ImageList));
     }
 }

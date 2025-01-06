@@ -15,6 +15,7 @@ using FPTU_ELibrary.Application.Services.IServices;
 using Mapster;
 using MapsterMapper;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
+using Microsoft.CognitiveServices.Speech;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog.Core;
@@ -81,6 +82,10 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<AISettings>(configuration.GetSection("AISettings"));
 			//Configure CustomVisionSettings
 			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
+			//Configure DetectSettings
+			services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
+			//Configure AzureSpeechSettings
+			services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
 			
 			#region Development stage
 
@@ -111,7 +116,19 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
+		
+		public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
+			IConfiguration configuration)
+		{
+			services.AddScoped(provider =>
+			{
+				var subscriptionKey = configuration["AzureSpeechSettings:SubscriptionKey"];
+				var serviceRegion = configuration["AzureSpeechSettings:Region"];
+				return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
+			});
 
+			return services;
+		}
 		public static IServiceCollection ConfigureRedis(this IServiceCollection services,
 			IConfiguration configuration,
 			IWebHostEnvironment env)

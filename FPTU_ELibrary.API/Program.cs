@@ -36,7 +36,9 @@ builder.Services
     // Configure HealthCheck 
     .ConfigureHealthCheckServices(builder.Configuration)
     //Configure OCR
-    .ConfigureOCR(builder.Configuration);
+    .ConfigureOCR(builder.Configuration)
+    // Configure Azure Speech
+    .ConfigureAzureSpeech(builder.Configuration);
 
 builder.Services
 	// Configure for application layer

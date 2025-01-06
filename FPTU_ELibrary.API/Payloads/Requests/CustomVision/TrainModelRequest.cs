@@ -1,7 +1,13 @@
+using FPTU_ELibrary.Application.Dtos.AIServices.Classification;
+
 namespace FPTU_ELibrary.API.Payloads.Requests.CustomVision;
 
-public class TrainModelRequest
+public class BaseTrainedModelRequest
 {
-    public int BookId { get; set; }
     public List<IFormFile> ImageList { get; set; }
 }
+
+public class TrainModelAfterCreateRequest : BaseTrainedModelRequest
+{
+    public Guid BookCode { get; set; }
+}   

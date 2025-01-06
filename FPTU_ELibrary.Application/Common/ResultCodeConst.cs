@@ -438,10 +438,25 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string AIService_Success0002 = "AIService.Success0002";
         /// <summary>
+        /// Start Training model successfully
+        /// </summary>
+        public static string AIService_Success0003 = "AIService.Success0003";
+        /// <summary>
+        /// Predict Successfully
+        /// </summary>
+        public static string AIService_Success0004 = "AIService.Success0004";
+        /// <summary>
         /// Data did not match with image
         /// </summary>
         public static string AIService_Warning0001 = "AIService.Warning0001";
-
+        /// <summary>
+        /// There is an iteration that is training
+        /// </summary>
+        public static string AIService_Warning0002 = "AIService.Warning0002";
+        /// <summary>
+        /// Can not detect any books in the picture
+        /// </summary>
+        public static string AIService_Warning0003 = "AIService.Warning0003";
         #endregion
 
         #endregion

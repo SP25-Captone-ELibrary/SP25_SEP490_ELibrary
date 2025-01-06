@@ -11,7 +11,10 @@ using Microsoft.Extensions.Options;
 using Serilog;
 using System.Collections.Generic;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
+using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace FPTU_ELibrary.Application.Services.IServices;
 
@@ -145,15 +148,21 @@ public class OCRService : IOCRService
     {
         try
         {
+            var baseSpec = new BaseSpecification<BookEdition>(x => x.BookEditionId == bookEditionId);
+            baseSpec.ApplyInclude(q => q.Include(x => x.BookEditionAuthors)
+                .ThenInclude(ea => ea.Author));
             //get book edition
-            var bookEditionResult = await _bookEditionService.GetByIdAsync(bookEditionId);
+            var bookEditionResult = await _bookEditionService.GetWithSpecAsync(baseSpec);
             if (bookEditionResult.ResultCode != ResultCodeConst.SYS_Success0002)
             {
                 return bookEditionResult;
             }
-            var dto = (BookEditionDetailDto)bookEditionResult.Data!;
-            
-            var responseData = new TrainingImageMatchResultDto();
+            var dto = (BookEditionDto)bookEditionResult.Data!;
+               
+            var responseData = new TrainingImageMatchResultDto
+            {
+                TrainingImageResult = new List<SingleImageMatchResultDto>()
+            };
             foreach (var image in images)
             {
                 //read information in book cover
@@ -163,18 +172,20 @@ public class OCRService : IOCRService
                     return result;
                 }
                 //prepare compare data
+                var authors = dto.BookEditionAuthors.Where(x => x.BookEditionId == bookEditionId)
+                    .Select(x => x.Author.FullName).ToList();
                 List<FieldMatchInputDto> compareFields = new List<FieldMatchInputDto>()
                 {
                     new FieldMatchInputDto()
                     {
                         FieldName = "Title",
-                        Values = new List<string>() { dto.Title },
+                        Values = new List<string>() { dto.EditionTitle },
                         Weight = _monitor.TitlePercentage
                     },
                     new FieldMatchInputDto()
                     {
                         FieldName = "Authors",
-                        Values = dto.Authors.Select(x =>x.FullName).ToList(),
+                        Values = authors,
                         Weight = _monitor.AuthorNamePercentage
                     },
                     new FieldMatchInputDto()
