@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using Serilog;
 using System.Text.Json;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.AIServices.Detection;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Hubs;
@@ -40,13 +41,15 @@ public class AIClassificationService : IAIClassificationService
     private readonly IServiceProvider _service;
     private readonly IAIDetectionService _aiDetectionService;
     private readonly string _basePredictUrl;
+    private readonly IOCRService _ocrService;
 
     public AIClassificationService(HttpClient httpClient, ISystemMessageService msgService,
         IBookService<BookDto> bookService, IBookEditionService<BookEditionDto> bookEditionService,
         IHubContext<AiHub> hubContext, IAIDetectionService aiDetectionService
         , IOptionsMonitor<CustomVisionSettings> monitor, ILogger logger,
-        IServiceProvider service)
+        IServiceProvider service, IOCRService ocrService)
     {
+        _ocrService = ocrService;
         _aiDetectionService = aiDetectionService;
         _hubContext = hubContext;
         _msgService = msgService;
@@ -60,218 +63,156 @@ public class AIClassificationService : IAIClassificationService
         _basePredictUrl = string.Format(_monitor.BasePredictUrl, _monitor.PredictionEndpoint, _monitor.ProjectId,
             _monitor.PublishedName);
     }
+    
+    public async Task<IServiceResult> PredictAsync(IFormFile image)
+    {
+        try
+        {
+            // Detect bounding boxes for books
+            var bookBoxes = await _aiDetectionService.DetectAsync(image);
 
-    // public async Task<IServiceResult> TrainModel(List<TrainedBookDetailDto> req, string email)
-    // {
-    //     try
-    //     {
-    //         if (!req.Any())
-    //         {
-    //             return new ServiceResult(ResultCodeConst.SYS_Warning0001,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001));
-    //         }
-    //
-    //         //get book to find training book code
-    //         var baseSpec = new BaseSpecification<Book>(b => b.BookEditions.Any(e
-    //             => e.BookEditionId == req[0].BookEditionId));
-    //         baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
-    //         var bookResult = await _bookService.GetWithSpecAsync(baseSpec, false);
-    //         if (bookResult.Data is null)
-    //         {
-    //             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001));
-    //         }
-    //
-    //         var book = (BookDto)bookResult.Data;
-    //         var trainingBookCode = book.BookCodeForAITraining;
-    //
-    //         // int images = imageList.Count;
-    //         var projectId = Guid.Parse(_monitor.ProjectId);
-    //         // Ensure that the tag exists for the book title
-    //         List<TagDto> tags = await GetTagAsync();
-    //         TagDto tag;
-    //         if (!tags.Select(x => x.Name).ToList().Contains(book.BookCodeForAITraining.ToString()!))
-    //         {
-    //             tag = await CreateTagAsync(book.BookCodeForAITraining ?? Guid.NewGuid());
-    //         }
-    //         else
-    //         {
-    //             tag = tags.FirstOrDefault(x => x.Name.Equals(book.BookCodeForAITraining.ToString()));
-    //         }
-    //
-    //         var errMsg = new List<string>();
-    //         for (int i = 0; i < req.Count; i++)
-    //         {
-    //             var imageList = req[i].ImageList;
-    //             if (imageList.Count < 4)
-    //             {
-    //                 errMsg.Add($"Book Edition Id: {req[i].BookEditionId} has less than 4 images");
-    //                 continue;
-    //             }
-    //
-    //             var bookEdition = await _bookEditionService.GetByIdAsync(req[i].BookEditionId);
-    //
-    //             // upload images with dynamic field names and filenames
-    //             await CreateImagesFromDataAsync(imageList, tag.Id);
-    //         }
-    //
-    //
-    //         // var coverImages = bookDetail.BookEditions.Select(x => x.CoverImage).ToList();
-    //         // for (int i = 0; i<coverImages.Count;i++)
-    //         // {
-    //         // var response = await _httpClient.GetAsync(coverImages[i]);
-    //         // response.EnsureSuccessStatusCode();
-    //         //     var content = await response.Content.ReadAsByteArrayAsync();
-    //         //     //get public id
-    //         //     var publicId = StringUtils.GetPublicIdFromCloudinaryUrl(coverImages[i]);
-    //         //     //create temp file name
-    //         //     string fileName = $"{publicId}_{i}.jpg";
-    //         //     var memoryStream = new MemoryStream(content);
-    //         //     //Create IFormFile item
-    //         //     var formFile = new FormFile(memoryStream, 0, memoryStream.Length, "image", fileName)
-    //         //     {
-    //         //         Headers = new HeaderDictionary(),
-    //         //         ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream"
-    //         //     };
-    //         //     imageList.Add(formFile);
-    //         // }
-    //
-    //         // TagDto tag;
-    //         // if (bookDetail.BookCodeForAITraining is null)
-    //         // {
-    //         //     var trainingCode = Guid.NewGuid();
-    //         //     
-    //         //     tag = await CreateTagAsync(trainingCode);
-    //         // }
-    //         // else
-    //         // {
-    //         //     tag = tags.FirstOrDefault(x => x.Name.Equals(bookDetail.BookCodeForAITraining));
-    //         // }
-    //
-    //         // upload images with dynamic field names and filenames
-    //         await CreateImagesFromDataAsync(imageList, tag.Id);
-    //
-    //         // Train the model after adding the images
-    //         var iteration = await TrainProjectAsync();
-    //
-    //         // Wait until the training is completed before publishing
-    //         await WaitForTrainingCompletionAsync(iteration.Id);
-    //
-    //         // Unpublish previous iteration if necessary (optional)
-    //         await UnpublishPreviousIterationAsync(iteration.Id);
-    //
-    //         // Publish the new iteration and update appsettings.json
-    //         await PublishIterationAsync(iteration.Id, "BookModel");
-    //
-    //         //Send notification when finish
-    //         await _hubContext.Clients.User(email).SendAsync("Trained Successfully");
-    //
-    //         // Update the book to indicate that it has been trained
-    //         var updateResult = await _bookService.UpdateTrainingStatus(bookId, new BookDto()
-    //         {
-    //             IsTrained = true,
-    //             BookCodeForAITraining = bookDetail.BookCodeForAITraining
-    //         });
-    //         if (updateResult.ResultCode != ResultCodeConst.SYS_Success0003)
-    //         {
-    //             return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-    //         }
-    //
-    //         return new ServiceResult(ResultCodeConst.AIService_Success0002,
-    //             await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0002));
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         _logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when Train Book Model");
-    //     }
-    // }
+            if (!bookBoxes.Any())
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+            }
 
-    // public async Task<IServiceResult> TrainModel(TrainedBookDetailDto req, string email)
-    // {
-    // }
-    // public async Task<IServiceResult> PredictAsync(IFormFile image)
-    // {
-    //     try
-    //     {
-    //         // Detect bounding boxes for books
-    //         var bookBoxes = await _aiDetectionService.DetectAsync(image);
-    //
-    //         if (!bookBoxes.Any())
-    //         {
-    //             return new ServiceResult(ResultCodeConst.AIService_Warning0003,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
-    //         }
-    //         
-    //         // Crop images based on bounding boxes
-    //         using (var imageStream = image.OpenReadStream())
-    //         using (var ms = new MemoryStream())
-    //         {
-    //             await imageStream.CopyToAsync(ms);
-    //             var imageBytes = ms.ToArray();
-    //             var croppedImages = CropImages(imageBytes, bookBoxes);
-    //             List<Guid> bookCodes = new List<Guid>();
-    //             var respone = new PredictionResponseDto()
-    //             {
-    //                 NumberOfBookDetected = croppedImages.Count
-    //             };
-    //             foreach (var croppedImage in croppedImages)
-    //             {
-    //                 var content = new ByteArrayContent(croppedImage);
-    //                 content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-    //                 _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
-    //                 var response = await _httpClient.PostAsync(_basePredictUrl, content);
-    //                 response.EnsureSuccessStatusCode();
-    //                 var jsonResponse = await response.Content.ReadAsStringAsync();
-    //                 var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
-    //                     new JsonSerializerOptions
-    //                     {
-    //                         PropertyNameCaseInsensitive = true
-    //                     });
-    //                 var bestPrediction =
-    //                     predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
-    //                 var baseSpec = new BaseSpecification<Book>(x => x.BookCodeForAITraining.Equals(bestPrediction));
-    //                 var bookSearchResult = await _bookService.GetWithSpecAsync(baseSpec);
-    //                 if (bookSearchResult.ResultCode != ResultCodeConst.SYS_Success0002)
-    //                 {
-    //                     return bookSearchResult;
-    //                 }
-    //                 
-    //             }
-    //             
-    //             
-    //         }
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         Console.WriteLine(e);
-    //         throw;
-    //     }
-    // }
+            // Crop images based on bounding boxes
+            using (var imageStream = image.OpenReadStream())
+            using (var ms = new MemoryStream())
+            {
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var croppedImages = CropImages(imageBytes, bookBoxes);
+                List<Guid> bookCodes = new List<Guid>();
+                var predictResponse = new PredictionResponseDto()
+                {
+                    NumberOfBookDetected = croppedImages.Count,
+                    BookEditionPrediction = new List<PossibleBookEdition>()
+                };
+                // detect and predict base on cropped images
+                foreach (var croppedImage in croppedImages)
+                {
+                    var content = new ByteArrayContent(croppedImage);
+                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                    var response = await _httpClient.PostAsync(_basePredictUrl, content);
+                    response.EnsureSuccessStatusCode();
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
+                        });
+                    var bestPrediction =
+                        predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+                    var baseSpec = new BaseSpecification<Book>(x =>
+                        x.BookCodeForAITraining.ToString().ToLower().Equals(bestPrediction.TagName));
+                    baseSpec.ApplyInclude(q =>
+                        q.Include(x => x.BookEditions)
+                            .ThenInclude(be => be.BookEditionAuthors)
+                            .ThenInclude(ea => ea.Author));
+                    var bookSearchResult = await _bookService.GetWithSpecAsync(baseSpec);
+                    if (bookSearchResult.ResultCode != ResultCodeConst.SYS_Success0002)
+                    {
+                        return bookSearchResult;
+                    }
+
+                    var book = (BookDto)bookSearchResult.Data!;
+                    var availableEdition = new List<BookEditionDto>();
+
+                    foreach (var edition in book.BookEditions)
+                    {
+                        var stream = new MemoryStream(croppedImage);
+                        var bookInfo = new CheckedBookEditionDto()
+                        {
+                            Title = edition.EditionTitle,
+                            Authors = edition.BookEditionAuthors.Where(x => x.BookEditionId == edition.BookEditionId)
+                                .Select(x => x.Author.FullName).ToList(),
+                            Publisher = edition.Publisher,
+                            Image = new FormFile(stream, 0, stream.Length, "file", edition.EditionTitle
+                                + edition.EditionNumber)
+                            {
+                                Headers = new HeaderDictionary(),
+                                ContentType = "application/octet-stream"
+                            }
+                        };
+                        var compareResult = await _ocrService.CheckBookInformationAsync(bookInfo);
+                        var compareResultValue = (MatchResultDto)compareResult.Data!;
+                        if (compareResultValue.TotalPoint > compareResultValue.ConfidenceThreshold)
+                        {
+                            availableEdition.Add(edition);
+                        }
+                    }
+
+                    //add available edition to response
+                    predictResponse.BookEditionPrediction.Add(new PossibleBookEdition()
+                    {
+                        BookEditionDetails = availableEdition,
+                        BookCode = book.BookCodeForAITraining.ToString()
+                    });
+                }
+
+                return new ServiceResult(ResultCodeConst.AIService_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003), predictResponse
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Predict Book Model");
+        }
+    }
 
     public async Task<IServiceResult> TrainModelAfterCreate(Guid bookCode, List<IFormFile> images, string email)
     {
-        // Lấy successMessage trước
+        // Get process message first
         var successMessage = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003);
 
-        // Khởi động background task nhưng chưa thực thi ngay
-        var backgroundTask = Task.Run(() => ProcessTrainingTask(bookCode, images, email));
+        // Run background task
+        var backgroundTask = Task.Run(() => ProcessTrainingTask(bookCode, images, email, null));
 
-        // Trả về ServiceResult trước
+        // Return ServiceResult
         var result = new ServiceResult(ResultCodeConst.AIService_Success0003, successMessage);
 
-        // Đảm bảo background task bắt đầu sau khi trả về
+        // Make sure background Task work after return
         _ = backgroundTask;
 
         return result;
     }
 
-    private async Task ProcessTrainingTask(Guid bookCode, List<IFormFile> images, string email)
+    public async Task<IServiceResult> TrainModelWithoutCreate(int editionId, List<IFormFile> images, string email)
+    {
+        // Get process message first
+        var successMessage = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003);
+
+        var baseSpec = new BaseSpecification<Book>(x => (x.BookEditions.Select(e
+            => e.BookEditionId == editionId).FirstOrDefault()));
+        
+        baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
+
+        var bookCode = ((await _bookService.GetWithSpecAsync(baseSpec)).Data as BookDto)!.BookCodeForAITraining ?? new Guid();
+        
+        // Run background task
+        var backgroundTask = Task.Run(() => ProcessTrainingTask(bookCode, images, email, editionId));
+
+        // Return ServiceResult
+        var result = new ServiceResult(ResultCodeConst.AIService_Success0003, successMessage);
+
+        // Make sure background Task work after return 
+        _ = backgroundTask;
+
+        return result;
+        
+    }
+
+
+    private async Task ProcessTrainingTask(Guid bookCode, List<IFormFile> images, string email, int? editionId)
     {
         // Save images to memoryStream
-        
-        
+
+
         // define services that use in background task
         using var scope = _service.CreateScope();
         var bookService = scope.ServiceProvider.GetRequiredService<IBookService<BookDto>>();
@@ -294,18 +235,7 @@ public class AIClassificationService : IAIClassificationService
                 memoryStream.Position = 0;
                 memoryStreams.Add((memoryStream, file.FileName ?? $"image_{memoryStreams.Count}.jpg"));
             }
-            //get book to find training book code
-            var baseSpec = new BaseSpecification<Book>(b => b.BookCodeForAITraining == bookCode);
-            baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
-            var bookResult = await bookService.GetWithSpecAsync(baseSpec, false);
-            if (bookResult.Data is null)
-            {
-                await hubContext.Clients.User(email).SendAsync("Cannot define book");
-                return;
-            }
 
-            var book = (BookDto)bookResult.Data;
-            // Ensure that the tag exists for the book title
             var baseConfig = new BaseConfigurationBackgroudDto
             {
                 Client = httpClient,
@@ -315,24 +245,59 @@ public class AIClassificationService : IAIClassificationService
                     monitor.CurrentValue.TrainingEndpoint,
                     monitor.CurrentValue.ProjectId)
             };
-            //get existed tags
+            // Ensure that the tag exists for the book title
+
             List<TagDto> tags = await GetTagAsync(baseConfig);
 
             TagDto tag;
-            if (!tags.Select(x => x.Name).ToList().Contains(book.BookCodeForAITraining.ToString()!))
+            if (!tags.Select(x => x.Name).ToList().Contains(bookCode.ToString()!))
             {
-                tag = await CreateTagAsync(baseConfig, book.BookCodeForAITraining ?? Guid.NewGuid());
+                tag = await CreateTagAsync(baseConfig, bookCode);
             }
             else
             {
-                tag = tags.FirstOrDefault(x => x.Name.Equals(book.BookCodeForAITraining.ToString()));
+                tag = tags.FirstOrDefault(x => x.Name.Equals(bookCode.ToString()));
             }
 
-            var bookEditions = book.BookEditions.ToList();
-
-            for (int i = 0; i < bookEditions.Count; i++)
+            //check if it is in create process or not
+            if (editionId is null)
             {
-                var coverImage = bookEditions[i].CoverImage;
+                //get book to find training book code
+                var baseSpec = new BaseSpecification<Book>(b => b.BookCodeForAITraining == bookCode);
+                baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
+                var bookResult = await bookService.GetWithSpecAsync(baseSpec, false);
+                if (bookResult.Data is null)
+                {
+                    await hubContext.Clients.User(email).SendAsync("Cannot define book");
+                    return;
+                }
+
+                var book = (BookDto)bookResult.Data;
+
+                var bookEditions = book.BookEditions.ToList();
+
+                for (int i = 0; i < bookEditions.Count; i++)
+                {
+                    var coverImage = bookEditions[i].CoverImage;
+                    var response = await httpClient.GetAsync(coverImage);
+                    // using response.IsSuccessStatusCode to check if the request is successful
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        await hubContext.Clients.User(email).SendAsync("Get cover image unsuccessfully");
+                        return;
+                    }
+
+                    var memoryStream = new MemoryStream(await response.Content.ReadAsByteArrayAsync());
+                    memoryStream.Position = 0;
+                    memoryStreams.Add((memoryStream, $"{bookEditions[i].BookEditionId}_cover.jpg"));
+                }
+            }
+            else
+            {
+                var baseSpec = new BaseSpecification<BookEdition>(x => x.BookEditionId == editionId);
+                var bookEditionsResult = await bookEditionService.GetWithSpecAsync(baseSpec);
+                var bookEdition = (BookEditionDto)bookEditionsResult.Data!;
+                var coverImage = bookEdition.CoverImage;
                 var response = await httpClient.GetAsync(coverImage);
                 // using response.IsSuccessStatusCode to check if the request is successful
                 if (!response.IsSuccessStatusCode)
@@ -343,8 +308,9 @@ public class AIClassificationService : IAIClassificationService
 
                 var memoryStream = new MemoryStream(await response.Content.ReadAsByteArrayAsync());
                 memoryStream.Position = 0;
-                memoryStreams.Add((memoryStream, $"{bookEditions[i].BookEditionId}_cover.jpg"));
+                memoryStreams.Add((memoryStream, $"{bookEdition.BookEditionId}_cover.jpg"));
             }
+
 
             // upload images with dynamic field names and filenames
             await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
@@ -426,7 +392,8 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
-    private async Task CreateImagesFromDataAsync(BaseConfigurationBackgroudDto dto, List<(MemoryStream Stream, string FileName)> images, Guid tagId)
+    private async Task CreateImagesFromDataAsync(BaseConfigurationBackgroudDto dto,
+        List<(MemoryStream Stream, string FileName)> images, Guid tagId)
     {
         try
         {
@@ -612,6 +579,7 @@ public class AIClassificationService : IAIClassificationService
             throw new Exception("Error invoke when publishing iteration");
         }
     }
+
     private List<byte[]> CropImages(byte[] imageBytes, List<BoxDto> boxes)
     {
         var croppedImages = new List<byte[]>();

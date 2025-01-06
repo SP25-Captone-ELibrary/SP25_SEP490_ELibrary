@@ -27,6 +27,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     INotificationService<NotificationDto>
 {
     private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly IEmployeeService<EmployeeDto> _employeeService;
     private readonly INotificationRecipientService<NotificationRecipientDto> _notificationRecipient;
     private readonly IUserService<UserDto> _userService;
     public NotificationService(
@@ -34,13 +35,14 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         ILogger logger,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
-        IMapper mapper,
+        IMapper mapper,IEmployeeService<EmployeeDto> employeeService,
         INotificationRecipientService<NotificationRecipientDto> notificationRecipient,
         IUserService<UserDto> userService
         ) : base(msgService, unitOfWork,
         mapper, logger)
     {
         _hubContext = hubContext;
+        _employeeService = employeeService;
         _notificationRecipient = notificationRecipient;
         _userService = userService;
     }
@@ -201,8 +203,17 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         try
         {
             var userResult = await _userService.GetByEmailAsync(email);
-            var user = (UserDto)userResult.Data!;
-            var roleId = user.RoleId;
+            int roleId=0;
+            if(userResult.Data != null) roleId = ((UserDto)userResult.Data!).RoleId;
+
+            var employeeResult = await _employeeService.GetByEmailAsync(email);
+            if (employeeResult.Data != null) roleId = ((EmployeeDto)employeeResult.Data!).RoleId;
+
+            if (userResult.Data is null && employeeResult.Data is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    string.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "user"));
+            }
 
             // Tạo mới NotificationSpecification dựa trên specParams, email, và roleId
             var notificationSpec = new NotificationSpecification(

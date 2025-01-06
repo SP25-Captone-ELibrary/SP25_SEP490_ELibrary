@@ -23,5 +23,5 @@ public class PredictionResponseDto
 public class PossibleBookEdition
 {
     public string BookCode { get; set; }
-    public List<BookEditionDetailDto> BookEditionDetails { get; set; }
+    public List<BookEditionDto> BookEditionDetails { get; set; }
 }

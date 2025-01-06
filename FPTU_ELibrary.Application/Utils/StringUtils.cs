@@ -306,5 +306,11 @@ namespace FPTU_ELibrary.Application.Utils
 
             return publicId;
         }
+        // Remove special character at the end
+        public static string SplitSpecialCharAtTheEnd(string input)
+        {
+            if (!string.IsNullOrEmpty(input) && char.IsPunctuation(input[^1])) input = input[..^1];
+            return input;   
+        }
     }
 }

@@ -90,6 +90,8 @@
 			public const string Create = Base + "/management/books/{bookId}/editions";
 			public const string AddAuthor = Base + "/management/books/editions/add-author";
 			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
+			public const string Training = Base + "/management/books/editions/{id}/ai/train";
+			public const string CheckImagesForTraining = Base + "/management/books/editions/{id}/ai/check-images-for-training";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/{id}";
 			public const string SoftDelete = Base + "/management/books/editions/{id}/soft-delete";
@@ -393,11 +395,13 @@
 		public static class AIServices
 		{
 			// [GET]
+			public const string Predict = Base + "/books/ai/predict";
+			public const string GetAvailableLanguages = Base + "/books/available-languages";	
 			//[POST]
-			public const string CheckBookEdition = Base + "/management/book/ai/check-book-edition";
-			public const string CheckImagesForTraining = Base + "/management/book/ai/check-images-for-training";
-			public const string Training = Base + "/management/book/ai/train";
-			public const string TrainingAfterCreate = Base + "/management/book/ai/train-after-create";
+			public const string CheckBookEdition = Base + "/management/books/ai/check-book-edition";
+			public const string TrainingAfterCreate = Base + "/management/books/ai/train-after-create";
+
+			public const string VoiceSearching = Base + "/books/voice";
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}
