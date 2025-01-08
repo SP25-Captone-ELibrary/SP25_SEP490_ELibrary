@@ -324,6 +324,7 @@
 			#region Management
 			//	[GET]
 			public const string GetFloors = Base + "/management/location/floors";
+			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
 			public const string GetZonesByFloorId = Base + "/management/location/zones";
 			public const string GetSectionsByZoneId = Base + "/management/location/sections";
 			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
