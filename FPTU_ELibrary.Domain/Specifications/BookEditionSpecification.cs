@@ -76,6 +76,20 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
         // Default order by 
         AddOrderBy(e => e.Book.Title);
 
+        // Boolean filters
+        if (specParams.CanBorrow != null) // Can borrow status
+        {
+            AddFilter(x => x.CanBorrow == specParams.CanBorrow);
+        }
+        if (specParams.IsDeleted != null) // Is deleted
+        {
+            AddFilter(x => x.IsDeleted == specParams.IsDeleted);       
+        }
+        if (specParams.IsTrained != null) // Is trained
+        {
+            AddFilter(x => x.IsTrained == specParams.IsTrained);       
+        }
+        
         // Apply filters 
         if (specParams.F != null && specParams.F.Any())
         {
@@ -105,7 +119,7 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                                 break;
                         }
                     }
-                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())t
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())
                     {
                         var shelfNums = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
                         if (shelfNums != null)
@@ -270,6 +284,14 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                         }
                     }
                     // Handle for properties, which in root entity
+                    else if (filter.FieldName.ToLowerInvariant() == 
+                             nameof(BookEdition.Status).ToLowerInvariant())
+                    {
+                        if (Enum.Parse(typeof(BookEditionStatus), filter.Value ?? string.Empty) is BookEditionStatus status)
+                        {
+                            AddFilter(be => be.Status == status);
+                        }
+                    }
                     else if (filter.FieldName.ToLowerInvariant() ==
                              nameof(BookEdition.CreatedAt).ToLowerInvariant())
                     {
@@ -682,8 +704,17 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
         {
             // Create ParameterExpression node with the specified name and type
             var parameter = Expression.Parameter(typeof(BookEdition));
-            // Retrieve property or field within expression parameter
-            var property = Expression.PropertyOrField(parameter, fieldName);
+            
+            // Split the field name to navigate nested properties 
+            var fields = fieldName.Split('.');
+            Expression property = parameter;
+
+            // Navigate through the nested properties
+            foreach (var field in fields)
+            {
+                // Retrieve property or field within expression parameter
+                property = Expression.PropertyOrField(property, field);
+            }
             
             // Get the type of the property
             var propertyType = property.Type;
