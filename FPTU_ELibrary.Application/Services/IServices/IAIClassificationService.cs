@@ -10,4 +10,5 @@ public interface IAIClassificationService
     Task<IServiceResult> TrainModelAfterCreate(Guid bookCode,List<IFormFile> images, string email);
     Task<IServiceResult> TrainModelWithoutCreate(int editionId, List<IFormFile> images, string email);
     Task<IServiceResult> PredictAsync(IFormFile image);
+    Task<IServiceResult> Recommendation(IFormFile image);
 }

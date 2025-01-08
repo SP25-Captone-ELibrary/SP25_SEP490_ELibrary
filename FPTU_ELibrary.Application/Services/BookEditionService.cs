@@ -17,6 +17,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -33,6 +34,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
     private readonly Lazy<IBookEditionAuthorService<BookEditionAuthorDto>> _editionAuthorService;
 
     private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
+    private readonly ICategoryService<CategoryDto> _categoryService;
     private readonly ICloudinaryService _cloudService;
     private readonly IBookEditionInventoryService<BookEditionInventoryDto> _inventoryService;
     private readonly IAuthorService<AuthorDto> _authorService;
@@ -46,6 +48,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
         IBookEditionInventoryService<BookEditionInventoryDto> inventoryService,
         ICloudinaryService cloudService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
+        ICategoryService<CategoryDto> categoryService,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -56,6 +59,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
         _bookService = bookService;
         _cloudService = cloudService;
         _libShelfService = libShelfService;
+        _categoryService = categoryService;
         _inventoryService = inventoryService;
         _editionAuthorService = editionAuthorService;
     }
@@ -996,6 +1000,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                 entity.IsTrained = true;
                 await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(entity);
             }
+
             // Save changes to DB
             var rowsAffected = await _unitOfWork.SaveChangesAsync();
             if (rowsAffected == 0)
@@ -1110,5 +1115,64 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
         }
 
         return dto;
+    }
+
+    public async Task<IServiceResult> GetRelatedEditionWithMatchField(BookEditionDto dto, string fieldName)
+    {
+        // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
+        var relatedEditions = new List<BookEditionDto>();
+        if (fieldName.Equals(nameof(Author)))
+        {
+            var targetAuthorIds = dto.BookEditionAuthors
+                .Select(bea => bea.AuthorId)
+                .ToList();
+            var sameAuthorEditionsQuery = new BaseSpecification<BookEdition>(be =>
+                be.BookEditionId != dto.BookEditionId
+                &&
+                be.BookEditionAuthors.Any(ba => targetAuthorIds.Contains(ba.AuthorId))
+            );
+
+            sameAuthorEditionsQuery.ApplyInclude(q => q
+                .Include(be => be.BookEditionAuthors)
+                .ThenInclude(bea => bea.Author)
+            );
+            var result =
+                (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
+                    sameAuthorEditionsQuery)).ToList();
+            relatedEditions = _mapper.Map<List<BookEditionDto>>(result);
+        }
+
+        if (fieldName.Equals(nameof(Category)))
+        {
+            var categorySpec = new BaseSpecification<Category>(c => c.BookCategories
+                .Any(bc => bc.BookId == dto.Book.BookId));
+            categorySpec.ApplyInclude(q => q.Include(c => c.BookCategories));
+                var categories = (List<CategoryDto>)(await _categoryService.GetAllWithSpecAsync(categorySpec)).Data!; 
+            var targetCategories = categories
+                .Select(c => c.CategoryId)
+                .ToList();
+            var sameCategoryEditionsQuery = new BaseSpecification<BookEdition>(be =>
+                be.BookEditionId != dto.BookEditionId &&
+                be.Book.BookCategories
+                    .Any(bc =>
+                        targetCategories.Contains(bc.CategoryId)
+                    )
+            );
+            // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
+            // Apply Includes for Book, BookCategories, Category, and BookEditionAuthors
+            sameCategoryEditionsQuery.ApplyInclude(q => q
+                .Include(be => be.Book)
+                .ThenInclude(b => b.BookCategories)
+                .ThenInclude(c => c.Category));
+            // Retrieve the data using the specification
+            var result =
+                (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
+                    sameCategoryEditionsQuery)).ToList();
+            relatedEditions = _mapper.Map<List<BookEditionDto>>(result);
+        }
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
+            , relatedEditions);
     }
 }
