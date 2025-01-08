@@ -32,9 +32,15 @@ public class CustomVisionController : ControllerBase
         return Ok(await _aiClassificationService.TrainModelWithoutCreate(id,req.ImageList,email));
     }
     
-    [HttpGet(APIRoute.AIServices.Predict, Name = nameof(Predict))]
+    [HttpPost(APIRoute.AIServices.Predict, Name = nameof(Predict))]
     public async Task<IActionResult> Predict([FromForm] PredictRequest req)
     {
         return Ok(await _aiClassificationService.PredictAsync(req.ImageToPredict));
+    }
+
+    [HttpPost(APIRoute.AIServices.Recommendation, Name = nameof(Recommendation))]
+    public async Task<IActionResult> Recommendation([FromForm] PredictRequest req)
+    {
+        return Ok(await _aiClassificationService.Recommendation(req.ImageToPredict));
     }
 }

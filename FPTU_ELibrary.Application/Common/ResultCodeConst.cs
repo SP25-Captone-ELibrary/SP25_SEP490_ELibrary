@@ -457,6 +457,10 @@ namespace FPTU_ELibrary.Application.Common
         /// Can not detect any books in the picture
         /// </summary>
         public static string AIService_Warning0003 = "AIService.Warning0003";
+        /// <summary>
+        /// Recommendation is just for 1 book.
+        /// </summary>
+        public static string AIService_Warning0004 = "AIService.Warning0004";
         #endregion
 
         #endregion

@@ -11,5 +11,5 @@ public class RecognisedItemDto<T>
 public class RelatedItemDto<T>
 {
     public string RelatedProperty { get; set; }
-    public List<T> RelatedItems { get; set; } 
+    public List<T>? RelatedItems { get; set; } 
 }

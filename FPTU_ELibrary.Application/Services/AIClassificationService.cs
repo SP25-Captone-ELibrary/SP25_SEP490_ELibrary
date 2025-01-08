@@ -13,6 +13,7 @@ using System.Text.Json;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.AIServices.Detection;
+using FPTU_ELibrary.Application.Dtos.AIServices.Speech;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Utils;
@@ -20,6 +21,7 @@ using SixLabors.ImageSharp;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,7 +65,7 @@ public class AIClassificationService : IAIClassificationService
         _basePredictUrl = string.Format(_monitor.BasePredictUrl, _monitor.PredictionEndpoint, _monitor.ProjectId,
             _monitor.PublishedName);
     }
-    
+
     public async Task<IServiceResult> PredictAsync(IFormFile image)
     {
         try
@@ -129,7 +131,7 @@ public class AIClassificationService : IAIClassificationService
                             Title = edition.EditionTitle,
                             Authors = edition.BookEditionAuthors.Where(x => x.BookEditionId == edition.BookEditionId)
                                 .Select(x => x.Author.FullName).ToList(),
-                            Publisher = edition.Publisher,
+                            Publisher = edition.Publisher ?? " ",
                             Image = new FormFile(stream, 0, stream.Length, "file", edition.EditionTitle
                                 + edition.EditionNumber)
                             {
@@ -165,6 +167,112 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
+    public async Task<IServiceResult> Recommendation(IFormFile image)
+    {
+        try
+        {
+            // detect bounding boxes for books and check if it is more than 2 books
+            var bookBoxes = await _aiDetectionService.DetectAsync(image);
+            if (!bookBoxes.Any())
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+            }
+
+            if (bookBoxes.Count > 1)
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
+            }
+
+            //crop image to get the picture of the book only
+            using (var imageStream = image.OpenReadStream())
+            using (var ms = new MemoryStream())
+            {
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var croppedImage = CropImages(imageBytes, bookBoxes).First();
+
+                //using the cropped image to predict book
+                var content = new ByteArrayContent(croppedImage);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                var response = await _httpClient.PostAsync(_basePredictUrl, content);
+                response.EnsureSuccessStatusCode();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    });
+                var bestPrediction =
+                    predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+                var baseSpec = new BaseSpecification<Book>(x =>
+                    x.BookCodeForAITraining.ToString().ToLower().Equals(bestPrediction.TagName));
+                baseSpec.ApplyInclude(q =>
+                    q.Include(x => x.BookEditions)
+                        .ThenInclude(be => be.BookEditionAuthors)
+                        .ThenInclude(ea => ea.Author));
+                var bookSearchResult = await _bookService.GetWithSpecAsync(baseSpec);
+                if (bookSearchResult.ResultCode != ResultCodeConst.SYS_Success0002)
+                {
+                    return bookSearchResult;
+                }
+
+                var book = (BookDto)bookSearchResult.Data!;
+                var relatedBookEdition = new List<RelatedItemDto<BookEditionDto>>();
+                //check the exact edition in the book
+                foreach (var edition in book.BookEditions)
+                {
+                    var stream = new MemoryStream(croppedImage);
+                    var bookInfo = new CheckedBookEditionDto()
+                    {
+                        Title = edition.EditionTitle,
+                        Authors = edition.BookEditionAuthors.Where(x => x.BookEditionId == edition.BookEditionId)
+                            .Select(x => x.Author.FullName).ToList(),
+                        Publisher = edition.Publisher ?? " ",
+                        Image = new FormFile(stream, 0, stream.Length, "file", edition.EditionTitle
+                                                                               + edition.EditionNumber)
+                        {
+                            Headers = new HeaderDictionary(),
+                            ContentType = "application/octet-stream"
+                        }
+                    };
+
+                    var compareResult = await _ocrService.CheckBookInformationAsync(bookInfo);
+                    var compareResultValue = (MatchResultDto)compareResult.Data!;
+                    if (compareResultValue.TotalPoint > compareResultValue.ConfidenceThreshold)
+                    {
+                        var sameAuthorEditions =
+                            await _bookEditionService.GetRelatedEditionWithMatchField(edition, nameof(Author));
+                        relatedBookEdition.Add(new RelatedItemDto<BookEditionDto>()
+                        {
+                            RelatedProperty = nameof(Author),
+                            RelatedItems = sameAuthorEditions.Data as List<BookEditionDto>
+                        });
+
+                       var sameCategoryEditions = await _bookEditionService
+                           .GetRelatedEditionWithMatchField(edition, nameof(Category));
+                        relatedBookEdition.Add(new RelatedItemDto<BookEditionDto>()
+                        {
+                            RelatedItems = sameCategoryEditions.Data as List<BookEditionDto>,
+                            RelatedProperty = nameof(Category)
+                        });
+                    }
+                }
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    relatedBookEdition);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when giving recommendation Book Model");
+        }
+    }
+
     public async Task<IServiceResult> TrainModelAfterCreate(Guid bookCode, List<IFormFile> images, string email)
     {
         // Get process message first
@@ -189,11 +297,12 @@ public class AIClassificationService : IAIClassificationService
 
         var baseSpec = new BaseSpecification<Book>(x => (x.BookEditions.Select(e
             => e.BookEditionId == editionId).FirstOrDefault()));
-        
+
         baseSpec.ApplyInclude(q => q.Include(x => x.BookEditions));
 
-        var bookCode = ((await _bookService.GetWithSpecAsync(baseSpec)).Data as BookDto)!.BookCodeForAITraining ?? new Guid();
-        
+        var bookCode = ((await _bookService.GetWithSpecAsync(baseSpec)).Data as BookDto)!.BookCodeForAITraining ??
+                       new Guid();
+
         // Run background task
         var backgroundTask = Task.Run(() => ProcessTrainingTask(bookCode, images, email, editionId));
 
@@ -204,7 +313,6 @@ public class AIClassificationService : IAIClassificationService
         _ = backgroundTask;
 
         return result;
-        
     }
 
 

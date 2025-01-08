@@ -70,68 +70,8 @@ public class VoiceService : IVoiceService
             matchedBookQuery.ApplyInclude(q => q.Include(e => e.Book)
                 .ThenInclude(b => b.BookCategories));
             var bookEdition = (BookEditionDto)(await _editionService.GetWithSpecAsync(matchedBookQuery)).Data!;
-
-            var recognisedResponse = new RecognisedItemDto<BookEditionDto>()
-            {
-                MatchedItem = bookEdition,
-                RelatedItemsDetails = new List<RelatedItemDto<BookEditionDto>>()
-            };
-
-            // Get related editions by author name and category
-            // Same Author case:
-            var sameAuthorEditionsQuery = new BaseSpecification<BookEdition>(be => be.BookEditionAuthors.Any(ba =>
-                be.BookEditionAuthors
-                    .Where(tba => tba.BookEditionId == bookEdition.BookEditionId)
-                    .Select(tba => tba.AuthorId)
-                    .Contains(ba.AuthorId)));
-            sameAuthorEditionsQuery.ApplyInclude(q => q
-                .Include(be => be.Book)
-                .ThenInclude(b => b.BookCategories)
-                .ThenInclude(c => c.Category)
-                .Include(be => be.BookEditionAuthors)
-                .ThenInclude(bea => bea.Author)
-            );
-            var sameAuthorEditions =
-                (List<BookEditionDto>)(await _editionService.GetAllWithSpecAsync(sameAuthorEditionsQuery)).Data!;
-            recognisedResponse.RelatedItemsDetails.Add(new RelatedItemDto<BookEditionDto>()
-            {
-                RelatedProperty = nameof(Author),
-                RelatedItems = sameAuthorEditions
-            });
-
-            //Same Categories case:
-
-            var sameCategoryEditionsQuery = new BaseSpecification<BookEdition>(be =>
-                be.BookEditionId != bookEdition.BookEditionId &&
-                be.Book.BookCategories
-                    .Any(bc => 
-                        bc.CategoryId == be.Book.BookCategories
-                            .Where(bcInner =>
-                                bcInner.Book.BookEditions
-                                    .Any(tbe => tbe.BookEditionId == bookEdition.BookEditionId))
-                            .Select(bcInner => bcInner.CategoryId)
-                            .FirstOrDefault()
-                    )
-            );
-
-// Apply Includes for Book, BookCategories, Category, and BookEditionAuthors
-            sameCategoryEditionsQuery.ApplyInclude(q => q
-                .Include(be => be.Book)
-                .ThenInclude(b => b.BookCategories)
-                .ThenInclude(c => c.Category)
-                .Include(be => be.BookEditionAuthors)
-                .ThenInclude(bea => bea.Author)
-            );
-
-// Retrieve the data using the specification
-            var sameCategoryEditions = (List<BookEditionDto>)(await _editionService.GetAllWithSpecAsync(sameCategoryEditionsQuery)).Data!;
-            recognisedResponse.RelatedItemsDetails.Add(new RelatedItemDto<BookEditionDto>()
-            {
-                RelatedItems = sameCategoryEditions,
-                RelatedProperty = nameof(Category)
-            });
             return new ServiceResult(ResultCodeConst.SYS_Success0002
-                , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), recognisedResponse);
+                , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEdition);
             /*
             // using elasticsearch for support best suitable book
             var searchResultWithTitle = await _searchService.SearchBookAsync(new SearchBookParameters(
