@@ -16,6 +16,7 @@ public class BookEditionTableRowDto
     public int BorrowedCopies { get; set; }
     public int RequestCopies { get; set; }
     public int ReservedCopies { get; set; }
+    public decimal EstimatedPrice { get; set; }
     public string Author { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string? EditionTitle { get; set; }
@@ -28,6 +29,7 @@ public class BookEditionTableRowDto
     public string? Publisher { get; set; }
     public string CreateBy { get; set; } = null!;
     public bool CanBorrow { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; } 
     public DateTime? UpdatedAt { get; set; }
     public List<CategoryDto> Categories { get; set; } = null!;
@@ -56,6 +58,8 @@ public static class BookEditionTableRowDtoExtensions
             Publisher = be.Publisher,
             CreateBy = be.CreatedBy,
             CanBorrow = be.CanBorrow,
+            EstimatedPrice = be.EstimatedPrice,
+            IsDeleted = be.IsDeleted,
             CreatedAt = be.CreatedAt,
             UpdatedAt = be.UpdatedAt,
             Categories = be.Book.BookCategories.Select(x => x.Category).ToList(),

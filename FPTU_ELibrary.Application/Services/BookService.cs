@@ -97,16 +97,21 @@ namespace FPTU_ELibrary.Application.Services
                             Format = be.Format,
                             Publisher = be.Publisher,
                             Isbn = be.Isbn,
+                            EstimatedPrice = be.EstimatedPrice,
                             IsDeleted = be.IsDeleted,
                             CanBorrow = be.CanBorrow,
                             CreatedAt = be.CreatedAt,
                             UpdatedAt = be.UpdatedAt,
                             CreatedBy = be.CreatedBy,
+                            UpdatedBy = be.UpdatedBy,
                             BookEditionInventory = be.BookEditionInventory,
                             BookEditionCopies = be.BookEditionCopies,
                             BookReviews = be.BookReviews,
+                            ShelfId = be.ShelfId,
                             Shelf = be.Shelf,
                             Status = be.Status,
+                            IsTrained = be.IsTrained,
+                            TrainedDay = be.TrainedDay,
                             BookEditionAuthors = be.BookEditionAuthors.Select(ba => new BookEditionAuthor()
                             {
 	                            BookEditionAuthorId = ba.BookEditionAuthorId,
@@ -129,7 +134,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Map to dto
 					var dto = _mapper.Map<BookDto>(bookEntity);
 					// Handle enum text
-					dto = HandleEnumText(dto);
+					// dto = HandleEnumText(dto);
 					// Convert to book detail dto
 					var bookDetailDto = dto.ToBookDetailDto();
 					

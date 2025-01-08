@@ -175,8 +175,7 @@ public class BookEditionController : ControllerBase
            scanningFields: req.ScanningFields));
     }
     
-    
-    // [Authorize]
+    [Authorize]
     [HttpGet(APIRoute.BookEdition.Export, Name = nameof(ExportBookEditionAsync))]
     public async Task<IActionResult> ExportBookEditionAsync([FromQuery] BookEditionSpecParams specParams)
     {

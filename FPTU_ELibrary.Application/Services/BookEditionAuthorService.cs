@@ -289,8 +289,8 @@ public class BookEditionAuthorService : GenericService<BookEditionAuthor, BookEd
                 .GetAllWithSpecAsync(new BaseSpecification<BookEditionAuthor>(
                     x => x.BookEditionId == bookEditionId && authorIds.Contains(x.AuthorId)));
             // Convert to list ids
-            var toDeleteAuthorIds = editionAuthorEntities.Select(x => x.AuthorId).ToArray();
-            if (!toDeleteAuthorIds.Any())
+            var toDeleteIds = editionAuthorEntities.Select(x => x.BookEditionAuthorId).ToArray();
+            if (!toDeleteIds.Any())
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -298,7 +298,7 @@ public class BookEditionAuthorService : GenericService<BookEditionAuthor, BookEd
             }
             
             // Progress delete range 
-            await _unitOfWork.Repository<BookEditionAuthor, int>().DeleteRangeAsync(toDeleteAuthorIds);
+            await _unitOfWork.Repository<BookEditionAuthor, int>().DeleteRangeAsync(toDeleteIds);
             
             // Save to DB
             var rowEffected = await _unitOfWork.SaveChangesAsync();

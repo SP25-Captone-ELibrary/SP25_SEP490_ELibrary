@@ -18,6 +18,7 @@ public class BookEditionSpecParams : BaseSpecParams
     public string? Language { get; set; }
     public bool? CanBorrow { get; set; }
     public bool? IsDeleted { get; set; }
+    public bool? IsTrained { get; set; }
     public BookEditionStatus? Status { get; set; } // Draft/Published
     
     // Book edition author properties
@@ -31,4 +32,12 @@ public class BookEditionSpecParams : BaseSpecParams
     public int? ShelfId { get; set; }
     public string? BookEditionCopyCode { get; set; }
     public string? BookEditionCopyStatus { get; set; }
+    
+    // Filter fields
+    
+    // Field names: Title, BookCode, Category, EditionTitle, EditionSummary, PageCount
+    // Language, PublicationYear, Format, Publisher, Isbn, EstimatedPrice, ShelfNumber, Barcode
+    public string[]? F { get; set; } 
+    public FilterOperator[]? O { get; set; } // Operators
+    public string[]? V { get; set; } // Values
 }
