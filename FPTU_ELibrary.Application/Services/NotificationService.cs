@@ -242,7 +242,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             );
 
             var entities = await _unitOfWork.Repository<Notification, int>()
-                .GetAllWithSpecAsync(notificationSpec, tracked);
+                .GetAllWithSpecAsync(notificationSpec, false);
 
             if (entities.Any())
             {

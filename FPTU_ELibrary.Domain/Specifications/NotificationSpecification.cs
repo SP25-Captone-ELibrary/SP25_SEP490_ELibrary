@@ -32,7 +32,7 @@ public class NotificationSpecification : BaseSpecification<Notification>
         PageSize = pageSize;
 
         EnableSplitQuery();
-        if (roleId == 1) // Admin
+            if (roleId == 1) // Admin
         {
             AddFilter(x => x.IsPublic);
         }
@@ -40,8 +40,11 @@ public class NotificationSpecification : BaseSpecification<Notification>
         {
             AddFilter(x => x.CreatedBy.Equals(email) || x.IsPublic);
         }
-
-        AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email.Equals(email)));
+        else
+        {
+            AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email.Equals(email)));
+        }
+        ApplyInclude(q => q.Include(n => n.NotificationRecipients));
 
         if (notificationSpecParams.Title != null)
         {
