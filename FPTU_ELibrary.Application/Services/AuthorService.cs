@@ -757,6 +757,8 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			
 	    // Initialize dictionary to hold errors
 	    var errorMessages = new Dictionary<int, List<string>>();
+	    // Initialize hashset to store unique author code
+	    var authorCodeSet = new HashSet<string>();
 	    // Default row index set to second row, as first row is header
 	    var currDataRow = 2;
 
@@ -764,6 +766,32 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 	    {
 		    // Initialize error list for the current row
 		    var rowErrors = new List<string>();
+		    
+		    // Check author code unique
+		    if (!string.IsNullOrEmpty(record.AuthorCode))
+		    {
+			    // Try add author code to unique set
+			    if (!authorCodeSet.Add(record.AuthorCode))  
+                {
+                    // Fail to add due to duplicates
+                    rowErrors.Add(isEng 
+	                    ? $"Author code {record.AuthorCode} is duplicated" 
+	                    : $"Mã tác giả {record.AuthorCode} bị trùng");
+                }
+			    else // Add success -> Try to check duplicate in DB
+			    {
+				    var isExistAuthorCode = await _unitOfWork.Repository<Author, int>()
+					    .AnyAsync(a => a.AuthorCode != null &&
+							a.AuthorCode.ToLower() == record.AuthorCode.ToLower());
+				    if (isExistAuthorCode) // Is duplicate in DB
+				    {
+					    // Add error
+                        rowErrors.Add(isEng 
+                            ? $"Author code {record.AuthorCode} has already exist" 
+                            : $"Mã tác giả {record.AuthorCode} đã tồn tại");
+				    }
+			    }
+		    }
 		    
 		    // Check valid datetime
 		    DateTime dob = DateTime.MinValue;
@@ -786,8 +814,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				    rowErrors.Add(isEng ? "Not valid date of date" : "Ngày mất tác giả không hợp lệ");
 			    }			    
 		    }
-
-		    
 
 		    if (scanningFields != null)
 		    {
@@ -817,20 +843,20 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			    }
 			    
 			    // Check exist with spec
-			    if (baseParam != null && await _unitOfWork.Repository<Author, int>().AnyAsync(baseParam))
-			    {
-				    rowErrors.Add(isEng ? "Duplicate author code" : "Trùng mã tác giả");
-			    }
-			    
-			    // if errors exist for the row, add to the dictionary
-			    if (rowErrors.Any())
-			    {
-				    errorMessages.Add(currDataRow, rowErrors);
-			    }
-
-			    // Increment the row counter
-			    currDataRow++;
+			    // if (baseParam != null && await _unitOfWork.Repository<Author, int>().AnyAsync(baseParam))
+			    // {
+				    // rowErrors.Add(isEng ? "Duplicate author code" : "Trùng mã tác giả");
+			    // }
 		    }
+			
+		    // if errors exist for the row, add to the dictionary
+		    if (rowErrors.Any())
+		    {
+			    errorMessages.Add(currDataRow, rowErrors);
+		    }
+
+		    // Increment the row counter
+		    currDataRow++;
 	    }
 	    
 	    return errorMessages;

@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Elastic.Models;
@@ -167,5 +168,10 @@ namespace FPTU_ELibrary.API.Mappings
 		public static SearchBookResponse ToSearchBookResponse(this ISearchResponse<ElasticBook> searchResp,
 			int pageIndex, int pageSize, long totalPage)
 			=> new(searchResp.Documents.ToList(), pageIndex, pageSize, totalPage);
+
+		public static SearchBookEditionResponse ToSearchBookEditionResponse(
+			this IEnumerable<ElasticBookEdition> searchEditions,
+			int pageIndex, int pageSize, int totalPage, int totalActualItems)
+			=> new(searchEditions, pageIndex, pageSize, totalPage, totalActualItems);
 	}
 }

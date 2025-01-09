@@ -94,11 +94,13 @@ public class AuthorSpecification : BaseSpecification<Author>
             }
             else if ((specParams.DobRange[0] is null && specParams.DobRange[1].HasValue))
             {
-                AddFilter(x => x.Dob <= specParams.DobRange[1]);
+                AddFilter(x => x.Dob != null && 
+                               x.Dob.Value.Date <= specParams.DobRange[1]!.Value.Date);
             }
             else if (specParams.DobRange[0].HasValue && specParams.DobRange[1] is null)
             {
-                AddFilter(x => x.Dob >= specParams.DobRange[0]);
+                AddFilter(x => x.Dob != null && 
+                               x.Dob.Value.Date >= specParams.DobRange[0]!.Value.Date);
             }
         }
         

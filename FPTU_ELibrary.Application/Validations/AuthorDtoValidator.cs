@@ -34,8 +34,8 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
                 : "Họ và tên phải có độ dài từ 1 đến 200 ký tự");
         // Dob
         RuleFor(u => u.Dob)
-            .Must(dob => !dob.HasValue || DateTimeUtils.IsValidAge(dob.Value))
-            .WithMessage(isEng 
+            .Must(dob => !dob.HasValue || !DateTimeUtils.IsValidAge(dob.Value))
+            .WithMessage(isEng  
                 ? "Invalid date of birth" 
                 : "Ngày sinh không hợp lệ");
         // Date of death

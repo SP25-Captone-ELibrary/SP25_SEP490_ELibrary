@@ -64,7 +64,11 @@ public static class BookEditionDetailDtoExtensions
             BookEditionId = dto.BookEditionId,
             EditionTitle = dto.EditionTitle,
             EditionNumber = dto.EditionNumber,
-            EditionSummary = dto.EditionSummary,
+            EditionSummary = !string.IsNullOrEmpty(dto.EditionSummary) && dto.Book != null
+                ? $"{dto.Book.Summary}\n{dto.EditionSummary}"
+                : string.IsNullOrEmpty(dto.EditionSummary) && dto.Book != null 
+                    ? dto.Book.Summary 
+                    : dto.EditionSummary,
             PublicationYear = dto.PublicationYear,
             PageCount = dto.PageCount,
             Language = dto.Language,
@@ -112,7 +116,10 @@ public static class BookEditionDetailDtoExtensions
             BookEditionId = dto.BookEditionId,
             EditionTitle = dto.EditionTitle,
             EditionNumber = dto.EditionNumber,
-            EditionSummary = dto.EditionSummary,
+            EditionSummary = !string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
+                ? $"{summary}\n{dto.EditionSummary}"
+                : string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
+                    ? summary : dto.EditionSummary,
             PublicationYear = dto.PublicationYear,
             PageCount = dto.PageCount,
             Language = dto.Language,
@@ -140,7 +147,7 @@ public static class BookEditionDetailDtoExtensions
             Authors = dto.BookEditionAuthors.Select(bea => bea.Author).ToList(),
             
             // Edition copies
-            BookEditionCopies = dto.BookEditionCopies.ToList(),
+            BookEditionCopies = dto.BookEditionCopies.ToList()
         };
     }
 }

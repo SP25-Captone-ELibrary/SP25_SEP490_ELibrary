@@ -457,6 +457,7 @@ namespace FPTU_ELibrary.Application.Services
                     .Properties(ps => ps
                     	.Number(n => n.Name(e => e.BookId).Type(NumberType.Integer))
                     	.Text(t => t.Name(e => e.Title))
+                    	.Text(t => t.Name(e => e.BookCode))
                     	.Text(t => t.Name(e => e.SubTitle))
                     	.Text(t => t.Name(e => e.Summary))
                     	.Boolean(b => b.Name(e => e.IsDeleted))

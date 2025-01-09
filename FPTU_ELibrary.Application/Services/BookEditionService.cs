@@ -636,6 +636,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                     Status = be.Status,
                     IsTrained = be.IsTrained,
                     TrainedDay = be.TrainedDay,
+                    EstimatedPrice = be.EstimatedPrice,
                     BookEditionInventory = be.BookEditionInventory,
                     BookEditionCopies = be.BookEditionCopies,
                     BookReviews = be.BookReviews,

@@ -6,13 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FPTU_ELibrary.Domain.Specifications;
 
-public class AdvancedFilter
-{
-    public string FieldName { get; set; } = null!;
-    public FilterOperator? Operator { get; set; }
-    public string? Value { get; set; }
-}
-
 public class BookEditionSpecification : BaseSpecification<BookEdition>
 {
     public int PageIndex { get; set; }
@@ -289,7 +282,16 @@ public class BookEditionSpecification : BaseSpecification<BookEdition>
                     {
                         if (Enum.Parse(typeof(BookEditionStatus), filter.Value ?? string.Empty) is BookEditionStatus status)
                         {
-                            AddFilter(be => be.Status == status);
+                            // Determine operator 
+                            switch (filter.Operator)
+                            {
+                                case FilterOperator.Equals:
+                                    AddFilter(be => Equals(be.Status, status));
+                                    break;
+                                case FilterOperator.NotEqualsTo:
+                                    AddFilter(be => !Equals(be.Status, status));
+                                    break;
+                            }
                         }
                     }
                     else if (filter.FieldName.ToLowerInvariant() ==

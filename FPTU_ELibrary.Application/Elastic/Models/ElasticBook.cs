@@ -7,6 +7,9 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Number(NumberType.Integer, Name = "book_id")]
         public int BookId { get; set; }
 
+        [Text(Name = "book_code")]
+        public string BookCode { get; set; } = null!;
+
         [Text(Name = "title")]
         public string Title { get; set; } = null!;
 

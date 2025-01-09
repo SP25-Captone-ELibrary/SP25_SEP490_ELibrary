@@ -15,7 +15,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.BookId).HasColumnName("book_id");
             builder.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             builder.Property(e => e.Summary)
-                .HasMaxLength(2000)
+                .HasMaxLength(3000)
                 .HasColumnName("summary");
             builder.Property(e => e.Title)
                 .HasMaxLength(255)
