@@ -1,10 +1,7 @@
-using System.ComponentModel.DataAnnotations;
-using System.Drawing;
 using System.Globalization;
 using CsvHelper.Configuration;
 using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
@@ -28,14 +25,13 @@ using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Serilog;
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using Exception = System.Exception;
 
 namespace FPTU_ELibrary.Application.Services;
 
-public class BookEditionService : GenericService<BookEdition, BookEditionDto, int>, 
+public class BookEditionService : GenericService<BookEdition, BookEditionDto, int>,
     IBookEditionService<BookEditionDto>
 {
 	// Configure lazy service
@@ -86,27 +82,27 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             // Check if specification is null
             if (bookEditionSpec == null)
             {
-            	return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-            		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
-            
+
             // Count total book editions
             var totalBookEditionWithSpec = await _unitOfWork.Repository<BookEdition, int>().CountAsync(bookEditionSpec);
             // Count total page
             var totalPage = (int)Math.Ceiling((double)totalBookEditionWithSpec / bookEditionSpec.PageSize);
-            
+
             // Set pagination to specification after count total book edition
-            if (bookEditionSpec.PageIndex > totalPage 
+            if (bookEditionSpec.PageIndex > totalPage
                 || bookEditionSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
             {
                 bookEditionSpec.PageIndex = 1; // Set default to first page
             }
-            
+
             // Apply pagination
             bookEditionSpec.ApplyPaging(
-                skip: bookEditionSpec.PageSize * (bookEditionSpec.PageIndex - 1), 
+                skip: bookEditionSpec.PageSize * (bookEditionSpec.PageIndex - 1),
                 take: bookEditionSpec.PageSize);
-            
+
             // Get all with spec and selector
             var bookEditions = await _unitOfWork.Repository<BookEdition, int>()
                 .GetAllWithSpecAndSelectorAsync(bookEditionSpec, be => new BookEdition()
@@ -140,10 +136,10 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                     BookReviews = be.BookReviews,
                     BookEditionAuthors = be.BookEditionAuthors.Select(ba => new BookEditionAuthor()
                     {
-	                    BookEditionAuthorId = ba.BookEditionAuthorId,
-	                    BookEditionId = ba.BookEditionId,
-	                    AuthorId = ba.AuthorId,
-	                    Author = ba.Author
+                        BookEditionAuthorId = ba.BookEditionAuthorId,
+                        BookEditionId = ba.BookEditionId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
                     }).ToList(),
                     Book = new Book()
                     {
@@ -172,24 +168,24 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             {
                 // Convert to dto collection
                 var bookEditionDtos = _mapper.Map<List<BookEditionDto>>(bookEditions);
-                
+
                 // Handle enum text
                 // bookEditionDtos = HandleEnumTextForEditions(bookEditionDtos);
                 
                 // Convert to book edition table rows
                 var tableRows = bookEditionDtos.ToEditionTableRows();
-             
+
                 // Pagination result 
                 var paginationResultDto = new PaginatedResultDto<BookEditionTableRowDto>(tableRows,
-                	bookEditionSpec.PageIndex, bookEditionSpec.PageSize, totalPage, totalBookEditionWithSpec);
-                
+                    bookEditionSpec.PageIndex, bookEditionSpec.PageSize, totalPage, totalBookEditionWithSpec);
+
                 // Response with pagination 
-                return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
             }
-            
+
             // Not found any data
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
                 // Mapping entities to dto and ignore sensitive user data
                 _mapper.Map<IEnumerable<BookEditionDto>>(bookEditions));
@@ -411,127 +407,128 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
 		    }
 
-		    // Try to delete all book edition authors (if any)
-		    if (bookEditionEntity.BookEditionAuthors.Any())
-		    {
-			    // Process delete range without save changes
-			    await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
-				    // Select all existing bookEditionAuthorId
-				    bookEditionEntity.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
-		    }
-		    
-		    // Perform delete book edition, and delete cascade with BookEditionInventory
-		    await _unitOfWork.Repository<BookEdition, int>().DeleteAsync(id);
-		    
-		    // Save to DB
-		    if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
-		    {
-			    return new ServiceResult(ResultCodeConst.SYS_Success0004,
-				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
-		    }
+            // Try to delete all book edition authors (if any)
+            if (bookEditionEntity.BookEditionAuthors.Any())
+            {
+                // Process delete range without save changes
+                await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
+                    // Select all existing bookEditionAuthorId
+                    bookEditionEntity.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
+            }
 
-		    // Fail to delete
-		    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-	    }
-	    catch (DbUpdateException ex)
-	    {
-		    if (ex.InnerException is SqlException sqlEx)
-		    {
-			    switch (sqlEx.Number)
-			    {
-				    case 547: // Foreign key constraint violation
-					    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-						    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-			    }
-		    }
-				
-		    // Throw if other issues
-		    throw;
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when progress delete data");
-	    }
+            // Perform delete book edition, and delete cascade with BookEditionInventory
+            await _unitOfWork.Repository<BookEdition, int>().DeleteAsync(id);
+
+            // Save to DB
+            if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+            }
+
+            // Fail to delete
+            return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress delete data");
+        }
     }
 	
     public async Task<IServiceResult> CreateAsync(int bookId, BookEditionDto dto)
     {
-	    try
-	    {
-		    // Determine current lang 
-		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-			    LanguageContext.CurrentLanguage);
-		    var isEng = lang == SystemLanguage.English;
-		    
-		    // Validate inputs using the generic validator
-		    var validationResult = await ValidatorExtensions.ValidateAsync(dto);
-		    // Check for valid validations
-		    if (validationResult != null && !validationResult.IsValid)
-		    {
-			    // Convert ValidationResult to ValidationProblemsDetails.Errors
-			    var errors = validationResult.ToProblemDetails().Errors;
-			    throw new UnprocessableEntityException("Invalid Validations", errors);
-		    }
-		    
-		    // Check book existence
-		    var isBookExist = (await _bookService.Value.AnyAsync(x => x.BookId == bookId)).Data is true;
-		    if (!isBookExist)
-		    {
-			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-				    StringUtils.Format(errMsg, isEng ? "sách để thêm ấn bản" : "book to add edition"));
-		    }
-		    
-		    // Select list of author ids
-		    var authorIds = dto.BookEditionAuthors
-			    .Select(be => be.AuthorId)
-			    .Distinct() // Eliminate same authorId from may book edition
-			    .ToList();
-		    // Count total exist result
-		    var countAuthorResult = await _authorService.CountAsync(
-			    new BaseSpecification<Author>(ct => authorIds.Contains(ct.AuthorId)));
-		    // Check exist any author not being counted
-		    if (int.TryParse(countAuthorResult.Data?.ToString(), out var totalAuthor) // Parse result to integer
-		        && totalAuthor != authorIds.Count) // Not exist 1-many author
-		    {
-			    return new ServiceResult(ResultCodeConst.Book_Warning0002,
-				    await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0002));
-		    }
-		    
-		    // Custom error responses
-		    var customErrors = new Dictionary<string, string[]>();
+        try
+        {
+            // Determine current lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
 
-		    // Check unique book edition number
-		    var isEditionNumberExist = await _unitOfWork.Repository<BookEdition, int>()
-			    .AnyAsync(x => x.BookId == bookId && x.EditionNumber == dto.EditionNumber);
-		    if (isEditionNumberExist)
-		    {
-			    // Add error 
-			    customErrors.Add("editionNumber", [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003)]);
-		    }
-		    
-		    // Check exist cover image
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
+            {
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
+            }
+
+            // Check book existence
+            var isBookExist = (await _bookService.Value.AnyAsync(x => x.BookId == bookId)).Data is true;
+            if (!isBookExist)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "sách để thêm ấn bản" : "book to add edition"));
+            }
+
+            // Select list of author ids
+            var authorIds = dto.BookEditionAuthors
+                .Select(be => be.AuthorId)
+                .Distinct() // Eliminate same authorId from may book edition
+                .ToList();
+            // Count total exist result
+            var countAuthorResult = await _authorService.CountAsync(
+                new BaseSpecification<Author>(ct => authorIds.Contains(ct.AuthorId)));
+            // Check exist any author not being counted
+            if (int.TryParse(countAuthorResult.Data?.ToString(), out var totalAuthor) // Parse result to integer
+                && totalAuthor != authorIds.Count) // Not exist 1-many author
+            {
+                return new ServiceResult(ResultCodeConst.Book_Warning0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0002));
+            }
+
+            // Custom error responses
+            var customErrors = new Dictionary<string, string[]>();
+
+            // Check unique book edition number
+            var isEditionNumberExist = await _unitOfWork.Repository<BookEdition, int>()
+                .AnyAsync(x => x.BookId == bookId && x.EditionNumber == dto.EditionNumber);
+            if (isEditionNumberExist)
+            {
+                // Add error 
+                customErrors.Add("editionNumber",
+                    [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003)]);
+            }
+
+            // Check exist cover image
             if (!string.IsNullOrEmpty(dto.CoverImage))
             {
-            	// Initialize field
-            	var isImageOnCloud = true;
-            	
-            	// Extract provider public id
-            	var publicId = StringUtils.GetPublicIdFromUrl(dto.CoverImage);
-            	if (publicId != null) // Found
-            	{
-            		// Process check exist on cloud			
-            		isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
-            	}
+                // Initialize field
+                var isImageOnCloud = true;
 
-            	if (!isImageOnCloud || publicId == null) // Not found image or public id
-            	{
-            		// Mark as not found image
-            		return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
-            			await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
-            	}
+                // Extract provider public id
+                var publicId = StringUtils.GetPublicIdFromUrl(dto.CoverImage);
+                if (publicId != null) // Found
+                {
+                    // Process check exist on cloud			
+                    isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
+                }
+
+                if (!isImageOnCloud || publicId == null) // Not found image or public id
+                {
+                    // Mark as not found image
+                    return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+                }
             }
 
             // Iterate each book edition copy (if any) to check valid data
@@ -554,7 +551,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 	            // Boolean 
 	            bec.IsDeleted = false;
             }
-		    
+
             // Default value
             // Assign book id
             dto.BookId = bookId;
@@ -564,56 +561,56 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             dto.Isbn = ISBN.CleanIsbn(dto.Isbn);
             // Check exist Isbn
             var isIsbnExist = await _unitOfWork.Repository<BookEdition, int>()
-	            .AnyAsync(x => x.Isbn == dto.Isbn);
+                .AnyAsync(x => x.Isbn == dto.Isbn);
             if (isIsbnExist) // already exist 
             {
-	            // Add error
-	            customErrors.Add(
-		            "isbn", 
-		            // Isbn already exist message
-		            [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007)]);
+                // Add error
+                customErrors.Add(
+                    "isbn",
+                    // Isbn already exist message
+                    [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007)]);
             }
-			
-			// Any errors invoke when checking valid data
-			if (customErrors.Any()) // exist errors
-			{
-				throw new UnprocessableEntityException("Invalid data", customErrors);
-			}
-			
-			// Process create new book
-			await _unitOfWork.Repository<BookEdition, int>().AddAsync(_mapper.Map<BookEdition>(dto));
-			// Save to DB
-			if (await _unitOfWork.SaveChangesAsync() > 0) // Save successfully
-			{
-				return new ServiceResult(ResultCodeConst.SYS_Success0001,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
-			}
 
-			// Fail to save
-			return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
-	    }
-	    catch (UnprocessableEntityException)
-	    {
-		    throw;
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process create new book edition");
-	    }
+            // Any errors invoke when checking valid data
+            if (customErrors.Any()) // exist errors
+            {
+                throw new UnprocessableEntityException("Invalid data", customErrors);
+            }
+
+            // Process create new book
+            await _unitOfWork.Repository<BookEdition, int>().AddAsync(_mapper.Map<BookEdition>(dto));
+            // Save to DB
+            if (await _unitOfWork.SaveChangesAsync() > 0) // Save successfully
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+            }
+
+            // Fail to save
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process create new book edition");
+        }
     }
-    
+
     public async Task<IServiceResult> GetDetailAsync(int id)
     {
         try
         {
             // Build specification
-			var baseSpec = new BaseSpecification<BookEdition>(b => b.BookEditionId == id);
-			var bookEditionEntity = await _unitOfWork.Repository<BookEdition, int>()
-				.GetWithSpecAndSelectorAsync(baseSpec, be => new BookEdition()
-				{
-					BookEditionId = be.BookEditionId,
+            var baseSpec = new BaseSpecification<BookEdition>(b => b.BookEditionId == id);
+            var bookEditionEntity = await _unitOfWork.Repository<BookEdition, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new BookEdition()
+                {
+                    BookEditionId = be.BookEditionId,
                     BookId = be.BookId,
                     EditionTitle = be.EditionTitle,
                     EditionSummary = be.EditionSummary,
@@ -642,10 +639,10 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                     BookReviews = be.BookReviews,
                     BookEditionAuthors = be.BookEditionAuthors.Select(ba => new BookEditionAuthor()
                     {
-	                    BookEditionAuthorId = ba.BookEditionAuthorId,
-	                    BookEditionId = ba.BookEditionId,
-	                    AuthorId = ba.AuthorId,
-	                    Author = ba.Author
+                        BookEditionAuthorId = ba.BookEditionAuthorId,
+                        BookEditionId = ba.BookEditionId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
                     }).ToList(),
                     Book = new Book()
                     {
@@ -668,9 +665,9 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                             Category = bc.Category
                         }).ToList()
                     }
-				});
+                });
 
-			if (bookEditionEntity != null)
+            if (bookEditionEntity != null)
             {
                 // Map to dto
                 var dto = _mapper.Map<BookEditionDto>(bookEditionEntity);
@@ -678,13 +675,13 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
                 // dto = HandleEnumTextForSingleEdition(dto);
                 // Convert to book edition detail dto
                 var bookEditionDetailDto = dto.ToEditionDetailDto();
-                
-				return new ServiceResult(ResultCodeConst.SYS_Success0002,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEditionDetailDto);
-			}
 
-			return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEditionDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
         }
         catch (Exception ex)
         {
@@ -693,6 +690,65 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
         }
     }
 
+    public async Task<IServiceResult> GetRelatedEditionWithMatchField(BookEditionDto dto, string fieldName)
+    {
+        // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
+        var relatedEditions = new List<BookEditionDto>();
+        if (fieldName.Equals(nameof(Author)))
+        {
+            var targetAuthorIds = dto.BookEditionAuthors
+                .Select(bea => bea.AuthorId)
+                .ToList();
+            var sameAuthorEditionsQuery = new BaseSpecification<BookEdition>(be =>
+                be.BookEditionId != dto.BookEditionId
+                &&
+                be.BookEditionAuthors.Any(ba => targetAuthorIds.Contains(ba.AuthorId))
+            );
+
+            sameAuthorEditionsQuery.ApplyInclude(q => q
+                .Include(be => be.BookEditionAuthors)
+                .ThenInclude(bea => bea.Author)
+            );
+            var result =
+                (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
+                    sameAuthorEditionsQuery)).ToList();
+            relatedEditions = _mapper.Map<List<BookEditionDto>>(result);
+        }
+
+        if (fieldName.Equals(nameof(Category)))
+        {
+            var categorySpec = new BaseSpecification<Category>(c => c.BookCategories
+                .Any(bc => bc.BookId == dto.Book.BookId));
+            categorySpec.ApplyInclude(q => q.Include(c => c.BookCategories));
+                var categories = (List<CategoryDto>)(await _cateService.GetAllWithSpecAsync(categorySpec)).Data!; 
+            var targetCategories = categories
+                .Select(c => c.CategoryId)
+                .ToList();
+            var sameCategoryEditionsQuery = new BaseSpecification<BookEdition>(be =>
+                be.BookEditionId != dto.BookEditionId &&
+                be.Book.BookCategories
+                    .Any(bc =>
+                        targetCategories.Contains(bc.CategoryId)
+                    )
+            );
+            // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
+            // Apply Includes for Book, BookCategories, Category, and BookEditionAuthors
+            sameCategoryEditionsQuery.ApplyInclude(q => q
+                .Include(be => be.Book)
+                .ThenInclude(b => b.BookCategories)
+                .ThenInclude(c => c.Category));
+            // Retrieve the data using the specification
+            var result =
+                (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
+                    sameCategoryEditionsQuery)).ToList();
+            relatedEditions = _mapper.Map<List<BookEditionDto>>(result);
+        }
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
+            , relatedEditions);
+    }
+    
     public async Task<IServiceResult> UpdateStatusAsync(int id)
     {
 	    try
@@ -884,42 +940,42 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 		    throw new Exception("Error invoke when process update book edition status");
 	    }
     }
-    
+
     public async Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow)
     {
-	    try
-	    {
-		    // Determine current system lang
-		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-			    LanguageContext.CurrentLanguage);
-		    var isEng = lang == SystemLanguage.English;
-		    
-			// Retrieve book edition by id
-			var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetByIdAsync(id);
-			if (existingEntity == null)
-			{
-				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errMsg, isEng 
-					? "book edition to update borrow status" 
-					: "ấn bản để sửa trạng thái có thể mượn"), false);
-			}
-			
-			// Update status
-			existingEntity.CanBorrow = canBorrow;
-			
-			// Progress update without change 
-			await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(existingEntity);
-			
-			// Mark as update success
-			return new ServiceResult(ResultCodeConst.SYS_Success0003,
-				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process update edition borrow status");
-	    }
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Retrieve book edition by id
+            var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "book edition to update borrow status"
+                        : "ấn bản để sửa trạng thái có thể mượn"), false);
+            }
+
+            // Update status
+            existingEntity.CanBorrow = canBorrow;
+
+            // Progress update without change 
+            await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(existingEntity);
+
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update edition borrow status");
+        }
     }
 
     public async Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId)
@@ -997,6 +1053,49 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 	    }
     }
     
+    public async Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode)
+        {
+            try
+            {
+                // Determine current lang context
+                var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                    LanguageContext.CurrentLanguage);
+                var isEng = lang == SystemLanguage.English;
+    
+                var baseSpec =
+                    new BaseSpecification<BookEdition>(x => x.Book.BookCodeForAITraining.Equals(trainingBookCode));
+                var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(baseSpec);
+    
+                foreach (var entity in bookEditionEntities)
+                {
+                    entity.TrainedDay = DateTime.Now;
+                    entity.IsTrained = true;
+                    await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(entity);
+                }
+    
+                // Save changes to DB
+                var rowsAffected = await _unitOfWork.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+    
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            catch (UnprocessableEntityException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                throw;
+            }
+        }
+    
     public async Task<IServiceResult> SoftDeleteAsync(int id)
     {
 	    try
@@ -1072,23 +1171,23 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 	    }
         catch (Exception ex)
         {
-        	_logger.Error(ex.Message);	
-        	throw new Exception("Error invoke when process soft delete book edition");	
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process soft delete book edition");
         }
     }
-	
+
     public async Task<IServiceResult> SoftDeleteRangeAsync(int[] ids)
     {
-	    try
+        try
         {
-	        // Build spec
-	        var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.BookEditionId));
-	        // Include all constraints to update soft delete
-	        baseSpec.ApplyInclude(q => q
-		        // Ignore include all authors, due to book edition can exist without any book belongs to    
-		        // Include all book edition copy
-		        .Include(be => be.BookEditionCopies)
-	        );
+            // Build spec
+            var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.BookEditionId));
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to book edition can exist without any book belongs to    
+                // Include all book edition copy
+                .Include(be => be.BookEditionCopies)
+            );
             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
                 .GetAllWithSpecAsync(baseSpec);
             // Check if any data already soft delete
@@ -1129,10 +1228,10 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             // Iterate each book edition
             foreach (var be in bookEditionList)
             {
-	            // Update deleted status
-	            be.IsDeleted = true;
+                // Update deleted status
+                be.IsDeleted = true;
             }
-            
+
             // Save changes to DB
             var rowsAffected = await _unitOfWork.SaveChangesAsync();
             if (rowsAffected == 0)
@@ -1143,7 +1242,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             }
 
             return new ServiceResult(ResultCodeConst.SYS_Success0007,
-	            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
         }
         catch (Exception ex)
         {
@@ -1208,33 +1307,33 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
 		    }
 
-		    // Mark as update success
-		    return new ServiceResult(ResultCodeConst.SYS_Success0009,
-			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);	
-		    throw new Exception("Error invoke when process undo delete book edition");	
-	    }
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0009,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process undo delete book edition");
+        }
     }
-    
+
     public async Task<IServiceResult> UndoDeleteRangeAsync(int[] ids)
     {
-    	try
+        try
         {
-	        // Build spec
-	        var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.BookEditionId));
-	        // Include all constraints to update soft delete
-	        baseSpec.ApplyInclude(q => q
-		        // Ignore include all authors, due to book edition can exist without any book belongs to    
-		        // Include all book edition copy
-		        .Include(be => be.BookEditionCopies)
-	        );
-	        var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
-		        .GetAllWithSpecAsync(baseSpec);
-	        // Check if any data already soft delete
-	        var bookEditionList = bookEditionEntities.ToList();
+            // Build spec
+            var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.BookEditionId));
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to book edition can exist without any book belongs to    
+                // Include all book edition copy
+                .Include(be => be.BookEditionCopies)
+            );
+            var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            // Check if any data already soft delete
+            var bookEditionList = bookEditionEntities.ToList();
             if (bookEditionList.Any(x => !x.IsDeleted))
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
@@ -1266,10 +1365,10 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             // Iterate each book edition
             foreach (var be in bookEditionList)
             {
-	            // Update deleted status
-	            be.IsDeleted = false;
+                // Update deleted status
+                be.IsDeleted = false;
             }
-                    
+
             // Save changes to DB
             var rowsAffected = await _unitOfWork.SaveChangesAsync();
             if (rowsAffected == 0)
@@ -1281,7 +1380,7 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
 
             // Mark as update success
             return new ServiceResult(ResultCodeConst.SYS_Success0009,
-	            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
         }
         catch (Exception ex)
         {
@@ -1289,72 +1388,122 @@ public class BookEditionService : GenericService<BookEdition, BookEditionDto, in
             throw new Exception("Error invoke when process undo delete range");
         }
     }
-    
+
     public async Task<IServiceResult> DeleteRangeAsync(int[] ids)
     {
-	    try
-	    {
-		    // Get all matching book edition 
-		    // Build spec
-		    var baseSpec = new BaseSpecification<BookEdition>(e => ids.Contains(e.BookEditionId));
-		    // Apply including authors
-		    baseSpec.ApplyInclude(q => q
-			    .Include(be => be.BookEditionAuthors));
-		    // Get all author with specification
-		    var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
-			    .GetAllWithSpecAsync(baseSpec);
-		    // Check if any data already soft delete
-		    var bookEditionList = bookEditionEntities.ToList();
-		    if (bookEditionList.Any(x => !x.IsDeleted))
-		    {
-			    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-		    }
-		    
-		    // Try to clear all authors existing in each of book edition (if any)
-		    foreach (var be in bookEditionList)
-		    {
-			    // Process delete range without save changes
-			    await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
-				    // Select all existing bookEditionAuthorId
-				    be.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
-		    }
+        try
+        {
+            // Get all matching book edition 
+            // Build spec
+            var baseSpec = new BaseSpecification<BookEdition>(e => ids.Contains(e.BookEditionId));
+            // Apply including authors
+            baseSpec.ApplyInclude(q => q
+                .Include(be => be.BookEditionAuthors));
+            // Get all author with specification
+            var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            // Check if any data already soft delete
+            var bookEditionList = bookEditionEntities.ToList();
+            if (bookEditionList.Any(x => !x.IsDeleted))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
 
-		    // Process delete range, and delete cascade with BookEditionInventory
-		    await _unitOfWork.Repository<BookEdition, int>().DeleteRangeAsync(ids);
-		    
-		    // Save to DB
-		    if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
-		    {
-			    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
-			    return new ServiceResult(ResultCodeConst.SYS_Success0008,
-				    StringUtils.Format(msg, bookEditionList.Count.ToString()), true);
-		    }
+            // Try to clear all authors existing in each of book edition (if any)
+            foreach (var be in bookEditionList)
+            {
+                // Process delete range without save changes
+                await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
+                    // Select all existing bookEditionAuthorId
+                    be.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
+            }
 
-		    // Fail to delete
-		    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-	    }
-	    catch (DbUpdateException ex)
+            // Process delete range, and delete cascade with BookEditionInventory
+            await _unitOfWork.Repository<BookEdition, int>().DeleteRangeAsync(ids);
+
+            // Save to DB
+            if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+            {
+                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+                return new ServiceResult(ResultCodeConst.SYS_Success0008,
+                    StringUtils.Format(msg, bookEditionList.Count.ToString()), true);
+            }
+
+            // Fail to delete
+            return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process delete range book edition");
+        }
+    }
+
+    private List<BookEditionDto> HandleEnumTextForEditions(List<BookEditionDto> dtos)
+    {
+	    // Determine current system lang
+	    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+		    LanguageContext.CurrentLanguage);
+	    var isEng = lang == SystemLanguage.English;
+
+	    // BookEditionCopyStatus enum descriptions
+	    var editionStatusDescriptions = Enum.GetValues(typeof(BookEditionCopyStatus))
+		    .Cast<BookEditionCopyStatus>()
+		    .ToDictionary(
+			    e => e.ToString(),
+			    e => EnumExtensions.GetDescription(e)
+		    );
+
+	    // BookFormat enum descriptions
+	    var formatDescriptions = Enum.GetValues(typeof(BookFormat))
+		    .Cast<BookFormat>()
+		    .ToDictionary(
+			    e => e.ToString(),
+			    e => EnumExtensions.GetDescription(e)
+		    );
+
+	    if (dtos.Any())
 	    {
-		    if (ex.InnerException is SqlException sqlEx)
+		    foreach (var edition in dtos)
 		    {
-			    switch (sqlEx.Number)
+			    if (edition.BookEditionCopies.Any())
 			    {
-				    case 547: // Foreign key constraint violation
-					    return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-						    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+				    foreach (var copy in edition.BookEditionCopies)
+				    {
+					    if (!string.IsNullOrEmpty(copy.Status) &&
+					        editionStatusDescriptions.TryGetValue(copy.Status, out var statusDesc))
+					    {
+						    copy.Status = isEng ? StringUtils.AddWhitespaceToString(copy.Status) : statusDesc;
+					    }
+				    }
+			    }
+
+			    if (!string.IsNullOrEmpty(edition.Format) &&
+			        formatDescriptions.TryGetValue(edition.Format, out var formatDesc))
+			    {
+				    edition.Format = isEng ? edition.Format : formatDesc;
 			    }
 		    }
-				
-		    // Throw if other issues
-		    throw;
 	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process delete range book edition");
-	    }
+
+	    return dtos;
     }
 
     public async Task<IServiceResult> ImportAsync(

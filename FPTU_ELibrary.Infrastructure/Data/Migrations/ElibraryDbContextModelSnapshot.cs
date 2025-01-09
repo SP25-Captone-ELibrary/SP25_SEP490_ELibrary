@@ -181,8 +181,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("sub_title");
 
                     b.Property<string>("Summary")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("summary");
 
                     b.Property<string>("Title")

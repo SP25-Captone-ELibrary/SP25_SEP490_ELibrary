@@ -293,5 +293,25 @@ namespace FPTU_ELibrary.Application.Utils
 
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC); // Trả về chuỗi không dấu
         }
+       
+        //get public id in cloudinary url
+        public static string GetPublicIdFromCloudinaryUrl(string imageUrl)
+        {
+            var uri = new Uri(imageUrl);
+            var segments = uri.AbsolutePath.Split('/');
+
+            // PublicId is at the end with the extension
+            var fileNameWithExtension = segments[^1];
+            //remove extension
+            var publicId = Path.GetFileNameWithoutExtension(fileNameWithExtension);
+
+            return publicId;
+        }
+        // Remove special character at the end
+        public static string SplitSpecialCharAtTheEnd(string input)
+        {
+            if (!string.IsNullOrEmpty(input) && char.IsPunctuation(input[^1])) input = input[..^1];
+            return input;   
+        }
     }
 }

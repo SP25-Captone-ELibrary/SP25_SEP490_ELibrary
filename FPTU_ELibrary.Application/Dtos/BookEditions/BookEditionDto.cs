@@ -10,9 +10,6 @@ public class BookEditionDto
     // Key
     public int BookEditionId { get; set; }
     
-    public bool IsTrained { get; set; }
-    public DateTime? TrainedDay { get; set; }
-    
     // Edition of which book
     public int BookId { get; set; }
 
@@ -42,6 +39,10 @@ public class BookEditionDto
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
+
+    // AI Training fields
+    public bool IsTrained { get; set; }
+    public DateTime? TrainedDay { get; set; }
     
     // Mapping entities
     [JsonIgnore]
