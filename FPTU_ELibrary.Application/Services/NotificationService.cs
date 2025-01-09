@@ -82,8 +82,10 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                     foreach (var recipient in recipients)
                     {
                         var userResult = await _userService.GetByEmailAsync(recipient);
+                        
                         var user = (UserDto)userResult.Data!;
                         var privateNoti = new NotificationRecipientDto()
+                        
                         {
                             IsRead = false,
                             NotificationId = notiEntity.NotificationId,
@@ -181,9 +183,9 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     private async Task SendPublicNotification(NotificationDto dto)
     {
         if ((await _userService.GetAllAsync()).Data is IEnumerable<UserDto> generalUsers)
-            foreach (var user in generalUsers.Where(x =>x.RoleId == (int)Role.GeneralMember+1))
+            foreach (var user in generalUsers.Where(x =>x.RoleId == (int)Role.GeneralMember))
             {
-                await _hubContext.Clients.User(user.Email).SendAsync("ReceiveNotification", new
+                await _hubContext.Clients.User(userId:user.Email).SendAsync("ReceiveNotification", new
                 {
                     NotificationId = dto.NotificationId,
                     Title = dto.Title,
