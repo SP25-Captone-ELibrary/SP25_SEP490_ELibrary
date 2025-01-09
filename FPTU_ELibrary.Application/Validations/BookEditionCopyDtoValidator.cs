@@ -18,6 +18,9 @@ public class BookEditionCopyDtoValidator : AbstractValidator<BookEditionCopyDto>
         // Validate book edition copy code
         RuleFor(x => x.Code);
         
+        // Validate book edition copy barcode
+        RuleFor(x => x.Barcode);
+        
         // Add copy history validators
         RuleFor(x => x.CopyConditionHistories)
             .ForEach(c =>

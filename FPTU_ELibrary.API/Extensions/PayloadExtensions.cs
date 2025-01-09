@@ -120,6 +120,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Title = req.Title,
 				SubTitle = req.SubTitle,
 				Summary = req.Summary,
+				BookCode = req.BookCode,
 				// Categories
 				BookCategories = req.CategoryIds.Any() 
 					// Each item -> initialize BookCategoryDto
@@ -166,6 +167,7 @@ namespace FPTU_ELibrary.API.Extensions
 					TotalCopies	= req.BookCopies != null && req.BookCopies.Any() 
 						? req.BookCopies.Count : 0,
 					AvailableCopies = 0,
+					BorrowedCopies = 0,
 					RequestCopies = 0,
 					ReservedCopies = 0
 				},
@@ -181,7 +183,7 @@ namespace FPTU_ELibrary.API.Extensions
 		{
 			return new BookEditionCopyDto()
 			{
-				Code = req.Code,
+				Barcode = req.Barcode,
 				
 				// Add default one history status
 				CopyConditionHistories = new List<CopyConditionHistoryDto>()
@@ -264,6 +266,20 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				Status = req.Status 
 			};	
+		
+		// Mapping from typeof(CreateRangeBookEditionCopyRequest) to typeof(BookEditionCopyDto)
+		public static List<BookEditionCopyDto> ToListBookEditionCopyDto(this CreateRangeBookEditionCopyRequest req)
+			=> req.BookEditionCopies.Select(bec => new BookEditionCopyDto()
+			{
+				Barcode = bec.Barcode,
+				CopyConditionHistories = new List<CopyConditionHistoryDto>()
+				{
+					new()
+					{
+						Condition = bec.ConditionStatus
+					}
+				}
+			}).ToList();
 		#endregion
 		
 		#region User

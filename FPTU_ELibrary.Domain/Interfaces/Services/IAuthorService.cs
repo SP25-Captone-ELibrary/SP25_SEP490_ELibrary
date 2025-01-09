@@ -10,6 +10,7 @@ public interface IAuthorService<TDto> : IGenericService<Author, TDto, int>
     where TDto : class
 {
     Task<IServiceResult> GetAuthorDetailByIdAsync(int id);
+    Task<IServiceResult> GetAllByCodesAsync(string[] authorCodes);
     Task<IServiceResult> SoftDeleteAsync(int id);
     Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);
     Task<IServiceResult> UndoDeleteAsync(int id);

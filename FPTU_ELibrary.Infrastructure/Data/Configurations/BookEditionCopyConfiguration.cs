@@ -55,6 +55,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(255) // Email address
                 .HasColumnName("updated_by");
             #endregion
+
+            #region Update at 04/01/2025 by Le Xuan Phuoc
+            builder.Property(e => e.Barcode)
+                .HasMaxLength(50)
+                .HasColumnName("barcode");
+            #endregion
         }
     }
 }

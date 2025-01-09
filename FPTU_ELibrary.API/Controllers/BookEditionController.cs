@@ -40,12 +40,28 @@ public class BookEditionController : ControllerBase
     {
         return Ok(await _editionAuthorService.AddAuthorToBookEditionAsync(req.BookEditionId, req.AuthorId));
     }
+
+    [Authorize]
+    [HttpPost(APIRoute.BookEdition.AddRangeAuthor, Name = nameof(AddRangeAuthorToBookEditionAsync))]
+    public async Task<IActionResult> AddRangeAuthorToBookEditionAsync([FromBody] AddRangeAuthorRequest req)
+    {
+        return Ok(await _editionAuthorService.AddRangeAuthorToBookEditionAsync(req.BookEditionId,
+            req.AuthorIds.ToArray()));
+    }
     
     [Authorize]
     [HttpDelete(APIRoute.BookEdition.DeleteAuthor, Name = nameof(DeleteAuthorToBookEditionAsync))]
     public async Task<IActionResult> DeleteAuthorToBookEditionAsync([FromBody] DeleteAuthorRequest req)
     {
         return Ok(await _editionAuthorService.DeleteAuthorFromBookEditionAsync(req.BookEditionId, req.AuthorId));
+    }
+    
+    [Authorize]
+    [HttpDelete(APIRoute.BookEdition.DeleteRangeAuthor, Name = nameof(DeleteRangeAuthorToBookEditionAsync))]
+    public async Task<IActionResult> DeleteRangeAuthorToBookEditionAsync([FromBody] DeleteRangeAuthorRequest req)
+    {
+        return Ok(await _editionAuthorService.DeleteRangeAuthorFromBookEditionAsync(req.BookEditionId,
+            req.AuthorIds.ToArray()));
     }
     
     [Authorize]
@@ -94,6 +110,20 @@ public class BookEditionController : ControllerBase
     }
     
     [Authorize]
+    [HttpPatch(APIRoute.BookEdition.UpdateStatus, Name = nameof(UpdateBookEditionStatusAsync))]
+    public async Task<IActionResult> UpdateBookEditionStatusAsync([FromRoute] int id)
+    {
+        return Ok(await _bookEditionService.UpdateStatusAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.BookEdition.UpdateShelfLocation, Name = nameof(UpdateBookEditionShelfLocationAsync))]
+    public async Task<IActionResult> UpdateBookEditionShelfLocationAsync([FromRoute] int id, [FromQuery] int? shelfId)
+    {
+        return Ok(await _bookEditionService.UpdateShelfLocationAsync(id, shelfId));
+    }
+    
+    [Authorize]
     [HttpPatch(APIRoute.BookEdition.SoftDelete, Name = nameof(SoftDeleteBookEditionAsync))]
     public async Task<IActionResult> SoftDeleteBookEditionAsync([FromRoute] int id)
     {
@@ -133,5 +163,29 @@ public class BookEditionController : ControllerBase
     public async Task<IActionResult> DeleteRangeBookEditionAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _bookEditionService.DeleteRangeAsync(req.Ids));
+    }
+
+    [Authorize]
+    [HttpPost(APIRoute.BookEdition.Import, Name = nameof(ImportBookEditionAsync))]
+    public async Task<IActionResult> ImportBookEditionAsync([FromForm] ImportBookEditionRequest req)
+    {
+       return Ok(await _bookEditionService.ImportAsync(
+           file: req.File,
+           coverImageFiles: req.CoverImageFiles,
+           scanningFields: req.ScanningFields));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.BookEdition.Export, Name = nameof(ExportBookEditionAsync))]
+    public async Task<IActionResult> ExportBookEditionAsync([FromQuery] BookEditionSpecParams specParams)
+    {
+        var exportResult = await _bookEditionService.ExportAsync(new BookEditionSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize));
+    
+        return exportResult.Data is byte[] fileStream
+            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Books.xlsx")
+            : Ok(exportResult);
     }
 }

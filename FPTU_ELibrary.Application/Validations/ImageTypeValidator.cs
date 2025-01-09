@@ -17,8 +17,8 @@ public class ImageTypeValidator : AbstractValidator<IFormFile>
             .NotEmpty()
             .Must(BeAValidFileType)
             .WithMessage(isEng
-                ? "Please upload a valid file. Allowed types are: images, PDF, or common e-book formats (.epub, .mobi, etc.)."
-                : "Vui lòng tải lên tệp hợp lệ. Các loại được phép là: hình ảnh, PDF hoặc các định dạng sách điện tử phổ biến (.epub, .mobi, v.v.).");
+                ? "Please upload a valid file. Allowed types are: images, PDF, or common e-book formats (.jpeg, .png, .mobi etc.)"
+                : "Vui lòng tải lên tệp hợp lệ. Các loại được phép là: hình ảnh, PDF hoặc các định dạng sách điện tử phổ biến (.jpeg, .png, .mobi v.v.)");
     }
 
     private bool BeAValidFileType(string contentType)

@@ -17,6 +17,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnName("book_edition_id");
             builder.Property(e => e.AvailableCopies).HasColumnName("available_copies");
             builder.Property(e => e.RequestCopies).HasColumnName("request_copies");
+            builder.Property(e => e.BorrowedCopies).HasColumnName("borrowed_copies");
             builder.Property(e => e.ReservedCopies).HasColumnName("reserved_copies");
             builder.Property(e => e.TotalCopies).HasColumnName("total_copies");
 

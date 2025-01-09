@@ -34,36 +34,39 @@ namespace FPTU_ELibrary.Application
         //		This class is to configure services for application layer
         public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
         {
-            // Register external services 
-            services.AddScoped<IEmailService, EmailService>();
-            services.AddScoped<ISearchService, SearchService>();
-            services.AddScoped<ICacheService, CacheService>();
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<ISystemMessageService, SystemMessageService>();
-            services.AddScoped<IAuthorizationService, AuthorizationService>();
-            services.AddScoped<IElasticInitializeService, ElasticInitializeService>();
-            services.AddScoped<IOCRService, OCRService>();
-            services.AddScoped<IAIClassificationService, AIClassificationService>();
-            services.AddScoped<IAIDetectionService, AIDetectionService>();
-            services.AddScoped<IVoiceService, VoiceService>();
-
-            // Register application services
-            services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
-            services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
-            services.AddScoped<IAuthorService<AuthorDto>, AuthorService>();
-            services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
-            services.AddScoped<IAuditTrailService<AuditTrailDto>, AuditTrailService>();
-            services.AddScoped<IBookService<BookDto>, BookService>();
-            services.AddScoped<IBookEditionService<BookEditionDto>, BookEditionService>();
-            services.AddScoped<IBookEditionCopyService<BookEditionCopyDto>, BookEditionCopyService>();
-            services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
-            services.AddScoped<IBookResourceService<BookResourceDto>, BookResourceService>();
-            services.AddScoped<IBookEditionInventoryService<BookEditionInventoryDto>, BookEditionInventoryService>();
-            services.AddScoped<IBookEditionAuthorService<BookEditionAuthorDto>, BookEditionAuthorService>();
+			// Register external services 
+			services.AddScoped<IEmailService, EmailService>();
+			services.AddScoped<ISearchService, SearchService>();
+			services.AddScoped<ICacheService, CacheService>();
+			services.AddScoped<ICloudinaryService, CloudinaryService>();
+			services.AddScoped<ISystemMessageService, SystemMessageService>();	
+			services.AddScoped<IAuthorizationService, AuthorizationService>();
+			services.AddScoped<IElasticService, ElasticService>();
+			services.AddScoped<IOCRService, OCRService>();
+			services.AddScoped<IAIClassificationService, AIClassificationService>();
+			services.AddScoped<IAIDetectionService, AIDetectionService>();
+			services.AddScoped<IVoiceService, VoiceService>();
+			
+			// Register application services
+			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
+			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
+			services.AddScoped<IAuthorService<AuthorDto>, AuthorService>();
+			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
+			services.AddScoped<IAuditTrailService<AuditTrailDto>, AuditTrailService>();
+			services.AddScoped<IBookService<BookDto>, BookService>();
+			services.AddScoped<IBookEditionService<BookEditionDto>, BookEditionService>();
+			services.AddScoped<IBookEditionCopyService<BookEditionCopyDto>, BookEditionCopyService>();
+			services.AddScoped<IBookCategoryService<BookCategoryDto>, BookCategoryService>();
+			services.AddScoped<IBookResourceService<BookResourceDto>, BookResourceService>();
+			services.AddScoped<IBookEditionInventoryService<BookEditionInventoryDto>, BookEditionInventoryService>();
+			services.AddScoped<IBookEditionAuthorService<BookEditionAuthorDto>, BookEditionAuthorService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
             services.AddScoped<ICopyConditionHistoryService<CopyConditionHistoryDto>, CopyConditionHistoryService>();
             services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
             services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
+            services.AddScoped<ILibraryFloorService<LibraryFloorDto>, LibraryFloorService>();
+            services.AddScoped<ILibraryZoneService<LibraryZoneDto>, LibraryZoneService>();
+            services.AddScoped<ILibrarySectionService<LibrarySectionDto>, LibrarySectionService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
             services.AddScoped<INotificationService<NotificationDto>, NotificationService>();
             services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();

@@ -13,6 +13,16 @@ namespace FPTU_ELibrary.Application.Validations
 				(SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(langContext);
 			var isEng = langEnum == SystemLanguage.English;
 			
+			// Book code
+			RuleFor(b => b.BookCode)
+				.NotEmpty()
+				.WithMessage(isEng
+					? "Book code is required"
+					: "Yêu cầu nhập mã sách")
+				.MaximumLength(100)
+				.WithMessage(isEng
+					? "Book code must not exceed than 150 characters"
+					: "Mã sách phải nhỏ hơn 100 ký tự");
 			// Book title
 			RuleFor(b => b.Title)
 				.NotEmpty()

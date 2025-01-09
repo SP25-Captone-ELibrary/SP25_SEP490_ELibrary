@@ -2,6 +2,7 @@ namespace FPTU_ELibrary.API.Payloads.Requests.Book;
 
 public class CreateBookRequest
 {
+    public string BookCode { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; } = null!;
     public string? Summary { get; set; }

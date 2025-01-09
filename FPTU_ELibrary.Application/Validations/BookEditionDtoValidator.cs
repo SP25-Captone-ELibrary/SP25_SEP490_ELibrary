@@ -29,10 +29,10 @@ public class BookEditionDtoValidator : AbstractValidator<BookEditionDto>
                 : "Mô tả của ấn bản không vượt quá 500 ký tự");
         // Edition number
         RuleFor(e => e.EditionNumber)
-            .Must(num => num > 0)
+            .Must(num => num > 0 && num < int.MaxValue)
             .WithMessage(isEng
-                ? "Book edition number must be positive"
-                : "Số thứ tự ấn bản phải lớn hơn 0");
+                ? "Book edition number is not valid"
+                : "Số thứ tự ấn bản không hợp lệ");
         // Language
         RuleFor(e => e.Language)
             .Must(str => !StringUtils.IsNumeric(str) && !StringUtils.IsDateTime(str))
@@ -49,10 +49,10 @@ public class BookEditionDtoValidator : AbstractValidator<BookEditionDto>
                 : "Format sách không hợp lệ");
         // Page count
         RuleFor(e => e.PageCount)
-            .Must(num => num > 0)
+            .Must(num => num > 0 && num < int.MaxValue)
             .WithMessage(isEng
-                ? "Page count must be positive"
-                : "Tổng số trang phải lớn hơn 0");
+                ? "Page count is not valid"
+                : "Tổng số trang không hợp lệ");
         // Publication year
         RuleFor(e => e.PublicationYear)
             .Must(num => IsValidYear(num.ToString()))
@@ -72,6 +72,29 @@ public class BookEditionDtoValidator : AbstractValidator<BookEditionDto>
             .WithMessage(isEng
                 ? "ISBN is not valid"
                 : "Mã ISBN không hợp lệ");
+        // Estimated Price
+        RuleFor(e => e.EstimatedPrice)
+            .InclusiveBetween(1000, 9999999999)
+            .WithMessage(e => 
+            {
+                if (e.EstimatedPrice < 1000)
+                {
+                    return isEng
+                        ? "EstimatedPrice must be at least 1.000 VND"
+                        : "Giá phải ít nhất là 1.000 VND";
+                }
+                else if (e.EstimatedPrice > 9999999999)
+                {
+                    return isEng
+                        ? "EstimatedPrice exceeds the maximum limit of 9.999.999.999 VND"
+                        : "Giá vượt quá giới hạn tối đa là 9.999.999.999 VND";
+                }
+
+                // Default message (shouldn't occur because of the Must condition)
+                return isEng
+                    ? "Invalid EstimatedPrice value"
+                    : "Giá trị EstimatedPrice không hợp lệ";
+            });
         // Validate cover image Url
         RuleFor(e => e.CoverImage)
             .Must(str => !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))

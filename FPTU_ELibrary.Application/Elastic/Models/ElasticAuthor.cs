@@ -9,34 +9,37 @@ namespace FPTU_ELibrary.Application.Elastic.Models
 {
     public class ElasticAuthor
     {
-        [Number(NumberType.Integer)]
+        [Number(NumberType.Integer, Name = "author_id")]
         public int AuthorId { get; set; }
 
-        [Keyword]
+        [Keyword(Name = "author_code")]
         public string? AuthorCode { get; set; }
 
-        [Keyword]
+        [Keyword(Name = "author_image")]
         public string? AuthorImage { get; set; }
 
-        [Text]
+        [Text(Name = "full_name")]
         public string FullName { get; set; } = null!;
 
-        [Text]
-        public string Biography { get; set; } = null!;
+        [Text(Name = "biography")]
+        public string? Biography { get; set; } = null!;
 
-        [Date]
+        [Date(Name = "dob")]
         public DateTime? Dob { get; set; }
 
-        [Date]
+        [Date(Name = "date_of_death")]
         public DateTime? DateOfDeath { get; set; }
 
-        [Keyword]
+        [Keyword(Name = "nationality")]
         public string? Nationality { get; set; }
 
-        [Date]
+        [Date(Name = "create_date")]
         public DateTime CreateDate { get; set; }
 
-        [Date]
+        [Date(Name = "update_date")]
         public DateTime? UpdateDate { get; set; }
+        
+        [Boolean(Name = "is_deleted")] 
+        public bool IsDeleted { get; set; }
     }
 }

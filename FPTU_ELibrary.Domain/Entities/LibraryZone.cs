@@ -22,6 +22,7 @@ public class LibraryZone
     // Mark as delete or not 
     public bool IsDeleted { get; set; }
 
+    [JsonIgnore]
     public LibraryFloor Floor { get; set; } = null!;
 
     [JsonIgnore]

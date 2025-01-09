@@ -60,12 +60,13 @@ public class ElibraryDbContext : DbContext
 
 	private string GetConnectionString()
 	{
+		string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? null!;
+		
 		IConfigurationBuilder builder = new ConfigurationBuilder()
 			.SetBasePath(Directory.GetCurrentDirectory())
 			.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
 			.AddEnvironmentVariables();
 
-		string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? null!;
 
 		if (!string.IsNullOrEmpty(environment))
 		{

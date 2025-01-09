@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Dtos;
+﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.BookEditions;
 using FPTU_ELibrary.Application.Dtos.Books;
@@ -17,12 +15,9 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
-using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Serilog;
 using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 
@@ -31,16 +26,14 @@ namespace FPTU_ELibrary.Application.Services
 	public class BookService : GenericService<Book, BookDto, int>, IBookService<BookDto>
 	{
 		private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
-		private readonly IEmployeeService<EmployeeDto> _empService;
 		private readonly ICategoryService<CategoryDto> _cateService;
+		private readonly IEmployeeService<EmployeeDto> _empService;
 		private readonly IAuthorService<AuthorDto> _authorService;
-		private readonly IBookCategoryService<BookCategoryDto> _bookCateService;
 		private readonly ICloudinaryService _cloudService;
 		private readonly IBookEditionCopyService<BookEditionCopyDto> _editionCopyService;
 
 		public BookService(
 			IAuthorService<AuthorDto> authorService,
-			IBookCategoryService<BookCategoryDto> bookCateService,
 			IBookEditionCopyService<BookEditionCopyDto> editionCopyService,
 			ICategoryService<CategoryDto> cateService,
 			IEmployeeService<EmployeeDto> empService,
@@ -54,9 +47,8 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			_libShelfService = libShelfService;
 			_empService = empService;
-			_bookCateService = bookCateService;
-			_editionCopyService = editionCopyService;
 			_cateService = cateService;
+			_editionCopyService = editionCopyService;
 			_authorService = authorService;
 			_cloudService = cloudService;
 		}
@@ -71,11 +63,11 @@ namespace FPTU_ELibrary.Application.Services
 					.GetWithSpecAndSelectorAsync(baseSpec, s => new Book()
 					{
 						BookId = s.BookId,
+						BookCode = s.BookCode,
 						Title = s.Title,
 						SubTitle = s.SubTitle,
 						Summary = s.Summary,
 						IsDeleted = s.IsDeleted,
-						IsDraft = s.IsDraft,
 						BookCodeForAITraining = s.BookCodeForAITraining,
 						CreatedAt = s.CreatedAt,
 						CreatedBy = s.CreatedBy,
@@ -96,15 +88,21 @@ namespace FPTU_ELibrary.Application.Services
                             Format = be.Format,
                             Publisher = be.Publisher,
                             Isbn = be.Isbn,
+                            EstimatedPrice = be.EstimatedPrice,
                             IsDeleted = be.IsDeleted,
                             CanBorrow = be.CanBorrow,
                             CreatedAt = be.CreatedAt,
                             UpdatedAt = be.UpdatedAt,
                             CreatedBy = be.CreatedBy,
+                            UpdatedBy = be.UpdatedBy,
                             BookEditionInventory = be.BookEditionInventory,
                             BookEditionCopies = be.BookEditionCopies,
                             BookReviews = be.BookReviews,
+                            ShelfId = be.ShelfId,
                             Shelf = be.Shelf,
+                            Status = be.Status,
+                            IsTrained = be.IsTrained,
+                            TrainedDay = be.TrainedDay,
                             BookEditionAuthors = be.BookEditionAuthors.Select(ba => new BookEditionAuthor()
                             {
 	                            BookEditionAuthorId = ba.BookEditionAuthorId,
@@ -127,7 +125,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Map to dto
 					var dto = _mapper.Map<BookDto>(bookEntity);
 					// Handle enum text
-					dto = HandleEnumText(dto);
+					// dto = HandleEnumText(dto);
 					// Convert to book detail dto
 					var bookDetailDto = dto.ToBookDetailDto();
 					
@@ -303,7 +301,29 @@ namespace FPTU_ELibrary.Application.Services
 	                toUpdateBook.BookCategories.Remove(bc);
                 }
                 
+				// Initialize custom errors
+				var customErrors = new Dictionary<string, string[]>();
+                // Check whether book code change
+                if (!Equals(toUpdateBook.BookCode, dto.BookCode))
+                {
+	                // Check uniqueness book code
+	                var isBookCodeExist =
+		                await _unitOfWork.Repository<Book, int>().AnyAsync(b => 
+			                b.BookCode.Equals(dto.BookCode, StringComparison.OrdinalIgnoreCase));
+	                if (isBookCodeExist)
+	                {
+		                // Add error 
+		                customErrors.Add("bookCode", [isEng ? "Book code already exist" : "Mã sách đã tồn tại"]);
+	                }
+                }
+
+                if (customErrors.Any()) // Throw 422 if data is not valid
+                {
+	                throw new UnprocessableEntityException("Invalid data", customErrors);
+                }
+                
                 // Update other properties
+                toUpdateBook.BookCode = dto.BookCode;
                 toUpdateBook.Title = dto.Title;
                 toUpdateBook.SubTitle = dto.SubTitle;
                 toUpdateBook.Summary = dto.Summary;
@@ -342,6 +362,11 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			try
 			{
+				// Determine current system lang 
+				var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+								
 				// Validate inputs using the generic validator
 				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
 				// Check for valid validations
@@ -393,6 +418,20 @@ namespace FPTU_ELibrary.Application.Services
 				// Custom error responses
 				var customErrors = new Dictionary<string, string[]>();
 				
+				// Check uniqueness book code
+				var isBookCodeExist =
+					await _unitOfWork.Repository<Book, int>().AnyAsync(b => 
+						b.BookCode.ToLower().Equals(dto.BookCode.ToLower()));
+				if (isBookCodeExist)
+				{
+					// Add error 
+					customErrors.Add("bookCode", [isEng ? "Book code already exist" : "Mã sách đã tồn tại"]);
+				}
+				
+				// Add book default information
+				dto.BookCodeForAITraining = Guid.NewGuid(); // Generate default AI book training code
+				dto.IsDeleted = false;
+								
 				// Check resources existence
 				foreach (var br in dto.BookResources)
 				{
@@ -406,10 +445,6 @@ namespace FPTU_ELibrary.Application.Services
 							await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
 					} 
 				}
-				
-				// Add boolean information
-				dto.IsDeleted = false;
-				dto.IsDraft = true;
 
 				// Add book edition creation information (if any)
 				// Initialize numeric collection to check edition unique num
@@ -457,25 +492,25 @@ namespace FPTU_ELibrary.Application.Services
                     {
 	                    var bec = listBookEditionCopy[j];
 	                    
-                        if (editionCopyCodes.Add(bec.Code!)) // Add to hash set string to ensure uniqueness
+                        if (editionCopyCodes.Add(bec.Barcode)) // Add to hash set string to ensure uniqueness
                         {
 							// Check already exist code in DB
 							var checkExistResult = await _editionCopyService.AnyAsync(
-								c => c.Code == bec.Code);
+								c => c.Barcode == bec.Barcode);
 							if (checkExistResult.Data is true)
 							{
 								var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
 								// Add error 
 								customErrors.Add(
-									$"bookEditions[{i}].bookCopies[{j}].code", 
-									[StringUtils.Format(errMsg, $"'{bec.Code!}'")]);
+									$"bookEditions[{i}].bookCopies[{j}].barcode", 
+									[StringUtils.Format(errMsg, $"'{bec.Barcode}'")]);
 							}
                         }
                         else // Duplicate found
                         {
 	                        // Add error 
 	                        customErrors.Add(
-		                        $"bookEditions[{i}].bookCopies[{j}].code", 
+		                        $"bookEditions[{i}].bookCopies[{j}].barcode", 
 		                        [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0005)]);
                         };
                         
@@ -488,6 +523,8 @@ namespace FPTU_ELibrary.Application.Services
                     // Default value
                     be.IsDeleted = false;
                     be.CanBorrow = false;
+                    // Default as draft when create 
+                    be.Status = BookEditionStatus.Draft;
                     // Clear ISBN hyphens
                     be.Isbn = ISBN.CleanIsbn(be.Isbn);
                     // Check exist Isbn
@@ -495,11 +532,12 @@ namespace FPTU_ELibrary.Application.Services
 	                    .AnyAsync(x => x.Isbn == be.Isbn);
                     if (isIsbnExist) // already exist 
                     {
+	                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007);
 	                    // Add error
 	                    customErrors.Add(
 		                    $"bookEditions[{i}].isbn", 
 		                    // Isbn already exist message
-		                    [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007)]);
+		                    [StringUtils.Format(errMsg, $"'{be.Isbn}'")]);
                     }
 				}
 				
@@ -508,14 +546,19 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					throw new UnprocessableEntityException("Invalid data", customErrors);
 				}
-				
+
 				// Process create new book
 				await _unitOfWork.Repository<Book, int>().AddAsync(_mapper.Map<Book>(dto));
 				// Save to DB
 				if (await _unitOfWork.SaveChangesAsync() > 0) // Save successfully
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Success0001,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), 
+						new
+						{
+							BookCodeForAITraining = dto.BookCodeForAITraining,
+							EditionImages = dto.BookEditions.Select(x => x.CoverImage).ToList()
+						});
 				}
 
 				// Fail to save

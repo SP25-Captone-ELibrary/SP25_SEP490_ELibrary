@@ -156,6 +156,31 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		}
     }
 
+    public async Task<IServiceResult> GetAllByCodesAsync(string[] authorCodes)
+    {
+	    try
+	    {
+		    // Build spec 
+		    var baseSpec = new BaseSpecification<Author>(a => authorCodes.Contains(a.AuthorCode));
+		    // Retrieve all author by code
+		    var authorEntities = await _unitOfWork.Repository<Author, int>().GetAllWithSpecAsync(baseSpec);
+		    if (authorEntities.Any())
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
+				    _mapper.Map<List<AuthorDto>>(authorEntities));
+		    }
+
+		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), new List<AuthorDto>());
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when progress get all data");
+	    }
+    }
+    
     public override async Task<IServiceResult> UpdateAsync(int id, AuthorDto dto)
     {
 	    // Initiate service result
@@ -605,12 +630,14 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			var detectResult = await DetectWrongDataAsync(records, scanningFields, (SystemLanguage) lang!);
 			if (detectResult.Any())
 			{
+				var errorResps = detectResult.Select(x => new ImportErrorResultDto()
+				{	
+					RowNumber = x.Key,
+					Errors = x.Value
+				});
+			    
 				return new ServiceResult(ResultCodeConst.SYS_Fail0008,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008),
-					new ImportErrorResultDto
-					{
-						Errors = detectResult
-					});
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
 			}
 
 			// Additional message
@@ -720,7 +747,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		}
     }
     
-    private async Task<List<string>> DetectWrongDataAsync(
+    private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
 	    List<AuthorCsvRecord> records,
 	    string[]? scanningFields,
 	    SystemLanguage lang)
@@ -728,31 +755,64 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 	    // Check system lang
 	    var isEng = lang == SystemLanguage.English;
 			
-	    // Initialize list of errors
-	    var errorMessages = new List<string>();
+	    // Initialize dictionary to hold errors
+	    var errorMessages = new Dictionary<int, List<string>>();
+	    // Initialize hashset to store unique author code
+	    var authorCodeSet = new HashSet<string>();
 	    // Default row index set to second row, as first row is header
 	    var currDataRow = 2;
 
 	    foreach (var record in records)
 	    {
-		    // Set default as correct
-		    var isError = false;
-		    // Initialize error msg
-		    var errMsg = string.Empty;
+		    // Initialize error list for the current row
+		    var rowErrors = new List<string>();
+		    
+		    // Check author code unique
+		    if (!string.IsNullOrEmpty(record.AuthorCode))
+		    {
+			    // Try add author code to unique set
+			    if (!authorCodeSet.Add(record.AuthorCode))  
+                {
+                    // Fail to add due to duplicates
+                    rowErrors.Add(isEng 
+	                    ? $"Author code {record.AuthorCode} is duplicated" 
+	                    : $"Mã tác giả {record.AuthorCode} bị trùng");
+                }
+			    else // Add success -> Try to check duplicate in DB
+			    {
+				    var isExistAuthorCode = await _unitOfWork.Repository<Author, int>()
+					    .AnyAsync(a => a.AuthorCode != null &&
+							a.AuthorCode.ToLower() == record.AuthorCode.ToLower());
+				    if (isExistAuthorCode) // Is duplicate in DB
+				    {
+					    // Add error
+                        rowErrors.Add(isEng 
+                            ? $"Author code {record.AuthorCode} has already exist" 
+                            : $"Mã tác giả {record.AuthorCode} đã tồn tại");
+				    }
+			    }
+		    }
 		    
 		    // Check valid datetime
+		    DateTime dob = DateTime.MinValue;
+		    DateTime dateOfDeath = DateTime.MinValue;
 		    if (!string.IsNullOrEmpty(record.Dob) // Invalid date of birth
-		        && (!DateTime.TryParse(record.Dob, out var dob) // Cannot parse
+		        && (!DateTime.TryParse(record.Dob, out dob) // Cannot parse
 		            || dob < new DateTime(1900, 1, 1)     // Too old
 		            || dob > DateTime.Now))                            // In the future
 		    {
-			    isError = true;
-			    errMsg = isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ";
+			    rowErrors.Add(isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ");
 		    }else if (!string.IsNullOrEmpty(record.DateOfDeath) // Invalid hire date
-		              && !DateTime.TryParse(record.DateOfDeath, out _))
+		              && !DateTime.TryParse(record.DateOfDeath, out dateOfDeath))
 		    {
-			    isError = true;
-			    errMsg = isEng ? "Not valid date of date" : "Ngày mất tác giả không hợp lệ";
+			    rowErrors.Add(isEng ? "Not valid date of date" : "Ngày mất tác giả không hợp lệ");
+		    }
+		    if (dob != DateTime.MinValue && dateOfDeath != DateTime.MinValue)
+		    {
+			    if (dateOfDeath.Date < dob.Date)
+			    {
+				    rowErrors.Add(isEng ? "Not valid date of date" : "Ngày mất tác giả không hợp lệ");
+			    }			    
 		    }
 
 		    if (scanningFields != null)
@@ -783,24 +843,20 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			    }
 			    
 			    // Check exist with spec
-			    if (baseParam != null && await _unitOfWork.Repository<Author, int>().AnyAsync(baseParam))
-			    {
-				    isError = true;
-				    errMsg = isEng ? "Duplicate author code" : "Trùng mã tác giả";
-			    }
-			    
-			    if (isError) // Error found
-			    {
-				    // Custom message
-				    errMsg = isEng 
-					    ? $"At row {currDataRow}: {errMsg}"
-					    : $"Dòng {currDataRow}: {errMsg}";
-				    // Add error msg
-				    errorMessages.Add(errMsg);
-			    }
-			    // Increase curr row
-			    currDataRow++;
+			    // if (baseParam != null && await _unitOfWork.Repository<Author, int>().AnyAsync(baseParam))
+			    // {
+				    // rowErrors.Add(isEng ? "Duplicate author code" : "Trùng mã tác giả");
+			    // }
 		    }
+			
+		    // if errors exist for the row, add to the dictionary
+		    if (rowErrors.Any())
+		    {
+			    errorMessages.Add(currDataRow, rowErrors);
+		    }
+
+		    // Increment the row counter
+		    currDataRow++;
 	    }
 	    
 	    return errorMessages;

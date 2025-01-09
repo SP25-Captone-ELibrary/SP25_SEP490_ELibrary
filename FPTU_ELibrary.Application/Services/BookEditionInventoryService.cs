@@ -54,6 +54,7 @@ public class BookEditionInventoryService :
 			// Process add update entity
 			existingEntity.TotalCopies = dto.TotalCopies;
 			existingEntity.AvailableCopies = dto.AvailableCopies;
+			existingEntity.BorrowedCopies = dto.BorrowedCopies;
 			existingEntity.RequestCopies = dto.RequestCopies;
 			existingEntity.ReservedCopies = dto.ReservedCopies;
 
