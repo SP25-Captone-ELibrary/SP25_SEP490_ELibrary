@@ -80,6 +80,10 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
 
             return serviceResult;
         }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);

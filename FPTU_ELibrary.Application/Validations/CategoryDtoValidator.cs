@@ -22,9 +22,22 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
             .WithMessage(isEng
                 ? "EnglishName cannot be null."
                 : "Tên tiếng Anh không được phép rỗng.")
-            .Matches(@"^([A-Z][a-z]*)(\s[A-Z][a-z]*)*$")
+            .Matches(@"^[A-Z][a-zA-Z]*$")
             .WithMessage(isEng
-                ? "English name should start with an uppercase letter for each word."
-                : "Tên tiếng Anh phải bắt đầu bằng chữ in hoa cho mỗi từ.");
+                ? "English name must not have space"
+                : "Tên tiếng Anh không được có khoảng cách.");
+        RuleFor(bc => bc.VietnameseName)
+            .NotEmpty()
+            .WithMessage(isEng
+                ? "VietnameseName is required."
+                : "Yêu cầu nhập tên tiếng Việt.")
+            .NotNull()
+            .WithMessage(isEng
+                ? "VietnameseName cannot be null."
+                : "Tên tiếng Việt không được phép rỗng.")
+            .Matches(@"^[A-ZÀ-Ỵ][a-zà-ỵ]*(?: [A-Za-zÀ-Ỵà-ỵ]*)*$")
+            .WithMessage(isEng
+                ? "Vietnamese Name should not have special character. "
+                : "Tên tiếng Việt không được chứa ký tự đặc biệt hoặc số,chữ đầu phải viết hoa.");
     }
 }

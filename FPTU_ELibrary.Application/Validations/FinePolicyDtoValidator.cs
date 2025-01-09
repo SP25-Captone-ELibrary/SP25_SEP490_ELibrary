@@ -32,7 +32,7 @@ public class FinePolicyDtoValidator : AbstractValidator<FinePolicyDto>
             .LessThan(1000000000)
             .WithMessage(isEng
                 ? "FineAmountPerDay must be greater than 0 and less than 1000000000"
-                : "Số tiền phạt mỗi ngày phải lớn hơn 0");
+                : "Số tiền phạt mỗi ngày phải lớn hơn 0 và nhỏ hơn 1000000000");
 
         // validate the FixedFineAmount property
         RuleFor(finePolicy => finePolicy.FixedFineAmount)
@@ -40,7 +40,7 @@ public class FinePolicyDtoValidator : AbstractValidator<FinePolicyDto>
             .LessThan(1000000000)
             .WithMessage(isEng
                 ? "FixedFineAmount must be greater than 0 less than 1000000000"
-                : "Số tiền phạt cố định phải lớn hơn 0");
+                : "Số tiền phạt cố định phải lớn hơn 0 và nhỏ hơn 1000000000");
 
         // validate the Description property
         RuleFor(finePolicy => finePolicy.Description)
