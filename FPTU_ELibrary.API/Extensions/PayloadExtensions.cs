@@ -426,8 +426,10 @@ namespace FPTU_ELibrary.API.Extensions
 			return new FinePolicyDto()
 			{
 				ConditionType = req.ConditionType,
-				FineAmountPerDay = req.FineAmountPerDay,
-				FixedFineAmount = req.FixedFineAmount,
+				FineAmountPerDay = decimal.TryParse(req.FineAmountPerDay, out var errorFineAmountPerDay) ?
+				decimal.Parse(req.FineAmountPerDay) : errorFineAmountPerDay,
+				FixedFineAmount = decimal.TryParse(req.FixedFineAmount, out var errFixedFineAmount) ?
+					decimal.Parse(req.FineAmountPerDay) : errFixedFineAmount,
 				Description = req.Description
 			};
 		}

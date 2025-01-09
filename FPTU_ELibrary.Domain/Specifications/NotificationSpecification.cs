@@ -38,7 +38,7 @@ public class NotificationSpecification : BaseSpecification<Notification>
         }
         else if (isManagement)
         {
-            AddFilter(x => x.CreatedBy.Equals(email) || x.IsPublic);
+            AddFilter(x => x.IsPublic || x.CreatedBy.Contains(email.Trim())&& !x.IsPublic);
         }
         else
         {
@@ -48,19 +48,19 @@ public class NotificationSpecification : BaseSpecification<Notification>
 
         if (notificationSpecParams.Title != null)
         {
-            AddFilter(x => x.Title == notificationSpecParams.Title);
+            AddFilter(x => x.Title.Contains(notificationSpecParams.Title));
         }
         else if (!string.IsNullOrEmpty(notificationSpecParams.Message)) // With gender
         {
-            AddFilter(x => x.Message == notificationSpecParams.Message);
+            AddFilter(x => x.Message.Contains(notificationSpecParams.Message));
         }
         else if (!string.IsNullOrEmpty(notificationSpecParams.CreatedBy)) // With gender
         {
-            AddFilter(x => x.CreatedBy == notificationSpecParams.CreatedBy);
+            AddFilter(x => x.CreatedBy.Contains(notificationSpecParams.CreatedBy));
         }
         else if (!string.IsNullOrEmpty(notificationSpecParams.NotificationType)) // With gender
         {
-            AddFilter(x => x.NotificationType == notificationSpecParams.NotificationType);
+            AddFilter(x => x.NotificationType.Contains(notificationSpecParams.NotificationType));
         }
         else if (notificationSpecParams.CreateDateRange != null
                  && notificationSpecParams.CreateDateRange.Length > 1) // With range of dob
