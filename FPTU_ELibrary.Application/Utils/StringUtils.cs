@@ -170,6 +170,7 @@ namespace FPTU_ELibrary.Application.Utils
         }
 
         // Validate numeric & datetime
+        public static bool IsDecimal(string text) => decimal.TryParse(text, out _);
         public static bool IsNumeric(string text) => int.TryParse(text, out _);
         public static bool IsDateTime(string text) => DateTime.TryParse(text, out _);
 

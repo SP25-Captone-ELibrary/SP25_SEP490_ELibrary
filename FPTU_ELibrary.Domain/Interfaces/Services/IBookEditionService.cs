@@ -1,5 +1,8 @@
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services;
 
@@ -16,4 +19,9 @@ public interface IBookEditionService<TDto> : IGenericService<BookEdition, TDto, 
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
     Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode);
     Task<IServiceResult> GetRelatedEditionWithMatchField(TDto dto, string fieldName);
+    Task<IServiceResult> UpdateStatusAsync(int id);
+    Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId);
+    Task<IServiceResult> ImportAsync(
+        IFormFile? file, List<IFormFile> coverImageFiles, string[]? scanningFields);
+    Task<IServiceResult> ExportAsync(ISpecification<BookEdition> spec);
 }

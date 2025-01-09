@@ -86,14 +86,20 @@
 			public const string GetEditionById = Base + "/management/books/editions/{id}";
 			public const string CountTotalCopy = Base + "/management/books/editions/{id}/total-copy";
 			public const string CountRangeTotalCopy = Base + "/management/books/editions/total-copy";
+			public const string Export = Base + "/management/books/editions/export";
 			// [POST]
 			public const string Create = Base + "/management/books/{bookId}/editions";
 			public const string AddAuthor = Base + "/management/books/editions/add-author";
+			public const string AddRangeAuthor = Base + "/management/books/editions/add-range-author";
 			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
 			public const string Training = Base + "/management/books/editions/{id}/ai/train";
 			public const string CheckImagesForTraining = Base + "/management/books/editions/{id}/ai/check-images-for-training";
+			public const string DeleteRangeAuthor = Base + "/management/books/editions/delete-range-author";
+			public const string Import = Base + "/management/books/editions/import";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/books/editions/{id}";
+			public const string UpdateStatus = Base + "/management/books/editions/{id}/status";
+			public const string UpdateShelfLocation = Base + "/management/books/editions/{id}/shelf-location";
 			public const string SoftDelete = Base + "/management/books/editions/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/books/editions/soft-delete-range";
 			public const string UndoDelete = Base + "/management/books/editions/{id}/undo-delete";
@@ -101,7 +107,6 @@
 			// [DELETE]
 			public const string Delete = Base + "/management/books/editions/{id}";
 			public const string DeleteRange = Base + "/management/books/editions";
-
 			#endregion
 		}
 
@@ -311,6 +316,21 @@
 			//	[GET]
 			public const string GetAuthorizedUserFeatures = Base + "/features/authorized";
 			public const string GetFeaturePermission = Base + "/features/{id}/authorized-permission";
+		}
+
+		/// <summary>
+		/// Library shelf
+		/// </summary>
+		public static class LibraryLocation
+		{
+			#region Management
+			//	[GET]
+			public const string GetFloors = Base + "/management/location/floors";
+			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
+			public const string GetZonesByFloorId = Base + "/management/location/zones";
+			public const string GetSectionsByZoneId = Base + "/management/location/sections";
+			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
+			#endregion
 		}
 		
 		/// <summary>

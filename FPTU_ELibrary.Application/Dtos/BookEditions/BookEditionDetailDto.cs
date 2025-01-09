@@ -7,13 +7,13 @@ public class BookEditionDetailDto
 {
     // Book information
     public int BookId { get; set; }
+    public string BookCode { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string? SubTitle { get; set; }
     public string? Summary { get; set; }
-    public DateTime BookCreateDate { get; set; }
-    public DateTime? BookUpdatedDate { get; set; }
     public bool IsTrained { get; set; } = false;
     public DateTime? TrainedDay { get; set; }
+    
     // Edition detail information
     public int BookEditionId { get; set; }
     public string? EditionTitle { get; set; }
@@ -32,6 +32,9 @@ public class BookEditionDetailDto
     
     // Locate in which shelf
     public int? ShelfId { get; set; }
+    
+    // Edition status (Draft, Published)
+    public string Status { get; set; } = null!;
 
     // Shelf
     public LibraryShelfDto? Shelf { get; set; }
@@ -52,6 +55,7 @@ public static class BookEditionDetailDtoExtensions
         {
             // Book information
             BookId = dto.BookId,
+            BookCode = dto.Book != null! ?  dto.Book.BookCode : null!,
             Title = dto.Book != null! ?  dto.Book.Title : null!,
             SubTitle = dto.Book != null! ?  dto.Book.SubTitle : null!,
             Summary = dto.Book != null! ?  dto.Book.Summary : null!,
@@ -60,7 +64,11 @@ public static class BookEditionDetailDtoExtensions
             BookEditionId = dto.BookEditionId,
             EditionTitle = dto.EditionTitle,
             EditionNumber = dto.EditionNumber,
-            EditionSummary = dto.EditionSummary,
+            EditionSummary = !string.IsNullOrEmpty(dto.EditionSummary) && dto.Book != null
+                ? $"{dto.Book.Summary}\n{dto.EditionSummary}"
+                : string.IsNullOrEmpty(dto.EditionSummary) && dto.Book != null 
+                    ? dto.Book.Summary 
+                    : dto.EditionSummary,
             PublicationYear = dto.PublicationYear,
             PageCount = dto.PageCount,
             Language = dto.Language,
@@ -78,11 +86,13 @@ public static class BookEditionDetailDtoExtensions
             ShelfId = dto.ShelfId,
             Shelf = dto.Shelf,
             
+            // Status
+            Status = dto.Status.ToString(),
+            
             // Inventory 
             BookEditionInventory = dto.BookEditionInventory,
             
             // Authors
-            // Authors = dto.BookEditionAuthors.Any() ? dto.BookEditionAuthors.Select(bea => bea.Author).ToList() : new(),
             Authors = dto.BookEditionAuthors.Select(bea => bea.Author).ToList(),
             
             // Edition copies
@@ -91,12 +101,13 @@ public static class BookEditionDetailDtoExtensions
     }
     
     public static BookEditionDetailDto ToEditionDetailDtoWithBookDetail(this BookEditionDto dto,
-        string title, string? subTitle, string? summary)
+        string bookCode, string title, string? subTitle, string? summary)
     {
         return new BookEditionDetailDto()
         {
             // Book information
             BookId = dto.BookId,
+            BookCode = bookCode,
             Title = title,
             SubTitle = subTitle,
             Summary = summary,
@@ -105,7 +116,10 @@ public static class BookEditionDetailDtoExtensions
             BookEditionId = dto.BookEditionId,
             EditionTitle = dto.EditionTitle,
             EditionNumber = dto.EditionNumber,
-            EditionSummary = dto.EditionSummary,
+            EditionSummary = !string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
+                ? $"{summary}\n{dto.EditionSummary}"
+                : string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
+                    ? summary : dto.EditionSummary,
             PublicationYear = dto.PublicationYear,
             PageCount = dto.PageCount,
             Language = dto.Language,
@@ -123,6 +137,9 @@ public static class BookEditionDetailDtoExtensions
             ShelfId = dto.ShelfId,
             Shelf = dto.Shelf,
             
+            // Status
+            Status = dto.Status.ToString(),
+            
             // Inventory 
             BookEditionInventory = dto.BookEditionInventory,
             
@@ -130,7 +147,7 @@ public static class BookEditionDetailDtoExtensions
             Authors = dto.BookEditionAuthors.Select(bea => bea.Author).ToList(),
             
             // Edition copies
-            BookEditionCopies = dto.BookEditionCopies.ToList(),
+            BookEditionCopies = dto.BookEditionCopies.ToList()
         };
     }
 }

@@ -33,7 +33,7 @@ public class BookEditionCopyController : ControllerBase
         [FromRoute] int id, 
         [FromBody] CreateRangeBookEditionCopyRequest req)
     {
-        return Ok(await _editionCopyService.AddRangeToBookEditionAsync(id, req.Codes));
+        return Ok(await _editionCopyService.AddRangeToBookEditionAsync(id, req.ToListBookEditionCopyDto()));
     }
 
     [Authorize]

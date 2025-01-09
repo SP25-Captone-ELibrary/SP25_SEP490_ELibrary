@@ -6,4 +6,5 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryShelfService<TDto> : IGenericService<LibraryShelf, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> GetAllBySectionIdAsync(int sectionId);
 }

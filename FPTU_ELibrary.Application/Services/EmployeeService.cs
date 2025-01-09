@@ -371,9 +371,9 @@ namespace FPTU_ELibrary.Application.Services
 					.Ignore(dest => dest.TwoFactorBackupCodes!)
 					.Ignore(dest => dest.PhoneVerificationCode!)
 					.Ignore(dest => dest.EmailVerificationCode!)
-					.Ignore(dest => dest.PhoneVerificationExpiry!)
-					.Map(dto => dto.Role, src => src.Role) 
-					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+					.Ignore(dest => dest.PhoneVerificationExpiry!);
+					// .Map(dto => dto.Role, src => src.Role) 
+					// .AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 				
 				// Count total employees
 				var totalEmployeeWithSpec = await _unitOfWork.Repository<Employee, Guid>().CountAsync(employeeSpec);
@@ -1061,12 +1061,14 @@ namespace FPTU_ELibrary.Application.Services
 					await DetectWrongDataAsync(records, scanningFields, employeeRoles, (SystemLanguage)lang!);
 				if (detectResult.Any())
 				{
-					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008),
-						new ImportErrorResultDto
-						{
-							Errors = detectResult
-						});
+					 var errorResps = detectResult.Select(x => new ImportErrorResultDto()
+	                 {	
+                    	RowNumber = x.Key,
+                    	Errors = x.Value
+	                 });
+					
+	                 return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+		                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
 				}
 
 				// Additional message
@@ -1202,7 +1204,7 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
-		private async Task<List<string>> DetectWrongDataAsync(
+		private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
 			List<EmployeeCsvRecord> records, 
 			string[]? scanningFields,
 			List<SystemRoleDto> employeeRoles,
@@ -1212,23 +1214,20 @@ namespace FPTU_ELibrary.Application.Services
 			var isEng = lang == SystemLanguage.English;
 			
 			// Initialize list of errors
-			var errorMessages = new List<string>();
+			var errorMessages = new Dictionary<int, List<string>>();
 			// Default row index set to second row, as first row is header
 			var currDataRow = 2; 
 			
 			foreach (var record in records)
 			{
-				// Initialize error msg
-				var errMsg = string.Empty;
-				// Set default as correct
-				var isError = false;
+				// Initialize error list for the current row
+				var rowErrors = new List<string>();
 				
 				// Check role exist
 				if (employeeRoles != null && employeeRoles.All(x => 
 					    x.EnglishName != record.Role))
 				{
-					isError = true;
-					errMsg = isEng ? "Not exist role" : "Không tìm thấy role";
+					rowErrors.Add(isEng ? "Not exist role" : "Không tìm thấy role");
 				}
 				
 				// Check valid datetime
@@ -1237,45 +1236,42 @@ namespace FPTU_ELibrary.Application.Services
 				        || dob < new DateTime(1900, 1, 1)     // Too old
 				        || dob > DateTime.Now))                            // In the future
 				{
-					isError = true;
-					errMsg = isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ";
+					rowErrors.Add(isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ");
 				}else if (!string.IsNullOrEmpty(record.HireDate) // Invalid hire date
 				          && !DateTime.TryParse(record.HireDate, out _))
 				{
-					isError = true;
-					errMsg = isEng ? "Not valid hire date" : "Ngày bắt đầu làm việc không hợp lệ";
+					rowErrors.Add(isEng ? "Not valid hire date" : "Ngày bắt đầu làm việc không hợp lệ");
 				}else if (!string.IsNullOrEmpty(record.TerminationDate) // Invalid terminate date
 				          && !DateTime.TryParse(record.TerminationDate, out _))
 				{
-					isError = true;
-					errMsg = isEng ? "Not valid hire date" : "Ngày nghỉ việc không hợp lệ";
+					rowErrors.Add(isEng ? "Not valid hire date" : "Ngày nghỉ việc không hợp lệ");
 				}
 
 				// Detect validations
 				if (!Regex.IsMatch(record.Email, @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"))
 				{
-					errMsg = isEng ? "Invalid email address" : "Email không hợp lệ";
+					rowErrors.Add(isEng ? "Invalid email address" : "Email không hợp lệ");
 				}
 
 				if (!Regex.IsMatch(record.FirstName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
 				{
-					errMsg = isEng
-						? "Firstname should start with an uppercase letter for each word"
-						: "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ";
+					rowErrors.Add(isEng
+                        ? "Firstname should start with an uppercase letter for each word"
+                        : "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
 				}
 
 				if (!Regex.IsMatch(record.LastName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$"))
 				{
-					errMsg = isEng
+					rowErrors.Add(isEng
 						? "Lastname should start with an uppercase letter for each word"
-						: "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ";
+						: "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
 				}
 				
 				if (record.Phone is not null && !Regex.IsMatch(record.Phone, @"^0\d{9,10}$"))
 				{
-					errMsg = isEng
+					rowErrors.Add(isEng
 						? "Phone not valid"
-						: "SĐT không hợp lệ";
+						: "SĐT không hợp lệ");
 				}
 				
 				if (scanningFields != null)
@@ -1334,22 +1330,17 @@ namespace FPTU_ELibrary.Application.Services
 						(userBaseSpec != null && await _unitOfWork.Repository<User, Guid>().AnyAsync(userBaseSpec))
 					)
 					{
-						isError = true;
-						errMsg = isEng ? "Duplicate email or phone" : "Email hoặc số điện thoại bị trùng";
+						rowErrors.Add(isEng ? "Duplicate email or phone" : "Email hoặc số điện thoại bị trùng");
 					}
 				}
 
-				if (isError) // Error found
+				// if errors exist for the row, add to the dictionary
+				if (rowErrors.Any())
 				{
-					// Custom message
-					errMsg = isEng 
-						? $"At row {currDataRow}: {errMsg}"
-						: $"Dòng {currDataRow}: {errMsg}";
-					// Add error msg
-					errorMessages.Add(errMsg);
+					errorMessages.Add(currDataRow, rowErrors);
 				}
-				
-				// Increase curr row
+
+				// Increment the row counter
 				currDataRow++;
 			}
 

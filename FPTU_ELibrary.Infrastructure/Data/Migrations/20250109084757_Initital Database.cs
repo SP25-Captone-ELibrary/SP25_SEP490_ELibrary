@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDatabase : Migration
+    public partial class InititalDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,12 +59,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     book_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    book_code_for_ai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     sub_title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    summary = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    summary = table.Column<string>(type: "nvarchar(3000)", maxLength: 3000, nullable: true),
+                    book_code = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    book_code_for_ai = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
-                    is_draft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -549,8 +549,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     book_edition_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    is_trained = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    trained_day = table.Column<DateTime>(type: "datetime", nullable: true),
                     book_id = table.Column<int>(type: "int", nullable: false),
                     edition_title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     edition_summary = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
@@ -566,10 +564,13 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     can_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     estimated_price = table.Column<decimal>(type: "decimal(10,0)", nullable: false),
                     ShelfId = table.Column<int>(type: "int", nullable: true),
+                    status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    is_trained = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    trained_day = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -652,6 +653,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     book_edition_copy_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     book_edition_id = table.Column<int>(type: "int", nullable: false),
+                    barcode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
@@ -678,6 +680,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     total_copies = table.Column<int>(type: "int", nullable: false),
                     available_copies = table.Column<int>(type: "int", nullable: false),
                     request_copies = table.Column<int>(type: "int", nullable: false),
+                    borrowed_copies = table.Column<int>(type: "int", nullable: false),
                     reserved_copies = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>

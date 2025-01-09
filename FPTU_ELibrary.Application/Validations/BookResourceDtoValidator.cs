@@ -46,7 +46,7 @@ public class BookResourceDtoValidator : AbstractValidator<BookResourceDto>
         // Resource size
         RuleFor(e => e.ResourceSize)
             .Must(e => e != null && e > 0 &&
-                       StringUtils.IsNumeric(e.ToString() ?? string.Empty))
+                       StringUtils.IsDecimal(e.ToString() ?? string.Empty))
             .WithMessage(isEng
                 ? "Resource size is invalid"
                 : "Kích thước tài nguyên sách không hợp lệ");

@@ -4,40 +4,40 @@ namespace FPTU_ELibrary.Application.Elastic.Models
 {
     public class ElasticBook
     {
-        [Number(NumberType.Integer)]
+        [Number(NumberType.Integer, Name = "book_id")]
         public int BookId { get; set; }
 
-        [Text]
+        [Text(Name = "book_code")]
+        public string BookCode { get; set; } = null!;
+
+        [Text(Name = "title")]
         public string Title { get; set; } = null!;
 
-        [Text]
+        [Text(Name = "sub_title")] 
+        public string SubTitle { get; set; } = null!; 
+
+        [Text(Name = "summary")]
         public string? Summary { get; set; }
 
-        [Boolean]
+        [Boolean(Name = "is_deleted")]
         public bool IsDeleted { get; set; }
 
-        [Boolean]
-        public bool IsDraft { get; set; }
-
-        [Boolean]
-        public bool CanBorrow { get; set; }
-
-        [Date]
+        [Date(Name = "created_at")]
         public DateTime CreatedAt { get; set; }
 
-        [Date]
+        [Date(Name = "updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
-        [Keyword] 
+        [Keyword(Name = "created_by")] 
         public string CreatedBy { get; set; } = null!;
 
-        [Keyword]
+        [Keyword(Name = "updated_by")]
         public string? UpdatedBy { get; set; }
 
-        [Nested]
+        [Nested(Name = "categories")]
         public List<ElasticCategory> Categories { get; set; } = null!;
 
-        [Nested]
+        [Nested(Name = "book_editions")]
         public List<ElasticBookEdition> BookEditions { get; set; } = null!;
     }
 }

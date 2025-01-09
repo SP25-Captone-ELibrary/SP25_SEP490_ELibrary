@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
@@ -7,9 +8,7 @@ public class BookEdition : IAuditableEntity
 {
     // Key
     public int BookEditionId { get; set; }
-    public bool IsTrained { get; set; } = false;
-    public DateTime? TrainedDay { get; set; }
-    
+
     // Edition of which book
     public int BookId { get; set; }
 
@@ -31,11 +30,18 @@ public class BookEdition : IAuditableEntity
     // Locate in which shelf
     public int? ShelfId { get; set; }
     
+    // Edition status (Draft, Published)
+    public BookEditionStatus Status { get; set; }
+    
 	// Creation, update datetime and employee is charge of 
 	public DateTime CreatedAt { get; set; }
 	public DateTime? UpdatedAt { get; set; }
 	public string CreatedBy { get; set; } = null!;
 	public string? UpdatedBy { get; set; }
+	
+	// AI Training fields
+	public bool IsTrained { get; set; }
+	public DateTime? TrainedDay { get; set; }
 
     // Mapping entities
     [JsonIgnore]

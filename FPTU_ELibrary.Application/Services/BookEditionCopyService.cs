@@ -158,6 +158,8 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 			var baseSpec = new BaseSpecification<BookEditionCopy>(x => x.BookEditionCopyId == id);
 			// Include borrow records and requests relation
 			baseSpec.ApplyInclude(q => q
+				// Include book edition
+				.Include(bec => bec.BookEdition)
 				// Include borrow records
 				.Include(bec => bec.BorrowRecords)
 				// Include borrow requests
@@ -193,6 +195,17 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 					// Fail to update
 					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				}else if (enumStatus == BookEditionCopyStatus.InShelf)
+				{
+					// Required exist shelf location in book edition for update to in-shelf status
+					if (existingEntity.BookEdition.ShelfId == null || existingEntity.BookEdition.ShelfId == 0)
+					{
+						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0011);
+						// Required shelf location
+						return new ServiceResult(ResultCodeConst.Book_Warning0011,
+							StringUtils.Format(errMsg, isEng 
+								? "Shelf location not found" : "Không tìm thấy vị trí kệ cho sách"));
+					}
 				}	
 			}
 			
@@ -276,7 +289,7 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 		}
     }
     
-    public async Task<IServiceResult> AddRangeToBookEditionAsync(int bookEditionId, List<string> editionCopyCodes)
+    public async Task<IServiceResult> AddRangeToBookEditionAsync(int bookEditionId, List<BookEditionCopyDto> editionCopies)
     {
         try
         {
@@ -289,26 +302,47 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             var customErrors = new Dictionary<string, string[]>();
             var uniqueList = new HashSet<string>();
             // Check exist code
-            for (int i = 0; i < editionCopyCodes.Count; i++)
+            for (int i = 0; i < editionCopies.Count; i++)
             {
-                if (uniqueList.Add(editionCopyCodes[i])) // Valid code
+	            // Validate condition status (check for first only)
+	            var conditionHistories = editionCopies[i].CopyConditionHistories.ToList();
+	            if (conditionHistories.Count > 1)
+	            {
+					return new ServiceResult(ResultCodeConst.SYS_Fail0001, isEng 
+							? "Not allow to add multiple condition histories" 
+							: "Không được thêm nhiều trạng thái bản in ban đầu");		            
+	            }
+	            else
+	            {
+		            if (!Enum.TryParse(typeof(ConditionHistoryStatus),
+			                conditionHistories[0].Condition, out _)) // Not valid status
+		            {
+			            // Add error 
+			            customErrors.Add(
+				            $"bookEditionCopies[{i}].conditionStatus", 
+				            [isEng ? "Condition status not value" : "Trạng thái điều kiện không hợp lệ"]);
+		            };
+	            }
+	            
+                if (uniqueList.Add(editionCopies[i].Barcode)) // Valid barcode
                 {
                     // Check exist code in DB
-                    var isExist = await _unitOfWork.Repository<BookEditionCopy, int>().AnyAsync(x => x.Code == editionCopyCodes[i]);
+                    var isExist = await _unitOfWork.Repository<BookEditionCopy, int>().AnyAsync(x => 
+	                    x.Barcode == editionCopies[i].Barcode);
                     if (isExist) // already exist
                     {
                         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0006);
                         // Add error 
                         customErrors.Add(
-                            $"codes[{i}]", 
-                            [StringUtils.Format(errMsg, $"'{editionCopyCodes[i]}'")]);
+                            $"bookEditionCopies[{i}].barcode", 
+                            [StringUtils.Format(errMsg, $"'{editionCopies[i].Barcode}'")]);
                     }
                 }
                 else
                 {
                     // Add error 
                     customErrors.Add(
-                        $"codes[{i}]", 
+                        $"bookEditionCopies[{i}].barcode", 
                         [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0005)]);                    
                 }
             }
@@ -330,18 +364,20 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
             
             var toAddCopies = new List<BookEditionCopy>();
             // Process add new edition copy 
-            editionCopyCodes.ForEach(code =>
+            editionCopies.ForEach(bec =>
             {
                 toAddCopies.Add(new()
                 {
                     // Assign to specific book edition
                     BookEditionId = bookEditionEntity.BookEditionId,
-                    // Assign copy code
-                    Code = code,
+                    // Assign copy barcode
+                    Barcode = bec.Barcode,
                     // Default status
                     Status = nameof(BookEditionCopyStatus.OutOfShelf),
                     // Boolean 
-                    IsDeleted = false
+                    IsDeleted = false,
+                    // Condition histories
+                    CopyConditionHistories = _mapper.Map<List<CopyConditionHistory>>(bec.CopyConditionHistories)
                 });
             });
             
@@ -448,7 +484,7 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
                 {
                     var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                     // Add error 
-                    customErrors.Add($"editionCopyIds[{i}]",
+                    customErrors.Add($"bookEditionCopyIds[{i}]",
                         [StringUtils.Format(errMsg, isEng ? "edition copy" : "bản in")]);
                 }
                 else
@@ -464,7 +500,7 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
                     if (hasConstraint) // Has any constraint 
                     {
 	                    // Add error 
-	                    customErrors.Add($"editionCopyIds[{i}]", [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0008)]);
+	                    customErrors.Add($"bookEditionCopyIds[{i}]", [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0008)]);
                     }
                 }
             }
@@ -481,6 +517,8 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
 					x.BookEditionId == bookEditionId &&
 		            // Exist in update list
 					bookEditionCopyIds.Contains(x.BookEditionCopyId)); 
+            // Apply include 
+            baseSpec.ApplyInclude(q => q.Include(bec => bec.BookEdition));
             // Get all book edition copy with spec
             var editionCopyEntities =
                 await _unitOfWork.Repository<BookEditionCopy, int>().GetAllWithSpecAsync(baseSpec);
@@ -492,6 +530,22 @@ public class BookEditionCopyService : GenericService<BookEditionCopy, BookEditio
                 // Mark as fail to update
                 return new ServiceResult(ResultCodeConst.SYS_Fail0003,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+            }
+            else // Exist any
+            {
+	            // Require all book edition have shelf location if update to status in-shelf
+	            if ((BookEditionCopyStatus?) validStatus == BookEditionCopyStatus.InShelf)
+	            {
+					// Required exist shelf location in book edition for update to in-shelf status
+					if (editionCopyList.Select(x => x.BookEdition.ShelfId).Any(shelfId => shelfId == null))
+					{
+						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0011);
+						// Required shelf location
+						return new ServiceResult(ResultCodeConst.Book_Warning0011,
+							StringUtils.Format(errMsg, isEng 
+								? "Shelf location not found" : "Không tìm thấy vị trí kệ"));
+					}
+				}
             }
             
             // Retrieve current inventory data

@@ -40,14 +40,14 @@ namespace FPTU_ELibrary.API.Extensions
 			using (var scope = app.Services.CreateScope())
 			{
 				// Get service typeof IElasticInitializeService from IServiceProvider
-				var initializer = scope.ServiceProvider.GetRequiredService<IElasticInitializeService>();
+				var initializer = scope.ServiceProvider.GetRequiredService<IElasticService>();
 				// Resolve Serilog.ILogger
 				var logger = scope.ServiceProvider.GetRequiredService<Serilog.ILogger>();
 				
 				try
 				{
 					// Create index and Indexing documents if not exist
-					await initializer.RunAsync();
+					await initializer.InitializeAsync();
 				}
 				catch (Exception ex)
 				{

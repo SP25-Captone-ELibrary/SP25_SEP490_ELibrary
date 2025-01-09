@@ -12,6 +12,7 @@ public class BookEditionCopy : IAuditableEntity
     public int BookEditionId { get; set; }
     
     // Copy code and its status
+    public string Barcode { get; set; } = null!;
     public string? Code { get; set; }
     public string Status { get; set; } = null!;
     

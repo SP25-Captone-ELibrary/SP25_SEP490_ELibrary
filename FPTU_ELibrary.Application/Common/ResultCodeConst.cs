@@ -259,6 +259,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string File_Warning0003 = "File.Warning0003";
 		
+		/// <summary>
+		/// [WARNING] Tệp tải lên chứa các hình ảnh bị trùng tên: {0}
+		/// </summary>
+		public const string File_Warning0004 = "File.Warning0004";
+		
 		#endregion
 
 		#region Cloud
@@ -384,18 +389,34 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Book_Warning0008 = "Book.Warning0008";
 		/// <summary>
-		/// [WARNING] Cannot delete, please move all edition copy status to inventory first
+		/// [WARNING] Cannot process, please move all edition copy status to inventory first
 		/// </summary>
 		public const string Book_Warning0009 = "Book.Warning0009";
 		/// <summary>
 		/// [WARNING] Cannot delete as there still exist copy within the book edition
 		/// </summary>
 		public const string Book_Warning0010 = "Book.Warning0010";
+		/// <summary>
+		/// [WARNING] Cannot change book edition copy status. {0}
+		/// </summary>
+		public const string Book_Warning0011 = "Book.Warning0011";
+		/// <summary>
+		/// [WARNING] Cannot change book status to public. {0}
+		/// </summary>
+		public const string Book_Warning0012 = "Book.Warning0012";
+		/// <summary>
+		/// [WARNING] Cannot change book status to draft. {0}
+		/// </summary>
+		public const string Book_Warning0013 = "Book.Warning0013";
 
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
 		public const string Book_Fail0001 = "Book.Fail0001";
+		/// <summary>
+		/// [FAIL] The action cannot be performed. Please switch to draft status to proceed
+		/// </summary>
+		public const string Book_Fail0002 = "Book.Fail0002";
 		#endregion
 		
 		#region BookCategory

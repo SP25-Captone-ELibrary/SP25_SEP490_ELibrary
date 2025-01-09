@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -151,6 +151,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookId"));
 
+                    b.Property<string>("BookCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("book_code");
+
                     b.Property<Guid?>("BookCodeForAITraining")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("book_code_for_ai");
@@ -169,20 +175,14 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
 
-                    b.Property<bool>("IsDraft")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_draft");
-
                     b.Property<string>("SubTitle")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("sub_title");
 
                     b.Property<string>("Summary")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("summary");
 
                     b.Property<string>("Title")
@@ -347,6 +347,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<int?>("ShelfId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("status");
+
                     b.Property<DateTime?>("TrainedDay")
                         .HasColumnType("datetime")
                         .HasColumnName("trained_day");
@@ -425,6 +430,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookEditionCopyId"));
 
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("barcode");
+
                     b.Property<int>("BookEditionId")
                         .HasColumnType("int")
                         .HasColumnName("book_edition_id");
@@ -480,6 +491,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<int>("AvailableCopies")
                         .HasColumnType("int")
                         .HasColumnName("available_copies");
+
+                    b.Property<int>("BorrowedCopies")
+                        .HasColumnType("int")
+                        .HasColumnName("borrowed_copies");
 
                     b.Property<int>("RequestCopies")
                         .HasColumnType("int")
