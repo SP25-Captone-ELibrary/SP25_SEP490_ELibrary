@@ -4,7 +4,7 @@ using Nest;
 
 namespace FPTU_ELibrary.API.Payloads.Filters
 {
-    public class SearchBookRequest : BookEditionSpecParams
+    public class SearchBookRequest : LibraryItemSpecParams
     {
         public bool? IsDescendingSort { get; set; }
     }

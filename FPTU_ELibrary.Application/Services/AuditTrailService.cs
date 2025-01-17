@@ -3,13 +3,12 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AuditTrail;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -19,14 +18,16 @@ using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Serilog;
-using BookCategory = FPTU_ELibrary.Domain.Common.Enums.BookCategory;
 
 namespace FPTU_ELibrary.Application.Services;
 
 public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>,
     IAuditTrailService<AuditTrailDto>
 {
-    private readonly IBookService<BookDto> _bookService;
+    private readonly ILibraryResourceService<LibraryResourceDto> _resourceService;
+    private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
+    private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGrpService;
+    private readonly ILibraryShelfService<LibraryShelfDto> _libraryShelfService;
     private readonly IEmployeeService<EmployeeDto> _employeeService;
     private readonly IUserService<UserDto> _userService;
     private readonly IAuthorService<AuthorDto> _authorService;
@@ -37,17 +38,23 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
         IAuthorService<AuthorDto> authorService,
         ICategoryService<CategoryDto> cateService,
         IEmployeeService<EmployeeDto> employeeService,
-        IBookService<BookDto> bookService,
+        ILibraryResourceService<LibraryResourceDto> resourceService,
+        ILibraryItemService<LibraryItemDto> libraryItemService,
+        ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGrpService,
+        ILibraryShelfService<LibraryShelfDto> libraryShelfService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+        _resourceService = resourceService;
         _authorService = authorService;
         _cateService = cateService;
         _userService = userService;
         _employeeService = employeeService;
-        _bookService = bookService;
+        _libraryItemService = libraryItemService;
+        _libraryItemGrpService = libraryItemGrpService;
+        _libraryShelfService = libraryShelfService;
     }
 
     public override async Task<IServiceResult> GetAllWithSpecAsync(
@@ -149,27 +156,16 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                 // Handle by root entity name
                 switch (rootEntityName)
                 {
-                    case nameof(Book):
-                        newData = (await HandleBookAuditAsync(auditTrailList))?.ToBookDetailDto();
+                    case nameof(LibraryItem):
+                        newData = (await HandleLibraryItemAddedAsync(auditTrailList));
                         break;
-                    case nameof(BookEdition):
-                        newData = (await HandleBookEditionAddedAsync(auditTrailList))
-                            .Select(be => be.ToEditionDetailDto())
-                            .ToList();
+                    case nameof(LibraryResource):
+                        newData = await HandleLibraryItemResourceAddedAsync(auditTrailList);
                         break;
-                    case nameof(BookResource):
-                        newData = await HandleBookResourceAddedAsync(auditTrailList);
+                    case nameof(LibraryItemInstance):
+                        newData = await HandleLibraryItemInstanceAddedAsync(auditTrailList);
                         break;
-                    case nameof(BookCategory):
-                        newData = await HandleBookCategoryAddedAsync(auditTrailList);
-                        break;
-                    case nameof(BookEditionCopy):
-                        newData = await HandleBookEditionCopyAddedAsync(auditTrailList);
-                        break;
-                    case nameof(BookEditionAuthor):
-                        newData = await HandleBookEditionAuthorAddedAsync(auditTrailList);
-                        break;
-                    case nameof(CopyConditionHistory):
+                    case nameof(LibraryItemConditionHistory):
                         break;
                     case nameof(SystemRole):
                         break;
@@ -242,9 +238,8 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
     #region Handle get entity relation columns (using recursive method) 
     private static readonly Dictionary<string, List<string>> EntityRelationships = new()
     {
-        { nameof(Book), new List<string> { nameof(BookCategory), nameof(BookEdition), nameof(BookResource) } },
-        { nameof(BookEdition) , new List<string> { nameof(BookEditionAuthor), nameof(BookEditionCopy) } },
-        { nameof(BookEditionCopy), new List<string> { nameof(CopyConditionHistory) } }
+        { nameof(LibraryItem) , new List<string> { nameof(LibraryItemAuthor), nameof(LibraryItemInstance), nameof(LibraryItemResource)  } },
+        { nameof(LibraryItemInstance), new List<string> { nameof(LibraryItemConditionHistory) } }
     };
 
     private void ExpandRelatedEntities(string entityName, HashSet<string> result)
@@ -270,228 +265,61 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
     #endregion
 
     #region Handle Added Entities
-    private async Task<BookDto?> HandleBookAuditAsync(List<AuditTrail> auditTrailList)
+    private async Task<List<LibraryItemResourceDto>> HandleLibraryItemResourceAddedAsync(
+        List<AuditTrail> auditTrailList, string? libraryItemId = null)
     {
-        var bookDto = auditTrailList // From audit trail collection
-            .Where(b => b.EntityName == nameof(Book)) // Retrieve Book entity
-            .Select(b => new BookDto() 
+        var itemResourceAudits = auditTrailList // From audit trail collection
+            .Where(br => br.EntityName == nameof(LibraryItemResource)) // Retrieve all LibraryItemResource entity 
+            .ToList(); // Convert to list  
+        if (itemResourceAudits.Any()) // Exist at least 1 resource 
+        {
+            var itemResourceDtos = auditTrailList
+                .Where(br => br.EntityName == nameof(LibraryItemResource) &&
+                             br.NewValues.Any() &&
+                             br.NewValues.ContainsKey("LibraryItemId") &&
+                             (string.IsNullOrEmpty(libraryItemId) ||
+                              br.NewValues["LibraryItemId"]?.ToString() == libraryItemId))
+                .Select(br => new LibraryItemResourceDto
+                {
+                    ResourceId = int.Parse(br.EntityId ?? "0"),
+                    LibraryItemResourceId = int.Parse(br.NewValues["LibraryItemResourceId"]?.ToString() ?? "0"),
+                    LibraryItemId = int.Parse(br.NewValues["LibraryItemId"]?.ToString() ?? "0"),
+                }).ToList();
+            
+            // Try to get data of resource
+            foreach (var src in itemResourceDtos)
             {
-                BookId = int.Parse(b.EntityId ?? "0"),
-                BookCode = b.NewValues["BookCode"]?.ToString()!,
-                Title = b.NewValues["Title"]?.ToString()!,
-                SubTitle = b.NewValues["SubTitle"]?.ToString(),
-                Summary = b.NewValues["Summary"]?.ToString(),
-                IsDeleted = bool.Parse(b.NewValues["IsDeleted"]?.ToString()!),
-                CreatedAt = DateTime.Parse(b.NewValues["CreatedAt"]?.ToString()!),
-                UpdatedAt = DateTime.Parse(b.NewValues["UpdatedAt"]?.ToString() ?? DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                CreatedBy = b.NewValues["CreatedBy"]?.ToString()!,
-                UpdatedBy = b.NewValues["UpdatedBy"]?.ToString() ?? null!
-            }).FirstOrDefault();
-        // Check whether exist book
-        if (bookDto == null) return null;
-        
-        bookDto.BookEditions = await HandleBookEditionAddedAsync(auditTrailList, bookDto.BookId.ToString());
-        // Retrieve book categories (if any)
-        bookDto.BookCategories = await HandleBookCategoryAddedAsync(auditTrailList, bookDto.BookId.ToString());
-        // Retrieve book resources (if any)
-        bookDto.BookResources = await HandleBookResourceAddedAsync(auditTrailList, bookDto.BookId.ToString());
+                if ((await _resourceService.GetByIdAsync(src.ResourceId)).Data is LibraryResourceDto resourceDto)
+                {
+                    src.LibraryResource = resourceDto;
+                }
+            }
 
-        return bookDto;
+            return itemResourceDtos;
+        }
+        
+        // Return empty collection <- Not found any
+        return new List<LibraryItemResourceDto>();
     }
     
-    private async Task<List<BookCategoryDto>> HandleBookCategoryAddedAsync(List<AuditTrail> auditTrailList, string? bookId = null)
+    private async Task<List<LibraryItemInstanceDto>> HandleLibraryItemInstanceAddedAsync(
+        List<AuditTrail> auditTrailList, string? libraryItemId = null)
     {
-        var bookCategoryAudits = auditTrailList // From audit trail collection
-                    .Where(bc => bc.EntityName == nameof(BookCategory)) // Retrieve all BookCategory entity 
-                    .ToList(); // Convert to list
-        if (bookCategoryAudits.Any()) // Exist at least 1 category 
-        {
-            // Handle map audit values to BookCategory collection
-            var bookCategoryDtos = auditTrailList
-                .Where(bc => bc.EntityName == nameof(BookCategory) && 
-                             bc.NewValues.Any() &&
-                             bc.NewValues.ContainsKey("BookId") &&
-                             (string.IsNullOrEmpty(bookId) || bc.NewValues["BookId"]?.ToString() == bookId))
-                .Select(bc => new BookCategoryDto()
-                {
-                    BookCategoryId = int.Parse(bc.EntityId ?? "0"),
-                    BookId = int.Parse(bc.NewValues["BookId"]?.ToString() ?? "0"),
-                    CategoryId = int.Parse(bc.NewValues["CategoryId"]?.ToString()!),
-                    CreatedAt = DateTime.Parse(bc.NewValues["CreatedAt"]?.ToString()!),
-                    UpdatedAt = DateTime.Parse(bc.NewValues["UpdatedAt"]?.ToString() ??
-                                               DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                    CreatedBy = bc.NewValues["CreatedBy"]?.ToString()!,
-                    UpdatedBy = bc.NewValues["UpdatedBy"]?.ToString() ?? null!,
-                }).ToList();
-            
-            // Try to retrieve category
-            if (bookCategoryDtos.Any())
-            {
-                foreach (var bookCate in bookCategoryDtos)
-                {
-                    bookCate.Category = (await _cateService.GetByIdAsync(bookCate.CategoryId)).Data as CategoryDto ?? null!;
-                }
-            }
-
-            return bookCategoryDtos;
-        }
-        
-        // Return empty collection <- Not found any
-        return new List<BookCategoryDto>();
-    }
-
-    private async Task<List<BookResourceDto>> HandleBookResourceAddedAsync(List<AuditTrail> auditTrailList, string? bookId = null)
-    {
-        var bookResourceAudits = auditTrailList // From audit trail collection
-            .Where(br => br.EntityName == nameof(BookResource)) // Retrieve all BookResource entity 
-            .ToList(); // Convert to list  
-        if (bookResourceAudits.Any()) // Exist at least 1 resource 
-        {
-            return await Task.FromResult(
-                auditTrailList
-                    .Where(br => br.EntityName == "BookResource" && 
-                                 br.NewValues.Any() &&
-                                 br.NewValues.ContainsKey("BookId") &&
-                                 (string.IsNullOrEmpty(bookId) || br.NewValues["BookId"]?.ToString() == bookId))
-                    .Select(br => new BookResourceDto
-                    {
-                        ResourceId = int.Parse(br.EntityId ?? "0"),
-                        BookId = int.Parse(br.NewValues["BookId"]?.ToString() ?? "0"),
-                        ResourceType = br.NewValues["ResourceType"]?.ToString()!,
-                        ResourceUrl = br.NewValues["ResourceUrl"]?.ToString()!,
-                        ResourceSize = int.Parse(br.NewValues["ResourceSize"]?.ToString() ?? "0"),
-                        FileFormat = br.NewValues["FileFormat"]?.ToString()!,
-                        Provider = br.NewValues["Provider"]?.ToString()!,
-                        ProviderPublicId = br.NewValues["ProviderPublicId"]?.ToString()!,
-                        ProviderMetadata = br.NewValues["ProviderMetadata"]?.ToString(),
-                        CreatedAt = DateTime.Parse(br.NewValues["CreatedAt"]?.ToString()!),
-                        UpdatedAt = DateTime.Parse(br.NewValues["UpdatedAt"]?.ToString() ??
-                                                   DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                        CreatedBy = br.NewValues["CreatedBy"]?.ToString()!,
-                        UpdatedBy = br.NewValues["UpdatedBy"]?.ToString() ?? null!,
-                        IsDeleted = bool.Parse(br.NewValues["IsDeleted"]?.ToString()!),
-                    }).ToList());
-        }
-        
-        // Return empty collection <- Not found any
-        return new List<BookResourceDto>();
-    }
-
-    private async Task<List<BookEditionDto>> HandleBookEditionAddedAsync(List<AuditTrail> auditTrailList, string? bookId = null)
-    {
-        var bookEditionAudits = auditTrailList // From audit trail collection
-            .Where(bea => bea.EntityName == nameof(BookEdition)) // Retrieve all BookEdition entity 
+        var itemInstanceAudits = auditTrailList // From audit trail collection
+            .Where(bea => bea.EntityName == nameof(LibraryItemInstance)) // Retrieve all LibraryItemInstance entity 
             .ToList(); // Convert to list
-        if (bookEditionAudits.Any()) // Exist at least 1 edition 
+        if (itemInstanceAudits.Any()) // Exist at least 1 instance
         {
-            // Handle map audit values to BookEdition collection
-            var bookEditionDtos = bookEditionAudits
-                .Where(be => be.EntityName == nameof(BookEdition) && 
-                             be.NewValues.Any() &&
-                             be.NewValues.ContainsKey("BookId") &&
-                             (string.IsNullOrEmpty(bookId) || be.NewValues["BookId"]?.ToString() == bookId))
-                .Select(be => new BookEditionDto
-                {
-                    BookEditionId = int.Parse(be.EntityId ?? "0"),
-                    BookId = int.Parse(be.NewValues["BookId"]?.ToString() ?? "0"),
-                    EditionTitle = be.NewValues["EditionTitle"]?.ToString(),
-                    EditionSummary = be.NewValues["EditionSummary"]?.ToString(),
-                    EditionNumber = int.Parse(be.NewValues["EditionNumber"]?.ToString()!),
-                    PublicationYear = int.Parse(be.NewValues["PublicationYear"]?.ToString()!),
-                    PageCount = int.Parse(be.NewValues["PageCount"]?.ToString()!),
-                    Language = be.NewValues["Language"]?.ToString()!,
-                    CoverImage = be.NewValues["CoverImage"]?.ToString(),
-                    Format = be.NewValues["Format"]?.ToString(),
-                    Publisher = be.NewValues["Publisher"]?.ToString(),
-                    Isbn = be.NewValues["Isbn"]?.ToString()!,
-                    IsDeleted = bool.Parse(be.NewValues["IsDeleted"]?.ToString()!),
-                    CanBorrow = bool.Parse(be.NewValues["CanBorrow"]?.ToString()!),
-                    EstimatedPrice = decimal.Parse(be.NewValues["EstimatedPrice"]?.ToString()!),
-                    ShelfId = int.Parse(be.NewValues["ShelfId"]?.ToString() ?? "0"),
-                    Status = (BookEditionStatus) Enum.Parse(typeof(BookEditionStatus), be.NewValues["Status"]?.ToString()!),
-                    CreatedAt = DateTime.Parse(be.NewValues["CreatedAt"]?.ToString()!),
-                    UpdatedAt = DateTime.Parse(be.NewValues["UpdatedAt"]?.ToString() ??
-                                               DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                    CreatedBy = be.NewValues["CreatedBy"]?.ToString()!,
-                    UpdatedBy = be.NewValues["UpdatedBy"]?.ToString() ?? null!,
-                }).ToList();
-            
-            
-            // Try to retrieve all authors & copies
-            if (bookEditionDtos.Any())
-            {
-                foreach (var bookEdition in bookEditionDtos)
-                {
-                    // Retrieve book authors (if any)
-                    bookEdition.BookEditionAuthors = await HandleBookEditionAuthorAddedAsync(auditTrailList, bookEdition.BookEditionId.ToString());
-                    // Retrieve book copies (if any)
-                    var test = await HandleBookEditionCopyAddedAsync(auditTrailList,
-                        bookEdition.BookEditionId.ToString());
-                    bookEdition.BookEditionCopies = await HandleBookEditionCopyAddedAsync(auditTrailList, bookEdition.BookEditionId.ToString());
-                }
-            }
-
-            return bookEditionDtos;
-        }
-        
-        // Return empty collection <- Not found any
-        return new List<BookEditionDto>();
-    }
-
-    private async Task<List<BookEditionAuthorDto>> HandleBookEditionAuthorAddedAsync(
-        List<AuditTrail> auditTrailList,
-        string? bookEditionId = null)
-    {
-        var editionAuthorAudits = auditTrailList // From audit trail collection
-            .Where(bea => bea.EntityName == nameof(BookEditionAuthor)) // Retrieve all BookEditionAuthor entity 
-            .ToList(); // Convert to list
-        if (editionAuthorAudits.Any()) // Exist at least 1 edition
-        {
-            var bookEditionAuthorDtos = await Task.FromResult(
-                auditTrailList
-                    .Where(bea => bea.EntityName == nameof(BookEditionAuthor) &&
-                                  bea.NewValues.Any() &&
-                                  bea.NewValues.ContainsKey("BookEditionId") &&
-                                  bea.NewValues["BookEditionId"]?.ToString() == bookEditionId)
-                    .Select(bea => new BookEditionAuthorDto()
-                    {
-                        BookEditionAuthorId = int.Parse(bea.EntityId ?? "0"),
-                        BookEditionId = int.Parse(bea.NewValues["BookEditionId"]?.ToString() ?? "0"),
-                        AuthorId = int.Parse(bea.NewValues["AuthorId"]?.ToString()!)
-                    }).ToList());
-            
-            // Try to get author detail from DB
-            foreach (var bea in bookEditionAuthorDtos)
-            {
-                bea.Author = (await _authorService.GetByIdAsync(bea.AuthorId)).Data as AuthorDto ?? null!;
-            }
-
-            return bookEditionAuthorDtos;
-        }
-        
-        // Return empty collection <- Not found any
-        return new List<BookEditionAuthorDto>();
-    }
-
-    private async Task<List<BookEditionCopyDto>> HandleBookEditionCopyAddedAsync(
-        List<AuditTrail> auditTrailList, string? bookEditionId = null)
-    {
-        var editionCopyAudits = auditTrailList // From audit trail collection
-            .Where(bea => bea.EntityName == nameof(BookEditionCopy)) // Retrieve all BookEditionCopy entity 
-            .ToList(); // Convert to list
-        if (editionCopyAudits.Any()) // Exist at least 1 edition
-        {
-            var editionCopyDtos = auditTrailList
-                .Where(i => i.EntityName == nameof(BookEditionCopy) && 
+            var itemInstanceDtos = auditTrailList
+                .Where(i => i.EntityName == nameof(LibraryItemInstance) && 
                             i.NewValues.Any() &&
-                            i.NewValues.ContainsKey("BookEditionId") &&
-                            i.NewValues["BookEditionId"]?.ToString() == bookEditionId)
-                .Select(bec => new BookEditionCopyDto
+                            i.NewValues.ContainsKey("LibraryItemId") &&
+                            i.NewValues["LibraryItemId"]?.ToString() == libraryItemId)
+                .Select(bec => new LibraryItemInstanceDto
                 {
-                    BookEditionId = int.Parse(bec.NewValues["BookEditionId"]?.ToString() ?? "0"),
-                    BookEditionCopyId = int.Parse(bec.EntityId ?? "0"),
+                    LibraryItemInstanceId = int.Parse(bec.EntityId ?? "0"),
+                    LibraryItemId = int.Parse(bec.NewValues["LibraryItemId"]?.ToString() ?? "0"),
                     Barcode = bec.NewValues["Barcode"]?.ToString()!,
-                    Code = bec.NewValues["Code"]?.ToString(),
                     Status = bec.NewValues["Status"]?.ToString()!,
                     CreatedAt = DateTime.Parse(bec.NewValues["CreatedAt"]?.ToString()!),
                     UpdatedAt = DateTime.Parse(bec.NewValues["UpdatedAt"]?.ToString() ??
@@ -501,41 +329,41 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                     IsDeleted = bool.Parse(bec.NewValues["IsDeleted"]?.ToString()!)
                 }).ToList();
 
-            if (editionCopyDtos.Any())
+            if (itemInstanceDtos.Any())
             {
                 // Try to get copy histories (if any)
-                foreach (var editionCopy in editionCopyDtos)
+                foreach (var instanceCondition in itemInstanceDtos)
                 {
-                    editionCopy.CopyConditionHistories = await HandleCopyHistoryAddedAsync(auditTrailList, editionCopy.BookEditionCopyId.ToString());
+                    instanceCondition.LibraryItemConditionHistories = await HandleLibraryItemInstanceConditionHisAddedAsync(auditTrailList, instanceCondition.LibraryItemInstanceId.ToString());
                 }
             }
 
-            return editionCopyDtos;
+            return itemInstanceDtos;
         }
         
         // Return empty collection <- Not found any
-        return new List<BookEditionCopyDto>();
+        return new List<LibraryItemInstanceDto>();
     }
 
-    private async Task<List<CopyConditionHistoryDto>> HandleCopyHistoryAddedAsync(
-        List<AuditTrail> auditTrailList, string? bookEditionCopyId = null)
+    private async Task<List<LibraryItemConditionHistoryDto>> HandleLibraryItemInstanceConditionHisAddedAsync(
+        List<AuditTrail> auditTrailList, string? libraryItemInstanceId = null)
     {
         var copyHistoryAudits = auditTrailList // From audit trail collection
-            .Where(bea => bea.EntityName == nameof(CopyConditionHistory)) // Retrieve all CopyConditionHistory entity 
+            .Where(bea => bea.EntityName == nameof(LibraryItemConditionHistory)) // Retrieve all LibraryItemConditionHistory entity 
             .ToList(); // Convert to list
 
         if (copyHistoryAudits.Any()) // Exist at least 1 history
         {
             return await Task.FromResult(
                 auditTrailList
-                    .Where(ch => ch.EntityName == nameof(CopyConditionHistory) &&
+                    .Where(ch => ch.EntityName == nameof(LibraryItemConditionHistory) &&
                                  ch.NewValues.Any() &&
-                                 ch.NewValues.ContainsKey("BookEditionCopyId") &&
-                                 (string.IsNullOrEmpty(bookEditionCopyId) || ch.NewValues["BookEditionCopyId"]?.ToString() == bookEditionCopyId))
-                    .Select(ch => new CopyConditionHistoryDto
+                                 ch.NewValues.ContainsKey("LibraryItemInstanceId") &&
+                                 (string.IsNullOrEmpty(libraryItemInstanceId) || ch.NewValues["LibraryItemInstanceId"]?.ToString() == libraryItemInstanceId))
+                    .Select(ch => new LibraryItemConditionHistoryDto
                     {
                         ConditionHistoryId = int.Parse(ch.EntityId ?? "0"),
-                        BookEditionCopyId = int.Parse(ch.NewValues["BookEditionCopyId"]?.ToString() ?? "0"),
+                        LibraryItemInstanceId = int.Parse(ch.NewValues["LibraryItemInstanceId"]?.ToString() ?? "0"),
                         Condition = ch.NewValues["Condition"]?.ToString()!,
                         CreatedAt = DateTime.Parse(ch.NewValues["CreatedAt"]?.ToString()!),
                         UpdatedAt = DateTime.Parse(ch.NewValues["UpdatedAt"]?.ToString() ??
@@ -546,7 +374,119 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
         }
         
         // Return empty collection <- Not found any
-        return new List<CopyConditionHistoryDto>();
+        return new List<LibraryItemConditionHistoryDto>();
+    }
+    
+    private async Task<List<LibraryItemAuthorDto>> HandleLibraryItemAuthorAddedAsync(
+        List<AuditTrail> auditTrailList, string? libraryItemId = null)
+    {
+        var itemAuthorAudits = auditTrailList // From audit trail collection
+            .Where(bea => bea.EntityName == nameof(LibraryItemAuthor)) // Retrieve all LibraryItemAuthor entity 
+            .ToList(); // Convert to list
+        if (itemAuthorAudits.Any()) // Exist at least 1 item
+        {
+            var itemAuthorDtos = await Task.FromResult(
+                auditTrailList
+                    .Where(bea => bea.EntityName == nameof(LibraryItemAuthor) &&
+                                  bea.NewValues.Any() &&
+                                  bea.NewValues.ContainsKey("LibraryItemId") &&
+                                  bea.NewValues["LibraryItemId"]?.ToString() == libraryItemId)
+                    .Select(bea => new LibraryItemAuthorDto()
+                    {
+                        LibraryItemAuthorId = int.Parse(bea.EntityId ?? "0"),
+                        LibraryItemId = int.Parse(bea.NewValues["LibraryItemId"]?.ToString() ?? "0"),
+                        AuthorId = int.Parse(bea.NewValues["AuthorId"]?.ToString()!)
+                    }).ToList());
+            
+            // Try to get author detail from DB
+            foreach (var bea in itemAuthorDtos)
+            {
+                bea.Author = (await _authorService.GetByIdAsync(bea.AuthorId)).Data as AuthorDto ?? null!;
+            }
+
+            return itemAuthorDtos;
+        }
+        
+        // Return empty collection <- Not found any
+        return new List<LibraryItemAuthorDto>();
+    }
+    
+    private async Task<LibraryItemDto?> HandleLibraryItemAddedAsync(List<AuditTrail> auditTrailList)
+    {
+        var itemAudit = auditTrailList // From audit trail collection
+            .Where(a => a.EntityName == nameof(LibraryItem))
+            .Select(i => new LibraryItemDto
+            {
+                LibraryItemId = int.Parse(i.EntityId ?? "0"),
+                Title = i.NewValues["Title"]?.ToString()!,
+                SubTitle = i.NewValues["SubTitle"]?.ToString(),
+                Responsibility = i.NewValues["Responsibility"]?.ToString(),
+                Edition = i.NewValues["Edition"]?.ToString(),
+                EditionNumber = int.Parse(i.NewValues["EditionNumber"]?.ToString()!),
+                Language = i.NewValues["Language"]?.ToString()!,
+                OriginLanguage = i.NewValues["OriginLanguage"]?.ToString(),
+                Summary = i.NewValues["Summary"]?.ToString(),
+                CoverImage = i.NewValues["CoverImage"]?.ToString(),
+                PublicationYear = int.Parse(i.NewValues["PublicationYear"]?.ToString()!),
+                Publisher = i.NewValues["Publisher"]?.ToString(),
+                PublicationPlace = i.NewValues["PublicationPlace"]?.ToString(),
+                ClassificationNumber = i.NewValues["ClassificationNumber"]?.ToString()!,
+                CutterNumber = i.NewValues["CutterNumber"]?.ToString()!,
+                Isbn = i.NewValues["Isbn"]?.ToString()!,
+                Ean = i.NewValues["Ean"]?.ToString(),
+                EstimatedPrice = decimal.Parse(i.NewValues["EstimatedPrice"]?.ToString()!),
+                PageCount = int.Parse(i.NewValues["PageCount"]?.ToString()!),
+                PhysicalDetails = i.NewValues["PhysicalDetails"]?.ToString(),
+                Dimensions = i.NewValues["Dimensions"]?.ToString()!,
+                AccompanyingMaterial = i.NewValues["AccompanyingMaterial"]?.ToString(),
+                Genres = i.NewValues["Genres"]?.ToString(),
+                GeneralNote = i.NewValues["GeneralNote"]?.ToString(),
+                BibliographicalNote = i.NewValues["BibliographicalNote"]?.ToString(),
+                TopicalTerms = i.NewValues["TopicalTerms"]?.ToString(),
+                AdditionalAuthors = i.NewValues["AdditionalAuthors"]?.ToString(),
+                ShelfId = int.Parse(i.NewValues["ShelfId"]?.ToString() ?? "0"),
+                CategoryId = int.Parse(i.NewValues["CategoryId"]?.ToString() ?? "0"),
+                GroupId = int.Parse(i.NewValues["GroupId"]?.ToString() ?? "0"),
+                Status = (LibraryItemStatus) Enum.Parse(typeof(LibraryItemStatus), i.NewValues["Status"]?.ToString()!),
+                IsDeleted = bool.Parse(i.NewValues["IsDeleted"]?.ToString()!),
+                CanBorrow = bool.Parse(i.NewValues["CanBorrow"]?.ToString()!),
+                IsTrained = bool.Parse(i.NewValues["IsTrained"]?.ToString()!),
+                TrainedAt = DateTime.Parse(i.NewValues["TrainedAt"]?.ToString() ??
+                                           DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
+                CreatedBy = i.NewValues["CreatedBy"]?.ToString()!,
+                CreatedAt = DateTime.Parse(i.NewValues["CreatedAt"]?.ToString()!),
+                UpdatedAt = DateTime.Parse(i.NewValues["UpdatedAt"]?.ToString() ??
+                                           DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
+                UpdatedBy = i.NewValues["UpdatedBy"]?.ToString() ?? null!,
+            })
+            .FirstOrDefault(); // Retrieve LibraryItem entity 
+        
+        if (itemAudit != null) // Exist item
+        {
+            // Try to retrieve reference data
+            if ((await _cateService.GetByIdAsync(itemAudit.CategoryId)).Data is CategoryDto categoryDto)
+            {
+                itemAudit.Category = categoryDto;
+            }
+            if ((await _libraryShelfService.GetByIdAsync(itemAudit.ShelfId ?? 0)).Data is LibraryShelfDto shelfDto)
+            {
+                itemAudit.Shelf = shelfDto;
+            }
+            if ((await _libraryItemGrpService.GetByIdAsync(itemAudit.GroupId ?? 0)).Data is LibraryItemGroupDto groupDto)
+            {
+                itemAudit.LibraryItemGroup = groupDto;
+            }
+            
+            // Try to retrieve navigations data
+            itemAudit.LibraryItemResources = await HandleLibraryItemResourceAddedAsync(auditTrailList, itemAudit.LibraryItemId.ToString());
+            itemAudit.LibraryItemInstances = await HandleLibraryItemInstanceAddedAsync(auditTrailList, itemAudit.LibraryItemId.ToString());
+            itemAudit.LibraryItemAuthors = await HandleLibraryItemAuthorAddedAsync(auditTrailList, itemAudit.LibraryItemId.ToString());
+            
+            return itemAudit;
+        }
+        
+        // Return empty collection <- Not found any
+        return null;
     }
     #endregion
 }

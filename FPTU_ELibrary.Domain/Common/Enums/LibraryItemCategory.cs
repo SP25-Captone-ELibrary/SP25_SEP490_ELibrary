@@ -1,0 +1,31 @@
+using System.ComponentModel;
+
+namespace FPTU_ELibrary.Domain.Common.Enums;
+
+public enum LibraryItemCategory
+{
+    [Description("Sách đơn")]
+    SingleBook,
+    [Description("Sách bộ")]
+    BookSeries,
+    [Description("Sách chuyên ngành")]
+    SpecializedBook,
+    [Description("Sách tham khảo")]
+    ReferenceBook,
+    [Description("Sách nghiệp vụ")]
+    ProfessionalBook,
+    [Description("Sách văn học")]
+    Literature,
+    [Description("Tài liệu đa phương tiện")]
+    Multimedia,
+    [Description("Báo chí")]
+    Newspaper,
+    [Description("Tạp chí")]
+    Journal,
+    [Description("Báo cáo nghiên cứu")]
+    ResearchPaper,
+    [Description("Tài liệu hỗ trợ học tập")]
+    LearningSupportMaterial,
+    [Description("Luận văn, luận án")]
+    AcademicThesis
+}

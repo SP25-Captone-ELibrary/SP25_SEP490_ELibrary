@@ -1,0 +1,69 @@
+using FPTU_ELibrary.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace FPTU_ELibrary.Infrastructure.Data.Configurations;
+
+public class WarehouseTrackingDetailConfiguration : 
+    IEntityTypeConfiguration<WarehouseTrackingDetail>
+{
+    public void Configure(EntityTypeBuilder<WarehouseTrackingDetail> builder)
+    {
+        builder.HasKey(e => e.TrackingDetailId).HasName("PK_WarehouseTrackingDetail_TrackingDetailId");
+        
+        builder.ToTable("Warehouse_Tracking_Detail");
+
+        builder.Property(e => e.TrackingDetailId)
+            .HasColumnName("tracking_detail_id")
+            .IsRequired();
+        builder.Property(e => e.TrackingId)
+            .HasColumnName("tracking_id")
+            .IsRequired();
+        builder.Property(e => e.CategoryId)
+            .HasColumnName("category_id")
+            .IsRequired();
+        builder.Property(e => e.LibraryItemId)
+            .HasColumnName("library_item_id");
+        builder.Property(e => e.ItemName)
+            .HasColumnName("item_name")
+            .HasMaxLength(155)
+            .IsRequired();
+        builder.Property(e => e.ItemTotal)
+            .HasColumnName("item_total")
+            .IsRequired()
+            .HasDefaultValue(0);
+        builder.Property(e => e.ActualItemTotal)
+            .HasColumnName("actual_item_total")
+            .HasDefaultValue(0);
+        builder.Property(e => e.UnitPrice)
+            .HasColumnName("unit_price")
+            .HasColumnType("decimal(10, 2)")
+            .IsRequired()
+            .HasDefaultValue(0.0m);
+        builder.Property(e => e.TotalAmount)
+            .HasColumnName("total_amount")
+            .HasColumnType("decimal(18, 2)")
+            .IsRequired()
+            .HasDefaultValue(0.0m);
+        builder.Property(e => e.Reason)
+            .HasConversion<string>()
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("reason");
+        
+        builder.HasOne(e => e.LibraryItem)
+            .WithMany(p => p.WarehouseTrackingDetails)
+            .HasForeignKey(e => e.LibraryItemId)
+            .HasConstraintName("FK_WarehouseTrackingDetail_LibraryItemId");
+        
+        builder.HasOne(e => e.WarehouseTracking)
+            .WithMany(p => p.WarehouseTrackingDetails)
+            .HasForeignKey(e => e.TrackingId)
+            .HasConstraintName("FK_WarehouseTrackingDetail_TrackingId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.Category)
+            .WithMany(p => p.WarehouseTrackingDetails)
+            .HasForeignKey(e => e.CategoryId)
+            .HasConstraintName("FK_WarehouseTrackingDetail_CategoryId");
+    }
+}

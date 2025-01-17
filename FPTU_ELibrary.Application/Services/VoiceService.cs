@@ -3,8 +3,7 @@ using Azure.Core;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.AIServices.Speech;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
@@ -24,105 +23,105 @@ namespace FPTU_ELibrary.Application.Services;
 public class VoiceService : IVoiceService
 {
     private readonly SpeechConfig _speechConfig;
-    private readonly IBookService<BookDto> _bookService;
-    private readonly IBookEditionService<BookEditionDto> _editionService;
+    // private readonly IBookService<BookDto> _bookService;
+    private readonly ILibraryItemService<LibraryItemDto> _editionService;
     private readonly ISearchService _searchService;
     private readonly ILogger _logger;
     private readonly ISystemMessageService _msgService;
     private readonly AzureSpeechSettings _monitor;
 
-    public VoiceService(SpeechConfig speechConfig, IBookService<BookDto> bookService
-        , IBookEditionService<BookEditionDto> editionService
-        , ISearchService searchService, IOptionsMonitor<AzureSpeechSettings> monitor,
+    public VoiceService(SpeechConfig speechConfig, 
+        // IBookService<BookDto> bookService
+        ILibraryItemService<LibraryItemDto> editionService,
+        ISearchService searchService, IOptionsMonitor<AzureSpeechSettings> monitor,
         ILogger logger, ISystemMessageService msgService)
     {
         _speechConfig = speechConfig;
-        _bookService = bookService;
         _editionService = editionService;
         _searchService = searchService;
         _logger = logger;
         _msgService = msgService;
         _monitor = monitor.CurrentValue;
     }
-
-    public async Task<IServiceResult> VoiceToText(IFormFile audioFile, string languageCode)
-    {
-        var tempFilePath = Path.GetTempFileName();
-        try
-        {
-            using (var fileStream = new FileStream(tempFilePath, FileMode.Create))
-            {
-                await audioFile.CopyToAsync(fileStream);
-            }
-
-            // Create AudioConfig from the temporary WAV file
-            using var audioInput = AudioConfig.FromWavFileInput(tempFilePath);
-            using var recognizer = new SpeechRecognizer(_speechConfig, languageCode, audioInput);
-
-            // Perform speech recognition
-            var result = await recognizer.RecognizeOnceAsync();
-            var recogniseTitle = StringUtils.SplitSpecialCharAtTheEnd(result.Text);
-
-            // Version 1: Match with audio
-            // Get match edition
-            var matchedBookQuery = new BaseSpecification<BookEdition>(x => x.EditionTitle.Equals(recogniseTitle)
-                                                                           || x.Book.Title.Equals(recogniseTitle));
-            matchedBookQuery.ApplyInclude(q => q.Include(e => e.Book)
-                .ThenInclude(b => b.BookCategories));
-            var bookEdition = (BookEditionDto)(await _editionService.GetWithSpecAsync(matchedBookQuery)).Data!;
-            return new ServiceResult(ResultCodeConst.SYS_Success0002
-                , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEdition);
-            /*
-            // using elasticsearch for support best suitable book
-            var searchResultWithTitle = await _searchService.SearchBookAsync(new SearchBookParameters(
-            {
-                 SearchText = recogniseTitle
-             });
-            */
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when Train Book Model");
-        }
-    }
-
-    public async Task<IServiceResult> GetLanguages()
-    {
-        try
-        {
-            List<SpeechLanguagesDto> availableLanguages = new List<SpeechLanguagesDto>();
-            availableLanguages = _monitor.Languages
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(langCode =>
-                {
-                    var trimmedCode = langCode.Trim();
-                    try
-                    {
-                        var culture = new CultureInfo(trimmedCode);
-                        return new SpeechLanguagesDto()
-                        {
-                            LanguageCode = trimmedCode,
-                            LanguageName = culture.DisplayName
-                        };
-                    }
-                    catch (CultureNotFoundException)
-                    {
-                        return new SpeechLanguagesDto()
-                        {
-                            LanguageCode = trimmedCode,
-                            LanguageName = "Unknown Language"
-                        };
-                    }
-                })
-                .ToList();
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), availableLanguages);
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when Train Book Model");
-        }
-    }
+//
+//     public async Task<IServiceResult> VoiceToText(IFormFile audioFile, string languageCode)
+//     {
+//         var tempFilePath = Path.GetTempFileName();
+//         try
+//         {
+//             using (var fileStream = new FileStream(tempFilePath, FileMode.Create))
+//             {
+//                 await audioFile.CopyToAsync(fileStream);
+//             }
+//
+//             // Create AudioConfig from the temporary WAV file
+//             using var audioInput = AudioConfig.FromWavFileInput(tempFilePath);
+//             using var recognizer = new SpeechRecognizer(_speechConfig, languageCode, audioInput);
+//
+//             // Perform speech recognition
+//             var result = await recognizer.RecognizeOnceAsync();
+//             var recogniseTitle = StringUtils.SplitSpecialCharAtTheEnd(result.Text);
+//
+//             // Version 1: Match with audio
+//             // Get match edition
+//             var matchedBookQuery = new BaseSpecification<BookEdition>(x => x.Title.Equals(recogniseTitle)
+//                                                                            || x.Book.Title.Equals(recogniseTitle));
+//             matchedBookQuery.ApplyInclude(q => q.Include(e => e.Book)
+//                 .ThenInclude(b => b.BookCategories));
+//             var bookEdition = (LibraryItemDto)(await _editionService.GetWithSpecAsync(matchedBookQuery)).Data!;
+//             return new ServiceResult(ResultCodeConst.SYS_Success0002
+//                 , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEdition);
+//             /*
+//             // using elasticsearch for support best suitable book
+//             var searchResultWithTitle = await _searchService.SearchBookAsync(new SearchBookParameters(
+//             {
+//                  SearchText = recogniseTitle
+//              });
+//             */
+//         }
+//         catch (Exception ex)
+//         {
+//             _logger.Error(ex.Message);
+//             throw new Exception("Error invoke when Train Book Model");
+//         }
+//     }
+//
+//     public async Task<IServiceResult> GetLanguages()
+//     {
+//         try
+//         {
+//             List<SpeechLanguagesDto> availableLanguages = new List<SpeechLanguagesDto>();
+//             availableLanguages = _monitor.Languages
+//                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
+//                 .Select(langCode =>
+//                 {
+//                     var trimmedCode = langCode.Trim();
+//                     try
+//                     {
+//                         var culture = new CultureInfo(trimmedCode);
+//                         return new SpeechLanguagesDto()
+//                         {
+//                             LanguageCode = trimmedCode,
+//                             LanguageName = culture.DisplayName
+//                         };
+//                     }
+//                     catch (CultureNotFoundException)
+//                     {
+//                         return new SpeechLanguagesDto()
+//                         {
+//                             LanguageCode = trimmedCode,
+//                             LanguageName = "Unknown Language"
+//                         };
+//                     }
+//                 })
+//                 .ToList();
+//             return new ServiceResult(ResultCodeConst.SYS_Success0002,
+//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), availableLanguages);
+//         }
+//         catch (Exception ex)
+//         {
+//             _logger.Error(ex.Message);
+//             throw new Exception("Error invoke when Train Book Model");
+//         }
+//     }
 }

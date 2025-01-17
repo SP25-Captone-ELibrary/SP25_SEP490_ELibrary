@@ -7,14 +7,11 @@ public class BorrowRequest
     // Key
     public int BorrowRequestId { get; set; }
 
-    // Request for which edition
-    public int? BookEditionId { get; set; }
+    // Request for which item
+    public int? LibraryItemId { get; set; }
 
-    // Request for particular copy 
-    public int? BookEditionCopyId { get; set; }
-
-    // Request for learning material
-    public int? LearningMaterialId { get; set; }
+    // Request for particular instance 
+    public int? LibraryItemInstanceId { get; set; }
 
     // Who make request
     public Guid UserId { get; set; }
@@ -28,18 +25,9 @@ public class BorrowRequest
     public string BorrowType { get; set; } = null!;
     public string? Description { get; set; }
 
-    // Deposit fee for request remotely
-    public decimal? DepositFee { get; set; }
-    public bool DepositPaid { get; set; }
-
-    //public Guid? ProcessedBy { get; set; }
-    //public DateTime? ProcessedDate { get; set; }
-
     // Mapping entities
-    public BookEdition? BookEdition { get; set; }
-    public BookEditionCopy? BookEditionCopy { get; set; }
-    public LearningMaterial? LearningMaterial { get; set; }
-    //public Employee? ProcessedByNavigation { get; set; }
+    public LibraryItem? LibraryItem { get; set; }
+    public LibraryItemInstance? LibraryItemInstance { get; set; }
     public User User { get; set; } = null!;
 
     [JsonIgnore]

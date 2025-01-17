@@ -1,6 +1,11 @@
 ﻿using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Notifications;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Dtos.Users;
 
 namespace FPTU_ELibrary.Application.Dtos
 {
@@ -8,56 +13,69 @@ namespace FPTU_ELibrary.Application.Dtos
 	{
 		// Key
 		public Guid UserId { get; set; }
-
-		// User detail and credentials information
-		public string? UserCode { get; set; }
-		public string Email { get; set; } = null!;
-		public string? PasswordHash { get; set; } 
-		public string? FirstName { get; set; } 
-		public string? LastName { get; set; } 
-		public DateTime? Dob { get; set; }
-		public string? Phone { get; set; }
-		public string? Avatar { get; set; }
-		public string? Address { get; set; }
-		public string? Gender { get; set; }
-
-		// Mark as active user or not 
-		public bool IsActive { get; set; }
-		public bool IsDeleted { get; set; }
-		
-		// Creation datetime
-		public DateTime CreateDate { get; set; }
-		public DateTime? ModifiedDate { get; set; }
-		public string? ModifiedBy { get; set; }
-
-		// Multi-factor authentication
-		public bool TwoFactorEnabled { get; set; }
-		public bool PhoneNumberConfirmed { get; set; }
-		public bool EmailConfirmed { get; set; }
-		public string? TwoFactorSecretKey { get; set; }
-		public string? TwoFactorBackupCodes { get; set; }
-		public string? PhoneVerificationCode { get; set; }
-		public string? EmailVerificationCode { get; set; }
-		public DateTime? PhoneVerificationExpiry { get; set; }
-
+    
 		// Role in the system
 		public int RoleId { get; set; }
-
+    
+		// Library card information
+		public Guid? LibraryCardId { get; set; }
+    
+		// Basic user information
+        public string Email { get; set; } = null!;
+        public string? FirstName { get; set; } 
+        public string? LastName { get; set; } 
+        public string? PasswordHash { get; set; }
+        public string? Phone { get; set; }
+        public string? Avatar { get; set; }
+        public string? Address { get; set; }
+        public string? Gender { get; set; }
+        public DateTime? Dob { get; set; }
+    
+        // Mark as active or not
+        public bool IsActive { get; set; }
+    
+        public bool IsDeleted { get; set; }
+        
+        // Creation and modify date
+        public DateTime CreateDate { get; set; }
+        public DateTime? ModifiedDate { get; set; }
+        public string? ModifiedBy { get; set; }
+        
+        // Multi-factor authentication properties
+        public bool TwoFactorEnabled { get; set; }
+        public bool PhoneNumberConfirmed { get; set; }
+        public bool EmailConfirmed { get; set; }
+        public string? TwoFactorSecretKey { get; set; }
+        public string? TwoFactorBackupCodes { get; set; }
+        public string? PhoneVerificationCode { get; set; }
+        public string? EmailVerificationCode { get; set; }
+        public DateTime? PhoneVerificationExpiry { get; set; }
+		
 		// Mapping entities
 		public SystemRoleDto Role { get; set; } = null!;
-		//public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
-		//public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
-		//public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
-		//public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
+		public LibraryCardDto? LibraryCard { get; set; } 
+		public ICollection<BorrowRecordDto> BorrowRecords { get; set; } = new List<BorrowRecordDto>();
+		public ICollection<BorrowRequestDto> BorrowRequests { get; set; } = new List<BorrowRequestDto>();
+		public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
+		public ICollection<NotificationRecipientDto> NotificationRecipients { get; set; } = new List<NotificationRecipientDto>();
 
+		[JsonIgnore]
+		public ICollection<InvoiceDto> Invoices { get; set; } = new List<InvoiceDto>();
+    
+		[JsonIgnore]
+		public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
+    
+		[JsonIgnore]
+		public ICollection<DigitalBorrowDto> DigitalBorrows { get; set; } = new List<DigitalBorrowDto>();
+    
 		[JsonIgnore]
 		public ICollection<RefreshTokenDto> RefreshTokens { get; set; } = new List<RefreshTokenDto>();
 
-		//[JsonIgnore]
-		//public ICollection<BookReview> BookReviews { get; set; } = new List<BookReview>();
+		[JsonIgnore]
+		public ICollection<LibraryItemReviewDto> LibraryItemReviews { get; set; } = new List<LibraryItemReviewDto>();
 
-		//[JsonIgnore]
-		//public ICollection<UserFavorite> UserFavorites { get; set; } = new List<UserFavorite>();
+		[JsonIgnore]
+		public ICollection<UserFavoriteDto> UserFavorites { get; set; } = new List<UserFavoriteDto>();
 	}
 
 	public static class UserDtoExtensions
@@ -67,9 +85,9 @@ namespace FPTU_ELibrary.Application.Dtos
 			return new AuthenticateUserDto()
 			{
 				Id = userDto.UserId,
-				UserCode = userDto.UserCode,
-				FirstName = userDto.FirstName ?? null!,
-				LastName = userDto.LastName ?? null!,
+				LibraryCardId = userDto.LibraryCardId,
+				FirstName = userDto.FirstName ?? string.Empty,
+				LastName = userDto.LastName ?? string.Empty, 
 				Email = userDto.Email,
 				Avatar = userDto.Avatar,
 				Address = userDto.Address,

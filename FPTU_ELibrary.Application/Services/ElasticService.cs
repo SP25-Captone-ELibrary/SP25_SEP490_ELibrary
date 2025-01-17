@@ -2,12 +2,12 @@
 using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
-using Microsoft.EntityFrameworkCore;
+using MapsterMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Nest;
@@ -18,23 +18,23 @@ namespace FPTU_ELibrary.Application.Services
 	public class ElasticService : IElasticService
 	{
 		private string _indexName = string.Empty;
-		private readonly IConfiguration _configuration;
+		
 		private readonly ILogger _logger;
 		private readonly IElasticClient _elasticClient;
-		private readonly ElasticSettings _elasticSettings;
-		private readonly IBookService<BookDto> _bookService;
+		private readonly IMapper _mapper;
+		private readonly ILibraryItemService<LibraryItemDto> _libItemService;
 
 		public ElasticService(
-			IBookService<BookDto> bookService, 
+			ILibraryItemService<LibraryItemDto> libItemService,
 			IElasticClient elasticClient,
 			IConfiguration configuration,
 			IOptionsMonitor<ElasticSettings> monitor,
+			IMapper mapper,
 			ILogger logger)
-        {
-	        _elasticSettings = monitor.CurrentValue;
-			_bookService = bookService;
+		{
+			_libItemService = libItemService;
 			_elasticClient = elasticClient;
-			_configuration = configuration;
+			_mapper = mapper;
 			_logger = logger;
         }
 
@@ -46,13 +46,13 @@ namespace FPTU_ELibrary.Application.Services
 		
         public async Task InitializeAsync()
         {
-	        var indexName = ElasticIndexConst.BookIndex;
+	        var indexName = ElasticIndexConst.LibraryItemIndex;
 	        
 			// Try to create index if not exist	
 			await CreateIndexIfNotExistAsync(indexName);
 
 			// Count any index created 
-			var documentCountResponse = await _elasticClient.CountAsync<ElasticBook>(c => c.Index(indexName));
+			var documentCountResponse = await _elasticClient.CountAsync<ElasticLibraryItem>(c => c.Index(indexName));
 			if(documentCountResponse.Count > 0) // not found
 			{
 				_logger.Information("Already seed documents for index: {0}", indexName);
@@ -78,7 +78,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Switch for elastic index
 					switch (indexName)
 					{
-						case ElasticIndexConst.BookIndex:
+						case ElasticIndexConst.LibraryItemIndex:
 							// Try to create book index if not exist
 							var createResp = await CreateBookIndexAsync();
 							// Check for valid resp 
@@ -450,73 +450,79 @@ namespace FPTU_ELibrary.Application.Services
 		private async Task<CreateIndexResponse> CreateBookIndexAsync()
 		{
 			// PUT request to indices
-            return await _elasticClient.Indices.CreateAsync(ElasticIndexConst.BookIndex, c => c
+            return await _elasticClient.Indices.CreateAsync(ElasticIndexConst.LibraryItemIndex, c => c
                 // Define mappings for index
-                .Map<ElasticBook>(m => m
+                .Map<ElasticLibraryItem>(m => m
                     // Mapping properties
                     .Properties(ps => ps
-                    	.Number(n => n.Name(e => e.BookId).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.LibraryItemId).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.EditionNumber).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.PublicationYear).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.PageCount).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.CategoryId).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.ShelfId).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.GroupId).Type(NumberType.Integer))
+                    	.Number(n => n.Name(e => e.EstimatedPrice).Type(NumberType.Double))
                     	.Text(t => t.Name(e => e.Title))
-                    	.Text(t => t.Name(e => e.BookCode))
                     	.Text(t => t.Name(e => e.SubTitle))
+                    	.Text(t => t.Name(e => e.Responsibility))
+                    	.Text(t => t.Name(e => e.Edition))
                     	.Text(t => t.Name(e => e.Summary))
+                    	.Keyword(t => t.Name(e => e.Language))
+                    	.Keyword(t => t.Name(e => e.OriginLanguage))
+                    	.Keyword(t => t.Name(e => e.CoverImage))
+                    	.Text(t => t.Name(e => e.PublicationPlace))
+                    	.Text(t => t.Name(e => e.ClassificationNumber))
+                    	.Text(t => t.Name(e => e.CutterNumber))
+                    	.Text(t => t.Name(e => e.Isbn))
+                    	.Text(t => t.Name(e => e.Ean))
+                    	.Text(t => t.Name(e => e.PhysicalDetails))
+                    	.Text(t => t.Name(e => e.Dimensions))
+                    	.Text(t => t.Name(e => e.Genres))
+                    	.Text(t => t.Name(e => e.TopicalTerms))
+                    	.Text(t => t.Name(e => e.AdditionalAuthors))
+                    	.Text(t => t.Name(e => e.Status))
                     	.Boolean(b => b.Name(e => e.IsDeleted))
-                    	.Date(d => d.Name(e => e.CreatedAt))
-                    	.Date(d => d.Name(e => e.UpdatedAt))
-                    	.Keyword(k => k.Name(e => e.CreatedBy))
-                    	.Keyword(k => k.Name(e => e.UpdatedBy))
-                    	// Mapping book category
-                    	.Nested<ElasticCategory>(o => o
-                    		.Name(e => e.Categories)
-                    		.Properties(op => op
-                    			.Number(n => n.Name(ec => ec.CategoryId).Type(NumberType.Integer))
-                    			.Text(t => t.Name(ec => ec.EnglishName))
-                    			.Text(t => t.Name(ec => ec.VietnameseName))
-                    			.Text(t => t.Name(ec => ec.Description))
-                    		)
-                    	)
-                    	// Mapping book edition as nested documents
-                    	.Nested<ElasticBookEdition>(n => n
-                    		.Name(e => e.BookEditions)
-                    		.Properties(np => np
-                    			.Number(nn => nn.Name(ee => ee.BookEditionId).Type(NumberType.Integer))
-                    			.Number(nn => nn.Name(ee => ee.BookId).Type(NumberType.Integer))
-                    			.Text(t => t.Name(ee => ee.EditionTitle))
-                    			.Text(t => t.Name(ee => ee.EditionSummary))
-                    			.Number(k => k.Name(ee => ee.EditionNumber).Type(NumberType.Integer))
-                    			.Number(nn => nn.Name(ee => ee.PublicationYear).Type(NumberType.Integer))
-                    			.Number(nn => nn.Name(ee => ee.PageCount).Type(NumberType.Integer))
-                    			.Keyword(k => k.Name(ee => ee.Language))
-                    			.Keyword(k => k.Name(ee => ee.CoverImage))
-                    			.Keyword(k => k.Name(ee => ee.Format))
-                    			.Keyword(k => k.Name(ee => ee.Status))
-                    			.Text(t => t.Name(ee => ee.Publisher))
-                    			.Keyword(k => k.Name(ee => ee.Isbn))
-                    			.Boolean(b => b.Name(ee => ee.IsDeleted))
-                    			.Boolean(b => b.Name(ee => ee.CanBorrow))
-                    			.Date(d => d.Name(ee => ee.CreatedAt))
-                    			.Date(d => d.Name(ee => ee.UpdatedAt))
-                    			.Keyword(k => k.Name(ee => ee.CreatedBy))
-                    			.Keyword(k => k.Name(ee => ee.UpdatedBy))
-                    			// Mapping author as nested documents
-                    			.Nested<ElasticAuthor>(n2 => n2
-                    				.Name(e => e.Authors)
-                    				.Properties(np2 => np2
-                    					.Number(nn => nn.Name(ee => ee.AuthorId).Type(NumberType.Integer))
-                    					.Keyword(k => k.Name(ee => ee.AuthorCode))
-                    					.Keyword(k => k.Name(ee => ee.AuthorImage))
-                    					.Text(t => t.Name(ee => ee.FullName))
-                    					.Text(t => t.Name(ee => ee.Biography))
-                    					.Date(d => d.Name(ee => ee.Dob))
-                    					.Date(d => d.Name(ee => ee.DateOfDeath))
-                    					.Keyword(k => k.Name(ee => ee.Nationality))
-                    					.Date(d => d.Name(ee => ee.CreateDate))
-                    					.Date(d => d.Name(ee => ee.UpdateDate))
-                    					.Boolean(b => b.Name(ee => ee.IsDeleted))
-                    				)
-                    			)
-                    		)
-                    	)
+                    	.Boolean(b => b.Name(e => e.CanBorrow))
+                    	.Boolean(b => b.Name(e => e.IsTrained))
+	                    // Mapping book edition inventory as object
+	                    .Object<ElasticLibraryItemInventory>(ob => ob
+		                    .Name(e => e.LibraryItemInventory)
+		                    .Properties(np4 => np4
+			                    .Number(nn => nn.Name(ee => ee.LibraryItemId).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.TotalUnits).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.AvailableUnits).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.RequestUnits).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.BorrowedUnits).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.ReservedUnits).Type(NumberType.Integer))
+		                    )
+	                    )
+	                    // Mapping edition copy as nested documents
+	                    .Nested<ElasticLibraryItemInstance>(n1 => n1
+		                    .Name(e => e.ElasticLibraryItemInstances)
+		                    .Properties(np1 => np1
+			                    .Number(nn => nn.Name(ee => ee.LibraryItemInstanceId).Type(NumberType.Integer))
+			                    .Number(nn => nn.Name(ee => ee.LibraryItemId).Type(NumberType.Integer))
+			                    .Text(t => t.Name(ee => ee.Barcode))
+			                    .Keyword(k => k.Name(ee => ee.Status))
+			                    .Boolean(b => b.Name(ee => ee.IsDeleted))
+		                    )
+	                    )
+	                    // Mapping author as nested documents
+	                    .Nested<ElasticAuthor>(n2 => n2
+		                    .Name(e => e.Authors)
+		                    .Properties(np2 => np2
+			                    .Number(nn => nn.Name(ee => ee.AuthorId).Type(NumberType.Integer))
+			                    .Keyword(k => k.Name(ee => ee.AuthorImage))
+			                    .Text(t => t.Name(ee => ee.AuthorCode))
+			                    .Text(t => t.Name(ee => ee.FullName))
+			                    .Text(t => t.Name(ee => ee.Biography))
+			                    .Date(d => d.Name(ee => ee.Dob))
+			                    .Date(d => d.Name(ee => ee.DateOfDeath))
+			                    .Keyword(k => k.Name(ee => ee.Nationality))
+			                    .Boolean(b => b.Name(ee => ee.IsDeleted))
+		                    )
+	                    )
                     )
                 )
             );
@@ -524,55 +530,95 @@ namespace FPTU_ELibrary.Application.Services
 
 		private async Task SeedDataAsync(string indexName)
 		{
-			// Create book filtering specification
-            BaseSpecification<Book> spec = new();
-            // Enables split query
-            spec.EnableSplitQuery();
-            // Add includes 
-            spec.ApplyInclude(q => q
-            	// Include book categories
-            	.Include(b => b.BookCategories)
-            		// Then include specific category
-            		.ThenInclude(cat => cat.Category)
-            	// Include book editions
-            	.Include(b => b.BookEditions)
-            		// Then include book edition authors
-            		.ThenInclude(bea => bea.BookEditionAuthors)
-            			// Then include specific author
-            			.ThenInclude(bea => bea.Author));
-            
-            // Get all books with specification
-            var getBookResp = await _bookService.GetAllWithSpecAsync(spec);
-        
-            // Check success result
-            if(getBookResp.Data != null && getBookResp.Data is List<BookDto> books)
-            {
-            	// Map to elastic list object
-            	var elasticBooks = books?.Select(b => b.ToElasticBook());
-            	var toBookList = elasticBooks?.ToList();
-            	// Check exist
-            	if (toBookList != null && toBookList.Any())
-            	{
-            		// Process Bulk API to seeding data to elastic
-            		var bulkResp = await _elasticClient.BulkAsync(x => x
-            			// Default index name
-            			.Index(indexName)
-            			// Index with many books
-			            // .IndexMany(toBookList));
-            			.IndexMany(toBookList, (descriptor, elasticBook) => descriptor
-            				// Assign BookId as elastic document key '_id'
-            				.Id(elasticBook.BookId)));
+		   // Build specification 
+		   BaseSpecification<LibraryItem> spec = new();
+		   // Enables split query
+		   spec.EnableSplitQuery();
+		   
+		   var getLibraryItemsRes = await _libItemService
+                .GetAllWithSpecAndSelectorAsync(spec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemGroup = be.LibraryItemGroup,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList()
+                });
+		   
+		   // Check success result
+		   if (getLibraryItemsRes.Data != null && getLibraryItemsRes.Data is List<LibraryItem> libraryItems) {
+			   // Convert to dtos
+			   var libraryItemDtos = _mapper.Map<List<LibraryItemDto>>(libraryItems);
+			   // Map to elastic list object
+			   var elasticItems = libraryItemDtos.Select(b => b.ToElasticLibraryItem());
+			   var toItemList = elasticItems?.ToList();
+			   // Check exist
+			   if (toItemList != null && toItemList.Any()) {
+				   // Process Bulk API to seeding data to elastic
+				   var bulkResp = await _elasticClient.BulkAsync(x => x
+					   // Default index name
+					   .Index(indexName)
+					   // Index with many items
+					   // .IndexMany(toItemList));
+					   .IndexMany(toItemList, (descriptor, elasticBook) => descriptor
+						   // Assign BookId as elastic document key '_id'
+						   .Id(elasticBook.LibraryItemId)));
 
-            		if (bulkResp.IsValid && bulkResp.Items.Any())
-            		{
-            			_logger.Information("Bulk {0} records for index: {1}", bulkResp.Items.Count, indexName);
-            		}
-            		else
-            		{
-            			_logger.Error("Fail to bulk data for index: {0}", indexName);
-            		}
-            	}
-            }
+				   if (bulkResp.IsValid && bulkResp.Items.Any()) {
+					   _logger.Information("Bulk {0} records for index: {1}", bulkResp.Items.Count, indexName);
+				   } else {
+					   _logger.Error("Fail to bulk data for index: {0}", indexName);
+				   }
+			   }
+		   }
 		}
 	}
 }

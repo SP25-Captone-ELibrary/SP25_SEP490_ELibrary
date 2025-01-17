@@ -1,6 +1,6 @@
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
@@ -10,11 +10,8 @@ public class BorrowRecordDto
     public int BorrowRecordId { get; set; }
 
     // Foreign keys
-    public int? BookEditionCopyId { get; set; }
-    public int? LearningMaterialId { get; set; }
+    public int? LibraryItemInstanceId { get; set; }
     public Guid BorrowerId { get; set; }
-    //public int BorrowRequestId { get; set; }
-
 
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
@@ -45,11 +42,10 @@ public class BorrowRecordDto
 
 
     // Mapping entities
-    public BookEditionCopyDto? BookEditionCopy { get; set; }
+    public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
     public EmployeeDto ProcessedByNavigation { get; set; } = null!;
     public UserDto Borrower { get; set; } = null!;
-    public LearningMaterialDto? LearningMaterial { get; set; }
-    // public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
+    public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
     
     //public BorrowRequest BorrowRequest { get; set; } = null!;
 }

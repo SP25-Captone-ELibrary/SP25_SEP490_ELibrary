@@ -2,11 +2,11 @@
 
 namespace FPTU_ELibrary.Application.Elastic.Responses
 {
-	public record SearchBookResponse(IEnumerable<ElasticBook> Books,
+	public record SearchBookResponse(IEnumerable<ElasticLibraryItem> libraryItems,
 		int PageIndex, int PageSize, long TotalPage);
 
 	public record SearchBookEditionResponse(
-		IEnumerable<ElasticBookEdition> BookEditions,
+		IEnumerable<ElasticLibraryItem> LibraryItems,
 		int PageIndex,
 		int PageSize,
 		int TotalPage,

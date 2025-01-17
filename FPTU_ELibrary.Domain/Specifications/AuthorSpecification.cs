@@ -14,8 +14,6 @@ public class AuthorSpecification : BaseSpecification<Author>
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) || 
             (
-                // Employee code
-                (!string.IsNullOrEmpty(e.AuthorCode) && e.AuthorCode.Contains(specParams.Search)) ||
                 // Nationality
                 (!string.IsNullOrEmpty(e.Nationality) && e.Nationality.Contains(specParams.Search)) ||
                 // Full Name search
@@ -29,11 +27,8 @@ public class AuthorSpecification : BaseSpecification<Author>
         // Enable split query
         EnableSplitQuery();
         
-        // Default order by first name
-        AddOrderBy(e => e.FullName);
-        
         // Progress filter
-        if (specParams.AuthorCode != null) // With employee code
+        if (specParams.AuthorCode != null) // With author code
         {
             AddFilter(x => x.AuthorCode == specParams.AuthorCode);
         }
@@ -138,7 +133,7 @@ public class AuthorSpecification : BaseSpecification<Author>
             // Define sorting pattern
             var sortMappings = new Dictionary<string, Expression<Func<Author, object>>>()
             {
-                { "AUTHORCODE", x => x.AuthorCode ?? string.Empty },
+                { "AUTHORCODE", x => x.AuthorCode },
                 { "FULLNAME", x => x.FullName },
                 { "NATIONALITY", x => x.Nationality ?? string.Empty },
                 { "BIOGRAPHY", x => x.Biography ?? string.Empty },
@@ -155,6 +150,11 @@ public class AuthorSpecification : BaseSpecification<Author>
                 if(isDescending) AddOrderByDescending(sortExpression);
                 else AddOrderBy(sortExpression);    
             }
+        }
+        else
+        {
+            // Default sort by ID 
+            AddOrderByDescending(a => a.AuthorId);
         }
     }
 }

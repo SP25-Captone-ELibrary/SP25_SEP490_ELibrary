@@ -24,13 +24,11 @@ public static class SearchAndFilterUserRequestExtension
     {
         return new UserDto()
         {
-            UserCode = req.MultipleFieldSearch.UserCode,
             Email = req.MultipleFieldSearch.Email?? "",
             FirstName = req.MultipleFieldSearch.FirstName,
             LastName = req.MultipleFieldSearch.LastName,
             Phone= req.MultipleFieldSearch.Phone,
             IsActive = req.MultipleFieldSearch.IsActive?? true,
-            
         };
     }
 }

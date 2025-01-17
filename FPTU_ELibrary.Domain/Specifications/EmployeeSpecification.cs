@@ -197,6 +197,11 @@ public class EmployeeSpecification : BaseSpecification<Employee>
                 else AddOrderBy(sortExpression);
             }
         }
+        else
+        {
+            // Default order by create date
+            AddOrderByDescending(u => u.CreateDate);
+        }
 
         // Apply paging 
         // ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);

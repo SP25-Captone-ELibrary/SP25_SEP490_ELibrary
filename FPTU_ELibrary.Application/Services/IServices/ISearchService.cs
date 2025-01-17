@@ -5,7 +5,8 @@ namespace FPTU_ELibrary.Application.Services.IServices
 {
 	public interface ISearchService
 	{
-		Task<IServiceResult> SearchBookAsync(SearchBookParameters parameters, 
-			CancellationToken cancellationToken);
+		// TODO: Fix conflicts
+		// Task<IServiceResult> SearchBookAsync(SearchBookParameters parameters, 
+			// CancellationToken cancellationToken);
 	}
 }

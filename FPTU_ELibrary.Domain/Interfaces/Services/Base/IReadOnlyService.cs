@@ -13,6 +13,11 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services.Base
 		Task<IServiceResult> GetAllAsync(bool tracked = true);
 		Task<IServiceResult> GetWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
 		Task<IServiceResult> GetAllWithSpecAsync(ISpecification<TEntity> specification, bool tracked = true);
+		Task<IServiceResult> GetWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+			Expression<Func<TEntity, TResult>> selector, bool tracked = true);
+		Task<IServiceResult> GetAllWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+			Expression<Func<TEntity, TResult>> selector,
+			bool tracked = true);
 		Task<IServiceResult> AnyAsync(Expression<Func<TEntity, bool>> predicate);
 		Task<IServiceResult> AnyAsync(ISpecification<TEntity> specification);
 		Task<IServiceResult> CountAsync(ISpecification<TEntity> specification);

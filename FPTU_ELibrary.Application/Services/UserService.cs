@@ -283,7 +283,6 @@ namespace FPTU_ELibrary.Application.Services
 					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
 				// Update properties
-				existingEntity.UserCode = dto.UserCode;
 				existingEntity.FirstName = dto.FirstName ?? string.Empty;
 				existingEntity.LastName = dto.LastName ?? string.Empty;
 				existingEntity.Dob = dto.Dob;
@@ -691,18 +690,11 @@ namespace FPTU_ELibrary.Application.Services
                 // Check exist email & employee code
                 var isExistUserEmail = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Email == newUser.Email);
                 var isExistEmployeeEmail = await _unitOfWork.Repository<Employee, Guid>().AnyAsync(e => e.Email == newUser.Email);
-                var isExistUserCode = await _unitOfWork.Repository<User, Guid>().AnyAsync(e => e.UserCode == newUser.UserCode);
                 if (isExistEmployeeEmail || isExistUserEmail) // Already exist email
                 {
                 	customErrors.Add(
                 		StringUtils.ToCamelCase(nameof(User.Email)),
                 		[await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0006)]);
-                }
-                if (isExistUserCode) // Already exist employee code
-                {
-                	customErrors.Add(
-                		StringUtils.ToCamelCase(nameof(User.UserCode)), 
-                		[await _msgService.GetMessageAsync(ResultCodeConst.User_Warning0001)]);
                 }
                 // Check whether invoke errors
                 if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);

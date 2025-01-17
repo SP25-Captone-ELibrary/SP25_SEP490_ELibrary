@@ -1,8 +1,11 @@
+using FPTU_ELibrary.Domain.Common.Enums;
+
 namespace FPTU_ELibrary.Application.Dtos.Fine;
 
 public class FinePolicyExcelRecord
 {
-    public string? ConditionType { get; set; } = null!;
+    public string FinePolicyTitle { get; set; } = null!;
+    public string? ConditionType { get; set; } 
     public decimal? FineAmountPerDay { get; set; }
     public decimal? FixedFineAmount { get; set; }
     public string? Description { get; set; }
@@ -18,10 +21,14 @@ public static class FinePolicyExcelRecordExtension
 {
     public static FinePolicyDto ToFinePolicyDto(this FinePolicyExcelRecord req)
     {
+        // Try parse condition type
+        Enum.TryParse(typeof(FinePolicyConditionType), req.ConditionType, out var validEnum);
+        
         return new FinePolicyDto()
         {
-            ConditionType = req.ConditionType,
-            FineAmountPerDay = req.FineAmountPerDay??0,
+            FinePolicyTitle = req.FinePolicyTitle,
+            ConditionType = (FinePolicyConditionType) validEnum!,
+            FineAmountPerDay = req.FineAmountPerDay ??0,
             FixedFineAmount = req.FixedFineAmount,
             Description = req.Description
         };
@@ -29,15 +36,12 @@ public static class FinePolicyExcelRecordExtension
     
     public static List<FinePolicyExcelRecord> ToFinePolicyExcelRecords(this IEnumerable<FinePolicyDto> finePolicies)
     {
-        return finePolicies.Select(e =>
+        return finePolicies.Select(e => new FinePolicyExcelRecord()
         {
-            return new FinePolicyExcelRecord()
-            {
-                ConditionType = e.ConditionType,
-                FineAmountPerDay = e.FineAmountPerDay,
-                FixedFineAmount = e.FixedFineAmount,
-                Description = e.Description
-            };
+            ConditionType = e.ConditionType.ToString(),
+            FineAmountPerDay = e.FineAmountPerDay,
+            FixedFineAmount = e.FixedFineAmount,
+            Description = e.Description
         }).ToList();
     }
 }

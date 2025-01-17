@@ -6,6 +6,7 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
     public class AuthenticateUserDto : BaseUser
     {
         public Guid Id { get; set; }
+        public Guid? LibraryCardId { get; set; }
         public string? UserCode { get; set; }
         public string? Password { get; set; } 
         public int RoleId { get; set; }
@@ -21,7 +22,7 @@ namespace FPTU_ELibrary.Application.Dtos.Auth
 			return new UserDto()
             {
                 UserId = authenticateUser.Id,
-                UserCode = authenticateUser.UserCode,
+                LibraryCardId = authenticateUser.LibraryCardId,
                 FirstName = authenticateUser.FirstName,
                 LastName = authenticateUser.LastName,
                 Email = authenticateUser.Email,

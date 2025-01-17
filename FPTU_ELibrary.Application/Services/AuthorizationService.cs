@@ -65,27 +65,27 @@ public class AuthorizationService : IAuthorizationService
         // [AuthorManagement]
         if (requestFeature.Equals(SystemFeatureEnum.AuthorManagement))
         {
-            return SystemFeatureEnum.BookManagement;
+            return SystemFeatureEnum.LibraryItemManagement;
         } 
         // [CategoryManagement]
         if (requestFeature.Equals(SystemFeatureEnum.CategoryManagement))
         {
-            return SystemFeatureEnum.BookManagement;
+            return SystemFeatureEnum.LibraryItemManagement;
         }
         // [ResourceManagement]
         if (requestFeature.Equals(SystemFeatureEnum.ResourceManagement))
         {
-            return SystemFeatureEnum.BookManagement;
+            return SystemFeatureEnum.LibraryItemManagement;
         }
         // [LibraryLocationManagement]
         if (requestFeature.Equals(SystemFeatureEnum.LibraryLocationManagement))
         {
-            return SystemFeatureEnum.BookManagement;
+            return SystemFeatureEnum.LibraryItemManagement;
         }
         // [BookAuditTrailManagement]
         if (requestFeature.Equals(SystemFeatureEnum.BookAuditTrailManagement))
         {
-            return SystemFeatureEnum.BookManagement;
+            return SystemFeatureEnum.LibraryItemManagement;
         }
         #endregion
 
@@ -138,9 +138,9 @@ public class AuthorizationService : IAuthorizationService
         {
             rootFeature = SystemFeatureEnum.RoleManagement;
         // Is [BookManagement]
-        }else if (featureOfCombinedRoute == SystemFeatureEnum.BookManagement)
+        }else if (featureOfCombinedRoute == SystemFeatureEnum.LibraryItemManagement)
         {
-            rootFeature = SystemFeatureEnum.BookManagement;
+            rootFeature = SystemFeatureEnum.LibraryItemManagement;
         }
 
         return await CheckPermissionAsync(role, rootFeature.ToString(), httpMethod);

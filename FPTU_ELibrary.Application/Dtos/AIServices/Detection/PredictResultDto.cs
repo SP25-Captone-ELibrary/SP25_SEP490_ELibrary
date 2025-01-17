@@ -1,5 +1,4 @@
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.AIServices.Detection;
 
@@ -17,11 +16,11 @@ public class PredictionDto
 public class PredictionResponseDto
 {
     public int NumberOfBookDetected { get; set; }
-    public List<PossibleBookEdition> BookEditionPrediction { get; set; }
+    public List<PossibleLibraryItem> LibraryItemPrediction { get; set; }
 }
 
-public class PossibleBookEdition
+public class PossibleLibraryItem
 {
     public string BookCode { get; set; }
-    public List<BookEditionDto> BookEditionDetails { get; set; }
+    public List<LibraryItemDto> LibraryItemDetails { get; set; }
 }

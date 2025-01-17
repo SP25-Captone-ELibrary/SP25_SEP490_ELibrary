@@ -54,7 +54,11 @@ public class EmployeeDtoValidator : AbstractValidator<EmployeeDto>
             .Must(dob => !dob.HasValue || DateTimeUtils.IsValidAge(dob.Value))
             .WithMessage(isEng 
                 ? "Invalid date of birth" 
-                : "Ngày sinh không hợp lệ");
+                : "Ngày sinh không hợp lệ")
+            .Must(dob => !dob.HasValue || DateTimeUtils.IsOver18(dob.Value))
+            .WithMessage(isEng 
+                ? "Age of employee must greater than 18" 
+                : "Tuổi của nhân viên phải lớn hơn 18");
         // Validate TerminationDate
         RuleFor(u => u.TerminationDate)
             .Must((model, terminationDate) => !terminationDate.HasValue 

@@ -7,7 +7,6 @@ using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using BookCategory = FPTU_ELibrary.Domain.Entities.BookCategory;
 using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
 
 namespace FPTU_ELibrary.Infrastructure.Data.Context;
@@ -25,20 +24,22 @@ public class ElibraryDbContext : DbContext
 
     public DbSet<AuditTrail> AuditTrails { get; set; }
     public DbSet<Author> Authors { get; set; }
-    public DbSet<Book> Books { get; set; }
-    public DbSet<Category> Categories { get; set; }
-    public DbSet<BookCategory> BookCategories { get; set; }
-    public DbSet<BookEdition> BookEditions { get; set; }
-    public DbSet<BookEditionCopy> BookEditionCopies { get; set; }
-    public DbSet<BookEditionInventory> BookEditionInventories { get; set; }
-    public DbSet<BookResource> BookResources { get; set; }
-    public DbSet<BookReview> BookReviews { get; set; }
     public DbSet<BorrowRecord> BorrowRecords { get; set; }
     public DbSet<BorrowRequest> BorrowRequests { get; set; }
-    public DbSet<CopyConditionHistory> CopyConditionHistories { get; set; }
+    public DbSet<Category> Categories { get; set; }
+    public DbSet<DigitalBorrow> DigitalBorrows { get; set; }
     public DbSet<Employee> Employees { get; set; }
     public DbSet<Fine> Fines { get; set; }
     public DbSet<FinePolicy> FinePolicies { get; set; }
+    public DbSet<Invoice> Invoices { get; set; }
+    public DbSet<LibraryItemGroup> LibraryItemGroups { get; set; }
+    public DbSet<LibraryItem> LibraryItems { get; set; }
+    public DbSet<LibraryItemInstance> LibraryItemInstances { get; set; }
+    public DbSet<LibraryItemInventory> LibraryItemInventories { get; set; }
+    public DbSet<LibraryResource> LibraryResources { get; set; }
+    public DbSet<LibraryItemReview> LibraryItemReviews { get; set; }
+    public DbSet<LibraryItemConditionHistory> LibraryItemConditionHistories { get; set; }
+    public DbSet<LibraryCard> LibraryCards { get; set; }
     public DbSet<LibraryFloor> LibraryFloors { get; set; }
     public DbSet<LibraryPath> LibraryPaths { get; set; }
     public DbSet<LibrarySection> LibrarySections { get; set; }
@@ -46,13 +47,19 @@ public class ElibraryDbContext : DbContext
     public DbSet<LibraryZone> LibraryZones { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
+    public DbSet<PaymentMethod> PaymentMethods { get; set; }
+    public DbSet<ReservationQueue> ReservationQueues { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<RolePermission> RolePermissions { get; set; }
+    public DbSet<Transaction> Transactions { get; set; }
     public DbSet<SystemRole> SystemRoles { get; set; }
     public DbSet<SystemFeature> SystemFeatures { get; set; }
     public DbSet<SystemPermission> SystemPermissions { get; set; }
-    public DbSet<RolePermission> RolePermissions { get; set; }
+    public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<UserFavorite> UserFavorites { get; set; }
+    public DbSet<WarehouseTracking> WarehouseTrackings { get; set; }
+    public DbSet<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		=> optionsBuilder.UseSqlServer(GetConnectionString(), o
@@ -264,28 +271,31 @@ public class ElibraryDbContext : DbContext
 	private static void SetAuditTrailPropertyValue(EntityEntry entry, AuditTrail trailEntry, PropertyEntry property)
 	{
 		var propertyName = property.Metadata.Name;
+		
+		object? currentValue = TrimStringIfTooLong(property.CurrentValue, 400, "...");
+		object? originalValue = TrimStringIfTooLong(property.OriginalValue, 400, "...");
 
 		switch (entry.State)
 		{
 			case EntityState.Added:
 				trailEntry.TrailType = TrailType.Added;
-				trailEntry.NewValues[propertyName] = property.CurrentValue;
+				trailEntry.NewValues[propertyName] = currentValue;
 
 				break;
 
 			case EntityState.Deleted:
 				trailEntry.TrailType = TrailType.Deleted;
-				trailEntry.OldValues[propertyName] = property.OriginalValue;
+				trailEntry.OldValues[propertyName] = originalValue;
 
 				break;
 
 			case EntityState.Modified:
-				if (property.IsModified && (property.OriginalValue is null || !property.OriginalValue.Equals(property.CurrentValue)))
+				if (property.IsModified && (originalValue is null || !originalValue.Equals(currentValue)))
 				{
 					trailEntry.ChangedColumns.Add(propertyName);
 					trailEntry.TrailType = TrailType.Modified;
-					trailEntry.OldValues[propertyName] = property.OriginalValue;
-					trailEntry.NewValues[propertyName] = property.CurrentValue;
+					trailEntry.OldValues[propertyName] = originalValue;
+					trailEntry.NewValues[propertyName] = currentValue;
 				}
 
 				break;
@@ -296,13 +306,15 @@ public class ElibraryDbContext : DbContext
 			trailEntry.TrailType = TrailType.Modified;
 
 			if (trailEntry.ChangedColumns.Count == 1 
-			    && trailEntry.ChangedColumns.Contains("UpdatedAt"))
+			    && trailEntry.ChangedColumns.Contains(nameof(IAuditableEntity.UpdatedAt)))
 			{
 				trailEntry.TrailType = TrailType.None;
 			}
-			
+
 			if (trailEntry.ChangedColumns.Count == 2 && 
-			    trailEntry.ChangedColumns.All(column => column == "UpdatedAt" || column == "UpdatedBy"))
+			    trailEntry.ChangedColumns.All(column => 
+				    column == nameof(IAuditableEntity.UpdatedAt) 
+				    || column == nameof(IAuditableEntity.UpdatedBy)))
 			{
 				trailEntry.TrailType = TrailType.None;
 			}
@@ -359,7 +371,7 @@ public class ElibraryDbContext : DbContext
 	}
 	
 	/// <summary>
-	/// Only process add audit log for Entity: Book, BookEdition, BookResource,
+	/// Only process add audit log for Entity: BookEdition, BookResource,
 	/// CopyConditionHistory, LearningMaterial, SystemRole, RolePermission
 	/// </summary>
 	/// <param name="entityType"></param>
@@ -368,8 +380,8 @@ public class ElibraryDbContext : DbContext
 	{
 		var auditEnabledEntityTypes = new HashSet<Type>
 		{
-			typeof(Book), typeof(BookEdition), typeof(BookEditionCopy), typeof(BookResource), typeof(BookEditionAuthor), typeof(BookCategory),
-			typeof(CopyConditionHistory), typeof(LearningMaterial),
+			typeof(LibraryItem), typeof(LibraryItemInstance), typeof(LibraryResource), typeof(LibraryItemAuthor),
+			typeof(LibraryItemConditionHistory), 
 			typeof(SystemRole), typeof(RolePermission)
 		};
 		return auditEnabledEntityTypes.Contains(entityType);
@@ -400,5 +412,15 @@ public class ElibraryDbContext : DbContext
 					break;
 			}
 		}
+	}
+	
+	// Try to trim string if greater than specific length
+	public static string? TrimStringIfTooLong(object? value, int maxLength, string suffix)
+	{
+		if (value is string stringValue && stringValue.Length > maxLength)
+		{
+			return stringValue.Substring(0, maxLength - suffix.Length) + suffix;
+		}
+		return value as string;
 	}
 }

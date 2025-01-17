@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
@@ -9,14 +8,11 @@ public class BorrowRequestDto
     // Key
     public int BorrowRequestId { get; set; }
 
-    // Request for which edition
-    public int? BookEditionId { get; set; }
+    // Request for which item
+    public int? LibraryItemId { get; set; }
 
-    // Request for particular copy 
-    public int? BookEditionCopyId { get; set; }
-
-    // Request for learning material
-    public int? LearningMaterialId { get; set; }
+    // Request for particular instance 
+    public int? LibraryItemInstanceId { get; set; }
 
     // Who make request
     public Guid UserId { get; set; }
@@ -30,18 +26,9 @@ public class BorrowRequestDto
     public string BorrowType { get; set; } = null!;
     public string? Description { get; set; }
 
-    // Deposit fee for request remotely
-    public decimal? DepositFee { get; set; }
-    public bool DepositPaid { get; set; }
-
-    //public Guid? ProcessedBy { get; set; }
-    //public DateTime? ProcessedDate { get; set; }
-
     // Mapping entities
-    public BookEditionDto? BookEdition { get; set; }
-    public BookEditionCopyDto? BookEditionCopy { get; set; }
-    public LearningMaterialDto? LearningMaterial { get; set; }
-    //public Employee? ProcessedByNavigation { get; set; }
+    public LibraryItemDto? LibraryItem { get; set; }
+    public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
     public UserDto User { get; set; } = null!;
 
     [JsonIgnore]

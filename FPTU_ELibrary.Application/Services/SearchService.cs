@@ -1,7 +1,6 @@
 ﻿using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
-using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -34,8 +33,14 @@ namespace FPTU_ELibrary.Application.Services
         public async Task<IServiceResult> SearchBookAsync(SearchBookParameters parameters, 
 			CancellationToken cancellationToken)
 		{
-			var mustClauses = new List<Func<QueryContainerDescriptor<ElasticBook>, QueryContainer>>();
+			var mustClauses = new List<Func<QueryContainerDescriptor<ElasticLibraryItem>, QueryContainer>>();
 
+			// Pagination
+			var pageIndex = parameters.PageIndex;
+			var pageSize = parameters.PageSize > 0 ? parameters.PageSize : _appSettings.PageSize;
+			// Validate pagination 
+			if (parameters.PageIndex < 1) pageIndex = 1;
+			
 			// Apply filters
 			if (parameters.F != null && parameters.F.Any()) // when exist at least 1 field
 			{
@@ -48,7 +53,7 @@ namespace FPTU_ELibrary.Application.Services
 					{
 						// Is Categories				
 						if (filter.FieldName.ToLowerInvariant() ==
-						    nameof(ElasticBook.Categories).ToLowerInvariant())
+						    nameof(ElasticLibraryItem.CategoryId).ToLowerInvariant())
 						{
 							var categoryIds = filter.Value?.Split(",")
 								.Select(x => x.Trim()) // Eliminate white space
@@ -62,87 +67,49 @@ namespace FPTU_ELibrary.Application.Services
 									case FilterOperator.Includes:
 										// Add 'Includes' logic to must clauses
 										mustClauses.Add(m => m
-											// From nested object
-											.Nested(nst => nst
-												// "categories": path 
-												.Path(p => p.Categories)
-												// "query": Add query logic 
-												.Query(qq => qq
-													// "bool": Querying with boolean logic
-													.Bool(b => b
-															// "should": Query clauses should match
-															.Should(categoryIds.Select(categoryId => // From each category found
-																// Return query container 
-																(Func<QueryContainerDescriptor<ElasticBook>, QueryContainer>)(sc => sc
-																	// Term query
-																	.Term(t => t
-																		// With specific field
-																		.Field(f => f.Categories.First().CategoryId)
-																		// With specific value
-																		.Value(categoryId)
-																	)
-																)
-															).ToArray()) // Convert to array query containers inside single must query
-													)
-												)
+											// Query directly on object fields
+											.Bool(b => b
+													// "should": Query clauses should match
+													.Should(categoryIds.Select(categoryId =>
+														// From each category found
+														(Func<QueryContainerDescriptor<ElasticLibraryItem>, QueryContainer>)(sc => sc
+															// Term query
+															.Term(t => t
+																// With specific field
+																.Field(f => f.CategoryId)
+																// With specific value
+																.Value(categoryId)
+															)
+														)
+													).ToArray()) // Convert to array query containers inside single must query
 											)
 										);
 										break;
 									case FilterOperator.Equals:
-										// Add 'Equals' logic to must clauses
 										mustClauses.Add(m => m
-											// From nested object
-											.Nested(nst => nst
-												// "categories": path 
-												.Path(p => p.Categories)
-												// "query": Add query logic 
-												.Query(qq => qq
-													// "bool": Querying with boolean logic
-													.Bool(b => b
-														// "must": Query clauses must match
-														.Must(categoryIds.Select(categoryId => // From each category found
-															// Return query container 
-															(Func<QueryContainerDescriptor<ElasticBook>, QueryContainer>)(sc => sc
-																// Term query
-																.Term(t => t
-																	// With specific field
-																	.Field(f => f.Categories.First().CategoryId)
-																	// With specific value
-																	.Value(categoryId)
-																)
-															)
-														).ToArray()) // Convert to array query containers inside single must query
+											.Bool(b => b
+												.Must(categoryIds.Select(categoryId =>
+													(Func<QueryContainerDescriptor<ElasticLibraryItem>, QueryContainer>)(sc => sc
+														.Term(t => t
+															.Field(f => f.CategoryId) 
+															.Value(categoryId)
+														)
 													)
-												)
+												).ToArray())
 											)
 										);
 										break;
 									case FilterOperator.NotEqualsTo:
-										// Add 'Not Equals' logic to must clauses
 										mustClauses.Add(m => m
-											// From nested object
-											.Nested(nst => nst
-												// "categories": path 
-												.Path(p => p.Categories)
-												// "query": Add query logic 
-												.Query(qq => qq
-													// "bool": Querying with boolean logic
-													.Bool(b => b
-															// "must_not": Query clauses must not match
-															.MustNot(categoryIds.Select(categoryId => // From each category found
-																// Return query container 
-																(Func<QueryContainerDescriptor<ElasticBook>, QueryContainer>)(sc => sc
-																	// Term query
-																	.Term(t => t
-																		// With specific field
-																		.Field(f => f.Categories.First().CategoryId)
-																		// With specific value
-																		.Value(categoryId)
-																	)
-																)
-															).ToArray()) // Convert to array query containers inside single must query
+											.Bool(b => b
+												.MustNot(categoryIds.Select(categoryId =>
+													(Func<QueryContainerDescriptor<ElasticLibraryItem>, QueryContainer>)(sc => sc
+														.Term(t => t
+															.Field(f => f.CategoryId) 
+															.Value(categoryId)
+														)
 													)
-												)
+												).ToArray())
 											)
 										);
 										break;
@@ -151,11 +118,11 @@ namespace FPTU_ELibrary.Application.Services
 						}
 						// Is Status
 						if (filter.FieldName.ToLowerInvariant() ==
-						    nameof(ElasticBookEdition.Status).ToLowerInvariant())
+						    nameof(ElasticLibraryItem.Status).ToLowerInvariant())
 						{
 							// Try to parse filtering status value to typeof(BookEditionStatus)
-							if (Enum.Parse(typeof(BookEditionStatus), filter.Value ?? string.Empty) 
-							    is BookEditionStatus status)
+							if (Enum.Parse(typeof(LibraryItemStatus), filter.Value ?? string.Empty) 
+							    is LibraryItemStatus status)
 							{
 								// Determine operator 
 								switch (filter.Operator)
@@ -163,24 +130,16 @@ namespace FPTU_ELibrary.Application.Services
 									case FilterOperator.Equals:
 										// Add must clause
 										mustClauses.Add(m => m
-											// From nested object
-											.Nested(nst => nst
-												// "book_editions": path
-												.Path(p => p.BookEditions)
-												// "query": Add query logic  
-												.Query(q => q
-													// "bool": Query with boolean logic 
-													.Bool(b => b
-														// "must": Query clauses must match
-														.Must(mm => mm
-															// Term query
-															.Term(t => t
-																// With specific field
-																.Field(f => f.BookEditions.First().Status)
-																// With specific value
-																.Value(status.ToString())
-															)
-														)
+											// "bool": Query with boolean logic 
+											.Bool(b => b
+												// "must": Query clauses must match
+												.Must(mm => mm
+													// Term query
+													.Term(t => t
+														// With specific field
+														.Field(f => f.Status)
+														// With specific value
+														.Value(status.ToString())
 													)
 												)
 											)
@@ -189,24 +148,16 @@ namespace FPTU_ELibrary.Application.Services
 									case FilterOperator.NotEqualsTo:
 										// Add must clause
 										mustClauses.Add(m => m
-											// From nested object
-											.Nested(nst => nst
-												// "book_editions": path
-												.Path(p => p.BookEditions)
-												// "query": Add query logic
-												.Query(q => q
-													// "bool": Query with boolean logic 
-													.Bool(b => b
-														// "must_not": Query clauses must not match
-														.MustNot(mm => mm
-															// Term query
-															.Term(t => t
-																// With specific field
-																.Field(f => f.BookEditions.First().Status)
-																// With specific value
-																.Value(status.ToString())
-															)
-														)
+											// "bool": Query with boolean logic 
+											.Bool(b => b
+												// "must_not": Query clauses must not match
+												.MustNot(mm => mm
+													// Term query
+													.Term(t => t
+														// With specific field
+														.Field(f => f.Status)
+														// With specific value
+														.Value(status.ToString())
 													)
 												)
 											)
@@ -215,7 +166,6 @@ namespace FPTU_ELibrary.Application.Services
 								}
 							}
 						}
-						
 					}
 				}
 			}
@@ -278,9 +228,9 @@ namespace FPTU_ELibrary.Application.Services
 			// }
 
 			// Build-up query for elastic search (GET index_name/_search)
-			var result = await _elasticClient.SearchAsync<ElasticBook>(x => x
+			var result = await _elasticClient.SearchAsync<ElasticLibraryItem>(x => x
 				// index_name
-				.Index(ElasticIndexConst.BookIndex)
+				.Index(ElasticIndexConst.LibraryItemIndex)
 				// "query": Query command
 				.Query(q => q
 					// "bool": Querying with boolean logic <- Allow to mix multiple conditions (Should, Must, Filter, etc.)	
@@ -293,12 +243,22 @@ namespace FPTU_ELibrary.Application.Services
 						.Should(s => s
 							// Search with multiple fields ("multi_match")
 							.MultiMatch(m => m
-								// "fields": ["title", "sub_title", "summary", "book_code"]
+								// "fields": ["title", "sub_title", "summary", etc.]
 								.Fields(f => f
 									.Field(ff => ff.Title, boost: 2) // Boosting relevance score if match 
+									.Field(ff => ff.SubTitle, boost: 2) // Boosting relevance score if match
+									.Field(ff => ff.Edition)
 									.Field(ff => ff.Summary)
-									.Field(ff => ff.SubTitle)
-									.Fields(ff => ff.BookCode)
+									.Field(ff => ff.Language)
+									.Field(ff => ff.OriginLanguage)
+									.Field(ff => ff.Responsibility)
+									.Field(ff => ff.PublicationPlace)
+									.Field(ff => ff.ClassificationNumber)
+									.Field(ff => ff.CutterNumber)
+									.Field(ff => ff.Isbn)
+									.Field(ff => ff.Genres, boost: 2) // Boosting relevance score if match
+									.Field(ff => ff.TopicalTerms, boost: 2) // Boosting relevance score if match
+									.Field(ff => ff.AdditionalAuthors, boost: 2) // Boosting relevance score if match
 								)
 								// "query": "search_text"
 								.Query(parameters.SearchText)
@@ -310,65 +270,59 @@ namespace FPTU_ELibrary.Application.Services
 								.TieBreaker(0.3)
 							),
 							s => s
-								// "nested": Query from nested object 
-								.Nested(nst => nst
-									// "inner_hits": {"name": "book_editions"}
-									.InnerHits(ih => 
-										ih.Name(ElasticUtils.GetElasticFieldName<ElasticBook>(nameof(ElasticBook.BookEditions))))
-									// "book_editions": path
-									.Path(p => p.BookEditions)
-									// "query": Query command
-									.Query(qq => qq
-										// "bool": Querying with boolean logic
-										.Bool(bb => bb
-											// "should": Query clauses should match
-											.Should(ss => ss
-												// Search with multiple fields ("multi_match")
-												.MultiMatch(m => m
-													// "fields": ["book_editions.edition_title", "book_editions.edition_summary"]
-													.Fields(f => f
-														.Field(ff => ff.BookEditions.First().EditionTitle, boost: 2) // Boosting relevance score if match  
-														.Field(ff => ff.BookEditions.First().EditionSummary)
-													)
-													// "query": "search_text"
-													.Query(parameters.SearchText)
-													// "fuzziness": 1
-													.Fuzziness(Fuzziness.AutoLength(1, 1))
-												), ss => ss
-												// "nested": Query from nested object of "book_editions"
-												.Nested(nst2 => nst2
-													// "book_editions.authors": path
-													.Path(p => p.BookEditions.First().Authors)
-													// "query": Query command
-													.Query(qqq => qqq
-														// "bool": Querying with boolean logic
-														.Bool(bbb => bbb
-															// "should": Query clauses should match
-															.Should(sss => sss
-																// Search with multiple fields ("multi_match")
-																.MultiMatch(m => m
-																	.Fields(f => f
-																		// "fields":
-																		// ["book_editions.authors.fullname", "book_editions.authors.biography",
-																		// "book_editions.authors.nationality"]
-																		.Field(ff => ff.BookEditions.First().Authors.First().FullName)
-																		.Field(ff => ff.BookEditions.First().Authors.First().Biography)
-																		.Field(ff => ff.BookEditions.First().Authors.First().Nationality)
-																	)
-																	// "query": "search_text"
-																	.Query(parameters.SearchText)
-																	// "fuzziness": 1
-																	.Fuzziness(Fuzziness.AutoLength(1, 1))
-																)
-															)
-														)
-													)
-													// "score_mode": avg
-													.ScoreMode(NestedScoreMode.Average)
+							// "nested": Query from nested object of "library_item"
+							.Nested(nst2 => nst2
+								// "book_editions.authors": path
+								.Path(p => p.Authors)
+								// "query": Query command
+								.Query(qqq => qqq
+									// "bool": Querying with boolean logic
+									.Bool(bbb => bbb
+										// "should": Query clauses should match
+										.Should(sss => sss
+											// Search with multiple fields ("multi_match")
+											.MultiMatch(m => m
+												.Fields(f => f
+													// "fields":
+													// ["library_item.authors.author_code","library_item.authors.fullname",
+													// "library_item.authors.biography"]
+													.Field(ff => ff.Authors.First().AuthorCode)
+													.Field(ff => ff.Authors.First().FullName)
+													.Field(ff => ff.Authors.First().Biography)
 												)
+												// "query": "search_text"
+												.Query(parameters.SearchText)
+												// "fuzziness": 1
+												.Fuzziness(Fuzziness.AutoLength(1, 1))
+											)
+										)
+										// "must_not": Query clauses must not match and do not affect relevance score
+										.MustNot(mn => mn
+											// "term": { "library_item.authors.is_deleted" : "false" }
+											.Term(t => t
+												.Field(f => f.Authors.First().IsDeleted)
+												.Value(true)
+											)
+										)
+										// "must_not": Query clauses must not match and do not affect relevance score
+										.MustNot(mn => mn
+											// "term": { "library_item.status" : "draft" }
+											.Term(t => t
+												.Field(f => f.Status)
+												// TODO: Change this into Draft when completed
+												.Value(nameof(LibraryItemStatus.Published))
+											)
+										)
+										// "must_not": Query clauses must not match and do not affect relevance score
+										.MustNot(mn => mn
+											// "term": { "library_item.is_deleted" : "false" }
+											.Term(t => t
+												.Field(f => f.IsDeleted)
+												.Value(true)
 											)
 										)
 									)
+								)
 								// "score_mode": avg
 								.ScoreMode(NestedScoreMode.Average)
 							)
@@ -383,68 +337,25 @@ namespace FPTU_ELibrary.Application.Services
 					)
 				)
 				.Sort(s => s.Descending(SortSpecialField.Score))
-				// .Skip(parameters.Skip)
-				// .Take(parameters.Take
-				// ),cancellationToken
-			, cancellationToken);
+				.Skip((pageIndex - 1) * pageSize) // Offset
+				.Take(pageSize // Limit number of items
+				),cancellationToken);
 
-			// Initialize a collection to store all innerHits
-			var allInnerHits = new List<IHit<ILazyDocument>>();
 			if(result.Total > 0)
 			{
-				foreach (var hit in result.Hits)
-				{
-					// Collect all inner hits from the dictionary
-					foreach (var innerHitsEntry in hit.InnerHits)
-					{
-						// Aggregate all innerHits from the dictionary values
-						allInnerHits.AddRange(innerHitsEntry.Value.Hits.Hits);
-					}
-				}
-
-				// Sort all collected innerHits by relevance score in descending order
-				var sortedInnerHits = allInnerHits.OrderByDescending(h => h.Score ?? 0);
-
-				// Map sorted innerHits to ElasticBookEdition
-				var mappedEditions = sortedInnerHits
-					.Select(innerHit => innerHit.Source.As<ElasticBookEdition>())
-					.Where(edition => edition != null) // Filter out null mappings
-					.ToList();
-				
-				// Pagination
-				var pageIndex = parameters.PageIndex;
-				var pageSize = parameters.PageSize > 0 ? parameters.PageSize : _appSettings.PageSize;
 				// Total actual item
-				var totalActualItem = mappedEditions.Count;
+				var totalActualItem = result.Hits.Count;
 				// Total page
 				var totalPage = (int) Math.Ceiling((double) totalActualItem/ pageSize) + 1;
-				// Validate pagination fields base on counted total page
-				if (parameters.PageIndex < 1 || parameters.PageIndex > totalPage) pageIndex = 1;
 				
-				// Apply paging offset 
-				mappedEditions = mappedEditions
-					.Skip((pageIndex - 1) * pageSize) // Offset
-					.Take(pageSize)  // Limit number of items
-					.ToList(); // Convert to collection
-				
-				// Success response
 				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-					mappedEditions.ToSearchBookEditionResponse(
-						pageIndex: pageIndex,
-						pageSize: pageSize,
-						totalPage: totalPage,
-						totalActualItems: totalActualItem));
+					result.ToSearchLibraryItemResponse(pageIndex, pageSize, totalPage, totalActualItem));
 			}
 
-			// Data null or empty response
 			return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-					new List<ElasticBookEdition>().ToSearchBookEditionResponse(
-					pageIndex: parameters.PageIndex,
-					pageSize: parameters.PageSize,
-					totalPage: 0,
-					totalActualItems: 0));
+				result.ToSearchLibraryItemResponse(pageIndex: 0, pageSize: 0, totalPage: 0, totalActualItems: 0));
 		}
 	}
 

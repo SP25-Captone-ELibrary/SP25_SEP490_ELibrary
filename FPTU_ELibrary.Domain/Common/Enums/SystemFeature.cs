@@ -13,8 +13,8 @@ public enum SystemFeature
     RoleManagement,
     [Description("/management/fines")]
     FineManagement,
-    [Description("/management/books")] // Combine with authors, categories, resources, audit trail, library location
-    BookManagement,
+    [Description("/management/library-items")] // Combine with authors, categories, resources, audit trail, library location
+    LibraryItemManagement,
     [Description("/management/borrows")] // Combine with notifications, returns
     BorrowManagement,
     [Description("/management/transactions")]

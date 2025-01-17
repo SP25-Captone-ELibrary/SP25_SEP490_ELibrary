@@ -5,8 +5,8 @@ namespace FPTU_ELibrary.Application.Dtos.Authors;
 
 public class AuthorCsvRecord
 {
-    [Name("AuthorCode")]
-    public string? AuthorCode { get; set; }
+    [Name("AuthorCode")] 
+    public string AuthorCode { get; set; } = null!;
     
     [Name("FullName")]
     public string FullName { get; set; } = null!;
@@ -19,8 +19,8 @@ public class AuthorCsvRecord
     
     [Name("DateOfDeath")]
     public string? DateOfDeath { get; set; }
-    
-    [Name("Nationality")]
+
+    [Name("Nationality")] 
     public string Nationality { get; set; } = null!;
 }
 

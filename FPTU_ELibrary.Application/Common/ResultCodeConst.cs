@@ -355,99 +355,70 @@ namespace FPTU_ELibrary.Application.Common
 
 		#endregion
 
-		#region Book
-		/// <summary>
-		/// [WARNING] Some categories are unavailable or do not exist
-		/// </summary>
-		public const string Book_Warning0001 = "Book.Warning0001";
+		#region Library Item
 		/// <summary>
 		/// [WARNING] Some authors are unavailable or do not exist
 		/// </summary>
-		public const string Book_Warning0002 = "Book.Warning0002";
+		public const string LibraryItem_Warning0001 = "LibraryItem.Warning0001";
 		/// <summary>
-		/// [WARNING] Book edition number must be unique
+		/// [WARNING] Item edition number must be unique within the same group
 		/// </summary>
-		public const string Book_Warning0003 = "Book.Warning0003";
+		public const string LibraryItem_Warning0002 = "LibraryItem.Warning0002";
 		/// <summary>
 		/// [WARNING] Book resources must not have duplicate content
 		/// </summary>
-		public const string Book_Warning0004 = "Book.Warning0004";
+		public const string LibraryItem_Warning0003 = "LibraryItem.Warning0003";
 		/// <summary>
-		/// [WARNING] Book edition copy code must be unique
+		/// [WARNING] Item edition instance barcode must be unique
 		/// </summary>
-		public const string Book_Warning0005 = "Book.Warning0005";
+		public const string LibraryItem_Warning0004 = "LibraryItem.Warning0004";
 		/// <summary>
-		/// [WARNING] Code {0} already exist
+		/// [WARNING] Barcode {0} already exist
 		/// </summary>
-		public const string Book_Warning0006 = "Book.Warning0006";
+		public const string LibraryItem_Warning0005 = "LibraryItem.Warning0005";
+		/// <summary>
+		/// [WARNING] The prefix of barcode is invalid, the prefix pattern of the category is {0}
+		/// </summary>
+		public const string LibraryItem_Warning0006 = "LibraryItem.Warning0006";
 		/// <summary>
 		/// [WARNING] ISBN Code {0} already exist
 		/// </summary>
-		public const string Book_Warning0007 = "Book.Warning0007";
+		public const string LibraryItem_Warning0007 = "LibraryItem.Warning0007";
 		/// <summary>
 		/// [WARNING] Cannot change data that is on borrowing or reserved
 		/// </summary>
-		public const string Book_Warning0008 = "Book.Warning0008";
+		public const string LibraryItem_Warning0008 = "LibraryItem.Warning0008";
 		/// <summary>
 		/// [WARNING] Cannot process, please move all edition copy status to inventory first
 		/// </summary>
-		public const string Book_Warning0009 = "Book.Warning0009";
+		public const string LibraryItem_Warning0009 = "LibraryItem.Warning0009";
 		/// <summary>
 		/// [WARNING] Cannot delete as there still exist copy within the book edition
 		/// </summary>
-		public const string Book_Warning0010 = "Book.Warning0010";
+		public const string LibraryItem_Warning0010 = "LibraryItem.Warning0010";
 		/// <summary>
 		/// [WARNING] Cannot change book edition copy status. {0}
 		/// </summary>
-		public const string Book_Warning0011 = "Book.Warning0011";
+		public const string LibraryItem_Warning0011 = "LibraryItem.Warning0011";
 		/// <summary>
 		/// [WARNING] Cannot change book status to public. {0}
 		/// </summary>
-		public const string Book_Warning0012 = "Book.Warning0012";
+		public const string LibraryItem_Warning0012 = "LibraryItem.Warning0012";
 		/// <summary>
 		/// [WARNING] Cannot change book status to draft. {0}
 		/// </summary>
-		public const string Book_Warning0013 = "Book.Warning0013";
+		public const string LibraryItem_Warning0013 = "LibraryItem.Warning0013";
 
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
-		public const string Book_Fail0001 = "Book.Fail0001";
+		public const string LibraryItem_Fail0001 = "LibraryItem.Fail0001";
 		/// <summary>
 		/// [FAIL] The action cannot be performed. Please switch to draft status to proceed
 		/// </summary>
-		public const string Book_Fail0002 = "Book.Fail0002";
+		public const string LibraryItem_Fail0002 = "LibraryItem.Fail0002";
 		#endregion
 		
-		#region BookCategory
-		/// <summary>
-		/// This Category has been used. Cannot be deleted
-		/// </summary>
-		public static string Category_Warning0001 = "Category.Warning0001";
-		/// <summary>
-		/// Cannot delete be cause it contains undefined id
-		/// </summary>
-		public static string Category_Warning0002 = "Category.Warning0002";
-		#endregion
-			
-		#region FinePolicy
-		/// <summary>
-		/// This FinePolicy has been existed
-		/// </summary>
-		public static string FinePolicy_Warning0001 = "FinePolicy.Warning0001";
-
-        /// <summary>
-        /// This FinePolicy has been used
-        /// </summary>
-        public static string FinePolicy_Warning0002 = "FinePolicy.Warning0002";
-
-        /// <summary>
-        /// Cannot delete be cause it contains undefined id
-        /// </summary>
-        public static string FinePolicy_Warning0003 = "FinePolicy.Warning0003";
-
-        #endregion
-
         #region AIService
 
         /// <summary>

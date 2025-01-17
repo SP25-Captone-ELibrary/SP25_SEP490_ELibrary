@@ -4,10 +4,9 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using Microsoft.AspNetCore.Http;
@@ -24,11 +23,10 @@ namespace FPTU_ELibrary.Application.Validations
 				// Create instances of the validators, passing the language 
 				{ } when typeof(T) == typeof(IFormFile) => (IValidator<T>)new ExcelValidator(language),
 				{ } when typeof(T) == typeof(AuthorDto) => (IValidator<T>)new AuthorDtoValidator(language),
-				{ } when typeof(T) == typeof(BookDto) => (IValidator<T>)new BookDtoValidator(language),
-				{ } when typeof(T) == typeof(BookEditionDto) => (IValidator<T>)new BookEditionDtoValidator(language),
-				{ } when typeof(T) == typeof(BookResourceDto) => (IValidator<T>)new BookResourceDtoValidator(language),
-				{ } when typeof(T) == typeof(BookEditionCopyDto) => (IValidator<T>)new BookEditionCopyDtoValidator(language),
-				{ } when typeof(T) == typeof(BookEditionInventoryDto) => (IValidator<T>)new BookEditionInventoryDtoValidator(),
+				{ } when typeof(T) == typeof(LibraryItemDto) => (IValidator<T>)new LibraryItemDtoValidator(language),
+				{ } when typeof(T) == typeof(LibraryResourceDto) => (IValidator<T>)new LibraryResourceDtoValidator(language),
+				{ } when typeof(T) == typeof(LibraryItemInstanceDto) => (IValidator<T>)new LibraryItemInstanceDtoValidator(language),
+				{ } when typeof(T) == typeof(LibraryItemInventoryDto) => (IValidator<T>)new LibraryItemInventoryDtoValidator(),
 				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),
 				{ } when typeof(T) == typeof(EmployeeDto) => (IValidator<T>)new EmployeeDtoValidator(language),
 				{ } when typeof(T) == typeof(SystemRoleDto) => (IValidator<T>)new SystemRoleDtoValidator(),

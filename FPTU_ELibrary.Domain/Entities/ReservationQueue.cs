@@ -10,9 +10,9 @@ public class ReservationQueue
     public int QueueId { get; set; }
     
     // For which book edition 
-    public int BookEditionId { get; set; }
+    public int LibraryItemId { get; set; }
 
-    // Forcasting available datetime
+    // Forecasting available datetime
     public DateTime? ExpectedAvailableDate { get; set; }
     
     // Reservation detail
@@ -30,7 +30,7 @@ public class ReservationQueue
 
     // Mapping entities
     [JsonIgnore]
-    public BookEdition BookEdition { get; set; } = null!;
+    public LibraryItem LibraryItem { get; set; } = null!;
 
     [JsonIgnore]
     public User ReservedByNavigation { get; set; } = null!;

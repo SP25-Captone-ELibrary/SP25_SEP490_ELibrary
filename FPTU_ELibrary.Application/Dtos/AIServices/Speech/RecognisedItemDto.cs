@@ -1,5 +1,3 @@
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-
 namespace FPTU_ELibrary.Application.Dtos.AIServices.Speech;
 
 public class RecognisedItemDto<T>

@@ -1,9 +1,8 @@
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.Authors;
 
 public class AuthorTopReviewedBookDto
 {
-    public BookEditionDto BookEdition { get; set; } = null!;
+    public LibraryItemDto LibraryItem { get; set; } = null!;
 }

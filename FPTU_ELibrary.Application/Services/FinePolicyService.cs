@@ -39,15 +39,10 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
-            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>()
-                .AnyAsync(e => e.ConditionType == dto.ConditionType);
-            if (isExistConditionType)
-            {
-                throw new UnprocessableEntityException("Invalid validations", new Dictionary<string, string[]>()
-                {
-                    { nameof(FinePolicyDto.ConditionType), new[] { "Condition type is already exist" } }
-                });
-            }
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
 
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(dto);
@@ -59,8 +54,28 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 throw new UnprocessableEntityException("Invalid Validations", errors);
             }
 
+            // Custom errors
+            var customErrors = new Dictionary<string, string[]>();
+            
+            // Check exist policy title
+            var isExistPolicyTitle = await _unitOfWork.Repository<FinePolicy, int>()
+                .AnyAsync(e => e.FinePolicyTitle.ToLower() == dto.FinePolicyTitle.ToLower());
+            if (isExistPolicyTitle)
+            {
+                // Add error
+                customErrors.Add(StringUtils.ToCamelCase(nameof(FinePolicyDto.FinePolicyTitle)), 
+                    [isEng ? "Policy title already exist" : "Tên chính sách đã tồn tại"]);
+            }
+            
+            // Invoke any errors
+            if (customErrors.Any())
+            {
+                throw new UnprocessableEntityException("Invalid Data", customErrors);
+            }
+            
             // Process add new entity
             await _unitOfWork.Repository<FinePolicy, int>().AddAsync(_mapper.Map<FinePolicy>(dto));
+            
             // Save to DB
             if (await _unitOfWork.SaveChangesAsync() > 0)
             {
@@ -93,16 +108,31 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
-            var baseSpec = new BaseSpecification<FinePolicy>(e => e.ConditionType == dto.ConditionType);
-            var isExistConditionType = await _unitOfWork.Repository<FinePolicy, int>()
-                .GetWithSpecAsync(baseSpec);
-            if (isExistConditionType.FinePolicyId != id)
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Custom errors
+            var customErrors = new Dictionary<string, string[]>();
+            
+            // Check exist policy title
+            var isExistPolicyTitle = await _unitOfWork.Repository<FinePolicy, int>()
+                .AnyAsync(e => e.FinePolicyTitle.ToLower() == dto.FinePolicyTitle.ToLower() &&
+                    e.FinePolicyId != id); // Compare to other policy
+            if (isExistPolicyTitle)
             {
-                throw new UnprocessableEntityException("Invalid validations", new Dictionary<string, string[]>()
-                {
-                    { nameof(FinePolicyDto.ConditionType), new[] { "Condition type is already exist" } }
-                });
+                // Add error
+                customErrors.Add(StringUtils.ToCamelCase(nameof(FinePolicyDto.FinePolicyTitle)), 
+                    [isEng ? "Policy title already exist" : "Tên chính sách đã tồn tại"]);
             }
+            
+            // Invoke any errors
+            if (customErrors.Any())
+            {
+                throw new UnprocessableEntityException("Invalid Data", customErrors);
+            }
+            
             // Retrieve the entity
             var existingEntity = await _unitOfWork.Repository<FinePolicy, int>().GetByIdAsync(id);
             if (existingEntity == null)
@@ -111,7 +141,14 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, nameof(FinePolicy).ToLower()));
             }
-            _mapper.Map(dto,existingEntity);
+            
+            // Update properties
+            existingEntity.FinePolicyTitle = dto.FinePolicyTitle;
+            existingEntity.FineAmountPerDay = dto.FineAmountPerDay;
+            existingEntity.FixedFineAmount = dto.FixedFineAmount;
+            existingEntity.Description = dto.Description;
+            existingEntity.ConditionType = dto.ConditionType;
+            
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(_mapper.Map(existingEntity,dto));
             // Check for valid validations
@@ -166,14 +203,18 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var serviceResult = new ServiceResult();
         try
         {
-            var baseSpec = new BaseSpecification<FinePolicy>(fp => fp.FinePolicyId == id && fp.Fines.Any());
-            baseSpec.ApplyInclude(q => q.Include(x => x.Fines));
-            var existingFinePolicy = await _unitOfWork.Repository<FinePolicy, int>().GetWithSpecAsync(baseSpec);
-            if (existingFinePolicy is not null)
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Check exist fine policy
+            var existingFinePolicy = await _unitOfWork.Repository<FinePolicy, int>().GetByIdAsync(id);
+            if (existingFinePolicy == null)
             {
-                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.FinePolicy_Warning0002);
-                return new ServiceResult(ResultCodeConst.FinePolicy_Warning0002,
-                    StringUtils.Format(errorMsg, nameof(FinePolicy).ToLower()));
+                var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errorMsg, isEng ? "fine pocily" : "chính sách"));
             }
 
             // Process delete entity
@@ -194,6 +235,21 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
 
             return serviceResult;
         }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
@@ -201,37 +257,31 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         }
     }
 
-    public async Task<IServiceResult> HardDeleteRangeAsync(int[] finePolicyIds)
+    public async Task<IServiceResult> DeleteRangeAsync(int[] finePolicyIds)
     {
         try
         {
             // Get all matching book category 
             // Build spec
             var baseSpec = new BaseSpecification<FinePolicy>(e => finePolicyIds.Contains(e.FinePolicyId));
-            baseSpec.ApplyInclude(q => q.Include(x => x.Fines));
-            var categoryEntities = await _unitOfWork.Repository<FinePolicy, int>()
+            var finePolicyEntities = await _unitOfWork.Repository<FinePolicy, int>()
                 .GetAllWithSpecAsync(baseSpec);
-            var categoryList = categoryEntities.ToList();
-            if (categoryList.Count < finePolicyIds.Length)
+            // Convert to list 
+            var finePolicyList = finePolicyEntities.ToList();
+            if (!finePolicyList.Any())
             {
-                return new ServiceResult(ResultCodeConst.FinePolicy_Warning0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.FinePolicy_Warning0002));
+                return new ServiceResult(ResultCodeConst.SYS_Warning0005,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0005));
             }
-
-            if (categoryList.Any(x => x.Fines.Any()))
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-            }
-
+            
             // Process delete range
-            await _unitOfWork.Repository<FinePolicy, int>().DeleteRangeAsync(finePolicyIds);
+            await _unitOfWork.Repository<FinePolicy, int>().DeleteRangeAsync(finePolicyList.Select(x => x.FinePolicyId).ToArray());
             // Save to DB
             if (await _unitOfWork.SaveChangesAsync() > 0)
             {
                 var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
                 return new ServiceResult(ResultCodeConst.SYS_Success0008,
-                    StringUtils.Format(msg, categoryList.Count.ToString()), true);
+                    StringUtils.Format(msg, finePolicyList.Count.ToString()), true);
             }
 
             // Fail to delete
@@ -266,7 +316,6 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var langEnum =
             (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
         var isEng = langEnum == SystemLanguage.English;
-        var totalImportData = 0;
         if (finePolicies == null || finePolicies.Length == 0)
         {
             throw new BadRequestException(isEng
@@ -305,13 +354,24 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             {
                 var finePolicyRecord = new FinePolicyExcelRecord
                 {
-                    ConditionType = worksheet.Cells[row, 1].Value?.ToString(),
-                    FineAmountPerDay = decimal.Parse(worksheet.Cells[row, 2].Value?.ToString()),
-                    FixedFineAmount = decimal.Parse(worksheet.Cells[row, 3].Value?.ToString()),
-                    Description = worksheet.Cells[row, 4].Value?.ToString()
+                    FinePolicyTitle = worksheet.Cells[row, 1].Value?.ToString() ?? null!,
+                    ConditionType = worksheet.Cells[row, 2].Value?.ToString(),
+                    FineAmountPerDay = decimal.Parse(worksheet.Cells[row, 3].Value?.ToString() ?? "0"),
+                    FixedFineAmount = decimal.Parse(worksheet.Cells[row, 4].Value?.ToString() ?? "0"),
+                    Description = worksheet.Cells[row, 5].Value?.ToString()
                 };
 
-                if (processedFinePolicies.ContainsKey(finePolicyRecord.ConditionType))
+                // Validate condition type
+                if (!Enum.TryParse(typeof(FinePolicyConditionType), finePolicyRecord.ConditionType, true, out _))
+                {
+                    failedMsgs.Add(new FinePolicyFailedMessage()
+                    {
+                        Row = row,
+                        ErrMsg = new List<string> { isEng ? "Condition type is not exist" : "Loại chính sách không tồn tại" }
+                    });
+                }
+                
+                if (processedFinePolicies.ContainsKey(finePolicyRecord.FinePolicyTitle))
                 {
                     if (duplicateHandle.ToString().ToLower() == "skip")
                     {
@@ -319,13 +379,13 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                     }
                     else if (duplicateHandle.ToString().ToLower() == "replace")
                     {
-                        failedMsgs.RemoveAll(f => f.Row == processedFinePolicies[finePolicyRecord.ConditionType]);
-                        processedFinePolicies[finePolicyRecord.ConditionType] = row;
+                        failedMsgs.RemoveAll(f => f.Row == processedFinePolicies[finePolicyRecord.FinePolicyTitle]);
+                        processedFinePolicies[finePolicyRecord.FinePolicyTitle] = row;
                     }
                 }
                 else
                 {
-                    processedFinePolicies[finePolicyRecord.ConditionType] = row;
+                    processedFinePolicies[finePolicyRecord.FinePolicyTitle] = row;
                 }
 
                 var rowErr = await DetectWrongRecord(finePolicyRecord, langEnum);
@@ -334,13 +394,12 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                     failedMsgs.Add(new FinePolicyFailedMessage()
                     {
                         Row = row,
-                        ErrMsg = new List<string> { "Invalid record at " + row }
+                        ErrMsg = new List<string> { isEng ? "Invoke error(s), please re-check" : "Có lỗi xảy ra, vui lòng kiểm tra lại dữ liệu" }
                     });
                 }
                 else
                 {
                     // Convert to DTO
-
                     var newFinePolicy = finePolicyRecord.ToFinePolicyDto();
 
                     // Add Dto
@@ -350,8 +409,8 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
 
             if (failedMsgs.Any())
             {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), failedMsgs.Select(x => x.ErrMsg));
+                return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), failedMsgs);
             }
 
             // Process add new entity
@@ -364,29 +423,27 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
             }
 
-            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+            return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), false);
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process import book category");
+            throw new Exception("Error invoke when process import fine policy");
         }
     }
 
     private async Task<bool> DetectWrongRecord(FinePolicyExcelRecord record, SystemLanguage? lang)
     {
-        // I want a regex that allow my conditiontype could include number
-        
-        
+        // I want a regex that allow my condition type could include number
         
         var isEng = lang == SystemLanguage.English;
         if (string.IsNullOrEmpty(record.ConditionType)
             || string.IsNullOrEmpty(record.FineAmountPerDay.ToString())
             || !Regex.IsMatch(record.ConditionType,
             @"^[a-zA-Z0-9\s\p{P}]{1,100}$") 
-            || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
-            || !Regex.IsMatch(record.FineAmountPerDay.ToString(), @"^\d+(\.\d+)?$")
+            || !Regex.IsMatch(record.FineAmountPerDay.ToString() ?? string.Empty, @"^\d+(\.\d+)?$")
+            || !Regex.IsMatch(record.FineAmountPerDay.ToString() ?? string.Empty, @"^\d+(\.\d+)?$")
             || record.FineAmountPerDay <= 0
             || record.FineAmountPerDay < 0
            )
@@ -395,7 +452,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         }
 
         return await _unitOfWork.Repository<FinePolicy, int>().AnyAsync(e
-            => e.ConditionType == record.ConditionType);
+            => e.FinePolicyTitle.ToLower() == record.FinePolicyTitle.ToLower());
     }
 
     public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<FinePolicy> spec, bool tracked = true)

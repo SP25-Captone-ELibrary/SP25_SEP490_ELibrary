@@ -8,9 +8,9 @@ public class UserFavorite
 
     public Guid UserId { get; set; }
 
-    public int BookEditionId { get; set; }
+    public int LibraryItemId { get; set; }
 
-    public BookEdition BookEdition { get; set; } = null!;
+    public LibraryItem LibraryItem { get; set; } = null!;
 
     [JsonIgnore]
     public User User { get; set; } = null!;

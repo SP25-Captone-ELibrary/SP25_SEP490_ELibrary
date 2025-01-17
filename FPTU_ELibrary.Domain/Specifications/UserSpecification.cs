@@ -134,6 +134,11 @@ namespace FPTU_ELibrary.Domain.Specifications
 
                 ApplySorting(propertyName, isDescending);
             }
+            else
+            {
+                // Default order by create date
+                AddOrderByDescending(u => u.CreateDate);
+            }
 
             AddFilter(x => x.Role.EnglishName != nameof(Role.Administration));
         }
