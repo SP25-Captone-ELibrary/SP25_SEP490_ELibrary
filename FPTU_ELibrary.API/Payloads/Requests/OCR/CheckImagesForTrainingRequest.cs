@@ -1,4 +1,4 @@
-namespace FPTU_ELibrary.API.Payloads.Requests;
+namespace FPTU_ELibrary.API.Payloads.Requests.OCR;
 
 public class CheckImagesForTrainingRequest
 {

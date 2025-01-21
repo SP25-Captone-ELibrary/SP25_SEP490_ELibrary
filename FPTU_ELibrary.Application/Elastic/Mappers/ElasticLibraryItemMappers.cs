@@ -4,9 +4,9 @@ using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Responses;
 using Nest;
 
-namespace FPTU_ELibrary.API.Mappings
+namespace FPTU_ELibrary.Application.Elastic.Mappers
 {
-	public static class ElasticBookMappers
+	public static class ElasticLibraryItemMappers
 	{
 		public static ElasticLibraryItem ToElasticLibraryItem(this LibraryItemDto itemDto)
 			=> new()
@@ -21,6 +21,7 @@ namespace FPTU_ELibrary.API.Mappings
 				Language = itemDto.Language,
 				OriginLanguage = itemDto.OriginLanguage,
 				CoverImage = itemDto.CoverImage,
+				Publisher = itemDto.Publisher,
 				PublicationYear = itemDto.PublicationYear,
 				PublicationPlace = itemDto.PublicationPlace,
 				ClassificationNumber = itemDto.ClassificationNumber,
@@ -34,6 +35,7 @@ namespace FPTU_ELibrary.API.Mappings
 				Genres = itemDto.Genres,
 				TopicalTerms = itemDto.TopicalTerms,
 				AdditionalAuthors = itemDto.AdditionalAuthors,
+				GeneralNote = itemDto.GeneralNote,
 				CategoryId = itemDto.CategoryId,
 				ShelfId = itemDto.ShelfId,
 				GroupId = itemDto.GroupId,
@@ -52,7 +54,7 @@ namespace FPTU_ELibrary.API.Mappings
 						ReservedUnits = itemDto.LibraryItemInventory.ReservedUnits,
 					}
 					: null,
-				ElasticLibraryItemInstances = itemDto.LibraryItemInstances.Select(bec => new ElasticLibraryItemInstance()
+				LibraryItemInstances = itemDto.LibraryItemInstances.Select(bec => new ElasticLibraryItemInstance()
 				{
 					LibraryItemInstanceId = bec.LibraryItemInstanceId,
 					LibraryItemId = bec.LibraryItemId,

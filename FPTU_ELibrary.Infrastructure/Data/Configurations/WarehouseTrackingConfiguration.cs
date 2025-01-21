@@ -71,6 +71,7 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
 
        builder.HasOne(e => e.Supplier).WithMany(p => p.WarehouseTrackings)
               .HasForeignKey(e => e.SupplierId)
+              .OnDelete(DeleteBehavior.ClientSetNull)
               .HasConstraintName("FK_WarehouseTracking_SupplierId");
        #endregion
     }

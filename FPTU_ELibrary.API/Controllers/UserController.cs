@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
+using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Domain.Common.Enums;

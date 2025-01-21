@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 public class LibraryItemConditionHistoryDto
@@ -18,5 +20,6 @@ public class LibraryItemConditionHistoryDto
     public string? UpdatedBy { get; set; }
     
     // Mapping entities
+    [JsonIgnore]
     public LibraryItemInstanceDto LibraryItemInstance { get; set; } = null!;
 }

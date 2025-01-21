@@ -62,6 +62,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     // If an exception occurs, the transaction is rolled back
                     result = -1;
                     _context.Database.RollbackTransaction();
+                    throw;
                 }
             }
 
@@ -86,6 +87,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     // If an exception occurs, the transaction is rolled back
                     result = -1;
                     await _context.Database.RollbackTransactionAsync();
+                    throw;
                 }
             }
 

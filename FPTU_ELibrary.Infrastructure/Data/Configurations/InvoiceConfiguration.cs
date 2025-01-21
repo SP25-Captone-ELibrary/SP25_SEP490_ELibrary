@@ -31,6 +31,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         
         builder.HasOne(e => e.User).WithMany(p => p.Invoices)
             .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Invoice_UserId");
         #endregion
     }

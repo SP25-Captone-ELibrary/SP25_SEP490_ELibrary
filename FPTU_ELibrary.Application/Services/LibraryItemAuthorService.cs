@@ -24,9 +24,9 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
     public LibraryItemAuthorService(
         ILibraryItemService<LibraryItemDto> itemService,
         IAuthorService<AuthorDto> authorService,
-        ISystemMessageService msgService, 
-        IUnitOfWork unitOfWork, 
-        IMapper mapper, 
+        ISystemMessageService msgService,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _authorService = authorService;
@@ -41,7 +41,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Check exist library item
             var isExistItem =
                 (await _itemService.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
@@ -52,10 +52,10 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, 
+                    StringUtils.Format(errMsg,
                         isEng ? "library item or author" : "tài liệu hoặc tác giả"));
             }
-            
+
             // Retrieve library item author entity
             var editionAuthorEntity = await _unitOfWork.Repository<LibraryItemAuthor, int>()
                 .GetWithSpecAsync(new BaseSpecification<LibraryItemAuthor>(
@@ -68,7 +68,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                     isEng ? "author" : "tác giả");
                 return new ServiceResult(ResultCodeConst.SYS_Warning0003, customMsg);
             }
-            
+
             // Process add author to book edition
             await _unitOfWork.Repository<LibraryItemAuthor, int>().AddAsync(
                 new LibraryItemAuthor()
@@ -76,7 +76,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                     LibraryItemId = libraryItemId,
                     AuthorId = authorId
                 });
-            
+
             // Save to DB
             var rowEffected = await _unitOfWork.SaveChangesAsync();
             if (rowEffected == 0)
@@ -129,7 +129,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                     customErrors.Add($"authors[{i}]", [isEng ? "Not found author" : "Không tìm thấy tác giả"]);
                 }
             }
-            
+
             // Retrieve library item author entities
             var itemAuthorEntities = await _unitOfWork.Repository<LibraryItemAuthor, int>()
                 .GetAllWithSpecAsync(new BaseSpecification<LibraryItemAuthor>(
@@ -148,21 +148,21 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                     customErrors.Add($"authors[{i}]", [customMsg]);
                 }
             }
-            
+
             // Check exist any errors
             if (customErrors.Any())
             {
                 throw new UnprocessableEntityException("Invalid data", customErrors);
             }
-            
+
             // Process add author(s) to library item
             await _unitOfWork.Repository<LibraryItemAuthor, int>().AddRangeAsync(
                 authorIds.Select(a => new LibraryItemAuthor()
-                    {
-                        LibraryItemId = libraryItemId,
-                        AuthorId = a
-                    }).ToList());
-            
+                {
+                    LibraryItemId = libraryItemId,
+                    AuthorId = a
+                }).ToList());
+
             // Save to DB
             var rowEffected = await _unitOfWork.SaveChangesAsync();
             if (rowEffected == 0)
@@ -186,7 +186,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             throw new Exception("Error invoke when process add range author to library item");
         }
     }
-    
+
     public async Task<IServiceResult> DeleteAuthorFromLibraryItemAsync(int libraryItemId, int authorId)
     {
         try
@@ -195,7 +195,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Check exist library item
             var isExistItem =
                 (await _itemService.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
@@ -206,10 +206,10 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, 
+                    StringUtils.Format(errMsg,
                         isEng ? "library item or author" : "tài liệu hoặc tác giả"));
             }
-            
+
             // Retrieve book edition author entity
             var itemAuthorEntity = await _unitOfWork.Repository<LibraryItemAuthor, int>()
                 .GetWithSpecAsync(new BaseSpecification<LibraryItemAuthor>(
@@ -218,13 +218,13 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, 
+                    StringUtils.Format(errMsg,
                         isEng ? "author in the library item" : "tác giả trong tài liệu"));
             }
-            
+
             // Process add author to library item
             await _unitOfWork.Repository<LibraryItemAuthor, int>().DeleteAsync(itemAuthorEntity.LibraryItemAuthorId);
-            
+
             // Save to DB
             var rowEffected = await _unitOfWork.SaveChangesAsync();
             if (rowEffected == 0)
@@ -277,13 +277,13 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                     customErrors.Add($"authors[{i}]", [isEng ? "Not found author" : "Không tìm thấy tác giả"]);
                 }
             }
-            
+
             // Check exist any errors
             if (customErrors.Any())
             {
                 throw new UnprocessableEntityException("Invalid data", customErrors);
             }
-            
+
             // Retrieve library item author entities
             var itemAuthorEntities = await _unitOfWork.Repository<LibraryItemAuthor, int>()
                 .GetAllWithSpecAsync(new BaseSpecification<LibraryItemAuthor>(
@@ -296,10 +296,10 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, isEng ? "any author match" : "tác giả trong tài liệu"));
             }
-            
+
             // Progress delete range 
             await _unitOfWork.Repository<LibraryItemAuthor, int>().DeleteRangeAsync(toDeleteIds);
-            
+
             // Save to DB
             var rowEffected = await _unitOfWork.SaveChangesAsync();
             if (rowEffected == 0)
@@ -319,13 +319,13 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
             throw new Exception("Error invoke when process delete range author from library item");
         }
     }
-    
+
     public async Task<IServiceResult> DeleteRangeWithoutSaveChangesAsync(int[] bookEditionAuthorIds)
     {
         try
         {
             // Build specification
-            var baseSpec = new BaseSpecification<LibraryItemAuthor>(x => 
+            var baseSpec = new BaseSpecification<LibraryItemAuthor>(x =>
                 bookEditionAuthorIds.Contains(x.LibraryItemAuthorId));
             // Retrieve all match
             var bookEditionAuthorEntities = await _unitOfWork.Repository<LibraryItemAuthor, int>()
@@ -337,11 +337,11 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
             }
-            
+
             // Progress delete range
             await _unitOfWork.Repository<LibraryItemAuthor, int>().DeleteRangeAsync(
                 editionAuthorList.Select(x => x.LibraryItemAuthorId).ToArray());
-            
+
             // Mark as delete without save success
             return new ServiceResult(ResultCodeConst.SYS_Success0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
@@ -349,7 +349,7 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process delete range author from book edition");
+            throw new Exception("Error invoke when process delete range author from library item");
         }
     }
 }

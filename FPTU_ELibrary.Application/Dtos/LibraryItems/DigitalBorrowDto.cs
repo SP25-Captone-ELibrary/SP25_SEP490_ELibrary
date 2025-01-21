@@ -15,6 +15,7 @@ public class DigitalBorrowDto
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
     
+    [JsonIgnore]
     public LibraryResourceDto LibraryResource { get; set; } = null!;
     public UserDto User { get; set; } = null!;
     

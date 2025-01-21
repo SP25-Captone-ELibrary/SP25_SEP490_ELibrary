@@ -19,10 +19,12 @@ public class LibraryItemResourceConfiguration : IEntityTypeConfiguration<Library
 
         builder.HasOne(e => e.LibraryItem).WithMany(e => e.LibraryItemResources)
             .HasForeignKey(e => e.LibraryItemId)
+            .OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("FK_LibraryItemResource_LibraryItemId");
         
         builder.HasOne(e => e.LibraryResource).WithMany(e => e.LibraryItemResources)
             .HasForeignKey(e => e.ResourceId)
+            .OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("FK_LibraryItemResource_ResourceId");
         #endregion
     }

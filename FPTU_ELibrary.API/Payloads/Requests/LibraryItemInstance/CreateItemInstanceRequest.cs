@@ -1,6 +1,6 @@
-namespace FPTU_ELibrary.API.Payloads.Requests.Book;
+namespace FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
 
-public class CreateLibraryItemInstanceRequest
+public class CreateItemInstanceRequest
 {
     public string Barcode { get; set; } = null!;
     // Good, Worn, Damaged

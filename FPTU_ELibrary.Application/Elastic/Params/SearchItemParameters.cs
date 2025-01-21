@@ -2,10 +2,11 @@
 using Nest;
 namespace FPTU_ELibrary.Application.Elastic.Params
 {
-	public record SearchBookParameters(
+	public record SearchItemParameters(
 		string? SearchText,
-		string? Sort, 
-		bool? IsDescendingSort, 
+		SearchKeyword? SearchWithKeyword,
+		bool SearchWithSpecial,
+		bool IsMatchExact,
 		bool? IsDeleted, 
 		bool? CanBorrow,
 		string[]? F,

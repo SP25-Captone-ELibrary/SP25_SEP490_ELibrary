@@ -1,6 +1,6 @@
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.API.Payloads.Requests.Fine;
+namespace FPTU_ELibrary.API.Payloads.Requests.Category;
 
 public class ImportBookCategoryRequest
 {

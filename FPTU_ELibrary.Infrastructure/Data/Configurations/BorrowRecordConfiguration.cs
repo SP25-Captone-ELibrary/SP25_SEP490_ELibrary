@@ -44,6 +44,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.LibraryItemInstance).WithMany(p => p.BorrowRecords)
                 .HasForeignKey(d => d.LibraryItemInstanceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BorrowRecord_ItemInstanceId");
 
             builder.HasOne(d => d.Borrower).WithMany(p => p.BorrowRecords)
@@ -64,6 +65,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.ProcessedBy).HasColumnName("proceesed_by");
             builder.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.BorrowRecords)
                 .HasForeignKey(d => d.ProcessedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BorrowRecord_ProcessedBy");
 			#endregion
 

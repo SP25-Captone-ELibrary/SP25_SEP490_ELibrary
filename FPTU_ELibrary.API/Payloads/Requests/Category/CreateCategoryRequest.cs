@@ -1,6 +1,6 @@
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
-namespace FPTU_ELibrary.API.Payloads.Requests;
+namespace FPTU_ELibrary.API.Payloads.Requests.Category;
 
 public class CreateCategoryRequest
 {

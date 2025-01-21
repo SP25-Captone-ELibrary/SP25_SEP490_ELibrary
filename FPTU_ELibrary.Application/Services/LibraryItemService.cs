@@ -1,11 +1,9 @@
-using System.Globalization;
-using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Elastic.Mappers;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -20,7 +18,6 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -31,44 +28,47 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, int>,
     ILibraryItemService<LibraryItemDto>
 {
-	// Configure lazy service
-	private readonly Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> _editionAuthorService;
-	private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _editionCopyService;
+    // Configure lazy service
+    private readonly Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> _itemAuthorService;
+    private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceService;
     private readonly Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> _itemGroupService;
-	private readonly Lazy<IElasticService> _elasticService;
-	
-	private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
-	private readonly ICloudinaryService _cloudService;
-	private readonly ICategoryService<CategoryDto> _cateService;
-	private readonly IAuthorService<AuthorDto> _authorService;
+    private readonly Lazy<IElasticService> _elasticService;
 
-	public LibraryItemService(
-		// Lazy service
-		Lazy<IElasticService> elasticService,
-		Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> editionAuthorService,
-		Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> editionCopyService,
-		Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> itemGroupService,
-		// Normal service
-		IAuthorService<AuthorDto> authorService,
-		ICategoryService<CategoryDto> cateService,
-		ICloudinaryService cloudService,
-	    ILibraryShelfService<LibraryShelfDto> libShelfService,
-        ISystemMessageService msgService, 
-        IUnitOfWork unitOfWork, 
-        IMapper mapper, 
-        ILogger logger) 
-    : base(msgService, unitOfWork, mapper, logger)
-	{
-		_authorService = authorService;
-		_cloudService = cloudService;
-		_cateService = cateService;
-	    _libShelfService = libShelfService;
-	    _elasticService = elasticService;
+    private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
+    private readonly ICloudinaryService _cloudService;
+    private readonly ICategoryService<CategoryDto> _cateService;
+    private readonly IAuthorService<AuthorDto> _authorService;
+    private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
+
+    public LibraryItemService(
+        // Lazy service
+        Lazy<IElasticService> elasticService,
+        Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> itemAuthorService,
+        Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceService,
+        Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> itemGroupService,
+        Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
+        // Normal service
+        IAuthorService<AuthorDto> authorService,
+        ICategoryService<CategoryDto> cateService,
+        ICloudinaryService cloudService,
+        ILibraryShelfService<LibraryShelfDto> libShelfService,
+        ISystemMessageService msgService,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ILogger logger)
+        : base(msgService, unitOfWork, mapper, logger)
+    {
+        _authorService = authorService;
+        _cloudService = cloudService;
+        _cateService = cateService;
+        _libShelfService = libShelfService;
+        _elasticService = elasticService;
+        _resourceService = resourceService;
         _itemGroupService = itemGroupService;
-	    _editionCopyService = editionCopyService;
-	    _editionAuthorService = editionAuthorService;
-	}
-	
+        _itemInstanceService = itemInstanceService;
+        _itemAuthorService = itemAuthorService;
+    }
+
     public override async Task<IServiceResult> CreateAsync(LibraryItemDto dto)
     {
         try
@@ -108,7 +108,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             var customErrors = new Dictionary<string, string[]>();
             // Initialize hash set of string to check unique of barcode
             var editionCopyCodes = new HashSet<string>();
-            
+
             // Check exist category 
             var categoryDto = (await _cateService.GetByIdAsync(dto.CategoryId)).Data as CategoryDto;
             if (categoryDto == null)
@@ -117,9 +117,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, isEng ? "category" : "phân loại"));
             }
-            
+
             // Check whether create with specific group
-            if (dto.GroupId != null && dto.GroupId > 0) 
+            if (dto.GroupId != null && dto.GroupId > 0)
             {
                 // Check exist group 
                 // Build spec
@@ -174,28 +174,30 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             var listItemInstance = dto.LibraryItemInstances.ToList();
             for (int i = 0; i < listItemInstance.Count; ++i)
             {
-	            var iInstance = listItemInstance[i];
+                var iInstance = listItemInstance[i];
 
                 if (editionCopyCodes.Add(iInstance.Barcode)) // Add to hash set string to ensure uniqueness
                 {
-	                // Check exist edition copy barcode within DB
-	                var isCodeExist = await _unitOfWork.Repository<LibraryItemInstance, int>()
-		                .AnyAsync(x => x.Barcode == iInstance.Barcode);
-	                if (isCodeExist)
-	                {
-		                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0005);
-		                // Add errors
-		                customErrors.Add($"libraryItemInstances[{i}].barcode", [StringUtils.Format(errMsg, $"'{iInstance.Barcode}'")]);
-	                }
+                    // Check exist edition copy barcode within DB
+                    var isCodeExist = await _unitOfWork.Repository<LibraryItemInstance, int>()
+                        .AnyAsync(x => x.Barcode == iInstance.Barcode);
+                    if (isCodeExist)
+                    {
+                        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0005);
+                        // Add errors
+                        customErrors.Add($"libraryItemInstances[{i}].barcode",
+                            [StringUtils.Format(errMsg, $"'{iInstance.Barcode}'")]);
+                    }
                     else
                     {
                         // Try to validate with category prefix
-                        var isValidBarcode = StringUtils.IsValidBarcodeWithPrefix(iInstance.Barcode, categoryDto.Prefix);
+                        var isValidBarcode =
+                            StringUtils.IsValidBarcodeWithPrefix(iInstance.Barcode, categoryDto.Prefix);
                         if (!isValidBarcode)
                         {
                             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0006);
                             // Add errors
-                            customErrors.Add($"libraryItemInstances[{i}].barcode", 
+                            customErrors.Add($"libraryItemInstances[{i}].barcode",
                                 [StringUtils.Format(errMsg, $"'{categoryDto.Prefix}'")]);
                         }
                     }
@@ -204,14 +206,18 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 {
                     // Add error 
                     customErrors.Add(
-                    	$"libraryItemInstances[{i}].barcode", 
-                    	[isEng ? $"Barcode '{iInstance.Barcode}' is duplicated" : $"Số đăng ký cá biệt '{iInstance.Barcode}' đã bị trùng"]);
+                        $"libraryItemInstances[{i}].barcode",
+                        [
+                            isEng
+                                ? $"Barcode '{iInstance.Barcode}' is duplicated"
+                                : $"Số đăng ký cá biệt '{iInstance.Barcode}' đã bị trùng"
+                        ]);
                 }
-                    
-	            // Default status
-	            iInstance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
-	            // Boolean 
-	            iInstance.IsDeleted = false;
+
+                // Default status
+                iInstance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+                // Boolean 
+                iInstance.IsDeleted = false;
             }
 
             // Iterate each library resource (if any) to check valid data
@@ -219,19 +225,19 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             for (int i = 0; i < listResource.Count; ++i)
             {
                 var lir = listResource[i];
-                
+
                 // Get file type
                 Enum.TryParse(typeof(FileType), lir.FileFormat, out var fileType);
                 // Check exist resource
                 var checkExistResult = await _cloudService.IsExistAsync(lir.ProviderPublicId, (FileType)fileType!);
                 if (checkExistResult.Data is false) // Return when not found resource on cloud
                 {
-                	// Add error
+                    // Add error
                     customErrors.Add($"libraryResources[{i}].resourceTitle",
                         [await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)]);
-                } 
+                }
             }
-            
+
             // Default value
             dto.IsTrained = false;
             dto.IsDeleted = false;
@@ -279,7 +285,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when process create new library item");
         }
     }
-    
+
     public override async Task<IServiceResult> GetAllWithSpecAsync(
         ISpecification<LibraryItem> specification, bool tracked = true)
     {
@@ -305,7 +311,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             {
                 itemSpecification.PageIndex = 1; // Set default to first page
             }
-            
+
             // Apply pagination
             itemSpecification.ApplyPaging(
                 skip: itemSpecification.PageSize * (itemSpecification.PageIndex - 1),
@@ -396,273 +402,334 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke process when get all library item");
         }
     }
-    
-// 	
-//     public override async Task<IServiceResult> UpdateAsync(int id, LibraryItemDto dto)
-//     {
-// 		try
-// 		{
-// 			// Determine current lang context
-// 			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 				LanguageContext.CurrentLanguage);
-// 			var isEng = lang == SystemLanguage.English;
-// 			
-// 			// Validate inputs using the generic validator
-// 			var validationResult = await ValidatorExtensions.ValidateAsync(dto);
-// 			// Check for valid validations
-// 			if (validationResult != null && !validationResult.IsValid)
-// 			{
-// 				// Convert ValidationResult to ValidationProblemsDetails.Errors
-// 				var errors = validationResult.ToProblemDetails().Errors;
-// 				
-// 				// Ignores authors, edition copies
-// 				if (errors.ContainsKey("bookEditionAuthors")) errors.Remove("bookEditionAuthors");
-// 				else if(errors.ContainsKey("bookEditionCopies")) errors.Remove("bookEditionCopies");
-//
-// 				if (errors.Any())
-// 				{
-// 					throw new UnprocessableEntityException("Invalid validations", errors);
-// 				}
-// 			}
-//
-// 			// Check exist shelf location
-// 			if (dto.ShelfId != null 
-// 			    && int.TryParse(dto.ShelfId.ToString(), out var validShelfId) && validShelfId > 0) // ShelfId must be numeric
-// 			{
-// 				var checkExistShelfRes = await _libShelfService.AnyAsync(x => x.ShelfId == validShelfId);
-// 				if (checkExistShelfRes.Data is false)
-// 				{
-// 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-// 						StringUtils.Format(errMsg, isEng ? "shelf location to process update" : "vị trí kệ sách để sửa"));
-// 				}
-// 			}		
-// 			
-// 			// Retrieve the entity
-// 			var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetByIdAsync(id);
-// 			if (existingEntity == null || existingEntity.IsDeleted)
-// 			{
-// 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-// 					StringUtils.Format(errMsg, isEng ? "library item to process update" : "tài liệu để sửa"));
-// 			}
-// 			
-// 			// Require transitioning to Draft status to modify or soft-delete a book
-// 			if (existingEntity.Status != LibraryItemStatus.Draft)
-// 			{
-// 				return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
-// 					await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
-// 			}
-// 			
-// 			// Initialize custom errors
-// 			var customErrs = new Dictionary<string, string[]>();
-// 			
-// 			// Check duplicate edition number (if change)
-// 			if (!Equals(existingEntity.EditionNumber, dto.EditionNumber))
-// 			{
-// 				var isEditionNumDuplicate = await _unitOfWork.Repository<BookEdition, int>()
-// 					.AnyAsync(x => x.EditionNumber == dto.EditionNumber && // Any other edition number match 
-// 					               x.BookId == existingEntity.BookId); // from book that possessed the edition
-// 				if (isEditionNumDuplicate)
-// 				{
-// 					customErrs.Add("editionNumber", [await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0003)]);
-// 				}
-// 			}
-// 			
-// 			// Check exist isbn (if change)
-// 			if (!Equals(existingEntity.Isbn, dto.Isbn))
-// 			{
-// 				var isIsbnExist = await _unitOfWork.Repository<BookEdition, int>()
-// 					.AnyAsync(be => be.Isbn == dto.Isbn && // Any ISBN found 
-// 					                be.LibraryItemId != id); // Except request library item
-// 				if (isIsbnExist)
-// 				{
-// 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0007);
-// 					customErrs.Add("isbn", [StringUtils.Format(errMsg, $"'{dto.Isbn}'")]);
-// 				}
-// 			}
-// 			
-// 			// Check exist cover image
-// 			if (!Equals(existingEntity.CoverImage, dto.CoverImage) // Detect as cover image change 
-// 			    && !string.IsNullOrEmpty(dto.CoverImage)) 
-// 			{
-// 				// Initialize field
-// 				var isImageExist = true;
-// 				
-// 				// Extract public id from update entity
-// 				var updatePublicId = StringUtils.GetPublicIdFromUrl(dto.CoverImage);
-// 				if (string.IsNullOrEmpty(updatePublicId)) // Provider public id must be existed
-// 				{
-// 					isImageExist = false;
-// 				}
-// 				else // Exist public id
-// 				{
-// 					// Check existence on cloud
-// 					var isImageOnCloud = (await _cloudService.IsExistAsync(updatePublicId, FileType.Image)).Data is true;
-// 					if (!isImageOnCloud)
-// 					{
-// 						isImageExist = false;
-// 					}
-// 				}
-// 				
-// 				// Check if existing entity already has image
-// 				if (!string.IsNullOrEmpty(existingEntity.CoverImage))
-// 				{
-// 					// Extract public id from current entity
-// 					var currentPublicId	= StringUtils.GetPublicIdFromUrl(existingEntity.CoverImage);
-// 					if (!Equals(currentPublicId, updatePublicId)) // Error invoke when update provider update id 
-// 					{
-// 						// Mark as fail to update
-// 						return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-// 							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-// 					}
-// 				}
-//
-// 				if (!isImageExist) // Invoke error image not found
-// 				{
-// 					// Return as not found image resource
-// 					return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
-// 						await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
-// 				}
-// 			}
-// 			
-// 			// Check if any errors invoke
-// 			if (customErrs.Any())
-// 			{
-// 				throw new UnprocessableEntityException("Invalid data", customErrs);
-// 			}
-// 			
-// 			// Process update entity
-// 			existingEntity.Title = dto.EditionTitle;
-// 			existingEntity.EditionSummary = dto.EditionSummary;
-// 			existingEntity.EditionNumber = dto.EditionNumber;
-// 			existingEntity.PublicationYear = dto.PublicationYear;
-// 			existingEntity.Publisher = dto.Publisher;
-// 			existingEntity.PageCount = dto.PageCount;
-// 			existingEntity.Language = dto.Language;
-// 			existingEntity.CoverImage = dto.CoverImage;
-// 			existingEntity.Format = dto.Format;
-// 			existingEntity.Isbn = dto.Isbn;
-// 			existingEntity.EstimatedPrice = dto.EstimatedPrice;
-// 			
-// 			// Only process update shelf when valid
-// 			if (dto.ShelfId > 0)
-// 			{
-// 				existingEntity.ShelfId = dto.ShelfId;
-// 			}
-// 			
-// 			// Progress update when all require passed
-// 			await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(existingEntity);
-//
-// 			// Save changes to DB
-// 			var rowsAffected = await _unitOfWork.SaveChangesAsync();
-// 			if (rowsAffected == 0)
-// 			{
-// 				return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-// 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
-// 			}
-//
-// 			// Mark as update success
-// 			return new ServiceResult(ResultCodeConst.SYS_Success0003,
-// 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-// 		}
-// 		catch (UnprocessableEntityException)
-// 		{
-// 			throw;
-// 		}
-// 		catch (Exception ex)
-// 		{
-// 			_logger.Error(ex.Message);
-// 			throw;
-// 		}
-//     }
-// 		
-//     public override async Task<IServiceResult> DeleteAsync(int id)
-//     {
-// 	    try
-// 	    {
-// 		    // Determine current lang 
-// 		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 			    LanguageContext.CurrentLanguage);
-// 		    var isEng = lang == SystemLanguage.English;
-// 			    
-// 		    // Build a base specification to filter by BookEditionId
-// 		    var baseSpec = new BaseSpecification<BookEdition>(a => a.LibraryItemId == id);
-// 			// Apply including authors
-// 			baseSpec.ApplyInclude(q => q
-// 				.Include(be => be.BookEditionAuthors));
-// 		    
-// 		    // Retrieve library item with specification
-// 		    var bookEditionEntity = await _unitOfWork.Repository<BookEdition, int>().GetWithSpecAsync(baseSpec);
-// 		    if (bookEditionEntity == null)
-// 		    {
-// 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-// 				    StringUtils.Format(errMsg, isEng ? "library item to process delete" : "tài liệu để xóa"));
-// 		    }
-//
-// 		    // Check whether library item in the trash bin or not in draft status
-// 		    if (!bookEditionEntity.IsDeleted)
-// 		    {
-// 			    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-// 				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-// 		    }
-//
-//             // Try to delete all library item authors (if any)
-//             if (bookEditionEntity.BookEditionAuthors.Any())
-//             {
-//                 // Process delete range without save changes
-//                 await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
-//                     // Select all existing bookEditionAuthorId
-//                     bookEditionEntity.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
-//             }
-//
-//             // Perform delete library item, and delete cascade with BookEditionInventory
-//             await _unitOfWork.Repository<BookEdition, int>().DeleteAsync(id);
-//
-//             // Save to DB
-//             if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Success0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
-//             }
-//
-//             // Fail to delete
-//             return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-//         }
-//         catch (DbUpdateException ex)
-//         {
-//             if (ex.InnerException is SqlException sqlEx)
-//             {
-//                 switch (sqlEx.Number)
-//                 {
-//                     case 547: // Foreign key constraint violation
-//                         return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-//                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-//                 }
-//             }
-//
-//             // Throw if other issues
-//             throw;
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when progress delete data");
-//         }
-//     }
-// 	
 
-     public async Task<IServiceResult> GetDetailAsync(int id)
-     {
-         try
-         {
-             // Build specification
-             var baseSpec = new BaseSpecification<LibraryItem>(b => b.LibraryItemId == id);
-             var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
-                 .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
-                 {
+    public override async Task<IServiceResult> UpdateAsync(int id, LibraryItemDto dto)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
+            {
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+
+                // Ignores authors, library item instances
+                if (errors.ContainsKey(StringUtils.ToCamelCase(nameof(LibraryItem.LibraryItemAuthors))))
+                {
+                    errors.Remove(StringUtils.ToCamelCase(nameof(LibraryItem.LibraryItemAuthors)));
+                }
+                else if (errors.ContainsKey(nameof(LibraryItem.LibraryItemInstances)))
+                {
+                    errors.Remove(StringUtils.ToCamelCase(nameof(LibraryItem.LibraryItemInstances)));
+                }
+
+                if (errors.Any())
+                {
+                    throw new UnprocessableEntityException("Invalid validations", errors);
+                }
+            }
+
+            // Check exist shelf location
+            if (dto.ShelfId != null
+                && int.TryParse(dto.ShelfId.ToString(), out var validShelfId) &&
+                validShelfId > 0) // ShelfId must be numeric
+            {
+                var checkExistShelfRes = await _libShelfService.AnyAsync(x => x.ShelfId == validShelfId);
+                if (checkExistShelfRes.Data is false)
+                {
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errMsg,
+                            isEng ? "shelf location to process update" : "vị trí kệ sách để sửa"));
+                }
+            }
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == id);
+            // Apply including item instances
+            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemInstances));
+            // Retrieve the entity
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null || existingEntity.IsDeleted)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item to process update" : "tài liệu để sửa"));
+            }
+
+            // Check exist category
+            var toUpdateCategory = (await _cateService.GetWithSpecAsync(
+                new BaseSpecification<Category>(c => Equals(c.CategoryId, dto.CategoryId)))).Data as CategoryDto;
+            if (toUpdateCategory == null) // Not found
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "category" : "thể loại"));
+            }
+            else
+            {
+                // Check whether category is change
+                if (!Equals(toUpdateCategory.CategoryId, existingEntity.CategoryId))
+                {
+                    // Not allow to update to other category when exist at least instance have same prefix as previous category 
+                    var isExistWrongPrefix = existingEntity.LibraryItemInstances.Count(li =>
+                        !StringUtils.IsValidBarcodeWithPrefix(li.Barcode, toUpdateCategory.Prefix));
+                    if (isExistWrongPrefix > 0)
+                    {
+                        // Error msg: Required all item instance to have the same prefix of new category
+                        return new ServiceResult(ResultCodeConst.LibraryItem_Warning0014,
+                            await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0014));
+                    }
+                }
+            }
+
+            // Require transitioning to Draft status to modify or soft-delete a book
+            if (existingEntity.Status != LibraryItemStatus.Draft)
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
+            }
+
+            // Initialize custom errors
+            var customErrs = new Dictionary<string, string[]>();
+
+            // Check duplicate edition number (if change)
+            if (!Equals(existingEntity.EditionNumber, dto.EditionNumber))
+            {
+                // Check whether item within the group
+                // Build group spec
+                var groupSpec = new BaseSpecification<LibraryItemGroup>(g => g.GroupId == existingEntity.GroupId);
+                // Apply including all other library items
+                groupSpec.ApplyInclude(q => q
+                    .Include(g => g.LibraryItems));
+                if ((await _itemGroupService.Value.GetWithSpecAsync(groupSpec)).Data is LibraryItemGroupDto groupDto)
+                {
+                    // Only process check duplicate edition number when item has already within group
+                    var isEditionNumDuplicate = groupDto.LibraryItems
+                        // Any other edition number match 
+                        .Any(x => x.EditionNumber == dto.EditionNumber);
+                    if (isEditionNumDuplicate)
+                    {
+                        var err = isEng
+                            ? "This item has already grouped, item edition number is duplicated with other item"
+                            : "Tài liệu này đã được nhóm, số ấn bản bị trùng với tài liệu khác";
+                        customErrs.Add(StringUtils.ToCamelCase(nameof(LibraryItem.EditionNumber)), [err]);
+                    }
+                }
+            }
+
+            // Check exist isbn (if change)
+            if (!Equals(existingEntity.Isbn, dto.Isbn))
+            {
+                var isIsbnExist = await _unitOfWork.Repository<LibraryItem, int>()
+                    .AnyAsync(be => be.Isbn == dto.Isbn && // Any ISBN found 
+                                    be.LibraryItemId != id); // Except request library item
+                if (isIsbnExist)
+                {
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0007);
+                    customErrs.Add("isbn", [StringUtils.Format(errMsg, $"'{dto.Isbn}'")]);
+                }
+            }
+
+            // Check exist cover image
+            if (!Equals(existingEntity.CoverImage, dto.CoverImage) // Detect as cover image change 
+                && !string.IsNullOrEmpty(dto.CoverImage))
+            {
+                // Initialize field
+                var isImageExist = true;
+
+                // Extract public id from update entity
+                var updatePublicId = StringUtils.GetPublicIdFromUrl(dto.CoverImage);
+                if (string.IsNullOrEmpty(updatePublicId)) // Provider public id must be existed
+                {
+                    isImageExist = false;
+                }
+                else // Exist public id
+                {
+                    // Check existence on cloud
+                    var isImageOnCloud =
+                        (await _cloudService.IsExistAsync(updatePublicId, FileType.Image)).Data is true;
+                    if (!isImageOnCloud)
+                    {
+                        isImageExist = false;
+                    }
+                }
+
+                // Check if existing entity already has image
+                if (!string.IsNullOrEmpty(existingEntity.CoverImage))
+                {
+                    // Extract public id from current entity
+                    var currentPublicId = StringUtils.GetPublicIdFromUrl(existingEntity.CoverImage);
+                    if (!Equals(currentPublicId, updatePublicId)) // Error invoke when update provider update id 
+                    {
+                        // Mark as fail to update
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+                    }
+                }
+
+                if (!isImageExist) // Invoke error image not found
+                {
+                    // Return as not found image resource
+                    return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+                }
+            }
+
+            // Check if any errors invoke
+            if (customErrs.Any())
+            {
+                throw new UnprocessableEntityException("Invalid data", customErrs);
+            }
+
+            // Process update entity
+            existingEntity.Title = dto.Title;
+            existingEntity.SubTitle = dto.SubTitle;
+            existingEntity.Responsibility = dto.Responsibility;
+            existingEntity.Edition = dto.Edition;
+            existingEntity.EditionNumber = dto.EditionNumber;
+            existingEntity.Language = dto.Language;
+            existingEntity.OriginLanguage = dto.OriginLanguage;
+            existingEntity.Summary = dto.Summary;
+            existingEntity.CoverImage = dto.CoverImage;
+            existingEntity.PublicationYear = dto.PublicationYear;
+            existingEntity.Publisher = dto.Publisher;
+            existingEntity.PublicationPlace = dto.PublicationPlace;
+            existingEntity.ClassificationNumber = dto.ClassificationNumber;
+            existingEntity.CutterNumber = dto.CutterNumber;
+            existingEntity.Isbn = dto.Isbn != null ? ISBN.CleanIsbn(dto.Isbn) : dto.Isbn;
+            existingEntity.Ean = dto.Ean;
+            existingEntity.EstimatedPrice = dto.EstimatedPrice;
+            existingEntity.PageCount = dto.PageCount;
+            existingEntity.PhysicalDetails = dto.PhysicalDetails;
+            existingEntity.Dimensions = dto.Dimensions;
+            existingEntity.AccompanyingMaterial = dto.AccompanyingMaterial;
+            existingEntity.Genres = dto.Genres;
+            existingEntity.GeneralNote = dto.GeneralNote;
+            existingEntity.BibliographicalNote = dto.BibliographicalNote;
+            existingEntity.TopicalTerms = dto.TopicalTerms;
+            existingEntity.AdditionalAuthors = dto.AdditionalAuthors;
+            existingEntity.CategoryId = dto.CategoryId;
+            existingEntity.ShelfId = dto.ShelfId;
+
+            // Progress update when all require passed
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(existingEntity);
+
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+            }
+
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke while process update library item");
+        }
+    }
+
+    public override async Task<IServiceResult> DeleteAsync(int id)
+    {
+        try
+        {
+            // Determine current lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build a base specification to filter by LibraryItemId
+            var baseSpec = new BaseSpecification<LibraryItem>(a => a.LibraryItemId == id);
+            // Apply including authors
+            baseSpec.ApplyInclude(q => q
+                .Include(be => be.LibraryItemAuthors));
+
+            // Retrieve library item with specification
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+            if (itemEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item to process delete" : "tài liệu để xóa"));
+            }
+
+            // Check whether library item in the trash bin or not in draft status
+            if (!itemEntity.IsDeleted)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+
+            // Try to delete all library item authors (if any)
+            if (itemEntity.LibraryItemAuthors.Any())
+            {
+                // Process delete range without save changes
+                await _itemAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
+                    // Select all existing libraryItemAuthorId
+                    itemEntity.LibraryItemAuthors.Select(ba => ba.LibraryItemAuthorId).ToArray());
+            }
+
+            // Perform delete library item, and delete cascade with LibraryItemInventory
+            await _unitOfWork.Repository<LibraryItem, int>().DeleteAsync(id);
+
+            // Save to DB
+            if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+            }
+
+            // Fail to delete
+            return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress delete data");
+        }
+    }
+
+    public async Task<IServiceResult> GetDetailAsync(int id)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItem>(b => b.LibraryItemId == id);
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
                     LibraryItemId = be.LibraryItemId,
                     Title = be.Title,
                     SubTitle = be.SubTitle,
@@ -718,35 +785,95 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     }).ToList(),
                     LibraryItemResources = be.LibraryItemResources.Select(lir => new LibraryItemResource()
                     {
-                       LibraryItemResourceId = lir.LibraryItemResourceId,
-                       LibraryItemId = lir.LibraryItemId,
-                       ResourceId = lir.ResourceId,
-                       LibraryResource = lir.LibraryResource
+                        LibraryItemResourceId = lir.LibraryItemResourceId,
+                        LibraryItemId = lir.LibraryItemId,
+                        ResourceId = lir.ResourceId,
+                        LibraryResource = lir.LibraryResource
                     }).ToList(),
-                 });
+                });
 
-             if (itemEntity != null)
-             {
-                 // Map to dto
-                 var dto = _mapper.Map<LibraryItemDto>(itemEntity);
-                 
-                 // Convert to library item detail dto
-                 var itemDetailDto = dto.ToLibraryItemDetailDto();
+            if (itemEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
 
-                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
-             }
+                // Convert to library item detail dto
+                var itemDetailDto = dto.ToLibraryItemDetailDto();
 
-             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-         }
-         catch (Exception ex)
-         {
-             _logger.Error(ex.Message);
-             throw new Exception("Error invoke when get library item by id");
-         }
-     }
-     
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get library item by id");
+        }
+    }
+
+    public async Task<IServiceResult> GetEnumValueAsync()
+    {
+        try
+        {
+            // Book resource types
+            var resourceTypes = new List<string>()
+            {
+                nameof(LibraryResourceType.Ebook),
+                nameof(LibraryResourceType.AudioBook)
+            };
+
+            // File formats
+            var fileFormats = new List<string>()
+            {
+                nameof(FileType.Image),
+                nameof(FileType.Video)
+            };
+
+            // Resource provider
+            var resourceProviders = new List<string>()
+            {
+                nameof(ResourceProvider.Cloudinary)
+            };
+
+            // library item instance statuses
+            var itemInstanceStatus = new List<string>()
+            {
+                nameof(LibraryItemInstanceStatus.InShelf),
+                nameof(LibraryItemInstanceStatus.OutOfShelf),
+                nameof(LibraryItemInstanceStatus.Borrowed),
+                nameof(LibraryItemInstanceStatus.Reserved),
+            };
+
+            // Copy condition statuses
+            var conditionStatuses = new List<string>
+            {
+                nameof(LibraryItemConditionStatus.Good),
+                nameof(LibraryItemConditionStatus.Worn),
+                nameof(LibraryItemConditionStatus.Damaged),
+                nameof(LibraryItemConditionStatus.Lost)
+            };
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                new
+                {
+                    ResourceTypes = resourceTypes,
+                    FileFormats = fileFormats,
+                    ResourceProviders = resourceProviders,
+                    ItemInstanceStatuses = itemInstanceStatus,
+                    ConditionStatuses = conditionStatuses
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get library item enum value");
+        }
+    }
+
 //
 //     public async Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(LibraryItemDto dto, string fieldName)
 //     {
@@ -807,312 +934,281 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 //             , relatedEditions);
 //     }
 //     
-//     public async Task<IServiceResult> UpdateStatusAsync(int id)
-//     {
-// 	    try
-// 	    {
-// 		    // Determine current system lang
-// 		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 			    LanguageContext.CurrentLanguage);
-// 		    var isEng = lang == SystemLanguage.English;
-// 		    
-// 		    // Build spec
-// 		    var baseSpec = new BaseSpecification<BookEdition>(x => x.LibraryItemId == id);
-// 			// Apply include
-// 			baseSpec.ApplyInclude(q => q
-// 				// Include edition inventory
-// 				.Include(x => x.BookEditionInventory)
-// 				// Include book
-// 				.Include(x => x.Book)
-// 				// Include book categories
-// 				.ThenInclude(x => x.BookCategories)
-// 				// Include category
-// 				.ThenInclude(x => x.Category)
-// 				// Include library item authors
-// 				.Include(x => x.BookEditionAuthors)
-// 				// Include author
-// 				.ThenInclude(bea => bea.Author)
-// 				// Include library item copies
-// 				.Include(x => x.BookEditionCopies)
-// 				// Include library shelf
-// 				.Include(x => x.Shelf)!
-// 			);
-// 			
-// 		    // Retrieve library item with specific ID 
-// 			var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetWithSpecAsync(baseSpec);
-// 			if (existingEntity == null || existingEntity.IsDeleted) // Check whether book exist or marking as deleted
-// 			{
-// 				var errMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-// 					StringUtils.Format(errMSg, isEng ? "library item" : "tài liệu"));
-// 			}
-// 			
-// 			// Check current library item status
-// 			if (existingEntity.Status == LibraryItemStatus.Draft) // Draft -> Published
-// 			{
-// 				// Initialize err msg
-// 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0012);
-// 				// Validate edition information before published
-// 				// Check for shelf location
-// 				if (existingEntity.ShelfId == null || existingEntity.ShelfId == 0)
-// 				{
-// 					return new ServiceResult(ResultCodeConst.Book_Warning0012,
-// 						StringUtils.Format(errMsg, isEng 
-// 							? "Shelf location not found" : "Không tìm thấy vị trí kệ cho sách"));
-// 				}
-// 				if (existingEntity.ShelfId > 0)
-// 				{
-// 					// Check for exist at least one library item copy that mark as in shelf
-// 					if (existingEntity.BookEditionCopies.All(x => x.Status != nameof(LibraryItemInstanceStatus.InShelf)))
-// 					{
-// 						return new ServiceResult(ResultCodeConst.Book_Warning0012,
-// 							StringUtils.Format(errMsg, isEng 
-// 								? "Required at least one copy in shelf" 
-// 								: "Cần ít nhất một bản in có sẵn trên kệ"));
-// 					}	
-// 				}
-// 				
-// 				// Process change status
-// 				existingEntity.Status = LibraryItemStatus.Published;
-//
-// 				// Process update change to DB
-// 				if (await _unitOfWork.SaveChangesAsync() > 0) // Success
-// 				{
-// 					// Initialize bool field
-// 					var isAddToElastic = false;
-// 					// Synchronize data to ElasticSearch
-//                     if (await _elasticService.Value.CreateIndexIfNotExistAsync(ElasticIndexConst.LibraryItemIndex))
-//                     {
-// 	                    // Convert to BookEditionDto
-// 	                    var dto = _mapper.Map<LibraryItemDto>(existingEntity);
-// 	                    
-// 	                    // Check whether exist any document
-// 	                    var isExistAnyDocument = await _elasticService.Value.DocumentExistsAsync<ElasticBook>(
-// 		                    documentId: existingEntity.BookId.ToString());
-//
-// 	                    if (!isExistAnyDocument) // Not found
-// 	                    {
-// 		                    // Process add both root and nested object
-// 		                    isAddToElastic = await _elasticService.Value.AddOrUpdateAsync(
-// 			                    document: dto.ToElasticBook(),
-// 			                    documentKeyName: nameof(ElasticBook.BookId)); // Custom elastic _id with BookId value
-// 	                    }
-// 	                    else // Add only nested object
-// 	                    {
-// 		                    // Get nested object fields name 
-// 		                    var nestedFieldName = ElasticUtils.GetElasticFieldName<ElasticBook>(nameof(ElasticBook.BookEditions)) ?? string.Empty;
-// 		                    // Get nested object key name
-// 		                    var nestedKey = ElasticUtils.GetElasticFieldName<ElasticLibraryItem>(nameof(ElasticLibraryItem.LibraryItemId)) ?? string.Empty;
-// 		                    
-//                     		// Add new book to elastic
-//                     		isAddToElastic = await _elasticService.Value.AddOrUpdateNestedAsync<ElasticBook, ElasticLibraryItem>(
-// 			                    documentId: existingEntity.BookId.ToString(),
-// 			                    nestedFieldName: nestedFieldName,
-// 								nestedObject: dto.ToElasticBookEdition(),
-// 			                    nestedKey: nestedKey,
-// 			                    nestedKeyValue: existingEntity.LibraryItemId.ToString());
-// 	                    }
-//                     }
-//                     
-//                     // Custom message for failing to synchronize data to elastic
-//                     var msg = !isAddToElastic 
-// 	                    ? isEng ? ", but fail to add data to Elastic" : ", nhưng cập nhật dữ liệu mới vào Elastic thất bại"
-// 	                    : string.Empty;
-//                     return new ServiceResult(ResultCodeConst.SYS_Success0003,
-// 	                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + msg);
-// 				}
-// 			}
-// 			else if (existingEntity.Status == LibraryItemStatus.Published) // Published -> Draft
-// 			{
-// 				// Initialize err msg
-// 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0013);
-// 				// Check whether book in borrow status (One or more copy now in store in library shelf) 
-// 				if (existingEntity.CanBorrow) 
-// 				{
-// 					// Do not allow to change status
-// 					return new ServiceResult(ResultCodeConst.Book_Warning0013,
-// 						StringUtils.Format(errMsg, isEng ? "There still exist copy in shelf" : "Vẫn còn sách ở trên kệ"));
-// 				}
-// 				
-// 				// Check inventory total whether to allow change status to Draft
-// 				if (existingEntity.BookEditionInventory != null &&
-// 				    (existingEntity.BookEditionInventory.RequestCopies > 0 ||
-// 				     existingEntity.BookEditionInventory.BorrowedCopies > 0 ||
-// 				     existingEntity.BookEditionInventory.ReservedCopies > 0))
-// 				{
-// 					// Cannot change data that is on borrowing or reserved
-// 					return new ServiceResult(ResultCodeConst.Book_Warning0013,
-//                     	StringUtils.Format(errMsg, isEng 
-// 						? "Copy is on borrowing or reserved" 
-// 						: "Bản in đang được mượn hoặc được đặt trước"));
-// 				}
-// 				
-// 				// Process change status
-// 				existingEntity.Status = LibraryItemStatus.Draft;
-//
-// 				// Process update change to DB
-// 				if (await _unitOfWork.SaveChangesAsync() > 0) // Success
-// 				{
-// 					// Initialize bool field
-// 					var isDeletedNested = false;
-// 					// Progress delete data in Elastic
-// 					if (await _elasticService.Value.CreateIndexIfNotExistAsync(ElasticIndexConst.LibraryItemIndex))
-// 					{
-// 						// Get nested object fields name 
-// 						var nestedFieldName = ElasticUtils.GetElasticFieldName<ElasticBook>(nameof(ElasticBook.BookEditions)) ?? string.Empty;
-// 						// Get nested object key name
-// 						var nestedKey = ElasticUtils.GetElasticFieldName<ElasticLibraryItem>(nameof(ElasticLibraryItem.LibraryItemId)) ?? string.Empty;
-// 						
-// 						// Check whether the nested object exist
-// 						var isNestedObjectExist = await _elasticService.Value.NestedExistAsync<ElasticLibraryItem>(
-// 							documentId: existingEntity.BookId.ToString(),
-// 							nestedFieldName: nestedFieldName,
-// 							nestedKey: nestedKey,
-// 							nestedKeyValue: existingEntity.LibraryItemId.ToString());
-//
-// 						if (isNestedObjectExist) // Is Exist
-// 						{
-// 							// Process delete nested object
-// 							isDeletedNested = await _elasticService.Value.DeleteNestedAsync<ElasticBook>(
-// 								documentId: existingEntity.BookId.ToString(),
-// 								nestedFieldName: nestedFieldName,
-// 								nestedKey: nestedKey,
-// 								nestedKeyValue: existingEntity.LibraryItemId.ToString());
-// 						}
-// 					}
-// 					
-// 					// Custom message for failing to synchronize data to elastic
-// 					var msg = !isDeletedNested 
-// 						? isEng ? ", but fail to delete Elastic data" : ", nhưng xóa dữ liệu Elastic thất bại"
-// 						: string.Empty;
-// 					return new ServiceResult(ResultCodeConst.SYS_Success0003,
-// 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + msg);
-// 				}
-// 			}
-// 			
-// 			// Mark as fail to save
-// 			return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-// 				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-// 	    }
-// 	    catch (Exception ex)
-// 	    {
-// 		    _logger.Error(ex.Message);
-// 		    throw new Exception("Error invoke when process update library item status");
-// 	    }
-//     }
-//
-//     public async Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow)
-//     {
-//         try
-//         {
-//             // Determine current system lang
-//             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-//                 LanguageContext.CurrentLanguage);
-//             var isEng = lang == SystemLanguage.English;
-//
-//             // Retrieve library item by id
-//             var existingEntity = await _unitOfWork.Repository<BookEdition, int>().GetByIdAsync(id);
-//             if (existingEntity == null)
-//             {
-//                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-//                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-//                     StringUtils.Format(errMsg, isEng
-//                         ? "library item to update borrow status"
-//                         : "tài liệu để sửa trạng thái có thể mượn"), false);
-//             }
-//
-//             // Update status
-//             existingEntity.CanBorrow = canBorrow;
-//
-//             // Progress update without change 
-//             await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(existingEntity);
-//
-//             // Mark as update success
-//             return new ServiceResult(ResultCodeConst.SYS_Success0003,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when process update edition borrow status");
-//         }
-//     }
-//
+    public async Task<IServiceResult> UpdateStatusAsync(int id)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                // Include edition inventory
+                .Include(x => x.LibraryItemInventory)
+                // Include item category
+                .Include(x => x.Category)
+                // Include library item authors
+                .Include(x => x.LibraryItemAuthors)
+                // Include author
+                .ThenInclude(bea => bea.Author)
+                // Include library item instances
+                .Include(x => x.LibraryItemInstances)
+                // Include library shelf
+                .Include(x => x.Shelf)!
+            );
+
+            // Retrieve library item with specific ID 
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null || existingEntity.IsDeleted) // Check whether book exist or marking as deleted
+            {
+                var errMSg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMSg, isEng ? "library item" : "tài liệu"));
+            }
+
+            // Check current library item status
+            if (existingEntity.Status == LibraryItemStatus.Draft) // Draft -> Published
+            {
+                // Initialize err msg
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0012);
+                // Validate edition information before published
+                // Check for shelf location
+                if (existingEntity.ShelfId == null || existingEntity.ShelfId == 0)
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0012,
+                        StringUtils.Format(errMsg, isEng
+                            ? "Shelf location not found"
+                            : "Không tìm thấy vị trí kệ cho sách"));
+                }
+
+                if (existingEntity.ShelfId > 0)
+                {
+                    // Check for exist at least one library item copy that mark as in shelf
+                    if (existingEntity.LibraryItemInstances.All(x =>
+                            x.Status != nameof(LibraryItemInstanceStatus.InShelf)))
+                    {
+                        return new ServiceResult(ResultCodeConst.LibraryItem_Warning0012,
+                            StringUtils.Format(errMsg, isEng
+                                ? "Required at least one item in shelf"
+                                : "Cần ít nhất một bản in có sẵn trên kệ"));
+                    }
+                }
+
+                // Process change status
+                existingEntity.Status = LibraryItemStatus.Published;
+
+                // Process update change to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0) // Success
+                {
+                    // Initialize bool field
+                    var isAddToElastic = false;
+                    // Synchronize data to ElasticSearch
+                    if (await _elasticService.Value.CreateIndexIfNotExistAsync(ElasticIndexConst.LibraryItemIndex))
+                    {
+                        // Convert to LibraryItemDto
+                        var dto = _mapper.Map<LibraryItemDto>(existingEntity);
+
+                        // Try to add (if not exist) or update (if already exist) elastic document
+                        // Process add both root and nested object
+                        isAddToElastic = await _elasticService.Value.AddOrUpdateAsync(
+                            document: dto.ToElasticLibraryItem(),
+                            documentKeyName: nameof(ElasticLibraryItem
+                                .LibraryItemId)); // Custom elastic _id with LibraryItemId value
+                    }
+
+                    // Custom message for failing to synchronize data to elastic
+                    var msg = !isAddToElastic
+                        ? isEng
+                            ? ", but fail to add data to Elastic"
+                            : ", nhưng cập nhật dữ liệu mới vào Elastic thất bại"
+                        : string.Empty;
+                    return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + msg);
+                }
+            }
+            else if (existingEntity.Status == LibraryItemStatus.Published) // Published -> Draft
+            {
+                // Initialize err msg
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0013);
+                // Check whether book in borrow status (One or more copy now in store in library shelf) 
+                if (existingEntity.CanBorrow)
+                {
+                    // Do not allow to change status
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0013,
+                        StringUtils.Format(errMsg,
+                            isEng ? "There still exist item in shelf" : "Vẫn còn tài liệu ở trên kệ"));
+                }
+
+                // Check inventory total whether to allow change status to Draft
+                if (existingEntity.LibraryItemInventory != null &&
+                    (existingEntity.LibraryItemInventory.RequestUnits > 0 ||
+                     existingEntity.LibraryItemInventory.BorrowedUnits > 0 ||
+                     existingEntity.LibraryItemInventory.ReservedUnits > 0))
+                {
+                    // Cannot change data that is on borrowing or reserved
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0013,
+                        StringUtils.Format(errMsg, isEng
+                            ? "Item is on borrowing or reserved"
+                            : "Tài liệu đang được mượn hoặc được đặt trước"));
+                }
+
+                // Process change status
+                existingEntity.Status = LibraryItemStatus.Draft;
+
+                // Process update change to DB
+                if (await _unitOfWork.SaveChangesAsync() > 0) // Success
+                {
+                    // Initialize bool field
+                    var isDeleted = false;
+                    // Progress delete data in Elastic
+                    if (await _elasticService.Value.CreateIndexIfNotExistAsync(ElasticIndexConst.LibraryItemIndex))
+                    {
+                        // Check whether library item exist 
+                        if (await _elasticService.Value.DocumentExistsAsync<ElasticLibraryItem>(
+                                documentId: existingEntity.LibraryItemId.ToString()))
+                        {
+                            // Progress delete
+                            isDeleted = await _elasticService.Value.DeleteAsync<ElasticLibraryItem>(
+                                key: existingEntity.LibraryItemId.ToString());
+                        }
+                    }
+
+                    // Custom message for failing to synchronize data to elastic
+                    var msg = !isDeleted
+                        ? isEng ? ", but fail to delete Elastic data" : ", nhưng xóa dữ liệu Elastic thất bại"
+                        : string.Empty;
+                    return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + msg);
+                }
+            }
+
+            // Mark as fail to save
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update library item status");
+        }
+    }
+
+    public async Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Retrieve library item by id
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "library item to update borrow status"
+                        : "tài liệu để sửa trạng thái có thể mượn"), false);
+            }
+
+            // Update status
+            existingEntity.CanBorrow = canBorrow;
+
+            // Progress update without change 
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(existingEntity);
+
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update item borrow status");
+        }
+    }
+
     public async Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId)
     {
-	    try
-	    {	
-		    // Determine current lang 
-		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-			    LanguageContext.CurrentLanguage);
-		    var isEng = lang == SystemLanguage.English;
-		    
-		    // Build spec
-		    var baseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == id);
-		    // Apply include 
-		    baseSpec.ApplyInclude(q => q
-			    .Include(be => be.LibraryItemInstances)
-		    );
-		    
-			// Retrieve library item by id
-			var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
-			if (existingEntity == null)
-			{
-				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"), false);
-			}
-			
-			// Check exist shelf location
-			var existingShelf = (await _libShelfService.AnyAsync(lf => lf.ShelfId == shelfId)).Data is true;
-			if (!existingShelf && shelfId != null)
-			{
-				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-					StringUtils.Format(errMsg, isEng ? "shelf location" : "kệ sách"));
-			}
-			else
-			{
-				// Check whether item already assigned to current shelf location
-				if (existingEntity.ShelfId == shelfId) // same shelf location
-				{
-					// Mark as update success
-					return new ServiceResult(ResultCodeConst.SYS_Success0003,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-				}
-			}
-			
-			// Required all book copy must be in out-of-shelf status
+        try
+        {
+            // Determine current lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == id);
+            // Apply include 
+            baseSpec.ApplyInclude(q => q
+                .Include(be => be.LibraryItemInstances)
+            );
+
+            // Retrieve library item by id
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"), false);
+            }
+
+            // Check exist shelf location
+            var existingShelf = (await _libShelfService.AnyAsync(lf => lf.ShelfId == shelfId)).Data is true;
+            if (!existingShelf && shelfId != null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "shelf location" : "kệ sách"));
+            }
+            else
+            {
+                // Check whether item already assigned to current shelf location
+                if (existingEntity.ShelfId == shelfId) // same shelf location
+                {
+                    // Mark as update success
+                    return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+                }
+            }
+
+            // Required all book copy must be in out-of-shelf status
             if (existingEntity.LibraryItemInstances
                 .Select(bec => bec.Status)
                 .Any(status => status != nameof(LibraryItemInstanceStatus.OutOfShelf)))
             {
-            	// Msg: Cannot process, please move all edition copy status to inventory first
-            	return new ServiceResult(ResultCodeConst.LibraryItem_Warning0009,
-            		await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0009));
+                // Msg: Cannot process, please move all edition copy status to inventory first
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0009,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0009));
             }
-			
-			// Process update shelf location
-			existingEntity.ShelfId = shelfId;
 
-			if (await _unitOfWork.SaveChangesAsync() > 0)
-			{
-				// Mark as update success
-				return new ServiceResult(ResultCodeConst.SYS_Success0003,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-			}
-			
-			// Mark as update fail
-			return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process update shelf location for library item");
-	    }
+            // Process update shelf location
+            existingEntity.ShelfId = shelfId;
+
+            if (await _unitOfWork.SaveChangesAsync() > 0)
+            {
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+
+            // Mark as update fail
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update shelf location for library item");
+        }
     }
-    
+
 //     
 //     public async Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode)
 //     {
@@ -1157,416 +1253,425 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 //         }
 //     }
 //     
-//     public async Task<IServiceResult> SoftDeleteAsync(int id)
-//     {
-// 	    try
-// 	    {
-// 		    // Determine current system lang 
-// 		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 			    LanguageContext.CurrentLanguage);
-// 		    var isEng = lang == SystemLanguage.English;
-//
-// 		    // Build spec
-// 		    var baseSpec = new BaseSpecification<BookEdition>(x => x.LibraryItemId == id);
-// 		    // Include all constraints to update soft delete
-// 		    baseSpec.ApplyInclude(q => q
-// 			    // Ignore include all authors, due to library item can exist without any book belongs to    
-// 			    // Include all library item copy
-// 			    .Include(be => be.BookEditionCopies)
-// 		    );
-// 		    // Get library item with spec
-// 		    var existingEntity = await _unitOfWork.Repository<BookEdition, int>()
-// 			    .GetWithSpecAsync(baseSpec);
-// 		    // Check if library item already mark as deleted
-// 		    if (existingEntity == null || existingEntity.IsDeleted)
-// 		    {
-// 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-// 				    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
-// 		    }
-//
-// 		    // Require transitioning to Draft status to modify or soft-delete a book
-// 		    if (existingEntity.Status != LibraryItemStatus.Draft)
-// 		    {
-// 			    return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
-// 				    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
-// 		    }
-//
-// 		    // Check whether library item contains any copy, which mark as not deleted yet
-// 		    if (existingEntity.BookEditionCopies.Any(x => !x.IsDeleted))
-// 		    {
-// 			    // Extract all current edition copy ids
-// 			    var editionCopyIds = existingEntity.BookEditionCopies
-// 				    .Where(bec => !bec.IsDeleted)
-// 				    .Select(bec => bec.BookEditionCopyId).ToList();
-// 			    if (editionCopyIds.Any()) // Found any copy is not deleted yet
-// 			    {
-// 				    // Try to soft delete all related edition copies
-// 				    var deleteResult = await _editionCopyService.Value.SoftDeleteRangeAsync(
-// 					    bookEditionId: existingEntity.LibraryItemId,
-// 					    bookEditionCopyIds: editionCopyIds);
-// 				    // Check whether fail to delete range library item copies
-// 				    if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
-// 			    }
-// 		    }
-//
-// 		    // Update delete status
-// 		    existingEntity.IsDeleted = true;
-//
-// 		    // Save changes to DB
-// 		    var rowsAffected = await _unitOfWork.SaveChangesAsync();
-// 		    if (rowsAffected == 0)
-// 		    {
-// 			    // Get error msg
-// 			    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-// 				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-// 		    }
-//
-// 		    return new ServiceResult(ResultCodeConst.SYS_Success0007,
-// 			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
-// 	    }
-// 	    catch (UnprocessableEntityException)
-// 	    {
-// 		    return new ServiceResult(ResultCodeConst.Book_Warning0008,
-// 			    await _msgService.GetMessageAsync(ResultCodeConst.Book_Warning0008));
-// 	    }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when process soft delete library item");
-//         }
-//     }
-//
-//     public async Task<IServiceResult> SoftDeleteRangeAsync(int[] ids)
-//     {
-//         try
-//         {
-//             // Build spec
-//             var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.LibraryItemId));
-//             // Include all constraints to update soft delete
-//             baseSpec.ApplyInclude(q => q
-//                 // Ignore include all authors, due to library item can exist without any book belongs to    
-//                 // Include all library item copy
-//                 .Include(be => be.BookEditionCopies)
-//             );
-//             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
-//                 .GetAllWithSpecAsync(baseSpec);
-//             // Check if any data already soft delete
-//             var bookEditionList = bookEditionEntities.ToList();
-//             if (bookEditionList.Any(x => x.IsDeleted))
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-//             }else if (bookEditionList.Any(x => x.Status != LibraryItemStatus.Draft))
-//             {
-// 	            // Require transitioning to Draft status to modify or soft-delete a book
-// 	            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
-// 		            await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
-//             }
-//             
-//             // Check whether library item contains any copy, which mark as not deleted yet
-//             if (bookEditionList.SelectMany(be => be.BookEditionCopies).Any(bec => !bec.IsDeleted)) 
-//             {
-// 	            // Iterate each edition to soft delete all copies
-// 	            foreach (var edition in bookEditionList)
-// 	            {
-// 		            // Extract all current edition copy ids
-// 		            var editionCopyIds = edition.BookEditionCopies
-// 			            .Where(bec => !bec.IsDeleted)
-// 			            .Select(bec => bec.BookEditionCopyId).ToList();
-// 		            if (editionCopyIds.Any())
-// 		            {
-// 			            // Try to soft delete all related edition copies
-// 			            var deleteResult = await _editionCopyService.Value.SoftDeleteRangeAsync(
-// 				            bookEditionId: edition.LibraryItemId, 
-// 				            bookEditionCopyIds: editionCopyIds);
-// 			            // Check whether fail to delete range library item copies
-// 			            if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
-// 		            }
-// 	            }
-//             }
-//
-//             // Iterate each library item
-//             foreach (var be in bookEditionList)
-//             {
-//                 // Update deleted status
-//                 be.IsDeleted = true;
-//             }
-//
-//             // Save changes to DB
-//             var rowsAffected = await _unitOfWork.SaveChangesAsync();
-//             if (rowsAffected == 0)
-//             {
-//                 // Get error msg
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-//             }
-//
-//             return new ServiceResult(ResultCodeConst.SYS_Success0007,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when remove range library item");
-//         }
-//     }
-//
-//     public async Task<IServiceResult> UndoDeleteAsync(int id)
-//     {
-// 	    try
-// 	    {
-// 		    // Determine current system lang 
-// 		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 			    LanguageContext.CurrentLanguage);
-// 		    var isEng = lang == SystemLanguage.English;
-// 		    
-// 		    // Build spec
-// 		    var baseSpec = new BaseSpecification<BookEdition>(x => x.LibraryItemId == id);
-// 		    // Include all constraints to update soft delete
-// 		    baseSpec.ApplyInclude(q => q
-// 			    // Ignore include all authors, due to library item can exist without any book belongs to    
-// 			    // Include all library item copy
-// 			    .Include(be => be.BookEditionCopies)
-// 		    );
-// 		    var existingEntity = await _unitOfWork.Repository<BookEdition, int>()
-// 			    .GetWithSpecAsync(baseSpec);
-// 		    // Check if library item already mark as deleted
-// 		    if (existingEntity == null || !existingEntity.IsDeleted)
-// 		    {
-// 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-// 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-// 				    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
-// 		    }
-// 				
-// 		    // Check whether library item contains any copy, which mark as deleted
-// 		    if (existingEntity.BookEditionCopies.Any(x => x.IsDeleted))
-// 		    {
-// 			    // Extract all current edition copy ids
-// 			    var editionCopyIds = existingEntity.BookEditionCopies
-// 				    .Where(bec => bec.IsDeleted)
-// 				    .Select(bec => bec.BookEditionCopyId).ToList();
-// 			    if (editionCopyIds.Any())
-// 			    {
-// 				    // Try to undo undo all related edition copies
-// 				    var undoResult = await _editionCopyService.Value.UndoDeleteRangeAsync(
-// 					    bookEditionId: existingEntity.LibraryItemId, 
-// 					    bookEditionCopyIds: editionCopyIds);
-// 				    // Check whether fail to undo range library item copies
-// 				    if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
-// 			    }
-// 		    }
-// 		    
-// 		    // Update delete status
-// 		    existingEntity.IsDeleted = false;
-// 		    
-// 		    // Save changes to DB
-// 		    var rowsAffected = await _unitOfWork.SaveChangesAsync();
-// 		    if (rowsAffected == 0)
-// 		    {
-// 			    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-// 				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-// 		    }
-//
-//             // Mark as update success
-//             return new ServiceResult(ResultCodeConst.SYS_Success0009,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when process undo delete library item");
-//         }
-//     }
-//
-//     public async Task<IServiceResult> UndoDeleteRangeAsync(int[] ids)
-//     {
-//         try
-//         {
-//             // Build spec
-//             var baseSpec = new BaseSpecification<BookEdition>(x => ids.Contains(x.LibraryItemId));
-//             // Include all constraints to update soft delete
-//             baseSpec.ApplyInclude(q => q
-//                 // Ignore include all authors, due to library item can exist without any book belongs to    
-//                 // Include all library item copy
-//                 .Include(be => be.BookEditionCopies)
-//             );
-//             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
-//                 .GetAllWithSpecAsync(baseSpec);
-//             // Check if any data already soft delete
-//             var bookEditionList = bookEditionEntities.ToList();
-//             if (bookEditionList.Any(x => !x.IsDeleted))
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-//             }
-//             
-//             // Check whether library item contains any copy, which mark as deleted
-//             if (bookEditionList.SelectMany(be => be.BookEditionCopies).Any(be => be.IsDeleted))
-//             {
-// 	            // Iterate each edition to undo delete all copies
-// 	            foreach (var edition in bookEditionList)
-// 	            {
-// 		            // Extract all current edition copy ids
-// 		            var editionCopyIds = edition.BookEditionCopies
-// 			            .Where(bec => bec.IsDeleted)
-// 						.Select(bec => bec.BookEditionCopyId).ToList();
-// 		            if (editionCopyIds.Any())
-// 		            {
-// 			            // Try to soft undo all related edition copies
-// 			            var undoResult = await _editionCopyService.Value.UndoDeleteRangeAsync(
-// 				            bookEditionId: edition.LibraryItemId, 
-// 				            bookEditionCopyIds: editionCopyIds);
-// 			            // Check whether fail to undo range library item copies
-// 			            if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
-// 		            }
-// 	            }
-//             }
-//
-//             // Iterate each library item
-//             foreach (var be in bookEditionList)
-//             {
-//                 // Update deleted status
-//                 be.IsDeleted = false;
-//             }
-//
-//             // Save changes to DB
-//             var rowsAffected = await _unitOfWork.SaveChangesAsync();
-//             if (rowsAffected == 0)
-//             {
-//                 // Get error msg
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), true);
-//             }
-//
-//             // Mark as update success
-//             return new ServiceResult(ResultCodeConst.SYS_Success0009,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when process undo delete range");
-//         }
-//     }
-//
-//     public async Task<IServiceResult> DeleteRangeAsync(int[] ids)
-//     {
-//         try
-//         {
-//             // Get all matching library item 
-//             // Build spec
-//             var baseSpec = new BaseSpecification<BookEdition>(e => ids.Contains(e.LibraryItemId));
-//             // Apply including authors
-//             baseSpec.ApplyInclude(q => q
-//                 .Include(be => be.BookEditionAuthors));
-//             // Get all author with specification
-//             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>()
-//                 .GetAllWithSpecAsync(baseSpec);
-//             // Check if any data already soft delete
-//             var bookEditionList = bookEditionEntities.ToList();
-//             if (bookEditionList.Any(x => !x.IsDeleted))
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
-//             }
-//
-//             // Try to clear all authors existing in each of library item (if any)
-//             foreach (var be in bookEditionList)
-//             {
-//                 // Process delete range without save changes
-//                 await _editionAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
-//                     // Select all existing bookEditionAuthorId
-//                     be.BookEditionAuthors.Select(ba => ba.BookEditionAuthorId).ToArray());
-//             }
-//
-//             // Process delete range, and delete cascade with BookEditionInventory
-//             await _unitOfWork.Repository<BookEdition, int>().DeleteRangeAsync(ids);
-//
-//             // Save to DB
-//             if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
-//             {
-//                 var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
-//                 return new ServiceResult(ResultCodeConst.SYS_Success0008,
-//                     StringUtils.Format(msg, bookEditionList.Count.ToString()), true);
-//             }
-//
-//             // Fail to delete
-//             return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
-//         }
-//         catch (DbUpdateException ex)
-//         {
-//             if (ex.InnerException is SqlException sqlEx)
-//             {
-//                 switch (sqlEx.Number)
-//                 {
-//                     case 547: // Foreign key constraint violation
-//                         return new ServiceResult(ResultCodeConst.SYS_Fail0007,
-//                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
-//                 }
-//             }
-//
-//             // Throw if other issues
-//             throw;
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw new Exception("Error invoke when process delete range library item");
-//         }
-//     }
-//
-//     private List<LibraryItemDto> HandleEnumTextForEditions(List<LibraryItemDto> dtos)
-//     {
-// 	    // Determine current system lang
-// 	    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-// 		    LanguageContext.CurrentLanguage);
-// 	    var isEng = lang == SystemLanguage.English;
-//
-// 	    // BookEditionCopyStatus enum descriptions
-// 	    var editionStatusDescriptions = Enum.GetValues(typeof(LibraryItemInstanceStatus))
-// 		    .Cast<LibraryItemInstanceStatus>()
-// 		    .ToDictionary(
-// 			    e => e.ToString(),
-// 			    e => EnumExtensions.GetDescription(e)
-// 		    );
-//
-// 	    // BookFormat enum descriptions
-// 	    var formatDescriptions = Enum.GetValues(typeof(BookFormat))
-// 		    .Cast<BookFormat>()
-// 		    .ToDictionary(
-// 			    e => e.ToString(),
-// 			    e => EnumExtensions.GetDescription(e)
-// 		    );
-//
-// 	    if (dtos.Any())
-// 	    {
-// 		    foreach (var edition in dtos)
-// 		    {
-// 			    if (edition.BookEditionCopies.Any())
-// 			    {
-// 				    foreach (var copy in edition.BookEditionCopies)
-// 				    {
-// 					    if (!string.IsNullOrEmpty(copy.Status) &&
-// 					        editionStatusDescriptions.TryGetValue(copy.Status, out var statusDesc))
-// 					    {
-// 						    copy.Status = isEng ? StringUtils.AddWhitespaceToString(copy.Status) : statusDesc;
-// 					    }
-// 				    }
-// 			    }
-//
-// 			    if (!string.IsNullOrEmpty(edition.Format) &&
-// 			        formatDescriptions.TryGetValue(edition.Format, out var formatDesc))
-// 			    {
-// 				    edition.Format = isEng ? edition.Format : formatDesc;
-// 			    }
-// 		    }
-// 	    }
-//
-// 	    return dtos;
-//     }
-//
+    public async Task<IServiceResult> SoftDeleteAsync(int id)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == id);
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to library item can exist without any item belongs to    
+                // Include all library item copy
+                .Include(li => li.LibraryItemInstances)
+                // Include all library resource
+                .Include(li => li.LibraryItemResources)
+                    .ThenInclude(lir => lir.LibraryResource)
+            );
+            // Get library item with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAsync(baseSpec);
+            // Check if library item already mark as deleted
+            if (existingEntity == null || existingEntity.IsDeleted)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+            }
+
+            // Require transitioning to Draft status to modify or soft-delete a book
+            if (existingEntity.Status != LibraryItemStatus.Draft)
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
+            }
+
+            // Check whether library item contains any item instances, which mark as not deleted
+            if (existingEntity.LibraryItemInstances.Any(x => !x.IsDeleted))
+            {
+                // Extract all current item instance ids
+                var itemInstanceIds = existingEntity.LibraryItemInstances
+                    .Where(bec => !bec.IsDeleted)
+                    .Select(bec => bec.LibraryItemInstanceId).ToList();
+                if (itemInstanceIds.Any()) // Found any copy is not deleted yet
+                {
+                    // Try to softly delete all related edition copies
+                    var deleteResult = await _itemInstanceService.Value.SoftDeleteRangeAsync(
+                        libraryItemId: existingEntity.LibraryItemId,
+                        libraryItemInstanceIds: itemInstanceIds);
+                    // Check whether fail to delete range library item instances
+                    if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
+                }
+            }
+            
+            // Check whether library item contains any resource, which mark as not deleted
+            if (existingEntity.LibraryItemResources.Select(lir =>
+                    lir.LibraryResource).Any(x => !x.IsDeleted)
+               )
+            {
+                // Extract all current resource ids
+                var itemResourceIds = existingEntity.LibraryItemResources
+                    .Select(lir => lir.LibraryResource)
+                    .Where(lr => !lr.IsDeleted).Select(lr => lr.ResourceId).ToArray();
+                if (itemResourceIds.Any())
+                {
+                    // Try to softly delete all related resources
+                    var deleteResult = await _resourceService.Value.SoftDeleteRangeAsync(itemResourceIds); 
+                    // Check whether fail to delete range library resources
+                    if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
+                }
+            }
+
+            // Update delete status
+            existingEntity.IsDeleted = true;
+
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                // Get error msg
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0007,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
+        }
+        catch (UnprocessableEntityException)
+        {
+            return new ServiceResult(ResultCodeConst.LibraryItem_Warning0008,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0008));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process soft delete library item");
+        }
+    }
+
+    public async Task<IServiceResult> SoftDeleteRangeAsync(int[] ids)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => ids.Contains(x.LibraryItemId));
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to library item can exist without any item belongs to    
+                // Include all library item instance
+                .Include(be => be.LibraryItemInstances)
+                // Include all library resource
+                .Include(li => li.LibraryItemResources)
+                    .ThenInclude(lir => lir.LibraryResource)
+            );
+            var itemEntities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            // Check if any data already soft delete
+            var itemList = itemEntities.ToList();
+            if (itemList.Any(x => x.IsDeleted))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+            else if (itemList.Any(x => x.Status != LibraryItemStatus.Draft))
+            {
+                // Require transitioning to Draft status to modify or soft-delete a item
+                return new ServiceResult(ResultCodeConst.LibraryItem_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0002));
+            }
+
+            // Iterate each item to softly delete all instances, resources
+            foreach (var item in itemList)
+            {
+                // Extract all current item instance ids
+                var itemInstanceIds = item.LibraryItemInstances
+                    .Where(bec => !bec.IsDeleted)
+                    .Select(bec => bec.LibraryItemInstanceId).ToList();
+                if (itemInstanceIds.Any())
+                {
+                    // Try to soft delete all related item instances
+                    var deleteResult = await _itemInstanceService.Value.SoftDeleteRangeAsync(
+                        libraryItemId: item.LibraryItemId,
+                        libraryItemInstanceIds: itemInstanceIds);
+                    // Check whether fail to delete range library item instances
+                    if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
+                }
+                
+                // Extract all current item resource ids
+                var itemResourceIds = item.LibraryItemResources
+                    .Select(lir => lir.LibraryResource)
+                    .Where(lr => !lr.IsDeleted)
+                    .Select(lr => lr.ResourceId).ToArray();
+                if (itemResourceIds.Any())
+                {
+                    // Try to softly delete all related resources
+                    var deleteResult = await _resourceService.Value.SoftDeleteRangeAsync(itemResourceIds);
+                    // Check whether fail to delete range library item instances
+                    if (deleteResult.ResultCode != ResultCodeConst.SYS_Success0007) return deleteResult;
+                }
+                
+                // Update deleted status
+                item.IsDeleted = true;
+            }
+            
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                // Get error msg
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0007,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when remove range library item");
+        }
+    }
+
+    public async Task<IServiceResult> UndoDeleteAsync(int id)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == id);
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to library item can exist without any item belongs to    
+                // Include all library item instance
+                .Include(be => be.LibraryItemInstances)
+                // Include all library resource
+                .Include(li => li.LibraryItemResources)
+                    .ThenInclude(lir => lir.LibraryResource)
+            );
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAsync(baseSpec);
+            // Check if library item already mark as deleted
+            if (existingEntity == null || !existingEntity.IsDeleted)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+            }
+
+            // Check whether library item contains any item instance, which mark as deleted
+            if (existingEntity.LibraryItemInstances.Any(x => x.IsDeleted))
+            {
+                // Extract all current edition copy ids
+                var itemInstanceIds = existingEntity.LibraryItemInstances
+                    .Where(bec => bec.IsDeleted)
+                    .Select(bec => bec.LibraryItemInstanceId).ToList();
+                if (itemInstanceIds.Any())
+                {
+                    // Try to undo all related item instances
+                    var undoResult = await _itemInstanceService.Value.UndoDeleteRangeAsync(
+                        libraryItemId: existingEntity.LibraryItemId,
+                        libraryItemInstanceIds: itemInstanceIds);
+                    // Check whether fail to undo range library item instances
+                    if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
+                }
+            }
+            
+            // Check whether library item contains any resource, which mark as deleted
+            if (existingEntity.LibraryItemResources.Select(lir =>
+                    lir.LibraryResource).Any(x => x.IsDeleted)
+               )
+            {
+                // Extract all current resource ids
+                var itemResourceIds = existingEntity.LibraryItemResources
+                    .Select(lir => lir.LibraryResource)
+                    .Where(lr => lr.IsDeleted).Select(lr => lr.ResourceId).ToArray();
+                if (itemResourceIds.Any())
+                {
+                    // Try to undo delete all related resources
+                    var undoResult = await _resourceService.Value.UndoDeleteRangeAsync(itemResourceIds); 
+                    // Check whether fail to undo delete range library resources
+                    if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
+                }
+            }
+
+            // Update delete status
+            existingEntity.IsDeleted = false;
+
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+            }
+
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0009,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process undo delete library item");
+        }
+    }
+
+    public async Task<IServiceResult> UndoDeleteRangeAsync(int[] ids)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(x => ids.Contains(x.LibraryItemId));
+            // Include all constraints to update soft delete
+            baseSpec.ApplyInclude(q => q
+                // Ignore include all authors, due to library item can exist without any item belongs to    
+                // Include all library item instance
+                .Include(be => be.LibraryItemInstances)
+                // Include all library resource
+                .Include(li => li.LibraryItemResources)
+                    .ThenInclude(lir => lir.LibraryResource)
+            );
+            // Retrieve all data with spec
+            var itemEntities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            // Check if any data already soft delete
+            var itemList = itemEntities.ToList();
+            if (itemList.Any(x => !x.IsDeleted))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+
+            // Iterate each item to undo delete all instances, resources
+            foreach (var item in itemList)
+            {
+                // Extract all current item instance ids
+                var itemInstanceIds = item.LibraryItemInstances
+                    .Where(bec => bec.IsDeleted)
+                    .Select(bec => bec.LibraryItemInstanceId).ToList();
+                if (itemInstanceIds.Any())
+                {
+                    // Try to soft undo all related edition copies
+                    var undoResult = await _itemInstanceService.Value.UndoDeleteRangeAsync(
+                        libraryItemId: item.LibraryItemId,
+                        libraryItemInstanceIds: itemInstanceIds);
+                    // Check whether fail to undo range library item copies
+                    if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
+                }
+                
+                // Extract all current resource ids
+                var itemResourceIds = item.LibraryItemResources
+                    .Select(lir => lir.LibraryResource)
+                    .Where(lr => lr.IsDeleted).Select(lr => lr.ResourceId).ToArray();
+                if (itemResourceIds.Any())
+                {
+                    // Try to undo delete all related resources
+                    var undoResult = await _resourceService.Value.UndoDeleteRangeAsync(itemResourceIds); 
+                    // Check whether fail to undo delete range library resources
+                    if (undoResult.ResultCode != ResultCodeConst.SYS_Success0009) return undoResult;
+                }
+                
+                 // Update deleted status
+                item.IsDeleted = false;
+            }
+            
+            // Save changes to DB
+            var rowsAffected = await _unitOfWork.SaveChangesAsync();
+            if (rowsAffected == 0)
+            {
+                // Get error msg
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), true);
+            }
+
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0009,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process undo delete range");
+        }
+    }
+
+    public async Task<IServiceResult> DeleteRangeAsync(int[] ids)
+    {
+        try
+        {
+            // Get all matching library item 
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(e => ids.Contains(e.LibraryItemId));
+            // Apply including authors
+            baseSpec.ApplyInclude(q => q
+                .Include(be => be.LibraryItemAuthors));
+            // Get all author with specification
+            var itemEntities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            // Check if any data already soft delete
+            var itemList = itemEntities.ToList();
+            if (itemList.Any(x => !x.IsDeleted))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
+            }
+
+            // Try to clear all authors existing in each of library item (if any)
+            foreach (var be in itemList)
+            {
+                // Process delete range without save changes
+                await _itemAuthorService.Value.DeleteRangeWithoutSaveChangesAsync(
+                    // Select all existing libraryItemAuthorId
+                    be.LibraryItemAuthors.Select(ba => ba.LibraryItemAuthorId).ToArray());
+            }
+
+            // Process delete range, and delete cascade with BookEditionInventory
+            await _unitOfWork.Repository<LibraryItem, int>().DeleteRangeAsync(ids);
+
+            // Save to DB
+            if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+            {
+                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+                return new ServiceResult(ResultCodeConst.SYS_Success0008,
+                    StringUtils.Format(msg, itemList.Count.ToString()), true);
+            }
+
+            // Fail to delete
+            return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process delete range library item");
+        }
+    }
+
 //     public async Task<IServiceResult> ImportAsync(
 // 	    IFormFile? file, 
 // 	    List<IFormFile> coverImageFiles,
@@ -2059,7 +2164,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 // 			    // Check whether barcode already exist in DB
 // 			    foreach (var barcode in copyCodes)
 // 			    {
-// 				    var isExist = (await _editionCopyService.Value.AnyAsync(x => x.Barcode.ToLower() == barcode.ToLower())).Data is true;
+// 				    var isExist = (await _itemInstanceService.Value.AnyAsync(x => x.Barcode.ToLower() == barcode.ToLower())).Data is true;
 // 				    if (isExist)
 // 				    {
 // 					    rowErrors.Add(isEng

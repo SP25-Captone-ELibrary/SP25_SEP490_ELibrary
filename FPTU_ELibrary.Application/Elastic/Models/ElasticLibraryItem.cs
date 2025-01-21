@@ -35,7 +35,10 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public string? CoverImage { get; set; } 
         
         [Number(NumberType.Integer, Name = "publication_year")]
-        public int? PublicationYear { get; set; }
+        public int PublicationYear { get; set; }
+        
+        [Text(Name = "publisher")] 
+        public string? Publisher { get; set; } 
         
         [Text(Name = "publication_place")] 
         public string? PublicationPlace { get; set; } 
@@ -47,10 +50,10 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public string CutterNumber { get; set; } = null!;
         
         [Text(Name = "isbn")] 
-        public string? Isbn { get; set; } = null!;
+        public string? Isbn { get; set; } 
         
         [Keyword(Name = "ean")] 
-        public string? Ean { get; set; } = null!;
+        public string? Ean { get; set; } 
         
         [Number(NumberType.Double, Name = "estimated_price")]
         public decimal? EstimatedPrice { get; set; }
@@ -69,6 +72,9 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         
         [Text(Name = "topical_terms")] 
         public string? TopicalTerms { get; set; } 
+        
+        [Text(Name = "general_note")] 
+        public string? GeneralNote { get; set; }
         
         [Text(Name = "additional_authors")] 
         public string? AdditionalAuthors { get; set; }
@@ -94,11 +100,11 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Boolean(Name = "is_trained")]
         public bool IsTrained { get; set; }
         
-        [Object(Name = "book_edition_inventory")]
-        public ElasticLibraryItemInventory? LibraryItemInventory { get; set; } = null!;
+        [Object(Name = "library_item_inventory")]
+        public ElasticLibraryItemInventory? LibraryItemInventory { get; set; } 
             
-        [Nested(Name = "book_edition_copies")] 
-        public List<ElasticLibraryItemInstance> ElasticLibraryItemInstances { get; set; } = new();
+        [Nested(Name = "library_item_instances")] 
+        public List<ElasticLibraryItemInstance> LibraryItemInstances { get; set; } = new();
         
         [Nested(Name = "authors")]
         public List<ElasticAuthor> Authors { get; set; } = null!;

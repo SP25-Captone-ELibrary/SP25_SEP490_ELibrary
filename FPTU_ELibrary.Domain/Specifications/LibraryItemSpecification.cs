@@ -98,7 +98,7 @@ public class LibraryItemSpecification : BaseSpecification<LibraryItem>
             {
                 foreach (var filter in filerList)
                 {
-                    // Handling for properties, which in navigations or reference
+                    // Handling for properties, which in navigations or reference 
                     if (filter.FieldName.ToLowerInvariant() == nameof(Author).ToLowerInvariant())
                     {
                         // Determine operator

@@ -1,11 +1,14 @@
 ﻿using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
-using FPTU_ELibrary.API.Payloads.Requests.Book;
+using FPTU_ELibrary.API.Payloads.Requests.Category;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
+using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
+using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
+using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
@@ -110,7 +113,6 @@ namespace FPTU_ELibrary.API.Extensions
 		#endregion
 
 		#region Library Item
-		// TODO: Fix conflicts
 		// Mapping from typeof(CreateLibraryItemRequest) to typeof(LibraryItemDto)
 		public static LibraryItemDto ToLibraryItemDto(this CreateLibraryItemRequest req)
 		{
@@ -173,8 +175,8 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		
-		// Mapping from typeof(CreateLibraryItemInstanceRequest) to typeof(LibraryItemInstanceDto)
-		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this CreateLibraryItemInstanceRequest req)
+		// Mapping from typeof(CreateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
+		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this CreateItemInstanceRequest req)
 		{
 			return new LibraryItemInstanceDto()
 			{
@@ -209,50 +211,81 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 		
-		// Mapping from typeof(UpdateBookEditionRequest) to typeof(BookEditionDto)
-		// public static LibraryItemDto ToBookEditionDto(this UpdateBookEditionRequest req)
-		// 	=> new()
-		// 	{
-		// 		EditionTitle = req.EditionTitle,
-		// 		EditionSummary = req.EditionSummary,
-		// 		EditionNumber = req.EditionNumber,
-		// 		PageCount = req.PageCount,
-		// 		Language = req.Language,
-		// 		PublicationYear = req.PublicationYear,
-		// 		CoverImage = req.CoverImage,
-		// 		Format = req.Format,
-		// 		Publisher = req.Publisher,
-		// 		Isbn = ISBN.CleanIsbn(req.Isbn),
-		// 		EstimatedPrice = req.EstimatedPrice,
-		// 		ShelfId = req.ShelfId
-		// 	};
+		// Mapping from typeof(UpdateLibraryItemRequest) to typeof(LibraryItemDto)
+		public static LibraryItemDto ToLibraryItemDto(this UpdateLibraryItemRequest req)
+			=> new()
+			{
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				Responsibility = req.Responsibility,
+				Edition = req.Edition,
+				EditionNumber = req.EditionNumber,
+				Language = req.Language,
+				OriginLanguage = req.OriginLanguage,
+				Summary = req.Summary,
+				CoverImage = req.CoverImage,
+				PublicationYear = req.PublicationYear,
+				Publisher = req.Publisher,
+				PublicationPlace = req.PublicationPlace,
+				ClassificationNumber = req.ClassificationNumber,
+				CutterNumber = req.CutterNumber,
+				Isbn = req.Isbn,
+				Ean = req.Ean,
+				EstimatedPrice = req.EstimatedPrice,
+				PageCount = req.PageCount,
+				PhysicalDetails = req.PhysicalDetails,
+				Dimensions = req.Dimensions,
+				AccompanyingMaterial = req.AccompanyingMaterial,
+				Genres = req.Genres,
+				GeneralNote = req.GeneralNote,
+				BibliographicalNote = req.BibliographicalNote,
+				TopicalTerms = req.TopicalTerms,
+				AdditionalAuthors = req.AdditionalAuthors,
+				// In-library management fields
+				CategoryId = req.CategoryId,
+				ShelfId = req.ShelfId
+			};
 
 		#endregion
 		
-		#region BookResource
-		// Mapping from typeof(UpdateBookResourceRequest) to typeof(BookResourceDto)
-		public static LibraryResourceDto ToBookResourceDto(this UpdateBookResourceRequest req)
+		#region Library Item Resource
+		// Mapping from typeof(UpdateLibraryResourceRequest) to typeof(LibraryResourceDto)
+		public static LibraryResourceDto ToLibraryResourceDto(this UpdateLibraryResourceRequest req)
 			=> new()
 			{
+				ResourceTitle = req.ResourceTitle,
 				Provider = req.Provider,
 				ProviderPublicId = req.ProviderPublicId,
 				ResourceSize = req.ResourceSize,
 				ResourceUrl = req.ResourceUrl,
-				FileFormat = req.FileFormat
+				FileFormat = req.FileFormat,
+				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
+				BorrowPrice = req.BorrowPrice,
 			};
 		#endregion
 
-		#region Book Edition Copy
-		// Mapping from typeof(UpdateBookEditionCopyRequest) to typeof(BookEditionCopyDto)
-		public static LibraryItemInstanceDto ToBookEditionCopyDto(this UpdateBookEditionCopyRequest req)
+		#region Library Item Instance
+		// Mapping from typeof(UpdateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
+		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this UpdateItemInstanceRequest req)
 			=> new()
 			{
-				Status = req.Status 
+				Status = req.Status,
+				Barcode = req.Barcode
 			};	
 		
-		// Mapping from typeof(CreateRangeBookEditionCopyRequest) to typeof(BookEditionCopyDto)
-		public static List<LibraryItemInstanceDto> ToListBookEditionCopyDto(this CreateRangeBookEditionCopyRequest req)
-			=> req.BookEditionCopies.Select(bec => new LibraryItemInstanceDto()
+		// Mapping from typeof(UpdateRangeItemInstanceRequest) to typeof(LibraryItemInstanceDto)
+		public static List<LibraryItemInstanceDto> ToListLibraryItemInstanceDto(
+			this UpdateRangeItemInstanceRequest req)
+			=> req.LibraryItemInstances.Select(r => new LibraryItemInstanceDto()
+			{
+				LibraryItemInstanceId = r.LibraryItemInstanceId,
+				Status = r.Status,
+				Barcode = r.Barcode
+			}).ToList();
+		
+		// Mapping from typeof(CreateRangeItemInstanceRequest) to typeof(LibraryItemInstanceDto)
+		public static List<LibraryItemInstanceDto> ToListLibraryItemInstanceDto(this CreateRangeItemInstanceRequest req)
+			=> req.LibraryItemInstances.Select(bec => new LibraryItemInstanceDto()
 			{
 				Barcode = bec.Barcode,
 				LibraryItemConditionHistories = new List<LibraryItemConditionHistoryDto>()

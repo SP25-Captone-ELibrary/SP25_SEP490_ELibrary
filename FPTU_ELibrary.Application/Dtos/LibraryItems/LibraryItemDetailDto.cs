@@ -62,7 +62,7 @@ public class LibraryItemDetailDto
     // Inventory
     public LibraryItemInventoryDto? LibraryItemInventory { get; set; }
     // Resources
-    public List<LibraryResourceDto> Resources = new();
+    public List<LibraryResourceDto> Resources { get; set; } = new();
     // Authors
     public List<AuthorDto> Authors { get; set; } = new();
     // Copies
@@ -126,61 +126,10 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInventory = dto.LibraryItemInventory,
             // Authors
             Authors = dto.LibraryItemAuthors.Select(lia => lia.Author).ToList(),
-            // Item instances
-            LibraryItemInstances = dto.LibraryItemInstances.ToList(),
             // Resources
             Resources = dto.LibraryItemResources.Select(lir => lir.LibraryResource).ToList(),
+            // Item instances
+            LibraryItemInstances = dto.LibraryItemInstances.ToList(),
         };
     }
-    
-    // public static BookEditionDetailDto ToEditionDetailDtoWithBookDetail(this BookEditionDto dto,
-    //     string bookCode, string title, string? subTitle, string? summary)
-    // {
-    //     return new BookEditionDetailDto()
-    //     {
-    //         // Book information
-    //         BookId = dto.BookId,
-    //         BookCode = bookCode,
-    //         Title = title,
-    //         SubTitle = subTitle,
-    //         Summary = summary,
-    //         
-    //         // Book edition information
-    //         BookEditionId = dto.BookEditionId,
-    //         EditionTitle = dto.EditionTitle,
-    //         EditionNumber = dto.EditionNumber,
-    //         EditionSummary = !string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
-    //             ? $"{summary}\n{dto.EditionSummary}"
-    //             : string.IsNullOrEmpty(dto.EditionSummary) && !string.IsNullOrEmpty(summary)
-    //                 ? summary : dto.EditionSummary,
-    //         PublicationYear = dto.PublicationYear,
-    //         PageCount = dto.PageCount,
-    //         Language = dto.Language,
-    //         Format = dto.Format,
-    //         CoverImage = dto.CoverImage,
-    //         Publisher = dto.Publisher,
-    //         Isbn = dto.Isbn,
-    //         IsDeleted = dto.IsDeleted,
-    //         CanBorrow = dto.CanBorrow,
-    //         EstimatedPrice = dto.EstimatedPrice,
-    //         IsTrained = dto.IsTrained,
-    //         TrainedDay = dto.TrainedDay,
-    //         
-    //         // Shelf information
-    //         ShelfId = dto.ShelfId,
-    //         Shelf = dto.Shelf,
-    //         
-    //         // Status
-    //         Status = dto.Status.ToString(),
-    //         
-    //         // Inventory 
-    //         BookEditionInventory = dto.BookEditionInventory,
-    //         
-    //         // Authors
-    //         Authors = dto.BookEditionAuthors.Select(bea => bea.Author).ToList(),
-    //         
-    //         // Edition copies
-    //         BookEditionCopies = dto.BookEditionCopies.ToList()
-    //     };
-    // }
 }

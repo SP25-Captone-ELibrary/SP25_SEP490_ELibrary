@@ -639,11 +639,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        TopicalTerms = "Lập trình, Ngôn ngữ C#, Phát triển phần mềm",
 			        AdditionalAuthors = "Trần Thị B",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SpecializedBook)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+			        LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -891,11 +900,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Tập 3 trong loạt sách Harry Potter nổi tiếng.",
 				    TopicalTerms = "Văn học thiếu nhi, Phép thuật, Phiêu lưu",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -921,11 +939,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Sách được viết bởi hai tác giả của 'Freakonomics'.",
 				    TopicalTerms = "Kinh tế, Tư duy sáng tạo, Giải quyết vấn đề",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -951,11 +978,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Sách nổi tiếng và được dịch ra nhiều ngôn ngữ trên thế giới.",
 				    TopicalTerms = "Giao tiếp, Kỹ năng sống, Tâm lý học",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -981,11 +1017,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Số chuyên đề về trí tuệ nhân tạo (AI).",
 			        TopicalTerms = "AI, Công nghệ mới, Xu hướng 2023",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Newspaper)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
 			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -1011,11 +1056,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Bao gồm dữ liệu thực tế từ năm 2010 đến 2020.",
 			        TopicalTerms = "Biến đổi khí hậu, Bảo vệ môi trường",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.ResearchPaper)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -1041,11 +1095,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Gồm 3 tập với các tác phẩm từ thế kỷ 18 đến thế kỷ 20.",
 			        TopicalTerms = "Văn học Việt Nam, Tác phẩm kinh điển",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Literature)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    }
 			};
 

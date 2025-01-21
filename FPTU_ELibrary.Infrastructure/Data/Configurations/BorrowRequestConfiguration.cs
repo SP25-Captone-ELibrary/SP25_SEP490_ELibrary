@@ -31,10 +31,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.LibraryItem).WithMany(p => p.BorrowRequests)
                 .HasForeignKey(d => d.LibraryItemId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BorrowRequest_ItemId");
 
             builder.HasOne(d => d.LibraryItemInstance).WithMany(p => p.BorrowRequests)
                 .HasForeignKey(d => d.LibraryItemInstanceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BorrowRequest_ItemInstanceId");
 
             //builder.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.BorrowRequests)
