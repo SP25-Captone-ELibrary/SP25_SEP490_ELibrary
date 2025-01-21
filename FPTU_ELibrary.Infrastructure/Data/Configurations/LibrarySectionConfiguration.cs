@@ -27,6 +27,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.Zone).WithMany(p => p.LibrarySections)
                 .HasForeignKey(d => d.ZoneId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibrarySection_ZoneId");
         }
     }

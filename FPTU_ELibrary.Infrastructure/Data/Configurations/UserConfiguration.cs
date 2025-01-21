@@ -72,9 +72,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.TwoFactorSecretKey)
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_secret_key");
-            builder.Property(e => e.UserCode)
-                .HasMaxLength(20)
-                .HasColumnName("user_code");
 
             builder.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
@@ -83,7 +80,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             #region Update at: 2-12-2024 by Nguyen Vu Quang Huy
             builder.Property(e => e.ModifiedBy)
-                .HasColumnType("nvarchar(100)")
+                .HasColumnType("nvarchar(155)")
                 .HasColumnName("modified_by");
             #endregion
             
@@ -91,6 +88,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
+            #endregion
+
+            #region Update at 13/01/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.UserCode)
+            //     .HasMaxLength(20)
+            //     .HasColumnName("user_code");
+            
+            builder.Property(e => e.LibraryCardId).HasColumnName("library_card_id");
+            builder.HasOne(d => d.LibraryCard).WithMany(p => p.Users)
+                .HasForeignKey(d => d.LibraryCardId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LibraryCard_LibraryCardId");
             #endregion
         }
     }

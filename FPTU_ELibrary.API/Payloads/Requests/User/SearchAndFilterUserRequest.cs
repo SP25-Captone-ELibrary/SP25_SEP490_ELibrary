@@ -1,7 +1,7 @@
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Domain.Specifications.Params;
 
-namespace FPTU_ELibrary.API.Payloads.Requests.Auth;
+namespace FPTU_ELibrary.API.Payloads.Requests.User;
 
 public class SearchAndFilterUserRequest : BaseSpecParams
 {
@@ -24,13 +24,11 @@ public static class SearchAndFilterUserRequestExtension
     {
         return new UserDto()
         {
-            UserCode = req.MultipleFieldSearch.UserCode,
             Email = req.MultipleFieldSearch.Email?? "",
             FirstName = req.MultipleFieldSearch.FirstName,
             LastName = req.MultipleFieldSearch.LastName,
             Phone= req.MultipleFieldSearch.Phone,
             IsActive = req.MultipleFieldSearch.IsActive?? true,
-            
         };
     }
 }

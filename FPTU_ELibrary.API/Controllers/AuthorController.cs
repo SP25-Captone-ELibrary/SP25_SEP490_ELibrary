@@ -4,7 +4,6 @@ using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.Books;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -109,6 +108,7 @@ public class AuthorController : ControllerBase
         return Ok(await _authorService.ImportAsync(req.File, req.DuplicateHandle, req.ScanningFields));
     }
 
+    [Authorize]
     [HttpGet(APIRoute.Author.Export, Name = nameof(ExportAuthorAsync))]
     public async Task<IActionResult> ExportAuthorAsync([FromQuery] AuthorSpecParams specParams)
     {

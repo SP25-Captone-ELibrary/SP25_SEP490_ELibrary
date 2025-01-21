@@ -221,6 +221,7 @@ namespace FPTU_ELibrary.Application.Services
 						user = new AuthenticateUserDto
 						{
 							Id = userDto.UserId,
+							LibraryCardId = userDto.LibraryCardId,
 							Email = userDto.Email,
 							FirstName = userDto.FirstName ?? string.Empty,
 							LastName = userDto.LastName ?? string.Empty,
@@ -286,6 +287,7 @@ namespace FPTU_ELibrary.Application.Services
                 		user = new AuthenticateUserDto
                 		{
                 			Id = userDto.UserId,
+			                LibraryCardId = userDto.LibraryCardId,
                 			Email = userDto.Email,
                 			FirstName = userDto.FirstName ?? string.Empty,
                 			LastName = userDto.LastName ?? string.Empty,
@@ -507,6 +509,7 @@ namespace FPTU_ELibrary.Application.Services
 					authenticateUser = new AuthenticateUserDto()
 					{
 						Id = userDto.UserId,
+						LibraryCardId = userDto.LibraryCardId,
 						Email = userDto.Email,
 						FirstName = userDto.FirstName ?? string.Empty,
 						LastName = userDto.LastName ?? string.Empty,
@@ -605,6 +608,7 @@ namespace FPTU_ELibrary.Application.Services
 						authenticateUser = new AuthenticateUserDto()
 						{
 							Id = userDto.UserId,
+							LibraryCardId = userDto.LibraryCardId,
 							Email = userDto.Email,
 							FirstName = userDto.FirstName ?? string.Empty,
 							LastName = userDto.LastName ?? string.Empty,
@@ -953,6 +957,7 @@ namespace FPTU_ELibrary.Application.Services
 					authenticatedUser = new AuthenticateUserDto
 					{
 						Id = userDto.UserId,
+						LibraryCardId = userDto.LibraryCardId,
 						Email = userDto.Email,
 						FirstName = userDto.FirstName ?? string.Empty,
 						LastName = userDto.LastName ?? string.Empty,
@@ -975,7 +980,6 @@ namespace FPTU_ELibrary.Application.Services
 						EmailConfirmed = userDto.EmailConfirmed,
 						PhoneNumberConfirmed = userDto.PhoneNumberConfirmed,
 						PasswordHash = userDto.PasswordHash,
-						UserCode = userDto.UserCode,
 						Dob = userDto.Dob,
 						Phone = userDto.Phone,
 					};

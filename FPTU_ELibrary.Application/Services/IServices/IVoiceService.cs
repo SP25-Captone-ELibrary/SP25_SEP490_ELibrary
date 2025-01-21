@@ -5,6 +5,7 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 
 public interface IVoiceService
 {
-    Task<IServiceResult> VoiceToText(IFormFile audioFile,string languageCode);
-    Task<IServiceResult> GetLanguages();
+    // TODO: Fix conflicts
+    // Task<IServiceResult> VoiceToText(IFormFile audioFile,string languageCode);
+    // Task<IServiceResult> GetLanguages();
 }

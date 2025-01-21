@@ -54,103 +54,85 @@
 
 			#endregion
 		}
-		
-		/// <summary>
-		/// Book endpoints
-		/// </summary>
-		public static class Book
-		{
-			#region management
-			// [GET]
-			public const string GetEnums = Base + "/management/books/enums";
-			public const string GetById = Base + "/management/books/{id}";
-			// [POST]
-			public const string Create = Base + "/management/books";
-			// [PUT] / [PATCH]
-			public const string Update = Base + "/management/books/{id}";
-			// [DELETE]
-			public const string Delete = Base + "/management/books/{id}";
-			#endregion
-			
-			public const string Search = Base + "/books/q";
-		}
 
 		/// <summary>
 		/// Book edition endpoints
 		/// </summary>
-		public static class BookEdition
+		public static class LibraryItem
 		{
 			#region management
 			// [GET]
-			public const string GetAllEdition = Base + "/management/books/editions";
-			public const string GetEditionById = Base + "/management/books/editions/{id}";
-			public const string CountTotalCopy = Base + "/management/books/editions/{id}/total-copy";
-			public const string CountRangeTotalCopy = Base + "/management/books/editions/total-copy";
+			public const string GetEnums = Base + "/management/library-items/enums";
+			public const string GetAll = Base + "/management/library-items";
+			public const string GetDetail = Base + "/management/library-items/{id}";
+			public const string CountTotalInstance = Base + "/management/books/editions/{id}/total-copy";
+			public const string CountRangeTotalInstance = Base + "/management/books/editions/total-copy";
 			public const string Export = Base + "/management/books/editions/export";
 			// [POST]
-			public const string Create = Base + "/management/books/{bookId}/editions";
-			public const string AddAuthor = Base + "/management/books/editions/add-author";
-			public const string AddRangeAuthor = Base + "/management/books/editions/add-range-author";
-			public const string DeleteAuthor = Base + "/management/books/editions/delete-author";
+			public const string Create = Base + "/management/library-items";
+			public const string AddAuthor = Base + "/management/library-items/add-author";
+			public const string AddRangeAuthor = Base + "/management/library-items/add-range-author";
+			public const string DeleteAuthor = Base + "/management/library-items/delete-author";
 			public const string Training = Base + "/management/books/editions/{id}/ai/train";
 			public const string CheckImagesForTraining = Base + "/management/books/editions/{id}/ai/check-images-for-training";
-			public const string DeleteRangeAuthor = Base + "/management/books/editions/delete-range-author";
+			public const string DeleteRangeAuthor = Base + "/management/library-items/delete-range-author";
 			public const string Import = Base + "/management/books/editions/import";
 			// [PUT] / [PATCH]
-			public const string Update = Base + "/management/books/editions/{id}";
-			public const string UpdateStatus = Base + "/management/books/editions/{id}/status";
-			public const string UpdateShelfLocation = Base + "/management/books/editions/{id}/shelf-location";
-			public const string SoftDelete = Base + "/management/books/editions/{id}/soft-delete";
-			public const string SoftDeleteRange = Base + "/management/books/editions/soft-delete-range";
-			public const string UndoDelete = Base + "/management/books/editions/{id}/undo-delete";
-			public const string UndoDeleteRange = Base + "/management/books/editions/undo-delete-range";
+			public const string Update = Base + "/management/library-items/{id}";
+			public const string UpdateStatus = Base + "/management/library-items/{id}/status";
+			public const string UpdateShelfLocation = Base + "/management/library-items/{id}/shelf-location";
+			public const string SoftDelete = Base + "/management/library-items/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/library-items/soft-delete-range";
+			public const string UndoDelete = Base + "/management/library-items/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/library-items/undo-delete-range";
 			// [DELETE]
-			public const string Delete = Base + "/management/books/editions/{id}";
-			public const string DeleteRange = Base + "/management/books/editions";
+			public const string Delete = Base + "/management/library-items/{id}";
+			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
+
+			public const string Search = Base + "/library-items/q";
 		}
 
 		/// <summary>
 		/// Book resource endpoints
 		/// </summary>
-		public static class BookResource
+		public static class LibraryItemResource
 		{
 			#region management
 			// [GET]
-			public const string GetAll = Base + "/management/books/resources";
-			public const string GetById = Base + "/management/books/resources/{id}";
+			public const string GetAll = Base + "/management/library-items/resources";
+			public const string GetById = Base + "/management/library-items/resources/{id}";
 			// [POST]
-			public const string AddToBook = Base + "/management/books/{bookId}/resources";
+			public const string AddToBook = Base + "/management/library-items/{libraryItemId}/resources";
 			// [PUT] / [PATCH]
-			public const string Update = Base + "/management/books/resources/{id}";
-			public const string SoftDelete = Base + "/management/books/resources/{id}/soft-delete";
-			public const string SoftDeleteRange = Base + "/management/books/resources/soft-delete-range";
-			public const string UndoDelete = Base + "/management/books/resources/{id}/undo-delete";
-			public const string UndoDeleteRange = Base + "/management/books/resources/undo-delete-range";
+			public const string Update = Base + "/management/library-items/resources/{id}";
+			public const string SoftDelete = Base + "/management/library-items/resources/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/library-items/resources/soft-delete-range";
+			public const string UndoDelete = Base + "/management/library-items/resources/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/library-items/resources/undo-delete-range";
 			// [DELETE]
-			public const string Delete = Base + "/management/books/resources/{id}";
-			public const string DeleteRange = Base + "/management/books/resources";
-
+			public const string Delete = Base + "/management/library-items/resources/{id}";
+			public const string DeleteRange = Base + "/management/library-items/resources";
 			#endregion
 		}
 
-		public static class BookEditionCopy
+		public static class LibraryItemInstance
 		{
 			#region Management
 			// [GET]
-			public const string GetById = Base + "/management/books/editions/copies/{id}";
+			public const string GetById = Base + "/management/library-items/instances/{id}";
 			// [POST]
-			public const string AddRange = Base + "/management/books/editions/{id}/copies";
+			public const string AddRange = Base + "/management/library-items/{id}/instances";
 			// [PUT] / [PATCH]
-			public const string Update = Base + "/management/books/editions/copies/{id}";
-			public const string UpdateRange = Base + "/management/books/editions/{bookEditionId}/copies";
-			public const string SoftDelete = Base + "/management/books/editions/copies/{id}/soft-delete";
-			public const string SoftDeleteRange = Base + "/management/books/editions/{bookEditionId}/copies/soft-delete-range";
-			public const string UndoDelete = Base + "/management/books/editions/copies/{id}/undo-delete";
-			public const string UndoDeleteRange = Base + "/management/books/editions/{bookEditionId}/copies/undo-delete-range";
+			public const string Update = Base + "/management/library-items/instances/{id}";
+			public const string UpdateRange = Base + "/management/library-items/{libraryItemId}/instances";
+			public const string SoftDelete = Base + "/management/library-items/instances/{id}/soft-delete";
+			public const string SoftDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/soft-delete-range";
+			public const string UndoDelete = Base + "/management/library-items/instances/{id}/undo-delete";
+			public const string UndoDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/undo-delete-range";
 			// [DELETE]
-			public const string Delete = Base + "/management/books/editions/copies/{id}";
-			public const string DeleteRange = Base + "/management/books/editions/{bookEditionId}/copies";
+			public const string Delete = Base + "/management/library-items/instances/{id}";
+			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
 			#endregion
 		}
 		
@@ -386,8 +368,8 @@
 			// public const string Delete = Base + "/management/categories/{id}";
 			// [GET]
 			public const string GetAll = Base + "/management/categories";
-			public const string GetById = Base + "/management/categories";
-			public const string Import = Base +"management/categories/import";
+			public const string GetById = Base + "/management/categories/{id}";
+			public const string Import = Base + "/management/categories/import";
 		}
 
 		/// <summary>

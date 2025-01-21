@@ -11,22 +11,22 @@ namespace FPTU_ELibrary.API.Controllers;
 
 public class OCRController : ControllerBase
 {
-    private readonly IOCRService _ocrService;
-    public OCRController(IOCRService ocrService)
-    {
-        _ocrService = ocrService;
-    }
-    [Authorize]
-    [HttpPost(APIRoute.AIServices.CheckBookEdition,Name = nameof(CheckBookEdition))]
-    public async Task<IActionResult> CheckBookEdition([FromForm] CheckBookEditionWithImageRequest dto)
-    {
-        return Ok(await _ocrService.CheckBookInformationAsync(dto.ToCheckedBookEditionDto()));
-    }
-
-    [Authorize]
-    [HttpPost(APIRoute.BookEdition.CheckImagesForTraining, Name = nameof(CheckImagesForTraining))]
-    public async Task<IActionResult> CheckImagesForTraining([FromForm] BaseTrainedModelRequest req,[FromRoute] int id)
-    {
-        return Ok(await _ocrService.CheckTrainingInputAsync(id, req.ImageList));
-    }
+    // private readonly IOCRService _ocrService;
+    // public OCRController(IOCRService ocrService)
+    // {
+    //     _ocrService = ocrService;
+    // }
+    // [Authorize]
+    // [HttpPost(APIRoute.AIServices.CheckBookEdition,Name = nameof(CheckBookEdition))]
+    // public async Task<IActionResult> CheckBookEdition([FromForm] CheckBookEditionWithImageRequest dto)
+    // {
+    //     return Ok(await _ocrService.CheckBookInformationAsync(dto.ToCheckedBookEditionDto()));
+    // }
+    //
+    // [Authorize]
+    // [HttpPost(APIRoute.BookEdition.CheckImagesForTraining, Name = nameof(CheckImagesForTraining))]
+    // public async Task<IActionResult> CheckImagesForTraining([FromForm] BaseTrainedModelRequest req,[FromRoute] int id)
+    // {
+    //     return Ok(await _ocrService.CheckTrainingInputAsync(id, req.ImageList));
+    // }
 }

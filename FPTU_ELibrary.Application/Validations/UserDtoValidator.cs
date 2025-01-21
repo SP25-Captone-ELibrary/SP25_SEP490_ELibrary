@@ -15,12 +15,6 @@ namespace FPTU_ELibrary.Application.Validations
                 (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(langContext);
             var isEng = langEnum == SystemLanguage.English;
 
-            // EmployeeCode
-            RuleFor(u => u.UserCode)
-                .Matches(@"^[A-Z]{2}\d{0,8}$")
-                .WithMessage(isEng 
-                    ? "User code must start with two uppercase letters, contain only digits after that, and be less than 10 characters" 
-                    : "Mã thành viên phải bắt đầu bằng hai chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
             // Email
             RuleFor(u => u.Email)
                 .EmailAddress()

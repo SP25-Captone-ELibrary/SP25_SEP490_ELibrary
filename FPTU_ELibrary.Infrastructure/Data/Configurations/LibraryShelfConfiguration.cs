@@ -27,6 +27,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.Section).WithMany(p => p.LibraryShelves)
                 .HasForeignKey(d => d.SectionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibraryShelf_SectionId");
         }
     }

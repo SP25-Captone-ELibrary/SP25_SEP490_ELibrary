@@ -8,11 +8,8 @@ public class BorrowRecord
     public int BorrowRecordId { get; set; }
 
     // Foreign keys
-    public int? BookEditionCopyId { get; set; }
-    public int? LearningMaterialId { get; set; }
+    public int? LibraryItemInstanceId { get; set; }
     public Guid BorrowerId { get; set; }
-    //public int BorrowRequestId { get; set; }
-
 
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
@@ -43,10 +40,9 @@ public class BorrowRecord
 
 
     // Mapping entities
-	public BookEditionCopy? BookEditionCopy { get; set; }
+	public LibraryItemInstance? LibraryItemInstance { get; set; }
     public Employee ProcessedByNavigation { get; set; } = null!;
     public User Borrower { get; set; } = null!;
-    public LearningMaterial? LearningMaterial { get; set; }
     public ICollection<Fine> Fines { get; set; } = new List<Fine>();
     
     //public BorrowRequest BorrowRequest { get; set; } = null!;

@@ -168,37 +168,42 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             {
                 specParams.Sort = specParams.Sort.Trim('-');
             }
-
+            
+            // Uppercase sort value
             specParams.Sort = specParams.Sort.ToUpper();
 
-            // Define sorting pattern
-            var sortMappings = new Dictionary<string, Expression<Func<Employee, object>>>()
-            {
-                { "EMPLOYEECODE", x => x.EmployeeCode ?? string.Empty },
-                { "EMAIL", x => x.Email },
-                { "FIRSTNAME", x => x.FirstName },
-                { "LASTNAME", x => x.LastName },
-                { "DOB", x => x.Dob ?? null! },
-                { "PHONE", x => x.Phone ?? string.Empty },
-                { "GENDER", x => x.Gender ?? string.Empty },
-                { "ADDRESS", x => x.Address ?? string.Empty },
-                { "CREATEDATE", x => x.CreateDate },
-                { "HIREDATE", x => x.HireDate ?? null! },
-                { "TERMINATIONDATE", x => x.TerminationDate ?? null! },
-                { "ACTIVE", x => x.IsActive },
-                { "ROLE", x => x.Role.EnglishName },
-            };
-
-            // Get sorting pattern
-            if (sortMappings.TryGetValue(specParams.Sort.ToUpper(),
-                    out var sortExpression))
-            {
-                if (isDescending) AddOrderByDescending(sortExpression);
-                else AddOrderBy(sortExpression);
-            }
+            // Apply sorting
+            ApplySorting(specParams.Sort, isDescending);
+        }
+        else
+        {
+            // Default order by create date
+            AddOrderByDescending(u => u.CreateDate);
         }
 
         // Apply paging 
         // ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+    }
+    
+    private void ApplySorting(string propertyName, bool isDescending)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return;
+
+        // Initialize expression parameter with type of LibraryItem (x)
+        var parameter = Expression.Parameter(typeof(LibraryItem), "x");
+        // Assign property base on property name (x.PropertyName)
+        var property = Expression.Property(parameter, propertyName);
+        // Building a complete sort lambda expression (x => x.PropertyName)
+        var sortExpression =
+            Expression.Lambda<Func<Employee, object>>(Expression.Convert(property, typeof(object)), parameter);
+
+        if (isDescending)
+        {
+            AddOrderByDescending(sortExpression);
+        }
+        else
+        {
+            AddOrderBy(sortExpression);
+        }
     }
 }

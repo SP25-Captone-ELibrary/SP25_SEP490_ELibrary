@@ -8,24 +8,34 @@ public class User : BaseUser
     // Key
     public Guid UserId { get; set; }
     
-    // User detail and credentials information
-    public string? UserCode { get; set; }
-
     // Role in the system
     public int RoleId { get; set; }
-
+    
+    // Library card information
+    public Guid? LibraryCardId { get; set; }
+    
     // Mapping entities
     public SystemRole Role { get; set; } = null!;
+    public LibraryCard? LibraryCard { get; set; } 
     public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
     public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
     public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
     public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 
     [JsonIgnore]
+    public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+    
+    [JsonIgnore]
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    
+    [JsonIgnore]
+    public ICollection<DigitalBorrow> DigitalBorrows { get; set; } = new List<DigitalBorrow>();
+    
+    [JsonIgnore]
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     [JsonIgnore]
-    public ICollection<BookReview> BookReviews { get; set; } = new List<BookReview>();
+    public ICollection<LibraryItemReview> LibraryItemReviews { get; set; } = new List<LibraryItemReview>();
 
     [JsonIgnore]
     public ICollection<UserFavorite> UserFavorites { get; set; } = new List<UserFavorite>();

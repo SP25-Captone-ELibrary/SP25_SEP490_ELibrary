@@ -48,7 +48,7 @@ public class FinePolicyController : ControllerBase
         return Ok(await _finePolicyService.CreateAsync(req.ToFinePolicyDto()));
     }
 
-    [HttpPatch(APIRoute.FinePolicy.Update, Name = nameof(UpdateFinePolicy))]
+    [HttpPut(APIRoute.FinePolicy.Update, Name = nameof(UpdateFinePolicy))]
     [Authorize]
     public async Task<IActionResult> UpdateFinePolicy([FromRoute] int id,[FromBody] UpdateFinePolicyRequest finePolicyDto)
     {
@@ -66,7 +66,7 @@ public class FinePolicyController : ControllerBase
     [Authorize]
     public async Task<IActionResult> HardDeleteRangeFinePolicy([FromBody] RangeRequest<int> ids)
     {
-        return Ok(await _finePolicyService.HardDeleteRangeAsync(ids.Ids));
+        return Ok(await _finePolicyService.DeleteRangeAsync(ids.Ids));
     }
     
     [HttpPost(APIRoute.FinePolicy.Import, Name = nameof(ImportFinePolicyAsync))]

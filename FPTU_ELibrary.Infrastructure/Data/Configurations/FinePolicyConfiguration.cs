@@ -15,6 +15,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.FinePolicyId).HasColumnName("fine_policy_id");
             builder.Property(e => e.ConditionType)
                 .HasMaxLength(100)
+                .HasConversion<string>()
                 .HasColumnName("condition_type");
             builder.Property(e => e.Description)
                 .HasMaxLength(255)
@@ -25,6 +26,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.FixedFineAmount)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("fixed_fine_amount");
+
+            #region Update at 16/01/2025 by Le Xuan Phuoc
+            builder.Property(e => e.FinePolicyTitle)
+                .HasColumnType("nvarchar(255)")
+                .HasColumnName("fine_policy_title");
+            #endregion
         }
     }
 }

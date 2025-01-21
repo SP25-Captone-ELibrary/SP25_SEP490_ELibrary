@@ -1,5 +1,5 @@
 using FluentValidation;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -12,32 +12,48 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
         var langEnum =
             (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(langContext);
         var isEng = langEnum == SystemLanguage.English;
-        // fix rule for EnglishName and VietnameseName with message in English and Vietnamese
-        RuleFor(bc => bc.EnglishName)
+        
+        // Prefix 
+        RuleFor(c => c.Prefix)
             .NotEmpty()
             .WithMessage(isEng
-                ? "EnglishName is required."
-                : "Yêu cầu nhập tên tiếng Anh.")
+                ? "Please add prefix pattern for item classification number such as SGK, SD, TK"
+                : "Vui lòng nhập mẫu tiền tố cho đăng ký cá biệt. Ví dụ: SGK, SD, TK")
+            .Matches(@"^[A-Za-z]{1,3}$")
+            .WithMessage(isEng
+                ? "The prefix must contain only letters (A-Z)"
+                : "Tiền tố chỉ được chứa các chữ cái (A-Z)")
+            .MaximumLength(3)
+            .WithMessage(isEng
+                ? "The prefix cannot be longer than 3 characters"
+                : "Tiền tố không được dài quá 3 ký tự");
+        // English name
+        RuleFor(c => c.EnglishName)
+            .NotEmpty()
+            .WithMessage(isEng
+                ? "EnglishName is required"
+                : "Yêu cầu nhập tên tiếng Anh")
             .NotNull()
             .WithMessage(isEng
-                ? "EnglishName cannot be null."
-                : "Tên tiếng Anh không được phép rỗng.")
+                ? "EnglishName cannot be null"
+                : "Tên tiếng Anh không được phép rỗng")
             .Matches(@"^[A-Z][a-zA-Z]*$")
             .WithMessage(isEng
-                ? "English name must not have space"
-                : "Tên tiếng Anh không được có khoảng cách.");
-        RuleFor(bc => bc.VietnameseName)
+                ? "English name must not have space, uppercase first letter"
+                : "Tên tiếng Anh không được có khoảng cách, viết hoa chữ cái đầu");
+        // Vietnamese name
+        RuleFor(c => c.VietnameseName)
             .NotEmpty()
             .WithMessage(isEng
-                ? "VietnameseName is required."
-                : "Yêu cầu nhập tên tiếng Việt.")
+                ? "VietnameseName is required"
+                : "Yêu cầu nhập tên tiếng Việt")
             .NotNull()
             .WithMessage(isEng
-                ? "VietnameseName cannot be null."
-                : "Tên tiếng Việt không được phép rỗng.")
+                ? "VietnameseName cannot be null"
+                : "Tên tiếng Việt không được phép rỗng")
             .Matches(@"^[A-ZÀ-Ỵ][a-zà-ỵ]*(?: [A-Za-zÀ-Ỵà-ỵ]*)*$")
             .WithMessage(isEng
-                ? "Vietnamese Name should not have special character. "
-                : "Tên tiếng Việt không được chứa ký tự đặc biệt hoặc số,chữ đầu phải viết hoa.");
+                ? "Vietnamese Name should not have special character, uppercase first letter"
+                : "Tên tiếng Việt không được chứa ký tự đặc biệt hoặc số, chữ đầu phải viết hoa");
     }
 }

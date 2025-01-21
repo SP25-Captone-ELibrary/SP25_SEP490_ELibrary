@@ -1,0 +1,18 @@
+using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+
+namespace FPTU_ELibrary.Domain.Interfaces.Services;
+
+public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItemInstance, TDto, int>
+    where TDto : class
+{
+    Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId, List<TDto> libraryItemInstances);
+    Task<IServiceResult> UpdateRangeAsync(int libraryItemId, List<TDto> itemInstanceDtos);
+    Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId);
+    Task<IServiceResult> SoftDeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
+    Task<IServiceResult> UndoDeleteAsync(int libraryItemInstanceId);
+    Task<IServiceResult> UndoDeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
+    Task<IServiceResult> DeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
+    Task<IServiceResult> CountTotalItemInstanceAsync(int libraryItemId);
+    Task<IServiceResult> CountTotalItemInstanceAsync(List<int> libraryItemIds);
+}

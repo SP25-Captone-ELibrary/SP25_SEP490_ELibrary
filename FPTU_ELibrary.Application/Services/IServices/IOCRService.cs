@@ -6,6 +6,7 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 
 public interface IOCRService
 {
-    Task<IServiceResult> CheckBookInformationAsync(CheckedBookEditionDto dto);
-    Task<IServiceResult> CheckTrainingInputAsync(int bookEditionId, List<IFormFile>images);
+    // TODO: Fix conflicts
+    // Task<IServiceResult> CheckBookInformationAsync(CheckedBookEditionDto dto);
+    // Task<IServiceResult> CheckTrainingInputAsync(int bookEditionId, List<IFormFile>images);
 }

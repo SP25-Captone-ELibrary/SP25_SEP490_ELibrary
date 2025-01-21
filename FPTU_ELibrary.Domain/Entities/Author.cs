@@ -10,7 +10,7 @@ public class Author
     public int AuthorId { get; set; }
 
     // Author detail information
-    public string? AuthorCode { get; set; }
+    public string AuthorCode { get; set; } = null!;
     public string? AuthorImage { get; set; }
     public string FullName { get; set; } = null!;
     public string? Biography { get; set; } // Save as HTML text
@@ -27,5 +27,5 @@ public class Author
 
     // Mapping entity
     [JsonIgnore]
-    public ICollection<BookEditionAuthor> BookEditionAuthors { get; set; } = new List<BookEditionAuthor>();
+    public ICollection<LibraryItemAuthor> LibraryItemAuthors { get; set; } = new List<LibraryItemAuthor>();
 }

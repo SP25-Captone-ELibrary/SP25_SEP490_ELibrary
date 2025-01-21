@@ -181,7 +181,28 @@ namespace FPTU_ELibrary.Application.Utils
             return Uri.TryCreate(url, UriKind.Absolute, out uriResult)
                    && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
         }
-
+        
+        // Validate DCC number
+        public static bool IsValidDeweyDecimal(string classificationNumber)
+        {
+            var regex = new Regex(@"^\d{1,3}(\.\d{1,3})?$");
+            return regex.IsMatch(classificationNumber);
+        }
+        
+        // Validate Cutter number
+        public static bool IsValidCutterNumber(string cutterNumber)
+        {
+            // Regex for Cutter Numbers
+            var regex = new Regex(@"^[A-Z]{1,2}\d{1,4}(\.\d+)?[A-Z]?$");
+            return regex.IsMatch(cutterNumber);
+        }
+        
+        // Validate prefix code 
+        public static bool IsValidBarcodeWithPrefix(string barcode, string prefix)
+        {
+            return Regex.IsMatch(barcode, $@"^{prefix}\d+$");
+        }
+        
         // Get Public Id from Url 
         public static string? GetPublicIdFromUrl(string url)
         {
@@ -307,6 +328,7 @@ namespace FPTU_ELibrary.Application.Utils
 
             return publicId;
         }
+        
         // Remove special character at the end
         public static string SplitSpecialCharAtTheEnd(string input)
         {

@@ -32,16 +32,16 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
             .HasConversion<string>()
             .HasColumnName("trail_type");
         builder.Property(e => e.ChangedColumns)
-            .HasColumnType("nvarchar(255)")
+            .HasColumnType("nvarchar(500)")
             .HasColumnName("changed_columns");
         builder.Property(e => e.OldValues)
-            .HasColumnType("nvarchar(1000)")
+            .HasColumnType("nvarchar(2500)")
             .HasColumnName("old_values")
             .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved
             // .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(e => e.NewValues)
-            .HasColumnType("nvarchar(1000)")
+            .HasColumnType("nvarchar(2500)")
             .HasColumnName("new_values")
             .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved

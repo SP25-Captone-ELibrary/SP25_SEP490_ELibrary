@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.Locations;
 
@@ -23,11 +22,7 @@ public class LibraryShelfDto
     public bool IsDeleted { get; set; }
 
     [JsonIgnore]
-    // public ICollection<BookEditionCopyDto> BookEditionCopies { get; set; } = new List<BookEditionCopyDto>();
-    public ICollection<BookEditionDto> BookEditions { get; set; } = new List<BookEditionDto>();
-
-    [JsonIgnore]
-    public ICollection<LearningMaterialDto> LearningMaterials { get; set; } = new List<LearningMaterialDto>();
+    public ICollection<LibraryItemDto> LibraryItems { get; set; } = new List<LibraryItemDto>();
 
     public LibrarySectionDto Section { get; set; } = null!;
 }

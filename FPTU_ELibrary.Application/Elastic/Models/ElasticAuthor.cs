@@ -12,9 +12,9 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Number(NumberType.Integer, Name = "author_id")]
         public int AuthorId { get; set; }
 
-        [Keyword(Name = "author_code")]
-        public string? AuthorCode { get; set; }
-
+        [Text(Name = "author_code")] 
+        public string AuthorCode { get; set; } = null!;
+        
         [Keyword(Name = "author_image")]
         public string? AuthorImage { get; set; }
 
@@ -22,7 +22,7 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         public string FullName { get; set; } = null!;
 
         [Text(Name = "biography")]
-        public string? Biography { get; set; } = null!;
+        public string? Biography { get; set; } 
 
         [Date(Name = "dob")]
         public DateTime? Dob { get; set; }
@@ -33,12 +33,6 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Keyword(Name = "nationality")]
         public string? Nationality { get; set; }
 
-        [Date(Name = "create_date")]
-        public DateTime CreateDate { get; set; }
-
-        [Date(Name = "update_date")]
-        public DateTime? UpdateDate { get; set; }
-        
         [Boolean(Name = "is_deleted")] 
         public bool IsDeleted { get; set; }
     }

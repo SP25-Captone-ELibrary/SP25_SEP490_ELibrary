@@ -127,6 +127,56 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public virtual async Task<IServiceResult> GetWithSpecAndSelectorAsync<TResult>(ISpecification<TEntity> specification,
+			Expression<Func<TEntity, TResult>> selector, bool tracked = true)
+		{
+			try
+			{
+				var tResult = await _unitOfWork.Repository<TEntity, TKey>().GetWithSpecAndSelectorAsync(
+					specification, selector, tracked);
+
+				if (tResult == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+				}
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), tResult);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get data by selector");
+			}
+		}
+
+		public virtual async Task<IServiceResult> GetAllWithSpecAndSelectorAsync<TResult>(
+			ISpecification<TEntity> specification,
+			Expression<Func<TEntity, TResult>> selector,
+			bool tracked = true)
+		{
+			try
+			{
+				var tResults = await _unitOfWork.Repository<TEntity, TKey>()
+					.GetAllWithSpecAndSelectorAsync(specification, selector, tracked);
+
+				if (!tResults.Any())
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), tResults);
+				}
+
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), tResults);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress get all data by selector");
+			}
+		}
+		
 		public virtual async Task<IServiceResult> AnyAsync(Expression<Func<TEntity, bool>> predicate)
 		{
 			try

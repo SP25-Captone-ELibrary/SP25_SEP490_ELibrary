@@ -5,8 +5,7 @@ using CsvHelper.TypeConversion;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.BookEditions;
-using FPTU_ELibrary.Application.Dtos.Books;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
@@ -45,16 +44,21 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 
         try
         {
-        	// Validate inputs using the generic validator
-        	var validationResult = await ValidatorExtensions.ValidateAsync(dto);
-        	// Check for valid validations
-        	if (validationResult != null && !validationResult.IsValid)
-        	{
-        		// Convert ValidationResult to ValidationProblemsDetails.Errors
-        		var errors = validationResult.ToProblemDetails().Errors;
-        		throw new UnprocessableEntityException("Invalid Validations", errors);
-        	}
-        	
+	        // Determine current system language
+	        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+		        LanguageContext.CurrentLanguage);
+	        var isEng = lang == SystemLanguage.English;
+
+	        // Validate inputs using the generic validator
+	        var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+	        // Check for valid validations
+	        if (validationResult != null && !validationResult.IsValid)
+	        {
+		        // Convert ValidationResult to ValidationProblemsDetails.Errors
+		        var errors = validationResult.ToProblemDetails().Errors;
+		        throw new UnprocessableEntityException("Invalid Validations", errors);
+	        }
+
 	        // Custom errors
 	        var customErrors = new Dictionary<string, string[]>();
 	        // Check exist author code 
@@ -64,25 +68,59 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		        customErrors.Add(
 			        StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
 			        [await _msgService.GetMessageAsync(ResultCodeConst.Author_Warning0001)]);
-		        
-		        throw new UnprocessableEntityException("Invalid Data", customErrors);
 	        }
-	        
-        	// Process add new entity
-        	await _unitOfWork.Repository<Author, int>().AddAsync(_mapper.Map<Author>(dto));
-        	// Save to DB
-        	if (await _unitOfWork.SaveChangesAsync() > 0)
-        	{
-        		serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
-        		serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-        		serviceResult.Data = true;
-        	}
-        	else
-        	{
-        		serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
-        		serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
-        		serviceResult.Data = false;
-        	}
+	        // Check exist author name
+	        var authorEntity = await _unitOfWork.Repository<Author, int>().GetWithSpecAsync(
+		        new BaseSpecification<Author>(a =>
+			        Equals(a.FullName.ToLower(), dto.FullName.ToLower()) && // Same fullname
+			        (
+				        (a.Nationality == null && dto.Nationality == null) ||
+				        (a.Nationality != null && dto.Nationality != null &&
+				         string.Equals(a.Nationality.ToLower(), dto.Nationality.ToLower()))
+			        ) && // Same nationality
+			        (
+				        (!a.Dob.HasValue && !dto.Dob.HasValue) ||
+				        (a.Dob.HasValue && dto.Dob.HasValue && a.Dob.Value.Date == dto.Dob.Value.Date)
+			        ) && // Same Dob
+			        (
+				        (!a.DateOfDeath.HasValue && !dto.DateOfDeath.HasValue) ||
+				        (a.DateOfDeath.HasValue && dto.DateOfDeath.HasValue && a.DateOfDeath.Value.Date == dto.DateOfDeath.Value.Date)
+			        ))); // Same Date of death 
+	        if (authorEntity != null) // Duplicate name found
+	        {
+		        // Return error invoked
+                return new ServiceResult(ResultCodeConst.SYS_Warning0001,
+                	isEng
+                		? "Added author name, dob, nationality already match with other author"
+                		: "Tên tác giả, ngày sinh, quốc tịch đã tồn tại trong thông tin của tác giả khác");
+	        }
+
+	        // Check invoke any errors
+	        if (customErrors.Any())
+	        {
+		        // Throw invalid data exception
+		        throw new UnprocessableEntityException("Invalid data", customErrors);
+	        }
+
+	        // Process add new entity
+	        await _unitOfWork.Repository<Author, int>().AddAsync(_mapper.Map<Author>(dto));
+	        // Save to DB
+	        if (await _unitOfWork.SaveChangesAsync() > 0)
+	        {
+		        serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
+		        serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
+		        serviceResult.Data = true;
+	        }
+	        else
+	        {
+		        serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
+		        serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+		        serviceResult.Data = false;
+	        }
+        }
+        catch (UnprocessableEntityException)
+        {
+	        throw;
         }
         catch(Exception ex)
         {
@@ -188,6 +226,11 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 
 		try
 		{
+			// Determine current system language
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+			
 			// Validate inputs using the generic validator
 			var validationResult = await ValidatorExtensions.ValidateAsync(dto);
 			// Check for valid validations
@@ -198,6 +241,8 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				throw new UnprocessableEntityException("Invalid validations", errors);
 			}
 
+			// Custom errors
+			var customErrors = new Dictionary<string, string[]>();
 			// Retrieve the entity
 			var existingEntity = await _unitOfWork.Repository<Author, int>().GetByIdAsync(id);
 			if (existingEntity == null)
@@ -206,7 +251,62 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
 					StringUtils.Format(errMsg, typeof(Author).ToString().ToLower()));
 			}
-
+			else
+			{
+				// Check constraints with other author information
+				var otherAuthors = await _unitOfWork.Repository<Author, int>().GetAllWithSpecAsync(
+					new BaseSpecification<Author>(a =>
+						Equals(a.FullName.ToLower(), dto.FullName.ToLower()) && // Same fullname
+						(
+							(a.Nationality == null && dto.Nationality == null) ||
+							(a.Nationality != null && dto.Nationality != null &&
+							 string.Equals(a.Nationality.ToLower(), dto.Nationality.ToLower()))
+						) && // Same nationality
+						(
+							(!a.Dob.HasValue && !dto.Dob.HasValue) ||
+							(a.Dob.HasValue && dto.Dob.HasValue && a.Dob.Value.Date == dto.Dob.Value.Date)
+						) && // Same dob
+						(
+							(!a.DateOfDeath.HasValue && !dto.DateOfDeath.HasValue) ||
+							(a.DateOfDeath.HasValue && dto.DateOfDeath.HasValue && a.DateOfDeath.Value.Date == dto.DateOfDeath.Value.Date)
+						) && // Same date of death
+						a.AuthorId != existingEntity.AuthorId // With other authors
+					));
+				
+				if (otherAuthors.Any()) // Same information with other authors
+				{
+					// Return error invoked
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						isEng
+							? "Updated author name, dob, nationality already match with other author"
+							: "Tên tác giả, ngày sinh, quốc tịch đã tồn tại trong thông tin của tác giả khác");
+				}
+			}
+			
+            // Check author code empty
+            if (string.IsNullOrEmpty(dto.AuthorCode))
+            {
+	            customErrors.Add(
+                    StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
+                    [isEng ? "Author code is required" : "Vui lòng nhập mã tác giả"]);
+            }
+            // Check exist author code 
+            var isExistAuthorCode = await _unitOfWork.Repository<Author, int>().AnyAsync(a => 
+	            a.AuthorCode == dto.AuthorCode && 
+	            a.AuthorId != existingEntity.AuthorId
+	        );
+            if (isExistAuthorCode) 
+            {
+                customErrors.Add(
+                    StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
+                    [await _msgService.GetMessageAsync(ResultCodeConst.Author_Warning0001)]);
+            }
+			// Invoke any errors
+            if (customErrors.Any()) 
+            {
+	            throw new UnprocessableEntityException("Invalid data", customErrors);
+            }
+            
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
@@ -334,28 +434,33 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			
 			// Process add author book related details
 			// Build spec 
-			var spec = new BaseSpecification<BookEditionAuthor>(ba => ba.AuthorId == id);
+			var spec = new BaseSpecification<Author>(ba => ba.AuthorId == id);
 			// Enable split query
 			spec.EnableSplitQuery();
-		    // Include book edition and book reviews
+		    // Include library item and reviews
 		    spec.ApplyInclude(q => q
-			    .Include(b => b.BookEdition)
-					.ThenInclude(be => be.BookReviews));
-		    // Order by RatingValue of BookReviews
-		    spec.AddOrderBy(q => q
-			    .BookEdition.BookReviews.Average(br => br.RatingValue));
+			    .Include(b => b.LibraryItemAuthors)
+					.ThenInclude(be => be.LibraryItem)
+						.ThenInclude(li => li.LibraryItemReviews));
+		    // Order by RatingValue of item review rate
+		    spec.AddOrderBy(q => q.LibraryItemAuthors
+			    .SelectMany(x => x.LibraryItem.LibraryItemReviews)
+			    .Average(br => br.RatingValue));
 		    
-			// Get all author with specification
-			var getAllAuthorEdition = await _unitOfWork.Repository<BookEditionAuthor, int>()
-				.GetAllWithSpecAsync(spec);
-			// Convert to list
-			var authorBookEditions = getAllAuthorEdition.ToList();
+			// Get author with specification
+			var authorEntity = await _unitOfWork.Repository<Author, int>()
+				.GetWithSpecAsync(spec);
+			if (authorEntity == null)
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
 			
-			// Count author total published books
-			var totalAuthorPublishedBook = authorBookEditions.Count;
-			// Count avg book reviews
-			var totalBookReviewAvg = authorBookEditions
-				.SelectMany(x => x.BookEdition.BookReviews)
+			// Count author total published items
+			var totalAuthorPublishedBook = authorEntity.LibraryItemAuthors.Select(lia => lia.LibraryItem).Count();
+			// Count avg item reviews
+			var totalBookReviewAvg = authorEntity.LibraryItemAuthors
+				.SelectMany(x => x.LibraryItem.LibraryItemReviews)
 				.Select(br => br.RatingValue)
 				.DefaultIfEmpty(0)
 				.Average();
@@ -367,10 +472,10 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 					Author = _mapper.Map<AuthorDto>(author),
 					UserReviews = totalBookReviewAvg,
 					TotalPublishedBook = totalAuthorPublishedBook,
-					TopReviewedBooks = authorBookEditions.Select(bAuthor => 
+					TopReviewedBooks = authorEntity.LibraryItemAuthors.Select(bAuthor => 
 						new AuthorTopReviewedBookDto
 						{
-							BookEdition = _mapper.Map<BookEditionDto>(bAuthor.BookEdition)
+							LibraryItem = _mapper.Map<LibraryItemDto>(bAuthor.LibraryItem)
 						}).Take(5).ToList()
 				});
 	    }
@@ -781,8 +886,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			    else // Add success -> Try to check duplicate in DB
 			    {
 				    var isExistAuthorCode = await _unitOfWork.Repository<Author, int>()
-					    .AnyAsync(a => a.AuthorCode != null &&
-							a.AuthorCode.ToLower() == record.AuthorCode.ToLower());
+					    .AnyAsync(a => a.AuthorCode.ToLower() == record.AuthorCode.ToLower());
 				    if (isExistAuthorCode) // Is duplicate in DB
 				    {
 					    // Add error
@@ -791,6 +895,12 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
                             : $"Mã tác giả {record.AuthorCode} đã tồn tại");
 				    }
 			    }
+		    }
+		    else
+		    {
+			    rowErrors.Add(isEng 
+				    ? "Author code is required" 
+				    : "Vui lòng nhập mã tác giả ");
 		    }
 		    
 		    // Check valid datetime
@@ -815,6 +925,29 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			    }			    
 		    }
 
+		    // Check exist author information
+		    var authorWithSameInfo = await _unitOfWork.Repository<Author, int>().GetWithSpecAsync(
+			    new BaseSpecification<Author>(a =>
+				    Equals(a.FullName.ToLower(), record.FullName.ToLower()) && // Same fullname
+				    (
+					    a.Nationality == null || (a.Nationality != null &&
+					                              string.Equals(a.Nationality.ToLower(), record.Nationality.ToLower()))
+				    ) && // Same nationality
+				    (
+					    !a.Dob.HasValue || 
+					    (a.Dob.HasValue && dob != DateTime.MinValue && a.Dob.Value.Date == dob.Date)
+				    ) && // Same Dob
+				    (
+					    !a.DateOfDeath.HasValue || 
+					    (a.DateOfDeath.HasValue && dateOfDeath != DateTime.MinValue && a.DateOfDeath.Value.Date == dateOfDeath.Date)
+				    ))); // Same Date of death 
+		    if (authorWithSameInfo != null)
+		    {
+			    rowErrors.Add(isEng
+				    ? "Added author name, dob, nationality already match with other author"
+				    : "Tên tác giả, ngày sinh, quốc tịch đã tồn tại trong thông tin của tác giả khác");
+		    }
+		    
 		    if (scanningFields != null)
 		    {
 			    // Initialize base spec
@@ -829,7 +962,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				    var newSpec = normalizedField switch
 				    {
 					    var authorCode when authorCode == nameof(Author.AuthorCode).ToUpperInvariant() =>
-						    new BaseSpecification<Author>(e => e.AuthorCode != null && e.AuthorCode.Equals(record.AuthorCode)),
+						    new BaseSpecification<Author>(e => e.AuthorCode.Equals(record.AuthorCode)),
 					    _ => null
 				    };
 				    

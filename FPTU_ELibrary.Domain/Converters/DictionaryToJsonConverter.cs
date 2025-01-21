@@ -15,7 +15,8 @@ public class DictionaryToJsonConverter : ValueConverter<Dictionary<string, objec
                 new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = true
+                    WriteIndented = true, 
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // Allow special characters
                 }),
             // Convert from json to dictionary
             json => string.IsNullOrWhiteSpace(json)
@@ -23,7 +24,8 @@ public class DictionaryToJsonConverter : ValueConverter<Dictionary<string, objec
                 : JsonSerializer.Deserialize<Dictionary<string, object?>>(json, 
                     new JsonSerializerOptions
                     {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                     }) ?? new Dictionary<string, object?>())
     {
     }

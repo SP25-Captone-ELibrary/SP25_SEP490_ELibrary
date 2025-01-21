@@ -18,8 +18,9 @@ public class FinePolicySpecification : BaseSpecification<FinePolicy>
     (
         string.IsNullOrEmpty(finePolicyParams.Search) ||
         (
-            (!string.IsNullOrEmpty(n.ConditionType) && n.ConditionType.Contains(finePolicyParams.Search)) ||
-            (!string.IsNullOrEmpty(n.Description) && n.Description.Contains(finePolicyParams.Search))
+            (!string.IsNullOrEmpty(n.ConditionType.ToString()) && n.ConditionType.ToString().Contains(finePolicyParams.Search)) ||
+            (!string.IsNullOrEmpty(n.Description) && n.Description.Contains(finePolicyParams.Search)) ||
+            (!string.IsNullOrEmpty(n.FinePolicyTitle) && n.FinePolicyTitle.Contains(finePolicyParams.Search))
         )
     ))
     {
@@ -38,11 +39,11 @@ public class FinePolicySpecification : BaseSpecification<FinePolicy>
         }
         else if (!string.IsNullOrEmpty(finePolicyParams.ConditionType))
         {
-            AddFilter(x => x.ConditionType.Contains(finePolicyParams.ConditionType));
+            AddFilter(x => x.ConditionType.ToString().Contains(finePolicyParams.ConditionType));
         }
         else if (!string.IsNullOrEmpty(finePolicyParams.Description))
         {
-            AddFilter(x => x.Description.Contains(finePolicyParams.Description));
+            AddFilter(x => x.Description != null && x.Description.Contains(finePolicyParams.Description));
         }
 
         if (!string.IsNullOrEmpty(finePolicyParams.Sort))

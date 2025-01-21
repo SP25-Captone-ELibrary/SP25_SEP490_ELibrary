@@ -11,11 +11,11 @@ public class CategorySpecification : BaseSpecification<Category>
 
     public CategorySpecification(CategorySpecParams categorySpecParams,
         int pageSize, int pageIndex) : base(bc =>
-        (string.IsNullOrEmpty(categorySpecParams.Search) ||
-         ((!string.IsNullOrEmpty(bc.EnglishName) && bc.EnglishName.Contains(categorySpecParams.Search)) ||
-          (!string.IsNullOrEmpty(bc.VietnameseName) && bc.VietnameseName.Contains(categorySpecParams.Search))
-         )
-        ))
+        string.IsNullOrEmpty(categorySpecParams.Search) ||
+            (!string.IsNullOrEmpty(bc.EnglishName) && bc.EnglishName.Contains(categorySpecParams.Search)) ||
+            (!string.IsNullOrEmpty(bc.VietnameseName) && bc.VietnameseName.Contains(categorySpecParams.Search)) ||
+            (!string.IsNullOrEmpty(bc.Prefix) && bc.Prefix.Contains(categorySpecParams.Search))
+        )
     {
         PageIndex = pageIndex;
         PageSize = pageSize;
