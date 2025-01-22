@@ -67,7 +67,7 @@
 			public const string GetDetail = Base + "/management/library-items/{id}";
 			public const string CountTotalInstance = Base + "/management/books/editions/{id}/total-copy";
 			public const string CountRangeTotalInstance = Base + "/management/books/editions/total-copy";
-			public const string Export = Base + "/management/books/editions/export";
+			public const string Export = Base + "/management/library-items/export";
 			// [POST]
 			public const string Create = Base + "/management/library-items";
 			public const string AddAuthor = Base + "/management/library-items/add-author";
@@ -76,7 +76,7 @@
 			public const string Training = Base + "/management/books/editions/{id}/ai/train";
 			public const string CheckImagesForTraining = Base + "/management/books/editions/{id}/ai/check-images-for-training";
 			public const string DeleteRangeAuthor = Base + "/management/library-items/delete-range-author";
-			public const string Import = Base + "/management/books/editions/import";
+			public const string Import = Base + "/management/library-items/import";
 			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/library-items/{id}";
 			public const string UpdateStatus = Base + "/management/library-items/{id}/status";

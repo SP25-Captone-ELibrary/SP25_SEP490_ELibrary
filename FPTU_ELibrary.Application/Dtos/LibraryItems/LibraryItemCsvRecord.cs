@@ -1,76 +1,126 @@
+using CsvHelper.Configuration.Attributes;
+
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 public class LibraryItemCsvRecord
 {
-    // [Name("BookCode")] 
-    // public string BookCode { get; set; } = null!;
-    //
-    // [Name("CoverImage")]
-    // public string CoverImage { get; set; } = null!;
-    //
-    // [Name("EditionNumber")]
-    // public int EditionNumber { get; set; }
-    //
-    // [Name("Isbn")]
-    // public string Isbn { get; set; } = null!;
-    //
-    // [Name("EditionTitle")] 
-    // public string EditionTitle { get; set; } = null!;
-    //
-    // [Name("Summary")]
-    // public string Summary { get; set; } = null!;
-    //
-    // [Name("PublicationYear")]
-    // public int PublicationYear { get; set; }
-    //
-    // [Name("PageCount")]
-    // public int PageCount { get; set; }
-    //
-    // [Name("Language")] 
-    // public string Language { get; set; } = null!;
-    //
-    // [Name("Format")] 
-    // public string Format { get; set; } = null!;
-    //
-    // [Name("Publisher")] 
-    // public string Publisher { get; set; } = null!;
-    //
-    // [Name("EstimatedPrice")] 
-    // public decimal EstimatedPrice { get; set; }
-    //
-    // [Name("ShelfNumber")] 
-    // public string ShelfNumber { get; set; } = null!;
-    //
-    // [Name("EditionCopyBarcodes")] 
-    // public string? EditionCopyBarcodes { get; set; } = null!;
-    //
-    // [Name("AuthorCodes")] 
-    // public string AuthorCodes { get; set; } = null!;
-    //
-    // [Name("Categories")] 
-    // public string Categories { get; set; } = null!;
+    [Name("Bìa Sách")]
+    public string CoverImage { get; set; } = null!;
+
+    [Name("Tiêu Đề")] 
+    public string Title { get; set; } = null!;
+    
+    [Name("Tiêu Đề Phụ")] 
+    public string? SubTitle { get; set; }
+    
+    [Name("Thứ Tự Ấn Bản")] 
+    public int? EditionNumber { get; set; } 
+    
+    [Name("Ấn bản")] 
+    public string? Edition { get; set; }
+    
+    [Name("DDC")] 
+    public string ClassificationNumber { get; set; } = null!;
+    
+    [Name("Ký Hiệu Xếp Giá")] 
+    public string CutterNumber { get; set; } = null!;
+    
+    [Name("ISBN")] 
+    public string? Isbn { get; set; } 
+    
+    [Name("Tóm tắt")] 
+    public string? Summary { get; set; }
+    
+    [Name("Thể loại")] 
+    public string? Genres { get; set; } 
+    
+    [Name("Từ khóa")] 
+    public string? TopicalTerms { get; set; } 
+    
+    [Name("Thông Tin Trách Nhiệm")] 
+    public string? Responsibility { get; set; } 
+    
+    [Name("Tác Giả Bổ Sung")] 
+    public string? AdditionalAuthors { get; set; } 
+    
+    [Name("Năm Xuất Bản")] 
+    public int PublicationYear { get; set; }
+    
+    [Name("Trang")] 
+    public int? PageCount { get; set; }
+    
+    [Name("Ngôn Ngữ")] 
+    public string Language { get; set; } = null!;
+    
+    [Name("Ngôn Ngữ Gốc")] 
+    public string? OriginLanguage { get; set; } = null!;
+    
+    [Name("Nhà Xuất Bản")] 
+    public string Publisher { get; set; } = null!;
+    
+    [Name("Nơi Xuất Bản")] 
+    public string PublicationPlace { get; set; } = null!;
+    
+    [Name("Mô Tả Vật Lý")] 
+    public string? PhysicalDetails { get; set; } = null!;
+    
+    [Name("Khổ")] 
+    public string Dimensions { get; set; } = null!;
+    
+    [Name("Giá")] 
+    public decimal? EstimatedPrice { get; set; } 
+    
+    [Name("Phụ Chú Chung")] 
+    public string? GeneralNote { get; set; }  
+    
+    [Name("Phụ Chú Thư Mục")] 
+    public string? BibliographicalNote { get; set; } 
+    
+    [Name("Số Kệ")] 
+    public string? ShelfNumber { get; set; } 
+    
+    [Name("ĐCKB Bản Sao")] 
+    public string? ItemInstanceBarcodes { get; set; }
+    
+    [Name("Mã Tác Giả")] 
+    public string? AuthorCode { get; set; }
+
+    [Name("Phân Loại")] 
+    public string Category { get; set; } = null!;
 }
 
 public static class BookEditionCsvRecordExtensions
 {
-    // public static List<LibraryItemCsvRecord> ToBookEditionCsvRecords(this List<BookEditionDto> bookEditions)
-    //     => bookEditions.Select(be => new LibraryItemCsvRecord()
-    //     {
-    //         BookCode = be.Book.BookCode,
-    //         CoverImage = be.CoverImage ?? null!,
-    //         EditionNumber = be.EditionNumber,
-    //         EditionTitle = be.EditionTitle ?? null!,
-    //         Summary = be.EditionSummary ?? null!,
-    //         Publisher = be.Publisher ?? null!,
-    //         Language = be.Language,
-    //         PageCount = be.PageCount,
-    //         PublicationYear = be.PublicationYear,
-    //         Format = be.Format ?? null!,
-    //         Isbn = be.Isbn,
-    //         EstimatedPrice = be.EstimatedPrice,
-    //         ShelfNumber = be.Shelf?.ShelfNumber ?? null!,
-    //         Categories = String.Join(", ", be.Book.BookCategories.Select(bc => bc.Category).Select(c => c.EnglishName).ToList()),
-    //         AuthorCodes = String.Join("\n", be.BookEditionAuthors.Select(bea => bea.Author).Select(a => a.AuthorCode).ToList()),
-    //         EditionCopyBarcodes = String.Join("\n", be.BookEditionCopies.Select(bec => bec.Barcode).ToList())
-    //     }).ToList();
+    public static List<LibraryItemCsvRecord> ToLibraryItemCsvRecords(this List<LibraryItemDto> items)
+        => items.Select(be => new LibraryItemCsvRecord()
+        {
+            CoverImage = be.CoverImage ?? null!,
+            EditionNumber = be.EditionNumber,
+            Edition = be.Edition,
+            Title = be.Title,
+            SubTitle = be.SubTitle,
+            ClassificationNumber = be.ClassificationNumber,
+            CutterNumber = be.CutterNumber,
+            Publisher = be.Publisher ?? null!,
+            Summary = be.Summary,
+            Genres = be.Genres,
+            TopicalTerms = be.TopicalTerms,
+            Responsibility = be.Responsibility,
+            AdditionalAuthors = be.AdditionalAuthors,
+            PublicationYear = be.PublicationYear,
+            PageCount = be.PageCount,
+            Language = be.Language,
+            OriginLanguage = be.OriginLanguage ?? null!,
+            PublicationPlace = be.PublicationPlace ?? null!,
+            PhysicalDetails = be.PhysicalDetails,
+            Dimensions = be.Dimensions ?? null!,
+            GeneralNote = be.GeneralNote,
+            BibliographicalNote = be.BibliographicalNote,
+            EstimatedPrice = be.EstimatedPrice,
+            Isbn = be.Isbn,
+            ShelfNumber = be.Shelf?.ShelfNumber ?? null!,
+            Category = be.Category.VietnameseName,
+            AuthorCode = String.Join(", ", be.LibraryItemAuthors.Select(bea => bea.Author).Select(a => a.AuthorCode).ToList()),
+            ItemInstanceBarcodes = String.Join(", ", be.LibraryItemInstances.Select(bec => bec.Barcode).ToList())
+        }).ToList();
 }

@@ -29,7 +29,7 @@ namespace FPTU_ELibrary.Application.Elastic.Mappers
 				Isbn = itemDto.Isbn,
 				Ean = itemDto.Ean,
 				EstimatedPrice = itemDto.EstimatedPrice,
-				PageCount = itemDto.PageCount,
+				PageCount = itemDto.PageCount ?? 0,
 				PhysicalDetails = itemDto.PhysicalDetails,
 				Dimensions = itemDto.Dimensions,
 				Genres = itemDto.Genres,

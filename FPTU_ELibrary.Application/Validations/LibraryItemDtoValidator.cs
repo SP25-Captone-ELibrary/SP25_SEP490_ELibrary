@@ -78,10 +78,10 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 : "Ngôn ngữ không hợp lệ");
         // Edition summary
         RuleFor(e => e.Summary)
-            .MaximumLength(700)
+            .MaximumLength(500)
             .WithMessage(isEng
-                ? "Item summary must not exceed 700 characters"
-                : "Mô tả của tài liệu không vượt quá 700 ký tự");
+                ? "Item summary must not exceed 500 characters"
+                : "Mô tả của tài liệu không vượt quá 500 ký tự");
         // Validate cover image Url
         RuleFor(e => e.CoverImage)
             .Must(str => !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
@@ -96,13 +96,21 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 : "Năm xuất bản không hợp lệ");
         // Publisher
         RuleFor(e => e.Publisher)
+            .MaximumLength(255)
+            .WithMessage(isEng
+                ? "Publisher must not exceed 255 characters"
+                : "Tên nhà xuất bản không vượt quá 255 ký tự")
             .Must(str => string.IsNullOrEmpty(str)
-                         || (!StringUtils.IsNumeric(str) && !StringUtils.IsDateTime(str)))
+                         || !StringUtils.IsDateTime(str))
             .WithMessage(isEng
                 ? "Publisher is not valid"
                 : "Tên nhà xuất bản không hợp lệ");
         // Publication place
         RuleFor(e => e.PublicationPlace)
+            .MaximumLength(255)
+            .WithMessage(isEng
+                ? "Publication place must not exceed 255 characters"
+                : "Nơi xuất bản không vượt quá 255 ký tự")
             .Must(str => string.IsNullOrEmpty(str)
                          || (!StringUtils.IsNumeric(str) && !StringUtils.IsDateTime(str)))
             .WithMessage(isEng
@@ -110,22 +118,40 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 : "Nơi xuất bản không hợp lệ");
         // DDC number
         RuleFor(e => e.ClassificationNumber)
+            .MaximumLength(50)
+            .WithMessage(isEng
+                ? "DDC number must not exceed 50 characters"
+                : "Mã DDC tài liệu không vượt quá 50 ký tự")
             .Must(str => StringUtils.IsValidDeweyDecimal(str) && !StringUtils.IsDateTime(str))
             .WithMessage(isEng
                 ? "DDC number is not valid"
                 : "Mã DDC tài liệu không hợp lệ");
         // Cutter number
         RuleFor(e => e.CutterNumber)
+            .MaximumLength(50)
+            .WithMessage(isEng
+                ? "Cutter number must not exceed 50 characters"
+                : "Ký hiệu xếp giá không vượt quá 50 ký tự")
             .Must(str => StringUtils.IsValidCutterNumber(str) && !StringUtils.IsDateTime(str))
             .WithMessage(isEng
                 ? "Cutter number is not valid"
                 : "Ký hiệu xếp giá không hợp lệ");
         // Isbn
         RuleFor(e => e.Isbn)
+            .MaximumLength(13)
+            .WithMessage(isEng
+                ? "ISBN must not exceed 13 characters"
+                : "Mã ISBN không vượt quá 13 ký tự")
             .Must(str => ISBN.IsValid(str, out _))
             .WithMessage(isEng
                 ? "ISBN is not valid"
                 : "Mã ISBN không hợp lệ");
+        // Ean
+        RuleFor(e => e.Ean)
+            .MaximumLength(50)
+            .WithMessage(isEng
+                ? "Other standard identifier must not exceed 50 characters"
+                : "Chỉ số khác (EAC, số XB, v.v.) không vượt quá 50 ký tự");
         // Estimated Price
         RuleFor(e => e.EstimatedPrice)
             .InclusiveBetween(1000, 9999999999)
@@ -186,7 +212,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 ? "General note must not exceed 100 characters"
                 : "Phụ chú chung không vượt quá 100 ký tự");
         // Bibliographical note
-        RuleFor(e => e.GeneralNote)
+        RuleFor(e => e.BibliographicalNote)
             .MaximumLength(100)
             .WithMessage(isEng
                 ? "Bibliographical note must not exceed 100 characters"
