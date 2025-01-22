@@ -180,30 +180,30 @@ public class LibraryItemController : ControllerBase
         return Ok(await _libraryItemService.DeleteRangeAsync(req.Ids));
     }
 
-    // [Authorize]
-    // [HttpPost(APIRoute.BookEdition.Import, Name = nameof(ImportBookEditionAsync))]
-    // public async Task<IActionResult> ImportBookEditionAsync([FromForm] ImportBookEditionRequest req)
-    // {
-    //    return Ok(await _libraryItemService.ImportAsync(
-    //        file: req.File,
-    //        coverImageFiles: req.CoverImageFiles,
-    //        scanningFields: req.ScanningFields));
-    // }
-    //
-    // [Authorize]
-    // [HttpGet(APIRoute.BookEdition.Export, Name = nameof(ExportBookEditionAsync))]
-    // public async Task<IActionResult> ExportBookEditionAsync([FromQuery] LibraryItemSpecParams specParams)
-    // {
-    //     var exportResult = await _libraryItemService.ExportAsync(new LibraryItemSpecification(
-    //         specParams: specParams,
-    //         pageIndex: specParams.PageIndex ?? 1,
-    //         pageSize: specParams.PageSize ?? _appSettings.PageSize));
-    //
-    //     return exportResult.Data is byte[] fileStream
-    //         ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Books.xlsx")
-    //         : Ok(exportResult);
-    // }
-
+    [Authorize]
+    [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
+    public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportBookEditionRequest req)
+    {
+       return Ok(await _libraryItemService.ImportAsync(
+           file: req.File,
+           coverImageFiles: req.CoverImageFiles,
+           scanningFields: req.ScanningFields,
+           duplicateHandle: req.DuplicateHandle));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.Export, Name = nameof(ExportLibraryItemAsync))]
+    public async Task<IActionResult> ExportLibraryItemAsync([FromQuery] LibraryItemSpecParams specParams)
+    {
+        var exportResult = await _libraryItemService.ExportAsync(new LibraryItemSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize));
+    
+        return exportResult.Data is byte[] fileStream
+            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "library-items.xlsx")
+            : Ok(exportResult);
+    }
     #endregion
 
     [HttpGet(APIRoute.LibraryItem.Search, Name = nameof(SearchLibraryItemWithElasticAsync))]
