@@ -1,7 +1,9 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net;
+using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Elastic.Responses;
+using HtmlAgilityPack;
 using Nest;
 
 namespace FPTU_ELibrary.Application.Elastic.Mappers
@@ -68,7 +70,7 @@ namespace FPTU_ELibrary.Application.Elastic.Mappers
 					AuthorCode = ba.Author.AuthorCode,
 					AuthorImage = ba.Author.AuthorImage,
 					FullName = ba.Author.FullName,
-					Biography = Regex.Replace(ba.Author.Biography ?? string.Empty, "<.*?>", string.Empty),
+					Biography = ProcessBiography(ba.Author.Biography),
 					Dob = ba.Author.Dob,
 					DateOfDeath = ba.Author.DateOfDeath,
 					Nationality = ba.Author.Nationality,
@@ -84,5 +86,20 @@ namespace FPTU_ELibrary.Application.Elastic.Mappers
 			this ISearchResponse<ElasticLibraryItem> searchResp,
 			int pageIndex, int pageSize, int totalPage, int totalActualItems)
 			=> new(searchResp.Documents.ToList(), pageIndex, pageSize, totalPage, totalActualItems);
+
+		private static string ProcessBiography(string biographyHtml)
+		{
+			if (string.IsNullOrEmpty(biographyHtml))
+				return string.Empty;
+
+			// Decode HTML entities first
+			string decodedHtml = WebUtility.HtmlDecode(biographyHtml);
+			
+			// parse and extract plain text
+			var htmlDoc = new HtmlDocument();
+			htmlDoc.LoadHtml(decodedHtml);
+
+			return htmlDoc.DocumentNode.InnerText.Trim(); 
+		}
 	}
 }

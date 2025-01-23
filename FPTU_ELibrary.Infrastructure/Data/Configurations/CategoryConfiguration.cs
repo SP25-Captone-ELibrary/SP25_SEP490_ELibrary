@@ -28,6 +28,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("nvarchar(20)")
                 .HasColumnName("prefix");
             #endregion
-		}
+
+            #region Updated at 23/01/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsAllowAITraining).HasColumnName("is_allow_ai_training");
+            #endregion            
+        }
     }
 }

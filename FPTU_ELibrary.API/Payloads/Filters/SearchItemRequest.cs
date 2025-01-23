@@ -17,18 +17,21 @@ namespace FPTU_ELibrary.API.Payloads.Filters
         public static SearchItemParameters ToSearchItemParams(this SearchItemRequest req)
         {
             return new(
-                // Base search fields
                 SearchText: req.Search,
-                // Search with specific keyword (title, author, isbn, etc.)
                 SearchWithKeyword: req.SearchWithKeyword,
-                // Filtering fields
                 SearchWithSpecial: req.SearchWithSpecial,
-                IsDeleted: req.IsDeleted,
-                CanBorrow: req.CanBorrow,
                 IsMatchExact: req.IsMatchExact,
+                Title: req.Title,
+                Author: req.Author,
+                Isbn: req.Isbn,
+                ClassificationNumber: req.ClassificationNumber,
+                Genres: req.Genres,
+                Publisher: req.Publisher,
+                TopicalTerms: req.TopicalTerms,
                 F: req.F,
                 O: req.O,
                 V: req.V,
+                SearchType: req.SearchType,
                 PageIndex: req.PageIndex ?? 0,
                 PageSize: req.PageSize ?? 0
             );

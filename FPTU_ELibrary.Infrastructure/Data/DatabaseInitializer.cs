@@ -485,31 +485,36 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 {
 	                Prefix = "SD",
                     EnglishName = nameof(LibraryItemCategory.SingleBook),
-                    VietnameseName = LibraryItemCategory.SingleBook.GetDescription()
+                    VietnameseName = LibraryItemCategory.SingleBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SB",
 	                EnglishName = nameof(LibraryItemCategory.BookSeries),
-	                VietnameseName = LibraryItemCategory.BookSeries.GetDescription()
+	                VietnameseName = LibraryItemCategory.BookSeries.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SCN",
 	                EnglishName = nameof(LibraryItemCategory.SpecializedBook),
-	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "STK",
 	                EnglishName = nameof(LibraryItemCategory.ReferenceBook),
-	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SNV",
 	                EnglishName = nameof(LibraryItemCategory.ProfessionalBook),
-	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
@@ -521,37 +526,43 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 {
 	                Prefix = "SMV",
 	                EnglishName = nameof(LibraryItemCategory.Multimedia),
-	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription()
+	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
                     Prefix = "TC",
                     EnglishName = nameof(LibraryItemCategory.Journal),
-                    VietnameseName = LibraryItemCategory.Journal.GetDescription()
+                    VietnameseName = LibraryItemCategory.Journal.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "NC",
 	                EnglishName = nameof(LibraryItemCategory.ResearchPaper),
-	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription()
+	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "BC",
 	                EnglishName = nameof(LibraryItemCategory.Newspaper),
-	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription()
+	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "HT",
 	                EnglishName = nameof(LibraryItemCategory.LearningSupportMaterial),
-	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription()
+	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "LA",
 	                EnglishName = nameof(LibraryItemCategory.AcademicThesis),
-	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription()
+	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription(),
+					IsAllowAITraining = false
                 },
 			};
         

@@ -446,7 +446,8 @@ namespace FPTU_ELibrary.API.Extensions
 				Prefix = req.Prefix,
 				VietnameseName = req.VietnameseName,
 				EnglishName = req.EnglishName,
-				Description = req.Description
+				Description = req.Description,
+				IsAllowAITraining = req.IsAllowAITraining
 			};
 		}
 		#endregion

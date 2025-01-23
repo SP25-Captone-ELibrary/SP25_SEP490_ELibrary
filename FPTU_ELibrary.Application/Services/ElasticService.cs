@@ -506,6 +506,32 @@ namespace FPTU_ELibrary.Application.Services
 			                    )
 		                    )
 	                    )
+                    	.Text(t => t
+							.Name(e => e.Genres)
+							.Fields(ff => ff
+								.Text(tt => tt
+									.Name("exact") // Exact match field
+									.Analyzer("exact_match_analyzer")
+								)
+								.Text(tt => tt
+									.Name("non_special") // Non-special match field
+									.Analyzer("non_special_match_analyzer")
+								)
+							)
+	                    )
+                    	.Text(t => t
+							.Name(e => e.TopicalTerms)
+							.Fields(ff => ff
+								.Text(tt => tt
+									.Name("exact") // Exact match field
+									.Analyzer("exact_match_analyzer")
+								)
+								.Text(tt => tt
+									.Name("non_special") // Non-special match field
+									.Analyzer("non_special_match_analyzer")
+								)
+							)
+	                    )
                     	.Text(t => t.Name(e => e.Responsibility))
                     	.Text(t => t.Name(e => e.Edition))
                     	.Text(t => t.Name(e => e.Summary))
@@ -513,18 +539,12 @@ namespace FPTU_ELibrary.Application.Services
                     	.Keyword(t => t.Name(e => e.OriginLanguage))
                     	.Keyword(t => t.Name(e => e.CoverImage))
                     	.Keyword(t => t.Name(e => e.Status))
-                    	.Text(t => t.Name(e => e.Publisher))
-                    	.Text(t => t.Name(e => e.PublicationPlace))
                     	.Text(t => t.Name(e => e.ClassificationNumber))
                     	.Text(t => t.Name(e => e.CutterNumber))
                     	.Text(t => t.Name(e => e.Isbn))
                     	.Text(t => t.Name(e => e.Ean))
                     	.Text(t => t.Name(e => e.PhysicalDetails))
                     	.Text(t => t.Name(e => e.Dimensions))
-                    	.Text(t => t.Name(e => e.Genres))
-                    	.Text(t => t.Name(e => e.TopicalTerms))
-                    	.Text(t => t.Name(e => e.GeneralNote))
-                    	.Text(t => t.Name(e => e.AdditionalAuthors))
                     	.Boolean(b => b.Name(e => e.IsDeleted))
                     	.Boolean(b => b.Name(e => e.CanBorrow))
                     	.Boolean(b => b.Name(e => e.IsTrained))
@@ -558,7 +578,19 @@ namespace FPTU_ELibrary.Application.Services
 			                    .Number(nn => nn.Name(ee => ee.AuthorId).Type(NumberType.Integer))
 			                    .Keyword(k => k.Name(ee => ee.AuthorImage))
 			                    .Text(t => t.Name(ee => ee.AuthorCode))
-			                    .Text(t => t.Name(ee => ee.FullName))
+			                    .Text(t => t
+				                    .Name(ee => ee.FullName)
+				                    .Fields(ff => ff
+					                    .Text(tt => tt
+						                    .Name("exact") // Exact match field
+						                    .Analyzer("exact_match_analyzer")
+					                    )
+					                    .Text(tt => tt
+						                    .Name("non_special") // Non-special match field
+						                    .Analyzer("non_special_match_analyzer")
+					                    )
+				                    )
+			                    )
 			                    .Text(t => t.Name(ee => ee.Biography))
 			                    .Date(d => d.Name(ee => ee.Dob))
 			                    .Date(d => d.Name(ee => ee.DateOfDeath))

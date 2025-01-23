@@ -29,12 +29,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.HasOne(d => d.FromZone).WithMany(p => p.LibraryPathFromZones)
                 .HasForeignKey(d => d.FromZoneId)
-                .OnDelete(DeleteBehavior.Cascade)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibraryPath_FromZoneId");
 
             builder.HasOne(d => d.ToZone).WithMany(p => p.LibraryPathToZones)
                 .HasForeignKey(d => d.ToZoneId)
-                .OnDelete(DeleteBehavior.Cascade)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibraryPath_ToZoneId");
         }
     }

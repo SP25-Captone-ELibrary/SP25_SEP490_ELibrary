@@ -89,379 +89,433 @@ public class LibraryItemSpecification : BaseSpecification<LibraryItem>
             AddFilter(x => x.IsTrained == specParams.IsTrained);       
         }
         
-        // Apply filters 
-        if (specParams.F != null && specParams.F.Any())
+        // Determine search type
+        switch (specParams.SearchType)
         {
-            // Convert to advanced filter list
-            var filerList = specParams.FromParamsToListAdvancedFilter();
-            if (filerList != null)
-            {
-                foreach (var filter in filerList)
+            case SearchType.BasicSearch:
+                // Title
+                if (!string.IsNullOrEmpty(specParams.Title))
                 {
-                    // Handling for properties, which in navigations or reference 
-                    if (filter.FieldName.ToLowerInvariant() == nameof(Author).ToLowerInvariant())
+                    AddFilter(li => li.Title.Contains(specParams.Title));
+                }
+                
+                // Author
+                if (!string.IsNullOrEmpty(specParams.Author))
+                {
+                    AddFilter(li => li.LibraryItemAuthors.Any(a => 
+                        a.Author.FullName.Contains(specParams.Author)));
+                }
+                
+                // Isbn
+                if (!string.IsNullOrEmpty(specParams.Isbn))
+                {
+                    AddFilter(li => li.Isbn != null && li.Isbn.Contains(specParams.Isbn));
+                }
+                
+                // ClassificationNumber
+                if (!string.IsNullOrEmpty(specParams.ClassificationNumber))
+                {
+                    AddFilter(li => li.ClassificationNumber.Contains(specParams.ClassificationNumber));
+                }
+                
+                // Genres
+                if (!string.IsNullOrEmpty(specParams.Genres))
+                {
+                    AddFilter(li => li.Genres != null 
+                                    && li.Genres.Contains(specParams.Genres));
+                }
+                
+                // Publisher
+                if (!string.IsNullOrEmpty(specParams.Publisher))
+                {
+                    AddFilter(li => li.Publisher != null 
+                                    && li.Publisher.Contains(specParams.Publisher));
+                }
+                
+                // TopicalTerms
+                if (!string.IsNullOrEmpty(specParams.TopicalTerms))
+                {
+                    AddFilter(li => li.TopicalTerms != null 
+                                    && li.TopicalTerms.Contains(specParams.TopicalTerms));
+                }
+                
+                break;
+            case SearchType.AdvancedSearch:
+                // Apply filters 
+                if (specParams.F != null && specParams.F.Any())
+                {
+                    // Convert to advanced filter list
+                    var filerList = specParams.FromParamsToListAdvancedFilter();
+                    if (filerList != null)
                     {
-                        // Determine operator
-                        switch (filter.Operator)
+                        foreach (var filter in filerList)
                         {
-                            case FilterOperator.Includes:
-                                AddFilter(be => be.LibraryItemAuthors.Any(bea => 
-                                    bea.Author.FullName.Contains(filter.Value ?? string.Empty)));
-                                break;
-                            case FilterOperator.Equals:
-                                AddFilter(be => be.LibraryItemAuthors.Any(bea => 
-                                    Equals(bea.Author.FullName, filter.Value)));
-                                break;
-                            case FilterOperator.NotEqualsTo:
-                                AddFilter(be => be.LibraryItemAuthors.Any(bea => 
-                                    !Equals(bea.Author.FullName, filter.Value)));
-                                break;
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())
-                    {
-                        var shelfNums = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                        if (shelfNums != null)
-                        {
-                            // Initialize base spec to retrieve building filter when operator is 'includes'
-                            List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
-                            foreach (var shelfNum in shelfNums)
+                            // Handling for properties, which in navigations or reference 
+                            if (filter.FieldName.ToLowerInvariant() == nameof(Author).ToLowerInvariant())
                             {
                                 // Determine operator
                                 switch (filter.Operator)
                                 {
                                     case FilterOperator.Includes:
-                                        includeExpressions.Add(be => 
-                                            string.IsNullOrEmpty(shelfNum) ||
-                                            (be.Shelf != null && Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower()))
-                                        );
+                                        AddFilter(be => be.LibraryItemAuthors.Any(bea => 
+                                            bea.Author.FullName.Contains(filter.Value ?? string.Empty)));
                                         break;
                                     case FilterOperator.Equals:
-                                        AddFilter(be => 
-                                            string.IsNullOrEmpty(shelfNum) || 
-                                            (be.Shelf != null && Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                        AddFilter(be => be.LibraryItemAuthors.Any(bea => 
+                                            Equals(bea.Author.FullName, filter.Value)));
                                         break;
                                     case FilterOperator.NotEqualsTo:
-                                        AddFilter(be => 
-                                            string.IsNullOrEmpty(shelfNum) || 
-                                            (be.Shelf != null && !Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                        AddFilter(be => be.LibraryItemAuthors.Any(bea => 
+                                            !Equals(bea.Author.FullName, filter.Value)));
                                         break;
                                 }
                             }
-                            
-                            if (includeExpressions.Any())
+                            else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())
                             {
-                                // be => be.Book.BookCategories.Any1()
-                                // be => be.Book.BookCategories.Any2()
-                                // be => be.Book.BookCategories.Any1() || be.Book.BookCategories.Any2()
-                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                    (exp1, exp2) =>
-                                    {
-                                        if (exp1 != null)
-                                        {
-                                            // Try to combined body of different expression with 'OR' operator
-                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                            
-                                            // Return combined body
-                                            return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
-                                        }
-        
-                                        return _ => false;
-                                    });
-                                
-                                // Apply filter with 'includes'
-                                if(resultExpression != null) AddFilter(resultExpression);
-                            }
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() == nameof(Category).ToLowerInvariant())
-                    {
-                        var categoryIds = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                        if (categoryIds != null)
-                        {
-                            // Initialize base spec to retrieve building filter when operator is 'includes'
-                            List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
-                            foreach (var categoryId in categoryIds)
-                            {
-                                // Try parse to integer
-                                if (int.TryParse(categoryId, out var numCateId))
+                                var shelfNums = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                                if (shelfNums != null)
                                 {
-                                    // Determine operator
+                                    // Initialize base spec to retrieve building filter when operator is 'includes'
+                                    List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
+                                    foreach (var shelfNum in shelfNums)
+                                    {
+                                        // Determine operator
+                                        switch (filter.Operator)
+                                        {
+                                            case FilterOperator.Includes:
+                                                includeExpressions.Add(be => 
+                                                    string.IsNullOrEmpty(shelfNum) ||
+                                                    (be.Shelf != null && Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower()))
+                                                );
+                                                break;
+                                            case FilterOperator.Equals:
+                                                AddFilter(be => 
+                                                    string.IsNullOrEmpty(shelfNum) || 
+                                                    (be.Shelf != null && Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                                break;
+                                            case FilterOperator.NotEqualsTo:
+                                                AddFilter(be => 
+                                                    string.IsNullOrEmpty(shelfNum) || 
+                                                    (be.Shelf != null && !Equals(be.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                                break;
+                                        }
+                                    }
+                                    
+                                    if (includeExpressions.Any())
+                                    {
+                                        // li => li.LibraryShelf.ShelfId1
+                                        // li => li.LibraryShelf.ShelfId2
+                                        // li => li.LibraryShelf.ShelfId1 || li.LibraryShelf.ShelfId2
+                                        var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                            (exp1, exp2) =>
+                                            {
+                                                if (exp1 != null)
+                                                {
+                                                    // Try to combined body of different expression with 'OR' operator
+                                                    var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                                    
+                                                    // Return combined body
+                                                    return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
+                                                }
+                
+                                                return _ => false;
+                                            });
+                                        
+                                        // Apply filter with 'includes'
+                                        if(resultExpression != null) AddFilter(resultExpression);
+                                    }
+                                }
+                            }
+                            else if (filter.FieldName.ToLowerInvariant() == nameof(Category).ToLowerInvariant())
+                            {
+                                var categoryIds = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                                if (categoryIds != null)
+                                {
+                                    // Initialize base spec to retrieve building filter when operator is 'includes'
+                                    List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
+                                    foreach (var categoryId in categoryIds)
+                                    {
+                                        // Try parse to integer
+                                        if (int.TryParse(categoryId, out var numCateId))
+                                        {
+                                            // Determine operator
+                                            switch (filter.Operator)
+                                            {
+                                                case FilterOperator.Includes:
+                                                    includeExpressions.Add(li => Equals(li.CategoryId, numCateId));
+                                                    break;
+                                                case FilterOperator.Equals:
+                                                    AddFilter(li => Equals(li.CategoryId, numCateId));
+                                                    break;
+                                                case FilterOperator.NotEqualsTo:
+                                                    AddFilter(li => !Equals(li.CategoryId, numCateId));
+                                                    break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (includeExpressions.Any())
+                                    {
+                                        // li => li.CategoryId1 == categoryId1
+                                        // li => li.CategoryId2 == categoryId2
+                                        // li => li.CategoryId1 == categoryId1 || li.CategoryId2 == categoryId2
+                                        var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                            (exp1, exp2) =>
+                                            {
+                                                if (exp1 != null)
+                                                {
+                                                    // Try to combined body of different expression with 'OR' operator
+                                                    var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                                    
+                                                    // Return combined body
+                                                    return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
+                                                }
+                
+                                                return _ => false;
+                                            });
+                                        
+                                        // Apply filter with 'includes'
+                                        if(resultExpression != null) AddFilter(resultExpression);
+                                    }
+                                }
+                            }
+                            else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItemInstance.Barcode).ToLowerInvariant())
+                            {
+                                var barcodes = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                                if (barcodes != null)
+                                {
+                                    // Initialize base spec to retrieve building filter when operator is 'includes'
+                                    List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
+                                    foreach (var barcode in barcodes)
+                                    {
+                                        // Determine operator
+                                        switch (filter.Operator)
+                                        {
+                                            case FilterOperator.Includes:
+                                                includeExpressions.Add(be => be.LibraryItemInstances.Any(x => 
+                                                    Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                                break;
+                                            case FilterOperator.Equals:
+                                                AddFilter(be => be.LibraryItemInstances.Any(x => 
+                                                    Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                                break;
+                                            case FilterOperator.NotEqualsTo:
+                                                AddFilter(be => be.LibraryItemInstances.All(x =>
+                                                    !Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                                break;
+                                        }
+                                    }
+                
+                                    if (includeExpressions.Any())
+                                    {
+                                        // be => be.LibraryItemInstances.Any1()
+                                        // be => be.LibraryItemInstances.Any2()
+                                        // be => be.LibraryItemInstances.Any1() || be.LibraryItemInstances.Any2()
+                                        var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                            (exp1, exp2) =>
+                                            {
+                                                if (exp1 != null)
+                                                {
+                                                    // Try to combined body of different expression with 'OR' operator
+                                                    var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                                    
+                                                    // Return combined body
+                                                    return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
+                                                }
+                
+                                                return _ => false;
+                                            });
+                                        
+                                        // Apply filter with 'includes'
+                                        if(resultExpression != null) AddFilter(resultExpression);
+                                    }
+                                }
+                            }
+                            // Handle for properties, which in root entity
+                            else if (filter.FieldName.ToLowerInvariant() == 
+                                     nameof(LibraryItem.Status).ToLowerInvariant())
+                            {
+                                if (Enum.Parse(typeof(LibraryItemStatus), filter.Value ?? string.Empty) is LibraryItemStatus status)
+                                {
+                                    // Determine operator 
                                     switch (filter.Operator)
                                     {
-                                        case FilterOperator.Includes:
-                                            includeExpressions.Add(li => Equals(li.CategoryId, numCateId));
-                                            break;
                                         case FilterOperator.Equals:
-                                            AddFilter(li => Equals(li.CategoryId, numCateId));
+                                            AddFilter(be => Equals(be.Status, status));
                                             break;
                                         case FilterOperator.NotEqualsTo:
-                                            AddFilter(li => !Equals(li.CategoryId, numCateId));
+                                            AddFilter(be => !Equals(be.Status, status));
                                             break;
                                     }
                                 }
                             }
-                            
-                            if (includeExpressions.Any())
+                            else if (filter.FieldName.ToLowerInvariant() ==
+                                     nameof(LibraryItem.CreatedAt).ToLowerInvariant())
                             {
-                                // li => li.CategoryId1 == categoryId1
-                                // li => li.CategoryId2 == categoryId2
-                                // li => li.CategoryId1 == categoryId1 || li.CategoryId2 == categoryId2
-                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                    (exp1, exp2) =>
+                                var dateRanges = filter.Value?
+                                    .Split(',')
+                                    .Select(str => str.Trim())
+                                    .Select(str => DateTime.TryParseExact(
+                                        str, 
+                                        "yyyy-MM-dd", 
+                                        null, 
+                                        System.Globalization.DateTimeStyles.None, 
+                                        out var validDate) ? validDate : (DateTime?)null)
+                                    .ToList();
+                                if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
+                                {
+                                    // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
+                                    if (dateRanges[0].HasValue && dateRanges[1].HasValue)
                                     {
-                                        if (exp1 != null)
-                                        {
-                                            // Try to combined body of different expression with 'OR' operator
-                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                            
-                                            // Return combined body
-                                            return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
-                                        }
-        
-                                        return _ => false;
-                                    });
-                                
-                                // Apply filter with 'includes'
-                                if(resultExpression != null) AddFilter(resultExpression);
+                                        AddFilter(x => 
+                                                       x.CreatedAt.Date >= dateRanges[0]!.Value.Date && 
+                                                       x.CreatedAt.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 2: dateRanges[0] is null && dateRanges[1] is not null
+                                    else if (dateRanges[0] is null && dateRanges[1].HasValue)
+                                    {
+                                        AddFilter(x => x.CreatedAt.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 3: dateRanges[0] is not null && dateRanges[1] is null
+                                    else if (dateRanges[0].HasValue && dateRanges[1] is null)
+                                    {
+                                        AddFilter(x => x.CreatedAt.Date >= dateRanges[0]!.Value.Date);
+                                    }
+                                    else // Intentionally input 2 invalid value (null, null)
+                                    {
+                                        // Set default filter with false
+                                        AddFilter(_ => false);
+                                    }
+                                }
+                                else // Not exist any value
+                                {
+                                    // Set default filter with false
+                                    AddFilter(_ => false);
+                                }
                             }
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItemInstance.Barcode).ToLowerInvariant())
-                    {
-                        var barcodes = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                        if (barcodes != null)
-                        {
-                            // Initialize base spec to retrieve building filter when operator is 'includes'
-                            List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
-                            foreach (var barcode in barcodes)
+                            else if (filter.FieldName.ToLowerInvariant() ==
+                                     nameof(LibraryItem.UpdatedAt).ToLowerInvariant())
                             {
-                                // Determine operator
+                                var dateRanges = filter.Value?
+                                    .Split(',')
+                                    .Select(str => str.Trim())
+                                    .Select(str => DateTime.TryParseExact(
+                                        str, 
+                                        "yyyy-MM-dd", 
+                                        null, 
+                                        System.Globalization.DateTimeStyles.None, 
+                                        out var validDate) ? validDate : (DateTime?)null)
+                                    .ToList();
+                                if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
+                                {
+                                    // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
+                                    if (dateRanges[0].HasValue && dateRanges[1].HasValue)
+                                    {
+                                        AddFilter(x => x.UpdatedAt.HasValue &&
+                                                       x.UpdatedAt.Value.Date >= dateRanges[0]!.Value.Date && 
+                                                       x.UpdatedAt.Value.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 2: dateRanges[0] is null && dateRanges[1] is not null
+                                    else if (dateRanges[0] is null && dateRanges[1].HasValue)
+                                    {
+                                        AddFilter(x => x.UpdatedAt.HasValue && 
+                                                       x.UpdatedAt.Value.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 3: dateRanges[0] is not null && dateRanges[1] is null
+                                    else if (dateRanges[0].HasValue && dateRanges[1] is null)
+                                    {
+                                        AddFilter(x => x.UpdatedAt.HasValue && 
+                                                       x.UpdatedAt.Value.Date >= dateRanges[0]!.Value.Date);
+                                    }
+                                    else // Intentionally input 2 invalid value (null, null)
+                                    {
+                                        // Set default filter with false
+                                        AddFilter(_ => false);
+                                    }
+                                }
+                                else // Not exist any value
+                                {
+                                    // Set default filter with false
+                                    AddFilter(_ => false);
+                                }
+                            }
+                            else if (filter.FieldName.ToLowerInvariant() ==
+                                     nameof(LibraryItem.TrainedAt).ToLowerInvariant())
+                            {
+                                var dateRanges = filter.Value?
+                                    .Split(',')
+                                    .Select(str => str.Trim())
+                                    .Select(str => DateTime.TryParseExact(
+                                        str, 
+                                        "yyyy-MM-dd", 
+                                        null, 
+                                        System.Globalization.DateTimeStyles.None, 
+                                        out var validDate) ? validDate : (DateTime?)null)
+                                    .ToList();
+                                if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
+                                {
+                                    // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
+                                    if (dateRanges[0].HasValue && dateRanges[1].HasValue)
+                                    {
+                                        AddFilter(x => x.TrainedAt.HasValue &&
+                                                       x.TrainedAt.Value.Date >= dateRanges[0]!.Value.Date && 
+                                                       x.TrainedAt.Value.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 2: dateRanges[0] is null && dateRanges[1] is not null
+                                    else if (dateRanges[0] is null && dateRanges[1].HasValue)
+                                    {
+                                        AddFilter(x => x.TrainedAt.HasValue && 
+                                                       x.TrainedAt.Value.Date <= dateRanges[1]!.Value.Date);
+                                    }
+                                    // Case 3: dateRanges[0] is not null && dateRanges[1] is null
+                                    else if (dateRanges[0].HasValue && dateRanges[1] is null)
+                                    {
+                                        AddFilter(x => x.TrainedAt.HasValue && 
+                                                       x.TrainedAt.Value.Date >= dateRanges[0]!.Value.Date);
+                                    }
+                                    else // Intentionally input 2 invalid value (null, null)
+                                    {
+                                        // Set default filter with false
+                                        AddFilter(_ => false);
+                                    }
+                                }
+                                else // Not exist any value
+                                {
+                                    // Set default filter with false
+                                    AddFilter(_ => false);
+                                }
+                            }
+                            else
+                            {
                                 switch (filter.Operator)
                                 {
                                     case FilterOperator.Includes:
-                                        includeExpressions.Add(be => be.LibraryItemInstances.Any(x => 
-                                            Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                        AddFilter(CreateContainsFilter(filter.FieldName, filter.Value));
                                         break;
                                     case FilterOperator.Equals:
-                                        AddFilter(be => be.LibraryItemInstances.Any(x => 
-                                            Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                        AddFilter(CreateEqualityFilter(filter.FieldName, filter.Value));
                                         break;
                                     case FilterOperator.NotEqualsTo:
-                                        AddFilter(be => be.LibraryItemInstances.All(x =>
-                                            !Equals(x.Barcode.ToLower(), barcode.ToLower())));
+                                        AddFilter(CreateInEqualityFilter(filter.FieldName, filter.Value));
+                                        break;
+                                    case FilterOperator.LessThan:
+                                        AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
+                                        break;
+                                    case FilterOperator.LessThanOrEqualsTo:
+                                        AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
+                                        break;
+                                    case FilterOperator.GreaterThan:
+                                        AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
+                                        break;
+                                    case FilterOperator.GreaterThanOrEqualsTo:
+                                        AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
                                         break;
                                 }
                             }
-        
-                            if (includeExpressions.Any())
-                            {
-                                // be => be.LibraryItemInstances.Any1()
-                                // be => be.LibraryItemInstances.Any2()
-                                // be => be.LibraryItemInstances.Any1() || be.LibraryItemInstances.Any2()
-                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                    (exp1, exp2) =>
-                                    {
-                                        if (exp1 != null)
-                                        {
-                                            // Try to combined body of different expression with 'OR' operator
-                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                            
-                                            // Return combined body
-                                            return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
-                                        }
-        
-                                        return _ => false;
-                                    });
-                                
-                                // Apply filter with 'includes'
-                                if(resultExpression != null) AddFilter(resultExpression);
-                            }
-                        }
-                    }
-                    // Handle for properties, which in root entity
-                    else if (filter.FieldName.ToLowerInvariant() == 
-                             nameof(LibraryItem.Status).ToLowerInvariant())
-                    {
-                        if (Enum.Parse(typeof(LibraryItemStatus), filter.Value ?? string.Empty) is LibraryItemStatus status)
-                        {
-                            // Determine operator 
-                            switch (filter.Operator)
-                            {
-                                case FilterOperator.Equals:
-                                    AddFilter(be => Equals(be.Status, status));
-                                    break;
-                                case FilterOperator.NotEqualsTo:
-                                    AddFilter(be => !Equals(be.Status, status));
-                                    break;
-                            }
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() ==
-                             nameof(LibraryItem.CreatedAt).ToLowerInvariant())
-                    {
-                        var dateRanges = filter.Value?
-                            .Split(',')
-                            .Select(str => str.Trim())
-                            .Select(str => DateTime.TryParseExact(
-                                str, 
-                                "yyyy-MM-dd", 
-                                null, 
-                                System.Globalization.DateTimeStyles.None, 
-                                out var validDate) ? validDate : (DateTime?)null)
-                            .ToList();
-                        if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
-                        {
-                            // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
-                            if (dateRanges[0].HasValue && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => 
-                                               x.CreatedAt.Date >= dateRanges[0]!.Value.Date && 
-                                               x.CreatedAt.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 2: dateRanges[0] is null && dateRanges[1] is not null
-                            else if (dateRanges[0] is null && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => x.CreatedAt.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 3: dateRanges[0] is not null && dateRanges[1] is null
-                            else if (dateRanges[0].HasValue && dateRanges[1] is null)
-                            {
-                                AddFilter(x => x.CreatedAt.Date >= dateRanges[0]!.Value.Date);
-                            }
-                            else // Intentionally input 2 invalid value (null, null)
-                            {
-                                // Set default filter with false
-                                AddFilter(_ => false);
-                            }
-                        }
-                        else // Not exist any value
-                        {
-                            // Set default filter with false
-                            AddFilter(_ => false);
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() ==
-                             nameof(LibraryItem.UpdatedAt).ToLowerInvariant())
-                    {
-                        var dateRanges = filter.Value?
-                            .Split(',')
-                            .Select(str => str.Trim())
-                            .Select(str => DateTime.TryParseExact(
-                                str, 
-                                "yyyy-MM-dd", 
-                                null, 
-                                System.Globalization.DateTimeStyles.None, 
-                                out var validDate) ? validDate : (DateTime?)null)
-                            .ToList();
-                        if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
-                        {
-                            // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
-                            if (dateRanges[0].HasValue && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => x.UpdatedAt.HasValue &&
-                                               x.UpdatedAt.Value.Date >= dateRanges[0]!.Value.Date && 
-                                               x.UpdatedAt.Value.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 2: dateRanges[0] is null && dateRanges[1] is not null
-                            else if (dateRanges[0] is null && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => x.UpdatedAt.HasValue && 
-                                               x.UpdatedAt.Value.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 3: dateRanges[0] is not null && dateRanges[1] is null
-                            else if (dateRanges[0].HasValue && dateRanges[1] is null)
-                            {
-                                AddFilter(x => x.UpdatedAt.HasValue && 
-                                               x.UpdatedAt.Value.Date >= dateRanges[0]!.Value.Date);
-                            }
-                            else // Intentionally input 2 invalid value (null, null)
-                            {
-                                // Set default filter with false
-                                AddFilter(_ => false);
-                            }
-                        }
-                        else // Not exist any value
-                        {
-                            // Set default filter with false
-                            AddFilter(_ => false);
-                        }
-                    }
-                    else if (filter.FieldName.ToLowerInvariant() ==
-                             nameof(LibraryItem.TrainedAt).ToLowerInvariant())
-                    {
-                        var dateRanges = filter.Value?
-                            .Split(',')
-                            .Select(str => str.Trim())
-                            .Select(str => DateTime.TryParseExact(
-                                str, 
-                                "yyyy-MM-dd", 
-                                null, 
-                                System.Globalization.DateTimeStyles.None, 
-                                out var validDate) ? validDate : (DateTime?)null)
-                            .ToList();
-                        if (dateRanges!= null && dateRanges.Count == 2) // Only process date-range filtering 
-                        {
-                            // Case 1: dateRanges[0] is not null && dateRanges[1] is not null
-                            if (dateRanges[0].HasValue && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => x.TrainedAt.HasValue &&
-                                               x.TrainedAt.Value.Date >= dateRanges[0]!.Value.Date && 
-                                               x.TrainedAt.Value.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 2: dateRanges[0] is null && dateRanges[1] is not null
-                            else if (dateRanges[0] is null && dateRanges[1].HasValue)
-                            {
-                                AddFilter(x => x.TrainedAt.HasValue && 
-                                               x.TrainedAt.Value.Date <= dateRanges[1]!.Value.Date);
-                            }
-                            // Case 3: dateRanges[0] is not null && dateRanges[1] is null
-                            else if (dateRanges[0].HasValue && dateRanges[1] is null)
-                            {
-                                AddFilter(x => x.TrainedAt.HasValue && 
-                                               x.TrainedAt.Value.Date >= dateRanges[0]!.Value.Date);
-                            }
-                            else // Intentionally input 2 invalid value (null, null)
-                            {
-                                // Set default filter with false
-                                AddFilter(_ => false);
-                            }
-                        }
-                        else // Not exist any value
-                        {
-                            // Set default filter with false
-                            AddFilter(_ => false);
-                        }
-                    }
-                    else
-                    {
-                        switch (filter.Operator)
-                        {
-                            case FilterOperator.Includes:
-                                AddFilter(CreateContainsFilter(filter.FieldName, filter.Value));
-                                break;
-                            case FilterOperator.Equals:
-                                AddFilter(CreateEqualityFilter(filter.FieldName, filter.Value));
-                                break;
-                            case FilterOperator.NotEqualsTo:
-                                AddFilter(CreateInEqualityFilter(filter.FieldName, filter.Value));
-                                break;
-                            case FilterOperator.LessThan:
-                                AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
-                                break;
-                            case FilterOperator.LessThanOrEqualsTo:
-                                AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
-                                break;
-                            case FilterOperator.GreaterThan:
-                                AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
-                                break;
-                            case FilterOperator.GreaterThanOrEqualsTo:
-                                AddFilter(CreateComparisonFilter(filter.FieldName, filter.Value, filter.Operator));
-                                break;
                         }
                     }
                 }
-            }
+                break;
         }
 
         // Progress sorting

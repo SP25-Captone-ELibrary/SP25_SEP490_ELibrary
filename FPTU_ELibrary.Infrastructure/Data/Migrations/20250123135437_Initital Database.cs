@@ -40,7 +40,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     author_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     author_image = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
                     full_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    biography = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    biography = table.Column<string>(type: "nvarchar(3000)", maxLength: 3000, nullable: true),
                     dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     date_of_death = table.Column<DateTime>(type: "datetime", nullable: true),
                     nationality = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -62,7 +62,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     prefix = table.Column<string>(type: "nvarchar(20)", nullable: false),
                     english_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: false),
                     vietnamese_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: false),
-                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    is_allow_ai_training = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -319,8 +320,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_LibraryZone_FloorId",
                         column: x => x.floor_id,
                         principalTable: "Library_Floor",
-                        principalColumn: "floor_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "floor_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -353,8 +353,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_WarehouseTracking_SupplierId",
                         column: x => x.supplier_id,
                         principalTable: "Supplier",
-                        principalColumn: "supplier_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "supplier_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -471,8 +470,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_LibraryCard_LibraryCardId",
                         column: x => x.library_card_id,
                         principalTable: "Library_Card",
-                        principalColumn: "library_card_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "library_card_id");
                     table.ForeignKey(
                         name: "FK_SystemRole_RoleId",
                         column: x => x.role_id,
@@ -529,8 +527,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_LibrarySection_ZoneId",
                         column: x => x.zone_id,
                         principalTable: "Library_Zone",
-                        principalColumn: "zone_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "zone_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -659,8 +656,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_LibraryShelf_SectionId",
                         column: x => x.section_id,
                         principalTable: "Library_Section",
-                        principalColumn: "section_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "section_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -686,9 +682,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: true),
                     ean = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     estimated_price = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    page_count = table.Column<int>(type: "int", nullable: false),
+                    page_count = table.Column<int>(type: "int", nullable: true),
                     physical_details = table.Column<string>(type: "nvarchar(100)", nullable: true),
-                    dimensions = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    dimensions = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     accompanying_material = table.Column<string>(type: "nvarchar(155)", nullable: true),
                     genres = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     general_note = table.Column<string>(type: "nvarchar(100)", nullable: true),
@@ -935,8 +931,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_WarehouseTrackingDetail_CategoryId",
                         column: x => x.category_id,
                         principalTable: "Category",
-                        principalColumn: "category_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "category_id");
                     table.ForeignKey(
                         name: "FK_WarehouseTrackingDetail_LibraryItemId",
                         column: x => x.library_item_id,
