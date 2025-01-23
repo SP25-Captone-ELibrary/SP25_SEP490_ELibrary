@@ -478,7 +478,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		//      Seeding Book Category
 		private async Task SeedCategoryAsync()
         {
-			// Initialize book category entities
+			// Initialize item category entities
             List<Category> categories = new()
             {
                 new()
@@ -559,7 +559,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			await _context.Categories.AddRangeAsync(categories);
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 
-			if (saveSucc) _logger.Information("Seed book category success.");
+			if (saveSucc) _logger.Information("Seed library item category success.");
 		}
 
         //  Summary:
@@ -569,6 +569,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			// Get librarian
 			var librarian = await _context.Employees
 				.Include(x => x.Role)
+				.Where(l => l.Email.Contains("librarian"))
 				.FirstOrDefaultAsync(e => e.Role.EnglishName == Role.Librarian.ToString());
 
 			// Get authors
@@ -579,7 +580,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 
 			if(librarian == null || !categories.Any() || !authors.Any())
 			{
-				_logger.Error("Not found any librarian, category or author to process seeding book");
+				_logger.Error("Not found any librarian, category or author to process seeding item");
 				return;
 			}
 			
@@ -639,11 +640,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        TopicalTerms = "Lập trình, Ngôn ngữ C#, Phát triển phần mềm",
 			        AdditionalAuthors = "Trần Thị B",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SpecializedBook)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+			        LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -752,7 +762,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    {
 					    new()
 					    {
-						    AuthorId = authors.First(a => a.AuthorCode == "AUTH00011").AuthorId
+						    AuthorId = authors.First(a => a.AuthorCode == "AUTH00008").AuthorId
 					    }
 				    }
 			    },
@@ -863,7 +873,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    {
 					    new()
 					    {
-						    AuthorId = authors.First(a => a.AuthorCode == "AUTH00011").AuthorId
+						    AuthorId = authors.First(a => a.AuthorCode == "AUTH00008").AuthorId
 					    }
 				    }
 			    },
@@ -891,11 +901,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Tập 3 trong loạt sách Harry Potter nổi tiếng.",
 				    TopicalTerms = "Văn học thiếu nhi, Phép thuật, Phiêu lưu",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -921,11 +940,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Sách được viết bởi hai tác giả của 'Freakonomics'.",
 				    TopicalTerms = "Kinh tế, Tư duy sáng tạo, Giải quyết vấn đề",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -951,11 +979,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    GeneralNote = "Sách nổi tiếng và được dịch ra nhiều ngôn ngữ trên thế giới.",
 				    TopicalTerms = "Giao tiếp, Kỹ năng sống, Tâm lý học",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
-				    Status = LibraryItemStatus.Published,
-				    CanBorrow = true,
+				    // TODO: Change to Draft
+			        Status = LibraryItemStatus.Published,
+				    CanBorrow = false,
 				    IsTrained = false,
 				    CreatedAt = DateTime.Now,
-				    CreatedBy = librarian.Email
+				    CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -981,11 +1018,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Số chuyên đề về trí tuệ nhân tạo (AI).",
 			        TopicalTerms = "AI, Công nghệ mới, Xu hướng 2023",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Newspaper)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
 			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -1011,11 +1057,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Bao gồm dữ liệu thực tế từ năm 2010 đến 2020.",
 			        TopicalTerms = "Biến đổi khí hậu, Bảo vệ môi trường",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.ResearchPaper)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    },
 			    new LibraryItem
 			    {
@@ -1041,11 +1096,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        GeneralNote = "Gồm 3 tập với các tác phẩm từ thế kỷ 18 đến thế kỷ 20.",
 			        TopicalTerms = "Văn học Việt Nam, Tác phẩm kinh điển",
 			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Literature)).CategoryId,
+			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
-			        CanBorrow = true,
+			        CanBorrow = false,
 			        IsTrained = false,
 			        CreatedAt = DateTime.Now,
-			        CreatedBy = librarian.Email
+			        CreatedBy = librarian.Email,
+					LibraryItemInventory = new LibraryItemInventory()
+			        {
+				        TotalUnits = 0,
+				        AvailableUnits = 0,
+						BorrowedUnits = 0,
+						ReservedUnits = 0,
+						RequestUnits = 0
+			        }
 			    }
 			};
 
@@ -1066,116 +1130,81 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			    new()
 			    {
 			        AuthorCode = "AUTH00001",
-			        AuthorImage = "image1.jpg",
-			        FullName = "Jane Doe",
-			        Biography = "<p>Jane Doe is a celebrated author known for her thrilling novels.</p>",
-			        Dob = new DateTime(1975, 3, 10),
-			        Nationality = "American",
+			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/f/fb/To_Hoai.jpg",
+			        FullName = "Tô Hoài",
+			        Biography = "<p><strong>Nguyễn Sen</strong>, thường được biết đến với b&uacute;t danh <strong>T&ocirc; Ho&agrave;i</strong> (27 th&aacute;ng 9 năm 1920 &ndash; 6 th&aacute;ng 7 năm 2014),<a href=\"\\&quot;https://vi.wikipedia.org/wiki/T%C3%B4_Ho%C3%A0i#cite_note-1\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">[</sup></span><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">1</sup><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">]</sup></span></a> l&agrave; một nh&agrave; văn người <a title=\"\\&quot;Việt\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Vi%E1%BB%87t_Nam\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Việt Nam</a>.</p>\n<p>&nbsp;</p>\n<p>&Ocirc;ng được nh&agrave; nước Việt Nam trao tặng <a title=\"\\&quot;Giải\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Gi%E1%BA%A3i_th%C6%B0%E1%BB%9Fng_H%E1%BB%93_Ch%C3%AD_Minh\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Giải thưởng Hồ Ch&iacute; Minh</a> về Văn học &ndash; Nghệ thuật đợt 1 (1996) cho c&aacute;c t&aacute;c phẩm: <em>X&oacute;m giếng</em>, <em>Nh&agrave; ngh&egrave;o</em>, <em>O chuột</em>, <a class=\"\\&quot;mw-redirect\\&quot;\" title=\"\\&quot;Dế\" href=\"\\&quot;https://vi.wikipedia.org/wiki/D%E1%BA%BF_m%C3%A8n_phi%C3%AAu_l%C6%B0u_k%C3%BD\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><em>Dế m&egrave;n phi&ecirc;u lưu k&yacute;</em></a>, <em>N&uacute;i Cứu quốc</em>, <em>Truyện T&acirc;y Bắc</em>, <em>Mười năm</em>, <em>Xuống l&agrave;ng</em>, <em>Vỡ tỉnh</em>, <em>T&agrave;o lường</em>, <em>Họ Gi&agrave;ng ở Ph&igrave;n Sa</em>, <em>Miền T&acirc;y</em>, <em>Vợ chồng A Phủ</em>, <em>Tuổi trẻ Ho&agrave;ng Văn Thụ</em>. Một số t&aacute;c phẩm đề t&agrave;i thiếu nhi của &ocirc;ng được dịch ra nhiều ngoại ngữ kh&aacute;c nhau.</p>",
+			        Dob = new DateTime(1920, 9, 27),
+			        DateOfDeath = new DateTime(2014, 7, 6),
+			        Nationality = "Vietnam",
 			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = true
+			        IsDeleted = false
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00002",
-			        AuthorImage = "image2.jpg",
-			        FullName = "John Smith",
-			        Biography = "<p>John Smith has written numerous science fiction classics.</p>",
-			        Dob = new DateTime(1980, 5, 15),
-			        Nationality = "British",
+			        AuthorImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8lNksAT9hFj7YFbvwb2yIDUXSC5C9P-F80w&s",
+			        FullName = "Đoàn Giỏi",
+			        Biography = "<p><strong>Đo&agrave;n Giỏi</strong> (17 th&aacute;ng 5 năm 1925 &ndash; 2 th&aacute;ng 4 năm 1989) l&agrave; một nh&agrave; văn Việt Nam nổi tiếng với c&aacute;c s&aacute;ng t&aacute;c về cuộc sống, thi&ecirc;n nhi&ecirc;n v&agrave; con người Nam Bộ; trong đ&oacute; ti&ecirc;u biểu nhất l&agrave; t&aacute;c phẩm Đất rừng phương Nam được tr&iacute;ch đoạn trong s&aacute;ch gi&aacute;o khoa Ngữ văn lớp 6 v&agrave; lớp 10. &Ocirc;ng được truy tặng Giải thưởng Nh&agrave; nước về Văn học Nghệ thuật đợt 1 năm 2001.</p>",
+			        Dob = new DateTime(1925, 7, 17),
+			        DateOfDeath = new DateTime(1989, 4,2),
+			        Nationality = "Vietnam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00003",
-			        AuthorImage = "image3.jpg",
-			        FullName = "Emily Jones",
-			        Biography = "<p>Emily Jones is a poet and novelist with a global following.</p>",
-			        Dob = new DateTime(1990, 1, 20),
-			        Nationality = "Canadian",
+			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Carlo_Collodi.jpg/640px-Carlo_Collodi.jpg",
+			        FullName = "Carlo Collodi",
+			        Biography = "<p><strong>Carlo Lorenzini</strong>&nbsp;(24 th&aacute;ng 11 năm 1826 - 26 th&aacute;ng 10 năm 1890), được biết nhiều hơn với&nbsp;<a title=\"B&uacute;t danh\" href=\"https://vi.wikipedia.org/wiki/B%C3%BAt_danh\">b&uacute;t danh</a>&nbsp;Carlo Collodi, l&agrave; một nh&agrave; văn &Yacute; của trẻ em nổi tiếng với cuốn tiểu thuyết cổ t&iacute;ch nổi tiếng thế giới&nbsp;<em><a title=\"Những cuộc phi&ecirc;u lưu của Pinocchio\" href=\"https://vi.wikipedia.org/wiki/Nh%E1%BB%AFng_cu%E1%BB%99c_phi%C3%AAu_l%C6%B0u_c%E1%BB%A7a_Pinocchio\">Những cuộc phi&ecirc;u lưu của Pinocchio</a></em>. Collodi sinh ra tại&nbsp;<a title=\"Firenze\" href=\"https://vi.wikipedia.org/wiki/Firenze\">Firenze</a>. &Ocirc;ng c&ograve;n l&agrave; một nh&agrave; b&aacute;o, vừa l&agrave; một nh&acirc;n vi&ecirc;n cao cấp trong Ch&iacute;nh phủ, đ&atilde; từng được thưởng Qu&acirc;n c&ocirc;ng bội tinh. Trong c&aacute;c cuộc chiến tranh độc lập năm 1848 v&agrave; 1860 Collodi đ&atilde; l&agrave;m một t&igrave;nh nguyện vi&ecirc;n qu&acirc;n đội Tuscan</p>",
+			        Dob = new DateTime(1826, 11, 24),
+			        DateOfDeath = new DateTime(1890, 10,26),
+			        Nationality = "Italy",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00004",
-			        AuthorImage = "image4.jpg",
-			        FullName = "Robert Brown",
-			        Biography = "<p>Robert Brown specializes in historical fiction.</p>",
-			        Dob = new DateTime(1965, 11, 30),
-			        Nationality = "Australian",
+			        AuthorImage = "https://m.media-amazon.com/images/M/MV5BNzQ0YWMxNzYtOWM1Ni00MDM0LWI4ZDMtOTZjNzc2OThmMGY1XkEyXkFqcGc@._V1_.jpg",
+			        FullName = "Antoine de Saint-Exupéry",
+			        Biography = "<p><strong>Antoine Marie Jean-Baptiste Roger de Saint-Exup&eacute;ry</strong>, thường được biết tới với t&ecirc;n&nbsp;<strong>Antoine de Saint-Exup&eacute;ry</strong>&nbsp;hay gọi tắt l&agrave;&nbsp;<strong>Saint-Ex</strong>&nbsp;(sinh ng&agrave;y&nbsp;<a title=\"29 th&aacute;ng 6\" href=\"https://vi.wikipedia.org/wiki/29_th%C3%A1ng_6\">29 th&aacute;ng 6</a>&nbsp;năm&nbsp;<a title=\"1900\" href=\"https://vi.wikipedia.org/wiki/1900\">1900</a>&nbsp;- mất t&iacute;ch ng&agrave;y&nbsp;<a title=\"31 th&aacute;ng 7\" href=\"https://vi.wikipedia.org/wiki/31_th%C3%A1ng_7\">31 th&aacute;ng 7</a>&nbsp;năm&nbsp;<a title=\"1944\" href=\"https://vi.wikipedia.org/wiki/1944\">1944</a>) l&agrave; một&nbsp;<a title=\"Nh&agrave; văn\" href=\"https://vi.wikipedia.org/wiki/Nh%C3%A0_v%C4%83n\">nh&agrave; văn</a>&nbsp;v&agrave;&nbsp;<a title=\"Phi c&ocirc;ng\" href=\"https://vi.wikipedia.org/wiki/Phi_c%C3%B4ng\">phi c&ocirc;ng</a>&nbsp;<a title=\"Ph&aacute;p\" href=\"https://vi.wikipedia.org/wiki/Ph%C3%A1p\">Ph&aacute;p</a>&nbsp;nổi tiếng. Saint-Exup&eacute;ry được biết tới nhiều nhất với kiệt t&aacute;c văn học&nbsp;<a class=\"mw-redirect\" title=\"Ho&agrave;ng Tử B&eacute;\" href=\"https://vi.wikipedia.org/wiki/Ho%C3%A0ng_T%E1%BB%AD_B%C3%A9\">Ho&agrave;ng tử b&eacute;</a>&nbsp;(<em>Le Petit Prince</em>).</p>",
+			        Dob = new DateTime(1900, 6, 29),
+			        DateOfDeath = new DateTime(1944, 7,31),
+			        Nationality = "France",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = true
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00005",
-			        AuthorImage = "image5.jpg",
-			        FullName = "Lisa Wilson",
-			        Biography = "<p>Lisa Wilson is an award-winning children's book author.</p>",
-			        Dob = new DateTime(1988, 7, 5),
-			        Nationality = "American",
+			        AuthorImage = "https://img.giaoduc.net.vn/w1000/Uploaded/2025/edxwpcqdh/2022_07_01/gdvn-thay-nam-3039.jpg",
+			        FullName = "PGS. TS. Nguyễn Văn Nam",
+			        Biography = "<p>L&agrave; một trong những sinh vi&ecirc;n xuất sắc của sinh vi&ecirc;n chuy&ecirc;n ng&agrave;nh Xử l&yacute; th&ocirc;ng tin&nbsp;kinh tế kh&oacute;a 1 (tương ứng với kh&oacute;a 14 của Trường), <strong>GS.TS Nguyễn Văn Nam</strong> được&nbsp;c&aacute;c thầy, c&ocirc; gi&aacute;o v&agrave; c&aacute;c bạn sinh vi&ecirc;n nhớ đến với h&igrave;nh ảnh m&aacute;i t&oacute;c bồng bềnh l&atilde;ng&nbsp;tử nhưng cũng rất &ldquo;si&ecirc;u&rdquo; trong học tập.</p>\n<p>Sau khi tốt nghiệp chuy&ecirc;n Xử l&yacute; th&ocirc;ng tin kinh tế v&agrave; được giữ lại l&agrave;m giảng vi&ecirc;n ở Khoa Ng&acirc;n h&agrave;ng (nay l&agrave; Viện Ng&acirc;n h&agrave;ng &ndash; T&agrave;i ch&iacute;nh), với tố chất của một người học to&aacute;n &Ocirc;ng đ&atilde; dấn th&acirc;n v&agrave;o ng&agrave;nh Ng&acirc;n h&agrave;ng v&agrave; Thị trường t&agrave;i ch&iacute;nh. Đ&oacute; l&agrave; ng&agrave;nh học mới mẻ ở Việt Nam v&agrave;o những năm 80 của thập kỷ trước. &Ocirc;ng đ&atilde; bảo vệ th&agrave;nh c&ocirc;ng luận &aacute;n Tiến sỹ một c&aacute;ch xuất sắc ở trường Đại học tổng hợp Humboldt &ndash; Berlin, sau đ&oacute; l&agrave;m thực tập sinh khoa học tại Thị trường chứng kho&aacute;n Franfurt/ Main, Deutsche Bank (Đức).</p>",
+			        Nationality = "Vietnam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00006",
-			        AuthorImage = "image6.jpg",
-			        FullName = "Michael Green",
-			        Biography = "<p>Michael Green is known for his compelling mystery novels.</p>",
-			        Dob = new DateTime(1972, 4, 25),
-			        Nationality = "Irish",
+			        AuthorImage = "https://staff.hnue.edu.vn/Portals/0/Images/20fa5cd3-788b-4fd4-9d97-383b95edf53a.jpg",
+			        FullName = "PGS. TS. Lê Minh Hoàng",
+			        Nationality = "Vietnam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
 			    new()
 			    {
 			        AuthorCode = "AUTH00007",
-			        AuthorImage = "image7.jpg",
-			        FullName = "Sophia Miller",
-			        Biography = "<p>Sophia Miller writes romance novels enjoyed worldwide.</p>",
-			        Dob = new DateTime(1995, 2, 12),
-			        Nationality = "French",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00008",
-			        AuthorImage = "image8.jpg",
-			        FullName = "William King",
-			        Biography = "<p>William King is a prominent fantasy author.</p>",
-			        Dob = new DateTime(1983, 9, 18),
-			        Nationality = "Scottish",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00009",
-			        AuthorImage = "image9.jpg",
-			        FullName = "Elizabeth Hall",
-			        Biography = "<p>Elizabeth Hall has authored bestselling biographies.</p>",
-			        Dob = new DateTime(1978, 6, 22),
-			        Nationality = "New Zealander",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00010",
-			        AuthorImage = "image10.jpg",
-			        FullName = "David White",
-			        Biography = "<p>David White writes award-winning nonfiction works.</p>",
-			        Dob = new DateTime(1969, 12, 5),
-			        Nationality = "South African",
+			        FullName = "PGS. TS. Trần Văn Lượng",
+			        Nationality = "Vietnam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
 			    new ()
 			    {
-				    AuthorCode = "AUTH00011",
+				    AuthorCode = "AUTH00008",
                     AuthorImage = "https://www.jkrowling.com/wp-content/uploads/2022/05/J.K.-Rowling-2021-Photography-Debra-Hurford-Brown-scaled.jpg",
                     FullName = "Rowling, J. K.",
                     Biography = "Joanne Rowling CH OBE FRSL, known by her pen name J. K. Rowling, is a British author and philanthropist. She wrote Harry Potter, a seven-volume fantasy series published from 1997 to 2007.",

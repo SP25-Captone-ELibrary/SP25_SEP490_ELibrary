@@ -31,10 +31,12 @@ public class DigitalBorrowConfiguration : IEntityTypeConfiguration<DigitalBorrow
         
         builder.HasOne(e => e.LibraryResource).WithMany(p => p.DigitalBorrows)
             .HasForeignKey(e => e.ResourceId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_DigitalBorrow_ResourceId");
         
         builder.HasOne(e => e.User).WithMany(p => p.DigitalBorrows)
             .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_DigitalBorrow_UserId");
         #endregion
     }

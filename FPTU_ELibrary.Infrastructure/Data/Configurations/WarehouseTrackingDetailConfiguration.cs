@@ -53,17 +53,19 @@ public class WarehouseTrackingDetailConfiguration :
         builder.HasOne(e => e.LibraryItem)
             .WithMany(p => p.WarehouseTrackingDetails)
             .HasForeignKey(e => e.LibraryItemId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_WarehouseTrackingDetail_LibraryItemId");
-        
+
         builder.HasOne(e => e.WarehouseTracking)
             .WithMany(p => p.WarehouseTrackingDetails)
             .HasForeignKey(e => e.TrackingId)
-            .HasConstraintName("FK_WarehouseTrackingDetail_TrackingId")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("FK_WarehouseTrackingDetail_TrackingId");
 
         builder.HasOne(e => e.Category)
             .WithMany(p => p.WarehouseTrackingDetails)
             .HasForeignKey(e => e.CategoryId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_WarehouseTrackingDetail_CategoryId");
     }
 }

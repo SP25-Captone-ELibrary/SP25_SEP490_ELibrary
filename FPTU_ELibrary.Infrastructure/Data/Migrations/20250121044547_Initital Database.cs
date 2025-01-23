@@ -24,7 +24,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
                     old_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
                     new_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
-                    changed_columns = table.Column<string>(type: "nvarchar(255)", nullable: false)
+                    changed_columns = table.Column<string>(type: "nvarchar(500)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -554,14 +554,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_DigitalBorrow_ResourceId",
                         column: x => x.resource_id,
                         principalTable: "Library_Resource",
-                        principalColumn: "resource_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "resource_id");
                     table.ForeignKey(
                         name: "FK_DigitalBorrow_UserId",
                         column: x => x.user_id,
                         principalTable: "User",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -583,8 +581,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_Invoice_UserId",
                         column: x => x.user_id,
                         principalTable: "User",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1053,8 +1050,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_BorrowRecord_ProcessedBy",
                         column: x => x.proceesed_by,
                         principalTable: "Employee",
-                        principalColumn: "employee_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "employee_id");
                     table.ForeignKey(
                         name: "FK_Borrow_Record_Borrow_Request_BorrowRequestId",
                         column: x => x.BorrowRequestId,

@@ -87,28 +87,38 @@ public class LibraryResourceSpecification : BaseSpecification<LibraryResource>
             {
                 specParams.Sort = specParams.Sort.Trim('-');
             }
-
-            specParams.Sort = specParams.Sort.ToUpper();
             
-            // Define sorting pattern
-            var sortMappings = new Dictionary<string, Expression<Func<LibraryResource, object>>>()
-            {
-                { "RESOURCETYPE", x => x.ResourceType },
-                { "RESOURCEURL", x => x.ResourceUrl },
-                { "RESOURCESIZE", x => x.ResourceSize ?? null! },
-                { "FILEFORMAT", x => x.FileFormat },
-                { "PROVIDER", x => x.Provider },
-                { "CREATEDAT", x => x.CreatedAt },
-                { "UPDATEDAT", x => x.UpdatedAt ?? null! },
-            };
-        
-            // Get sorting pattern
-            if (sortMappings.TryGetValue(specParams.Sort.ToUpper(), 
-                    out var sortExpression))
-            {
-                if(isDescending) AddOrderByDescending(sortExpression);
-                else AddOrderBy(sortExpression);    
-            }
+            // Uppercase sort value
+            specParams.Sort = specParams.Sort.ToUpper();
+
+            // Apply sorting
+            ApplySorting(specParams.Sort, isDescending);
+        }
+        else
+        {
+            AddOrderByDescending(n => n.ResourceId);
+        }
+    }
+    
+    private void ApplySorting(string propertyName, bool isDescending)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return;
+
+        // Initialize expression parameter with type of LibraryItem (x)
+        var parameter = Expression.Parameter(typeof(LibraryItem), "x");
+        // Assign property base on property name (x.PropertyName)
+        var property = Expression.Property(parameter, propertyName);
+        // Building a complete sort lambda expression (x => x.PropertyName)
+        var sortExpression =
+            Expression.Lambda<Func<LibraryResource, object>>(Expression.Convert(property, typeof(object)), parameter);
+
+        if (isDescending)
+        {
+            AddOrderByDescending(sortExpression);
+        }
+        else
+        {
+            AddOrderBy(sortExpression);
         }
     }
 }

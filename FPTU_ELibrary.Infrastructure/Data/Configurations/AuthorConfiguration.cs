@@ -21,7 +21,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .IsUnicode(false)
                 .HasColumnName("author_image");
             builder.Property(e => e.Biography)
-                .HasMaxLength(2000)
+                .HasMaxLength(3000)
                 .HasColumnName("biography");
             builder.Property(e => e.CreateDate)
                 .HasColumnType("datetime")

@@ -1,8 +1,6 @@
-using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
-
 namespace FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 
-public class CreateLibraryItemRequest
+public class UpdateLibraryItemRequest
 {
     // Item MARC21 details
     public string Title { get; set; } = null!; // Title: [245a]
@@ -32,14 +30,7 @@ public class CreateLibraryItemRequest
     public string? TopicalTerms { get; set; } // Subject Added Entry - Topical Term (R) [650a] - Combined with ','
     public string? AdditionalAuthors { get; set; } // Personal author names [700a]/[700a + 700e] - Combined with ','
     
-    // In-library management fields
+    // References
+    public int? ShelfId { get; set; }
     public int CategoryId { get; set; }
-    public int? GroupId { get; set; }
-    
-    // Instances  
-    public List<CreateItemInstanceRequest>? LibraryItemInstances { get; set; } = new();
-    // Book authors
-    public List<int> AuthorIds { get; set; } = new();
-    // Book resources
-    public List<CreateLibraryResourceRequest>? LibraryResources { get; set; } = new();
 }

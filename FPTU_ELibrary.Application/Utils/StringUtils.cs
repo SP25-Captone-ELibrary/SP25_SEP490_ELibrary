@@ -172,7 +172,12 @@ namespace FPTU_ELibrary.Application.Utils
         // Validate numeric & datetime
         public static bool IsDecimal(string text) => decimal.TryParse(text, out _);
         public static bool IsNumeric(string text) => int.TryParse(text, out _);
-        public static bool IsDateTime(string text) => DateTime.TryParse(text, out _);
+
+        public static bool IsDateTime(string text)
+        {
+            string[] formats = { "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy" };
+            return DateTime.TryParseExact(text, formats, null, DateTimeStyles.None, out _);
+        }
 
         // Validate Http/Https Url
         public static bool IsValidUrl(string url)
@@ -185,7 +190,12 @@ namespace FPTU_ELibrary.Application.Utils
         // Validate DCC number
         public static bool IsValidDeweyDecimal(string classificationNumber)
         {
-            var regex = new Regex(@"^\d{1,3}(\.\d{1,3})?$");
+            if (string.IsNullOrWhiteSpace(classificationNumber))
+                return false;
+
+            classificationNumber = classificationNumber.Trim();
+            
+            var regex = new Regex(@"^\d{1,3}(\.\d{1,10})?$", RegexOptions.Compiled);
             return regex.IsMatch(classificationNumber);
         }
         

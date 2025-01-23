@@ -26,6 +26,12 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
             .WithMessage(isEng
                 ? "Invalid author image"
                 : "Hình ảnh đại diện không hợp lệ");
+        // Biography
+        RuleFor(e => e.Biography)
+            .MaximumLength(2000)
+            .WithMessage(isEng
+                ? "Biography must not exceed 50 characters"
+                : "Tiểu sử tác giả không vượt quá 50 ký tự");
         // Fullname
         RuleFor(u => u.FullName)
             .NotEmpty()

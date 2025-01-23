@@ -73,7 +73,7 @@ public class VoiceService : IVoiceService
 //                 , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), bookEdition);
 //             /*
 //             // using elasticsearch for support best suitable book
-//             var searchResultWithTitle = await _searchService.SearchBookAsync(new SearchBookParameters(
+//             var searchResultWithTitle = await _searchService.SearchItemAsync(new SearchItemParameters(
 //             {
 //                  SearchText = recogniseTitle
 //              });

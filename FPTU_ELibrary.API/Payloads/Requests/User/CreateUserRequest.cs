@@ -1,6 +1,6 @@
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.API.Payloads.Requests.Auth;
+namespace FPTU_ELibrary.API.Payloads.Requests.User;
 
 public class CreateUserRequest
 {

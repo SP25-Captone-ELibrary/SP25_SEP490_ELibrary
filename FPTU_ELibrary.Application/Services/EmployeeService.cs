@@ -1375,7 +1375,7 @@ namespace FPTU_ELibrary.Application.Services
 				if (string.IsNullOrEmpty(key))
 					continue;
 
-				// Check if the key is already seen
+				// Check if the key has already seen
 				if (seenKeys.Contains(key))
 				{
 					// Find the first item of the duplicate key

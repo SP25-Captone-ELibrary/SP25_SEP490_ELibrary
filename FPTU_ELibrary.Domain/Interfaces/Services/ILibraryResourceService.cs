@@ -6,12 +6,10 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource, TDto, int> 
     where TDto : class
 {
-    // TODO: Fix conflicts
-    // Task<IServiceResult> AddBookResourceToBookAsync(int bookId, TDto dto, string byEmail);
-    // Task<IServiceResult> UpdateAsync(int id, TDto dto, string byEmail);
-    // Task<IServiceResult> SoftDeleteAsync(int id);
-    // Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);
-    // Task<IServiceResult> UndoDeleteAsync(int id);
-    // Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
-    // Task<IServiceResult> DeleteRangeAsync(int[] ids);
+    Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, TDto dto);
+    Task<IServiceResult> SoftDeleteAsync(int id);
+    Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);
+    Task<IServiceResult> UndoDeleteAsync(int id);
+    Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
+    Task<IServiceResult> DeleteRangeAsync(int[] ids);
 }

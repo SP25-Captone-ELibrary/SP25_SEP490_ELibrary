@@ -6,14 +6,13 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItemInstance, TDto, int>
     where TDto : class
 {
-     // TODO: Fix conflicts
-    // Task<IServiceResult> AddRangeToBookEditionAsync(int bookEditionId, List<TDto> bookEditionCopies);
-    // Task<IServiceResult> UpdateRangeAsync(int bookEditionId, List<int> bookEditionCopyIds, string status);
-    // Task<IServiceResult> SoftDeleteAsync(int bookEditionCopyId);
-    // Task<IServiceResult> SoftDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
-    // Task<IServiceResult> UndoDeleteAsync(int bookEditionCopyId);
-    // Task<IServiceResult> UndoDeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
-    // Task<IServiceResult> DeleteRangeAsync(int bookEditionId, List<int> bookEditionCopyIds);
+    Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId, List<TDto> libraryItemInstances);
+    Task<IServiceResult> UpdateRangeAsync(int libraryItemId, List<TDto> itemInstanceDtos);
+    Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId);
+    Task<IServiceResult> SoftDeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
+    Task<IServiceResult> UndoDeleteAsync(int libraryItemInstanceId);
+    Task<IServiceResult> UndoDeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
+    Task<IServiceResult> DeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
     Task<IServiceResult> CountTotalItemInstanceAsync(int libraryItemId);
     Task<IServiceResult> CountTotalItemInstanceAsync(List<int> libraryItemIds);
 }

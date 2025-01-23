@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250117184424_Initital Database")]
+    [Migration("20250121044547_Initital Database")]
     partial class InititalDatabase
     {
         /// <inheritdoc />
@@ -36,7 +36,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("ChangedColumns")
                         .IsRequired()
-                        .HasColumnType("nvarchar(255)")
+                        .HasColumnType("nvarchar(500)")
                         .HasColumnName("changed_columns");
 
                     b.Property<DateTime>("DateUtc")
@@ -2449,7 +2449,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "ProcessedByNavigation")
                         .WithMany("BorrowRecords")
                         .HasForeignKey("ProcessedBy")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRecord_ProcessedBy");
 
@@ -2490,14 +2489,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryResource", "LibraryResource")
                         .WithMany("DigitalBorrows")
                         .HasForeignKey("ResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_DigitalBorrow_ResourceId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.User", "User")
                         .WithMany("DigitalBorrows")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_DigitalBorrow_UserId");
 
@@ -2550,7 +2547,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.User", "User")
                         .WithMany("Invoices")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_Invoice_UserId");
 

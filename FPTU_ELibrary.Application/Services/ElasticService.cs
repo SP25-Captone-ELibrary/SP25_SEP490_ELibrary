@@ -1,9 +1,10 @@
 ﻿using Elasticsearch.Net;
-using FPTU_ELibrary.API.Mappings;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Elastic.Mappers;
 using FPTU_ELibrary.Application.Elastic.Models;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -451,7 +452,23 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			// PUT request to indices
             return await _elasticClient.Indices.CreateAsync(ElasticIndexConst.LibraryItemIndex, c => c
-                // Define mappings for index
+	            .Settings(s => s
+		            .Analysis(a => a
+			            .Analyzers(an => an
+				            // Analyzer for exact matching (keeps special characters)
+				            .Custom("exact_match_analyzer", ea => ea
+					            .Tokenizer("standard") // Use standard tokenizer
+					            .Filters("lowercase") // Case-insensitive
+				            )
+				            // Analyzer for non-special matching
+				            .Custom("non_special_match_analyzer", nsa => nsa
+					            .Tokenizer("standard") // Use standard tokenizer
+					            .Filters("lowercase", "asciifolding") // Case-insensitive and removes accents
+				            )
+			            )
+		            )
+	            )
+	            // Define mappings for index
                 .Map<ElasticLibraryItem>(m => m
                     // Mapping properties
                     .Properties(ps => ps
@@ -463,14 +480,40 @@ namespace FPTU_ELibrary.Application.Services
                     	.Number(n => n.Name(e => e.ShelfId).Type(NumberType.Integer))
                     	.Number(n => n.Name(e => e.GroupId).Type(NumberType.Integer))
                     	.Number(n => n.Name(e => e.EstimatedPrice).Type(NumberType.Double))
-                    	.Text(t => t.Name(e => e.Title))
-                    	.Text(t => t.Name(e => e.SubTitle))
+                    	.Text(t => t
+		                    .Name(e => e.Title)
+		                    .Fields(ff => ff
+			                    .Text(tt => tt
+				                    .Name("exact") // Exact match field
+				                    .Analyzer("exact_match_analyzer")
+			                    )
+			                    .Text(tt => tt
+				                    .Name("non_special") // Non-special match field
+				                    .Analyzer("non_special_match_analyzer")
+			                    )
+		                    )
+		                )
+                    	.Text(t => t
+		                    .Name(e => e.SubTitle)
+		                    .Fields(ff => ff
+			                    .Text(tt => tt
+				                    .Name("exact") // Exact match field
+				                    .Analyzer("exact_match_analyzer")
+			                    )
+			                    .Text(tt => tt
+				                    .Name("non_special") // Non-special match field
+				                    .Analyzer("non_special_match_analyzer")
+			                    )
+		                    )
+	                    )
                     	.Text(t => t.Name(e => e.Responsibility))
                     	.Text(t => t.Name(e => e.Edition))
                     	.Text(t => t.Name(e => e.Summary))
                     	.Keyword(t => t.Name(e => e.Language))
                     	.Keyword(t => t.Name(e => e.OriginLanguage))
                     	.Keyword(t => t.Name(e => e.CoverImage))
+                    	.Keyword(t => t.Name(e => e.Status))
+                    	.Text(t => t.Name(e => e.Publisher))
                     	.Text(t => t.Name(e => e.PublicationPlace))
                     	.Text(t => t.Name(e => e.ClassificationNumber))
                     	.Text(t => t.Name(e => e.CutterNumber))
@@ -480,8 +523,8 @@ namespace FPTU_ELibrary.Application.Services
                     	.Text(t => t.Name(e => e.Dimensions))
                     	.Text(t => t.Name(e => e.Genres))
                     	.Text(t => t.Name(e => e.TopicalTerms))
+                    	.Text(t => t.Name(e => e.GeneralNote))
                     	.Text(t => t.Name(e => e.AdditionalAuthors))
-                    	.Text(t => t.Name(e => e.Status))
                     	.Boolean(b => b.Name(e => e.IsDeleted))
                     	.Boolean(b => b.Name(e => e.CanBorrow))
                     	.Boolean(b => b.Name(e => e.IsTrained))
@@ -499,7 +542,7 @@ namespace FPTU_ELibrary.Application.Services
 	                    )
 	                    // Mapping edition copy as nested documents
 	                    .Nested<ElasticLibraryItemInstance>(n1 => n1
-		                    .Name(e => e.ElasticLibraryItemInstances)
+		                    .Name(e => e.LibraryItemInstances)
 		                    .Properties(np1 => np1
 			                    .Number(nn => nn.Name(ee => ee.LibraryItemInstanceId).Type(NumberType.Integer))
 			                    .Number(nn => nn.Name(ee => ee.LibraryItemId).Type(NumberType.Integer))
@@ -595,8 +638,9 @@ namespace FPTU_ELibrary.Application.Services
 		   
 		   // Check success result
 		   if (getLibraryItemsRes.Data != null && getLibraryItemsRes.Data is List<LibraryItem> libraryItems) {
-			   // Convert to dtos
-			   var libraryItemDtos = _mapper.Map<List<LibraryItemDto>>(libraryItems);
+			   // Convert to dtos (exclude all draft item)
+			   var libraryItemDtos = _mapper.Map<List<LibraryItemDto>>(libraryItems.Where(li => 
+				   !Equals(li.Status.ToString(), LibraryItemStatus.Draft.ToString())).ToList());
 			   // Map to elastic list object
 			   var elasticItems = libraryItemDtos.Select(b => b.ToElasticLibraryItem());
 			   var toItemList = elasticItems?.ToList();

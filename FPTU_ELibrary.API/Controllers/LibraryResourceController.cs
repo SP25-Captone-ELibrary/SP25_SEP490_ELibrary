@@ -2,7 +2,7 @@ using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
-using FPTU_ELibrary.API.Payloads.Requests.Book;
+using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -17,91 +17,88 @@ namespace FPTU_ELibrary.API.Controllers;
 [ApiController]
 public class LibraryResourceController : ControllerBase
 {
-    // private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
-    // private readonly AppSettings _appSettings;
-    //
-    // public LibraryResourceController(
-    //     ILibraryResourceService<LibraryResourceDto> libraryResourceService,
-    //     IOptionsMonitor<AppSettings> monitor)
-    // {
-    //     _libraryResourceService = libraryResourceService;
-    //     _appSettings = monitor.CurrentValue;
-    // }
-    //
-    // [Authorize]
-    // [HttpGet(APIRoute.BookResource.GetAll, Name = nameof(GetAllBookResourceAsync))]
-    // public async Task<IActionResult> GetAllBookResourceAsync([FromQuery] LibraryResourceSpecParams specParams)
-    // {
-    //     return Ok(await _libraryResourceService.GetAllWithSpecAsync(new LibraryResourceSpecification(
-    //         specParams: specParams,
-    //         pageIndex: specParams.PageIndex ?? 1,
-    //         pageSize: specParams.PageSize ?? _appSettings.PageSize)));
-    // }
-    //
-    // [Authorize]
-    // [HttpGet(APIRoute.BookResource.GetById, Name = nameof(GetBookResourceByIdAsync))]
-    // public async Task<IActionResult> GetBookResourceByIdAsync([FromRoute] int id)
-    // {
-    //     return Ok(await _libraryResourceService.GetByIdAsync(id));
-    // }
-    //
-    // [Authorize]
-    // [HttpPost(APIRoute.BookResource.AddToBook, Name = nameof(AddBookResourceToBookAsync))]
-    // public async Task<IActionResult> AddBookResourceToBookAsync([FromRoute] int bookId, [FromBody] CreateBookResourceRequest req)
-    // {
-    //     // Retrieve user email from token
-    //     var email = User.FindFirst(ClaimTypes.Email)?.Value;
-    //     return Ok(await _libraryResourceService.AddBookResourceToBookAsync(bookId, req.ToBookResourceDto(), email ?? string.Empty));
-    // }
-    //
-    // [Authorize]
-    // [HttpPut(APIRoute.BookResource.Update, Name = nameof(UpdateBookResourceAsync))]
-    // public async Task<IActionResult> UpdateBookResourceAsync([FromRoute] int id, [FromBody] UpdateBookResourceRequest req)
-    // {
-    //     // Retrieve user email from token
-    //     var email = User.FindFirst(ClaimTypes.Email)?.Value;
-    //     return Ok(await _libraryResourceService.UpdateAsync(id, req.ToBookResourceDto(), email ?? string.Empty));
-    // }
-    //
-    // [Authorize]
-    // [HttpPatch(APIRoute.BookResource.SoftDelete, Name = nameof(SoftDeleteBookResourceAsync))]
-    // public async Task<IActionResult> SoftDeleteBookResourceAsync([FromRoute] int id)
-    // {
-    //     return Ok(await _libraryResourceService.SoftDeleteAsync(id));
-    // }
-    //
-    // [Authorize]
-    // [HttpPatch(APIRoute.BookResource.SoftDeleteRange, Name = nameof(SoftDeleteRangeBookResourceAsync))]
-    // public async Task<IActionResult> SoftDeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
-    // {
-    //     return Ok(await _libraryResourceService.SoftDeleteRangeAsync(req.Ids));
-    // }
-    //
-    // [Authorize]
-    // [HttpPatch(APIRoute.BookResource.UndoDelete, Name = nameof(UndoSoftDeleteBookResourceAsync))]
-    // public async Task<IActionResult> UndoSoftDeleteBookResourceAsync([FromRoute] int id)
-    // {
-    //     return Ok(await _libraryResourceService.UndoDeleteAsync(id));
-    // }
-    //
-    // [Authorize]
-    // [HttpPatch(APIRoute.BookResource.UndoDeleteRange, Name = nameof(UndoSoftDeleteRangeBookResourceAsync))]
-    // public async Task<IActionResult> UndoSoftDeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
-    // {
-    //     return Ok(await _libraryResourceService.UndoDeleteRangeAsync(req.Ids));
-    // }
-    //
-    // [Authorize]
-    // [HttpDelete(APIRoute.BookResource.Delete, Name = nameof(DeleteBookResourceAsync))]
-    // public async Task<IActionResult> DeleteBookResourceAsync([FromRoute] int id)
-    // {
-    //     return Ok(await _libraryResourceService.DeleteAsync(id));
-    // }
-    //
-    // [Authorize]
-    // [HttpDelete(APIRoute.BookResource.DeleteRange, Name = nameof(DeleteRangeBookResourceAsync))]
-    // public async Task<IActionResult> DeleteRangeBookResourceAsync([FromBody] RangeRequest<int> req)
-    // {
-    //     return Ok(await _libraryResourceService.DeleteRangeAsync(req.Ids));
-    // }
+    private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
+    private readonly AppSettings _appSettings;
+    
+    public LibraryResourceController(
+        ILibraryResourceService<LibraryResourceDto> libraryResourceService,
+        IOptionsMonitor<AppSettings> monitor)
+    {
+        _libraryResourceService = libraryResourceService;
+        _appSettings = monitor.CurrentValue;
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItemResource.GetAll, Name = nameof(GetAllBookResourceAsync))]
+    public async Task<IActionResult> GetAllBookResourceAsync([FromQuery] LibraryResourceSpecParams specParams)
+    {
+        return Ok(await _libraryResourceService.GetAllWithSpecAsync(new LibraryResourceSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItemResource.GetById, Name = nameof(GetBookResourceByIdAsync))]
+    public async Task<IActionResult> GetBookResourceByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryResourceService.GetByIdAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPost(APIRoute.LibraryItemResource.AddToBook, Name = nameof(AddResourceToLibraryItemAsync))]
+    public async Task<IActionResult> AddResourceToLibraryItemAsync([FromRoute] int libraryItemId, [FromBody] CreateLibraryResourceRequest req)
+    {
+        return Ok(await _libraryResourceService.AddResourceToLibraryItemAsync(libraryItemId, req.ToLibraryResourceDto()));
+    }
+    
+    [Authorize]
+    [HttpPut(APIRoute.LibraryItemResource.Update, Name = nameof(UpdateBookResourceAsync))]
+    public async Task<IActionResult> UpdateBookResourceAsync([FromRoute] int id, [FromBody] UpdateLibraryResourceRequest req)
+    {
+        return Ok(await _libraryResourceService.UpdateAsync(id, req.ToLibraryResourceDto()));
+    }
+    
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemResource.SoftDelete, Name = nameof(SoftDeleteLibraryResourceAsync))]
+    public async Task<IActionResult> SoftDeleteLibraryResourceAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryResourceService.SoftDeleteAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemResource.SoftDeleteRange, Name = nameof(SoftDeleteRangeLibraryResourceAsync))]
+    public async Task<IActionResult> SoftDeleteRangeLibraryResourceAsync([FromBody] RangeRequest<int> req)
+    {
+        return Ok(await _libraryResourceService.SoftDeleteRangeAsync(req.Ids));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemResource.UndoDelete, Name = nameof(UndoSoftDeleteLibraryResourceAsync))]
+    public async Task<IActionResult> UndoSoftDeleteLibraryResourceAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryResourceService.UndoDeleteAsync(id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemResource.UndoDeleteRange, Name = nameof(UndoSoftDeleteRangeLibraryResourceAsync))]
+    public async Task<IActionResult> UndoSoftDeleteRangeLibraryResourceAsync([FromBody] RangeRequest<int> req)
+    {
+        return Ok(await _libraryResourceService.UndoDeleteRangeAsync(req.Ids));
+    }
+    
+    [Authorize]
+    [HttpDelete(APIRoute.LibraryItemResource.Delete, Name = nameof(DeleteLibraryResourceAsync))]
+    public async Task<IActionResult> DeleteLibraryResourceAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryResourceService.DeleteAsync(id));
+    }
+    
+    [Authorize]
+    [HttpDelete(APIRoute.LibraryItemResource.DeleteRange, Name = nameof(DeleteRangeLibraryResourceAsync))]
+    public async Task<IActionResult> DeleteRangeLibraryResourceAsync([FromBody] RangeRequest<int> req)
+    {
+        return Ok(await _libraryResourceService.DeleteRangeAsync(req.Ids));
+    }
 }

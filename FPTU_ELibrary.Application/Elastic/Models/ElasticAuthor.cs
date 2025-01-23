@@ -12,8 +12,8 @@ namespace FPTU_ELibrary.Application.Elastic.Models
         [Number(NumberType.Integer, Name = "author_id")]
         public int AuthorId { get; set; }
 
-        [Text(Name = "author_code")]
-        public string AuthorCode { get; set; }
+        [Text(Name = "author_code")] 
+        public string AuthorCode { get; set; } = null!;
         
         [Keyword(Name = "author_image")]
         public string? AuthorImage { get; set; }

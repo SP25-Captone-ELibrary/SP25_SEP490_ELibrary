@@ -98,7 +98,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.LibraryCardId).HasColumnName("library_card_id");
             builder.HasOne(d => d.LibraryCard).WithMany(p => p.Users)
                 .HasForeignKey(d => d.LibraryCardId)
-                .OnDelete(DeleteBehavior.Cascade)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibraryCard_LibraryCardId");
             #endregion
         }

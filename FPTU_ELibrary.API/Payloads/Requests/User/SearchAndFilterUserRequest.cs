@@ -1,7 +1,7 @@
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Domain.Specifications.Params;
 
-namespace FPTU_ELibrary.API.Payloads.Requests.Auth;
+namespace FPTU_ELibrary.API.Payloads.Requests.User;
 
 public class SearchAndFilterUserRequest : BaseSpecParams
 {
