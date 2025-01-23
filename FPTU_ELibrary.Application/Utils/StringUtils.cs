@@ -238,6 +238,35 @@ namespace FPTU_ELibrary.Application.Utils
             {
                 if (field.Values == null || !field.Values.Any())
                     continue;
+                if (field.FieldName.Equals("Title", StringComparison.OrdinalIgnoreCase))
+                {
+                    Dictionary<string, int> titlePoint = new Dictionary<string, int>();
+                    foreach (var value in field.Values)
+                    {
+                        int matchPoint =
+                            FuzzySharp.Fuzz.TokenSetRatio(
+                                RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim(), finalContent);
+                        if (!titlePoint.Keys.Any())
+                        {
+                            titlePoint.Add(value, matchPoint);
+                        }
+
+                        else if (titlePoint.All(x => x.Value < matchPoint))
+                        {
+                            //only save the highest score
+                            titlePoint.Clear();
+                            titlePoint.Add(value,matchPoint);
+                        }
+                    }
+                    
+                    matchResult.FieldPoints.Add(new FieldMatchedResult()
+                    {
+                        Name = "Title or Subtitle matches most",
+                        Detail = titlePoint.Keys.First(),
+                        MatchedPoint = titlePoint[titlePoint.Keys.First()],
+                        IsPassed = titlePoint[titlePoint.Keys.First()] >= confidenceThreshold
+                    });
+                }
 
                 if (field.FieldName.Equals("Authors", StringComparison.OrdinalIgnoreCase))
                 {
@@ -266,19 +295,8 @@ namespace FPTU_ELibrary.Application.Utils
                 {
                     // Tính điểm cho các field khác
                     int matchPoint = FuzzySharp.Fuzz.TokenSetRatio(
-                        RemoveSpecialCharactersOfVietnamese(field.Values.First()).ToLower().Trim(), finalContent);
-
-                    if (field.FieldName.Equals("Title", StringComparison.OrdinalIgnoreCase))
-                    {
-                        matchResult.FieldPoints.Add(new()
-                        {
-                            Name = "Title",
-                            Detail = field.Values.First(),
-                            MatchedPoint = matchPoint,
-                            IsPassed = matchPoint >= confidenceThreshold
-                        });
-                    }
-                    else if (field.FieldName.Equals("Publisher", StringComparison.OrdinalIgnoreCase))
+                        RemoveSpecialCharactersOfVietnamese(field.Values.First()).ToLower().Trim(), finalContent); 
+                    if (field.FieldName.Equals("Publisher", StringComparison.OrdinalIgnoreCase))
                     {
                     
                         matchResult.FieldPoints.Add(new()
@@ -311,8 +329,11 @@ namespace FPTU_ELibrary.Application.Utils
                     stringBuilder.Append(c);
                 }
             }
-
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC); // Trả về chuỗi không dấu
+        }
+        public static string RemoveSpecialCharacter(string content)
+        {
+            return Regex.Replace(content, @"[^0-9a-zA-Z\s]", "");
         }
        
         //get public id in cloudinary url

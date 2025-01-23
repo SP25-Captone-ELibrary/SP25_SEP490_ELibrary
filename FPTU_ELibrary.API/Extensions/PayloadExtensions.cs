@@ -446,16 +446,28 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#region AIService
 
-		public static CheckedBookEditionDto ToCheckedBookEditionDto(
-			this CheckBookEditionWithImageRequest req)
+		// public static CheckedBookEditionDto ToCheckedBookEditionDto(
+		// 	this CheckBookEditionWithImageRequest req)
+		// {
+		// 		return new  CheckedBookEditionDto()
+		// 		{
+		// 			Title = req.Title,
+		// 			Publisher = req.Publisher,
+		// 			Authors = req.Authors,
+		// 			Image = req.Image
+		// 		};
+		// }
+		public static CheckedItemDto ToCheckedItemDto(this CheckItemWithImagesRequest req)
 		{
-				return new  CheckedBookEditionDto()
-				{
-					Title = req.Title,
-					Publisher = req.Publisher,
-					Authors = req.Authors,
-					Image = req.Image
-				};
+			return new CheckedItemDto()
+			{
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				GeneralNote = req.GeneralNote,
+				Publisher = req.Publisher,
+				Authors = req.Authors,
+				Images = req.Images
+			};
 		}
 
 		#endregion

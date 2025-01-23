@@ -5,12 +5,14 @@ using FPTU_ELibrary.API.Payloads.Requests.Book;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -21,16 +23,19 @@ public class LibraryItemController : ControllerBase
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
     private readonly ILibraryItemAuthorService<LibraryItemAuthorDto> _itemAuthorService;
-    
+    private readonly IAIDetectionService _aiDetectionService;
+
     public LibraryItemController(
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceService,
         ILibraryItemAuthorService<LibraryItemAuthorDto> itemAuthorService,
+        IAIDetectionService aiDetectionService,
         IOptionsMonitor<AppSettings> monitor)
     {
         _libraryItemService = libraryItemService;
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
+        _aiDetectionService = aiDetectionService;
         _appSettings = monitor.CurrentValue;
     }
 
@@ -126,7 +131,14 @@ public class LibraryItemController : ControllerBase
     {
         return Ok(await _libraryItemService.UpdateShelfLocationAsync(id, shelfId));
     }
-    
+
+    [Authorize]
+    [HttpPost(APIRoute.LibraryItem.CheckImagesForTraining, Name = nameof(CheckTrainingImagesForTraining))]
+    public async Task<IActionResult> CheckTrainingImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
+    {
+        return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemIds, req.CompareList));
+    }
+
     // [Authorize]
     // [HttpPatch(APIRoute.BookEdition.SoftDelete, Name = nameof(SoftDeleteBookEditionAsync))]
     // public async Task<IActionResult> SoftDeleteBookEditionAsync([FromRoute] int id)

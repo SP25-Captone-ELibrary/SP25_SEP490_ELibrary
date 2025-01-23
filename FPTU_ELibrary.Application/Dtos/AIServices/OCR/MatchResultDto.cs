@@ -5,6 +5,7 @@ public class MatchResultDto
         public List<FieldMatchedResult>  FieldPoints { get; set; }
         public double TotalPoint { get; set; }
         public double ConfidenceThreshold { get; set; }
+        public string ImageName { get; set; }
 }
 
 public class FieldMatchedResult
