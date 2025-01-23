@@ -8,6 +8,7 @@ public class CategoryExcelRecord
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
+    public bool IsAllowAITraining { get; set; }
 }
 
 public class BookCategoryFailedMessage

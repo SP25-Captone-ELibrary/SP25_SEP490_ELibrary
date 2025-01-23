@@ -16,6 +16,10 @@ public class Category
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
+    
+    // Boolean value to determine whether item need to create with image or not 
+    // This field really essential as it would allow items to train data into AI storage
+    public bool IsAllowAITraining { get; set; }
 
     // Mapping entities
     [JsonIgnore] 

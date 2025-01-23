@@ -8,6 +8,7 @@ public class CreateCategoryRequest
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
+    public bool IsAllowAITraining { get; set; } 
 }
 
 public static class CreateBookCategoryRequestExtension
@@ -19,7 +20,8 @@ public static class CreateBookCategoryRequestExtension
             Prefix = req.Prefix,
             Description = req.Description,
             EnglishName = req.EnglishName,
-            VietnameseName = req.VietnameseName
+            VietnameseName = req.VietnameseName,
+            IsAllowAITraining = req.IsAllowAITraining
         };
     }
 }

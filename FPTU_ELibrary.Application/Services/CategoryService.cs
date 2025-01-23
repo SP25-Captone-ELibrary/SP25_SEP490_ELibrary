@@ -388,6 +388,7 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
                      EnglishName = worksheet.Cells[row, 2].Text,
                      VietnameseName = worksheet.Cells[row, 3].Text,
                      Description = worksheet.Cells[row, 4].Text,
+                     IsAllowAITraining = bool.TryParse(worksheet.Cells[row, 5].Text, out var validBool) && validBool,
                  };
 
                  if (processedCategories.ContainsKey(categoryRecord.EnglishName))
@@ -429,7 +430,8 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
                          Prefix = categoryRecord.Prefix,
                          EnglishName = categoryRecord.EnglishName,
                          VietnameseName = categoryRecord.VietnameseName,
-                         Description = categoryRecord.Description
+                         Description = categoryRecord.Description,
+                         IsAllowAITraining = categoryRecord.IsAllowAITraining
                      };
 
                      // Add category

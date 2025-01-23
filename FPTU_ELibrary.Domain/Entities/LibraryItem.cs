@@ -29,7 +29,7 @@ public class LibraryItem : IAuditableEntity
     public decimal? EstimatedPrice { get; set; } // Price: [20c]
     public int? PageCount { get; set; } // Number of pages: [300a]
     public string? PhysicalDetails { get; set; } // Physical description: [300b]
-    public string? Dimensions { get; set; } = null!; // Dimensions: [300c]
+    public string? Dimensions { get; set; } // Dimensions: [300c]
     public string? AccompanyingMaterial { get; set; } // Accompanying materials: [300e]
     public string? Genres { get; set; } // Index Term - Genre/Form (R) [655a]
     public string? GeneralNote { get; set; } // General note: [500a]
