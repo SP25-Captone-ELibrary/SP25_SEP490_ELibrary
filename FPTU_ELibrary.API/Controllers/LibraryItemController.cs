@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
+using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Elastic.Params;
@@ -24,18 +25,22 @@ public class LibraryItemController : ControllerBase
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
     private readonly ILibraryItemAuthorService<LibraryItemAuthorDto> _itemAuthorService;
+    private readonly IAIDetectionService _aiDetectionService;
+
     private readonly ISearchService _searchService;
 
     public LibraryItemController(
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceService,
         ILibraryItemAuthorService<LibraryItemAuthorDto> itemAuthorService,
+        IAIDetectionService aiDetectionService,
         ISearchService searchService,
         IOptionsMonitor<AppSettings> monitor)
     {
         _libraryItemService = libraryItemService;
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
+        _aiDetectionService = aiDetectionService;
         _searchService = searchService;
         _appSettings = monitor.CurrentValue;
     }
@@ -211,5 +216,11 @@ public class LibraryItemController : ControllerBase
         [FromQuery] SearchItemRequest req, CancellationToken token)
     {
         return await _searchService.SearchItemAsync(req.ToSearchItemParams(), token);
+    }
+    [Authorize]
+    [HttpPost(APIRoute.LibraryItem.CheckImagesForTraining, Name = nameof(CheckTrainingImagesForTraining))]
+    public async Task<IActionResult> CheckTrainingImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
+    {
+        return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemIds, req.CompareList));
     }
 }

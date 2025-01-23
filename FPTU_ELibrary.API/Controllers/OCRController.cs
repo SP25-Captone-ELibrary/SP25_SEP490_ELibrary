@@ -11,11 +11,18 @@ namespace FPTU_ELibrary.API.Controllers;
 
 public class OCRController : ControllerBase
 {
-    // private readonly IOCRService _ocrService;
-    // public OCRController(IOCRService ocrService)
-    // {
-    //     _ocrService = ocrService;
-    // }
+    private readonly IOCRService _ocrService;
+    public OCRController(IOCRService ocrService)
+    {
+        _ocrService = ocrService;
+    }
+
+    // [Authorize]
+    [HttpPost(APIRoute.AIServices.OCR,Name = nameof(CheckImagesWithDetail))]
+    public async Task<IActionResult> CheckImagesWithDetail([FromForm] CheckItemWithImagesRequest req)
+    {
+        return Ok(await _ocrService.CheckBookInformationAsync(req.ToCheckedItemDto()));
+    }
     // [Authorize]
     // [HttpPost(APIRoute.AIServices.CheckBookEdition,Name = nameof(CheckBookEdition))]
     // public async Task<IActionResult> CheckBookEdition([FromForm] CheckBookEditionWithImageRequest dto)

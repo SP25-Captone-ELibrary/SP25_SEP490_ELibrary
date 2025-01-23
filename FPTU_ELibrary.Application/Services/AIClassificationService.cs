@@ -14,10 +14,12 @@ using FPTU_ELibrary.Application.Dtos.AIServices.Detection;
 using FPTU_ELibrary.Application.Dtos.AIServices.Speech;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Hubs;
+using FPTU_ELibrary.Application.Utils;
 using SixLabors.ImageSharp;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications;
+using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,39 +30,229 @@ namespace FPTU_ELibrary.Application.Services;
 
 public class AIClassificationService : IAIClassificationService
 {
-    // private readonly HttpClient _httpClient;
-    // private readonly CustomVisionSettings _monitor;
-    // private readonly IBookService<BookDto> _bookService;
-    // private readonly string _baseUrl;
-    // private readonly ILogger _logger;
-    // private readonly ISystemMessageService _msgService;
-    // private IHubContext<AiHub> _hubContext;
-    // private ILibraryItemService<LibraryItemDto> _libraryItemService;
-    // private readonly IServiceProvider _service;
-    // private readonly IAIDetectionService _aiDetectionService;
-    // private readonly string _basePredictUrl;
-    // private readonly IOCRService _ocrService;
-    //
-    // public AIClassificationService(HttpClient httpClient, ISystemMessageService msgService,
-    //     IBookService<BookDto> bookService, ILibraryItemService<LibraryItemDto> libraryItemService,
-    //     IHubContext<AiHub> hubContext, IAIDetectionService aiDetectionService
-    //     , IOptionsMonitor<CustomVisionSettings> monitor, ILogger logger,
-    //     IServiceProvider service, IOCRService ocrService)
+    private readonly HttpClient _httpClient;
+    private readonly CustomVisionSettings _monitor;
+    private readonly string _baseUrl;
+    private readonly ILogger _logger;
+    private readonly ISystemMessageService _msgService;
+    private IHubContext<AiHub> _hubContext;
+    private ILibraryItemService<LibraryItemDto> _libraryItemService;
+    private readonly IServiceProvider _service;
+    private readonly IAIDetectionService _aiDetectionService;
+    private readonly string _basePredictUrl;
+    private readonly IOCRService _ocrService;
+    private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
+
+    public AIClassificationService(HttpClient httpClient, ISystemMessageService msgService,
+        ILibraryItemService<LibraryItemDto> libraryItemService,
+        IHubContext<AiHub> hubContext, IAIDetectionService aiDetectionService
+        , IOptionsMonitor<CustomVisionSettings> monitor, ILogger logger,
+        IServiceProvider service, IOCRService ocrService,
+        ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService)
+    {
+        _ocrService = ocrService;
+        _libraryItemGroupService = libraryItemGroupService;
+        _aiDetectionService = aiDetectionService;
+        _hubContext = hubContext;
+        _msgService = msgService;
+        _httpClient = httpClient;
+        _libraryItemService = libraryItemService;
+        _monitor = monitor.CurrentValue;
+        _logger = logger;
+        _service = service;
+        _baseUrl = string.Format(_monitor.BaseAIUrl, _monitor.TrainingEndpoint, _monitor.ProjectId);
+        _basePredictUrl = string.Format(_monitor.BasePredictUrl, _monitor.PredictionEndpoint, _monitor.ProjectId,
+            _monitor.PublishedName);
+    }
+
+//     public async Task<IServiceResult> TrainModel(List<int> libraryItemIds, List<IFormFile> images, string email)
+//     {
+// // Get process message first
+//         var successMessage = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003);
+//
+//         // Run background task
+//         var backgroundTask = Task.Run(() => ProcessTrainingTask(libraryItemIds, images, email));
+//
+//         // Return ServiceResult
+//         var result = new ServiceResult(ResultCodeConst.AIService_Success0003, successMessage);
+//
+//         // Make sure background Task work after return
+//         _ = backgroundTask;
+//
+//         return result;
+//     }
+
+    // public async Task ProcessTrainingTask(List<int> libraryItemIds, List<IFormFile> images, string email)
     // {
-    //     _ocrService = ocrService;
-    //     _aiDetectionService = aiDetectionService;
-    //     _hubContext = hubContext;
-    //     _msgService = msgService;
-    //     _httpClient = httpClient;
-    //     _bookService = bookService;
-    //     _libraryItemService = libraryItemService;
-    //     _monitor = monitor.CurrentValue;
-    //     _logger = logger;
-    //     _service = service;
-    //     _baseUrl = string.Format(_monitor.BaseAIUrl, _monitor.TrainingEndpoint, _monitor.ProjectId);
-    //     _basePredictUrl = string.Format(_monitor.BasePredictUrl, _monitor.PredictionEndpoint, _monitor.ProjectId,
-    //         _monitor.PublishedName);
+    //     // define services that use in background task
+    //     using var scope = _service.CreateScope();
+    //     var bookEditionService = scope.ServiceProvider.GetRequiredService<ILibraryItemService<LibraryItemDto>>();
+    //     var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AiHub>>();
+    //     var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+    //     var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CustomVisionSettings>>();
+    //     var httpClient = scope.ServiceProvider.GetRequiredService<HttpClient>();
+    //     // define monitor value
+    //     var currentAiConfiguration = monitor.CurrentValue;
+    //     try
+    //     {
+    //         // save IFormFile to memoryStream
+    //         var memoryStreams = new List<(MemoryStream Stream, string FileName)>();
+    //         foreach (var file in images)
+    //         {
+    //             var memoryStream = new MemoryStream();
+    //             await file.CopyToAsync(memoryStream);
+    //             memoryStream.Position = 0;
+    //             memoryStreams.Add((memoryStream, file.FileName ?? $"image_{memoryStreams.Count}.jpg"));
+    //         }
+    //
+    //         var baseConfig = new BaseConfigurationBackgroudDto
+    //         {
+    //             Client = httpClient,
+    //             Configuration = currentAiConfiguration,
+    //             Logger = logger,
+    //             BaseUrl = string.Format(monitor.CurrentValue.BaseAIUrl,
+    //                 monitor.CurrentValue.TrainingEndpoint,
+    //                 monitor.CurrentValue.ProjectId)
+    //         };
+    //         if (libraryItemIds.Count == 1)
+    //         {
+    //             if ()
+    //         }
+    //     }
     // }
+
+    // public async Task<IServiceResult> GetAvailableGroup(int rootItemId, List<int>? otherItemIds)
+    // {
+    //     try
+    //     {
+    //         
+    //         if (otherItemIds is null)
+    //         {
+    //             var suitableGroupId = await SuitableLibraryGroup(rootItemId);
+    //             if (suitableGroupId != 0)
+    //             {
+    //                 var rootItem = await _libraryItemService.GetByIdAsync(rootItemId);
+    //                 var rootItemValue = (LibraryItemDto)rootItem.Data!;
+    //                 rootItemValue.GroupId = suitableGroupId;
+    //                 await _libraryItemService.UpdateAsync(rootItemId, rootItemValue);
+    //
+    //             }
+    //         }
+    //
+    //         return new ServiceResult(ResultCodeConst.SYS_Success0002,
+    //             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), groupIds);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.Error(ex.Message);
+    //         throw new Exception("Error invoke when Get Available Group");
+    //     }
+    // }
+
+    // create a function with List<int> libraryItemIds as parameter and check if their field could be able to be in a group or not
+    // base on CutterNumber,ClassificationNumber,mainAuthor,Title
+    public async Task<List<CheckedGroupDetailDto<string>>> IsAbleToCreateGroup(int rootItemId, List<int>? otherItemIds)
+    {
+        try
+        {
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == rootItemId);
+            var response = new List<CheckedGroupDetailDto<string>>();
+            if (otherItemIds is not null)
+            {
+                var itemCheckedResult = new CheckedGroupDetailDto<string>();
+                baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author));
+                var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+                var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
+                var mainAuthor = libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == rootItemId)!
+                    .Author.FullName;
+                foreach (var otherItemId in otherItemIds)
+                {
+                    var candidateSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == otherItemId);
+                    candidateSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                        .ThenInclude(lia => lia.Author));
+                    var candidateItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+                    var candidateItemValue = (LibraryItemDto)libraryItem.Data!;
+                    var mainAuthorOfCandidate =
+                        libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == rootItemId)!
+                            .Author.FullName;
+                    itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber),
+                        libraryItemValue.CutterNumber == candidateItemValue.CutterNumber);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.ClassificationNumber),
+                        libraryItemValue.ClassificationNumber == candidateItemValue.ClassificationNumber);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(Author),
+                        mainAuthor == mainAuthorOfCandidate);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber),
+                        StringUtils.RemoveSpecialCharacter(candidateItemValue.Title).Equals(
+                            StringUtils.RemoveSpecialCharacter(libraryItemValue.Title)));
+                    itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber),
+                        candidateItemValue.SubTitle == null || StringUtils
+                            .RemoveSpecialCharacter(candidateItemValue.SubTitle)
+                            .Equals(StringUtils.RemoveSpecialCharacter(libraryItemValue.SubTitle!)));
+                    itemCheckedResult.ItemId = candidateItemValue.LibraryItemId;
+                    response.Add(itemCheckedResult);
+                }
+            }
+            else
+            {
+                var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+                var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
+                var itemCheckedResult = new CheckedGroupDetailDto<string>();
+                itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber), true);
+                itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.ClassificationNumber), true);
+                itemCheckedResult.PropertiesChecked.Add(nameof(Author), true);
+                itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber), true);
+                itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.CutterNumber), true);
+                itemCheckedResult.ItemId = libraryItemValue.LibraryItemId;
+            }
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Check if item are able to be grouped");
+        }
+    }
+
+    private async Task<int> SuitableLibraryGroup(int currentLibraryItemId)
+    {
+        try
+        {
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == currentLibraryItemId);
+            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author));
+            var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+            var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
+            var mainAuthor = libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
+                .Author.FullName;
+
+            var groupSpec = new BaseSpecification<LibraryItemGroup>(lig =>
+                lig.CutterNumber == libraryItemValue.CutterNumber &&
+                lig.ClassificationNumber == libraryItemValue.ClassificationNumber &&
+                lig.Author.Equals(mainAuthor) &&
+                StringUtils.RemoveSpecialCharacter(lig.Title).Equals(
+                    StringUtils.RemoveSpecialCharacter(libraryItemValue.Title)) &&
+                (lig.SubTitle == null || StringUtils.RemoveSpecialCharacter(lig.SubTitle)
+                    .Equals(StringUtils.RemoveSpecialCharacter(libraryItemValue.SubTitle!)))
+            );
+
+
+            var suitableGroup = await _libraryItemGroupService.GetWithSpecAsync(groupSpec);
+            if (suitableGroup.Data is not null)
+            {
+                return ((LibraryItemGroupDto)suitableGroup.Data!).GroupId;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Find Suitable Group");
+        }
+    }
+
     //
     // public async Task<IServiceResult> PredictAsync(IFormFile image)
     // {
@@ -451,261 +643,237 @@ public class AIClassificationService : IAIClassificationService
     //     }
     // }
     //
-    // private async Task<List<TagDto>> GetTagAsync(BaseConfigurationBackgroudDto dto)
-    // {
-    //     try
-    //     {
-    //         var getTagUrl = dto.BaseUrl + "/tags";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //         var response = await dto.Client.GetAsync(getTagUrl);
-    //         response.EnsureSuccessStatusCode();
-    //
-    //         var jsonResponse = await response.Content.ReadAsStringAsync();
-    //         return JsonSerializer.Deserialize<List<TagDto>>(jsonResponse, new JsonSerializerOptions
-    //         {
-    //             PropertyNameCaseInsensitive = true
-    //         });
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when Get AI Tag");
-    //     }
-    // }
-    //
-    // private async Task<TagDto> CreateTagAsync(BaseConfigurationBackgroudDto dto, Guid bookCodeForTraining)
-    // {
-    //     try
-    //     {
-    //         var createTagUrl =
-    //             dto.BaseUrl + $"/tags?name={Uri.EscapeDataString(bookCodeForTraining.ToString())}&type=Regular";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //         var response = await dto.Client.PostAsync(createTagUrl, null); // No content in the body
-    //         response.EnsureSuccessStatusCode();
-    //
-    //         var jsonResponse = await response.Content.ReadAsStringAsync();
-    //         return JsonSerializer.Deserialize<TagDto>(jsonResponse, new JsonSerializerOptions
-    //         {
-    //             PropertyNameCaseInsensitive = true
-    //         });
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when create AI Tag");
-    //     }
-    // }
-    //
-    // private async Task CreateImagesFromDataAsync(BaseConfigurationBackgroudDto dto,
-    //     List<(MemoryStream Stream, string FileName)> images, Guid tagId)
-    // {
-    //     try
-    //     {
-    //         var url = dto.BaseUrl + $"/images?tagIds={tagId}";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //
-    //         using var multipartContent = new MultipartFormDataContent();
-    //
-    //         foreach (var (stream, fileName) in images)
-    //         {
-    //             multipartContent.Add(new StreamContent(stream), "files", fileName);
-    //         }
-    //
-    //         var response = await dto.Client.PostAsync(url, multipartContent);
-    //         response.EnsureSuccessStatusCode();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex, "Error occurred while uploading images.");
-    //         throw new Exception("Failed to upload images.");
-    //     }
-    //     finally
-    //     {
-    //         // make sure that MemoryStream is disposed
-    //         foreach (var (stream, _) in images)
-    //         {
-    //             stream.Dispose();
-    //         }
-    //     }
-    // }
-    //
-    // private async Task<IterationDto?> TrainProjectAsync(BaseConfigurationBackgroudDto dto)
-    // {
-    //     try
-    //     {
-    //         var trainUrl = dto.BaseUrl + "/train";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //         var response = await dto.Client.PostAsync(trainUrl, null);
-    //         if (!response.IsSuccessStatusCode)
-    //         {
-    //             return null;
-    //         }
-    //
-    //         var jsonResponse = await response.Content.ReadAsStringAsync();
-    //         return JsonSerializer.Deserialize<IterationDto>(jsonResponse, new JsonSerializerOptions
-    //         {
-    //             PropertyNameCaseInsensitive = true
-    //         });
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when training");
-    //     }
-    // }
-    //
-    // private async Task WaitForTrainingCompletionAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
-    // {
-    //     try
-    //     {
-    //         var checkIterationUrl = dto.BaseUrl + $"/iterations/{iterationId}";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //
-    //         // Polling loop to check training status
-    //         while (true)
-    //         {
-    //             var response = await dto.Client.GetAsync(checkIterationUrl);
-    //             response.EnsureSuccessStatusCode();
-    //
-    //             var jsonResponse = await response.Content.ReadAsStringAsync();
-    //             var iteration = JsonSerializer.Deserialize<IterationDto>(jsonResponse, new JsonSerializerOptions
-    //             {
-    //                 PropertyNameCaseInsensitive = true
-    //             });
-    //             // Check if the training status is completed
-    //             if (iteration.Status.Equals(nameof(IterationStatus.Completed)))
-    //             {
-    //                 break;
-    //             }
-    //
-    //             // Wait for a few seconds before checking again
-    //             await Task.Delay(TimeSpan.FromSeconds(10));
-    //         }
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when waiting for training completion");
-    //     }
-    // }
-    //
-    // private async Task UnpublishPreviousIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
-    // {
-    //     try
-    //     {
-    //         var getIterationUrl = dto.BaseUrl + "/iterations";
-    //         var response = await dto.Client.GetAsync(getIterationUrl);
-    //         response.EnsureSuccessStatusCode();
-    //
-    //         var jsonResponse = await response.Content.ReadAsStringAsync();
-    //         var iterations = JsonSerializer.Deserialize<List<IterationDto>>(jsonResponse, new JsonSerializerOptions
-    //         {
-    //             PropertyNameCaseInsensitive = true
-    //         });
-    //
-    //         // Find the previous version to delete
-    //         var publishedIteration = iterations?.Where(iter => iter.Id != iterationId).ToList();
-    //
-    //         if (publishedIteration.Any())
-    //         {
-    //             foreach (var iteration in publishedIteration)
-    //             {
-    //                 if (iteration.PublishName is not null)
-    //                 {
-    //                     // Unpublish the current iteration
-    //                     await UnpublishIterationAsync(dto, iteration.Id);
-    //                 }
-    //
-    //                 // Optionally delete the unpublished iteration
-    //                 await DeleteIterationAsync(dto, iteration.Id);
-    //             }
-    //         }
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when unpublishing previous iteration");
-    //     }
-    // }
-    //
-    // private async Task UnpublishIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
-    // {
-    //     try
-    //     {
-    //         var getPublishIteration = dto.BaseUrl + $"/iterations/{iterationId}/publish";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //
-    //         var response = await dto.Client.DeleteAsync(getPublishIteration);
-    //         response.EnsureSuccessStatusCode();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when unpublishing iteration");
-    //     }
-    // }
-    //
-    // private async Task DeleteIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
-    // {
-    //     try
-    //     {
-    //         var deleteIterationUrl = dto.BaseUrl + $"/iterations/{iterationId}";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //
-    //         var response = await dto.Client.DeleteAsync(deleteIterationUrl);
-    //         response.EnsureSuccessStatusCode();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when deleting iteration");
-    //     }
-    // }
-    //
-    // private async Task PublishIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId, string publishName)
-    // {
-    //     try
-    //     {
-    //         var predictionQuery =
-    //             $"/subscriptions/{dto.Configuration.SubscriptionKey}/resourceGroups/{dto.Configuration.ResourceGroup}" +
-    //             $"/providers/{dto.Configuration.Provider}/accounts/{dto.Configuration.Account}";
-    //         var encodedQuery = Uri.EscapeDataString(predictionQuery);
-    //         var url = dto.BaseUrl +
-    //                   $"/iterations/{iterationId}/publish?predictionId={encodedQuery}&publishName={publishName}";
-    //         dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
-    //
-    //         var response = await dto.Client.PostAsync(url, null);
-    //         response.EnsureSuccessStatusCode();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         dto.Logger.Error(ex.Message);
-    //         throw new Exception("Error invoke when publishing iteration");
-    //     }
-    // }
-    //
-    // private List<byte[]> CropImages(byte[] imageBytes, List<BoxDto> boxes)
-    // {
-    //     var croppedImages = new List<byte[]>();
-    //     using (var image = SixLabors.ImageSharp.Image.Load(imageBytes))
-    //     {
-    //         foreach (var box in boxes)
-    //         {
-    //             // Rectangle of book cover 
-    //             var cropReg = new Rectangle((int)Math.Floor(box.X1), (int)Math.Floor(box.Y1),
-    //                 (int)Math.Ceiling(box.X2 - box.X1)
-    //                 , (int)Math.Ceiling(box.Y2 - box.Y1));
-    //             using (var cropped = image.Clone(ctx => ctx.Crop(cropReg)))
-    //             {
-    //                 using (var ms = new MemoryStream())
-    //                 {
-    //                     cropped.SaveAsJpeg(ms);
-    //                     croppedImages.Add(ms.ToArray());
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     return croppedImages;
-    // }
+    private async Task<List<TagDto>> GetTagAsync(BaseConfigurationBackgroudDto dto)
+    {
+        try
+        {
+            var getTagUrl = dto.BaseUrl + "/tags";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+            var response = await dto.Client.GetAsync(getTagUrl);
+            response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<List<TagDto>>(jsonResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when Get AI Tag");
+        }
+    }
+
+    private async Task<TagDto> CreateTagAsync(BaseConfigurationBackgroudDto dto, Guid bookCodeForTraining)
+    {
+        try
+        {
+            var createTagUrl =
+                dto.BaseUrl + $"/tags?name={Uri.EscapeDataString(bookCodeForTraining.ToString())}&type=Regular";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+            var response = await dto.Client.PostAsync(createTagUrl, null); // No content in the body
+            response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<TagDto>(jsonResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when create AI Tag");
+        }
+    }
+
+    private async Task CreateImagesFromDataAsync(BaseConfigurationBackgroudDto dto,
+        List<(MemoryStream Stream, string FileName)> images, Guid tagId)
+    {
+        try
+        {
+            var url = dto.BaseUrl + $"/images?tagIds={tagId}";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+
+            using var multipartContent = new MultipartFormDataContent();
+
+            foreach (var (stream, fileName) in images)
+            {
+                multipartContent.Add(new StreamContent(stream), "files", fileName);
+            }
+
+            var response = await dto.Client.PostAsync(url, multipartContent);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex, "Error occurred while uploading images.");
+            throw new Exception("Failed to upload images.");
+        }
+        finally
+        {
+            // make sure that MemoryStream is disposed
+            foreach (var (stream, _) in images)
+            {
+                stream.Dispose();
+            }
+        }
+    }
+
+    private async Task<IterationDto?> TrainProjectAsync(BaseConfigurationBackgroudDto dto)
+    {
+        try
+        {
+            var trainUrl = dto.BaseUrl + "/train";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+            var response = await dto.Client.PostAsync(trainUrl, null);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<IterationDto>(jsonResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when training");
+        }
+    }
+
+    private async Task WaitForTrainingCompletionAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
+    {
+        try
+        {
+            var checkIterationUrl = dto.BaseUrl + $"/iterations/{iterationId}";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+
+            // Polling loop to check training status
+            while (true)
+            {
+                var response = await dto.Client.GetAsync(checkIterationUrl);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var iteration = JsonSerializer.Deserialize<IterationDto>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                // Check if the training status is completed
+                if (iteration.Status.Equals(nameof(IterationStatus.Completed)))
+                {
+                    break;
+                }
+
+                // Wait for a few seconds before checking again
+                await Task.Delay(TimeSpan.FromSeconds(10));
+            }
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when waiting for training completion");
+        }
+    }
+
+    private async Task UnpublishPreviousIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
+    {
+        try
+        {
+            var getIterationUrl = dto.BaseUrl + "/iterations";
+            var response = await dto.Client.GetAsync(getIterationUrl);
+            response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            var iterations = JsonSerializer.Deserialize<List<IterationDto>>(jsonResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            // Find the previous version to delete
+            var publishedIteration = iterations?.Where(iter => iter.Id != iterationId).ToList();
+
+            if (publishedIteration.Any())
+            {
+                foreach (var iteration in publishedIteration)
+                {
+                    if (iteration.PublishName is not null)
+                    {
+                        // Unpublish the current iteration
+                        await UnpublishIterationAsync(dto, iteration.Id);
+                    }
+
+                    // Optionally delete the unpublished iteration
+                    await DeleteIterationAsync(dto, iteration.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when unpublishing previous iteration");
+        }
+    }
+
+    private async Task UnpublishIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
+    {
+        try
+        {
+            var getPublishIteration = dto.BaseUrl + $"/iterations/{iterationId}/publish";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+
+            var response = await dto.Client.DeleteAsync(getPublishIteration);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when unpublishing iteration");
+        }
+    }
+
+    private async Task DeleteIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId)
+    {
+        try
+        {
+            var deleteIterationUrl = dto.BaseUrl + $"/iterations/{iterationId}";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+
+            var response = await dto.Client.DeleteAsync(deleteIterationUrl);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when deleting iteration");
+        }
+    }
+
+    private async Task PublishIterationAsync(BaseConfigurationBackgroudDto dto, Guid iterationId,
+        string publishName)
+    {
+        try
+        {
+            var predictionQuery =
+                $"/subscriptions/{dto.Configuration.SubscriptionKey}/resourceGroups/{dto.Configuration.ResourceGroup}" +
+                $"/providers/{dto.Configuration.Provider}/accounts/{dto.Configuration.Account}";
+            var encodedQuery = Uri.EscapeDataString(predictionQuery);
+            var url = dto.BaseUrl +
+                      $"/iterations/{iterationId}/publish?predictionId={encodedQuery}&publishName={publishName}";
+            dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+
+            var response = await dto.Client.PostAsync(url, null);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            dto.Logger.Error(ex.Message);
+            throw new Exception("Error invoke when publishing iteration");
+        }
+    }
 }

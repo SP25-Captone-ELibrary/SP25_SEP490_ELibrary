@@ -74,7 +74,7 @@
 			public const string AddRangeAuthor = Base + "/management/library-items/add-range-author";
 			public const string DeleteAuthor = Base + "/management/library-items/delete-author";
 			public const string Training = Base + "/management/books/editions/{id}/ai/train";
-			public const string CheckImagesForTraining = Base + "/management/books/editions/{id}/ai/check-images-for-training";
+			public const string CheckImagesForTraining = Base + "/management/books/editions/ai/check-images-for-training";
 			public const string DeleteRangeAuthor = Base + "/management/library-items/delete-range-author";
 			public const string Import = Base + "/management/library-items/import";
 			// [PUT] / [PATCH]
@@ -404,6 +404,8 @@
 			public const string Predict = Base + "/books/ai/predict";
 			public const string Recommendation = Base + "/books/ai/recommendation";
 			public const string VoiceSearching = Base + "/books/voice";
+
+			public const string OCR = Base + "/ocr";
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}
