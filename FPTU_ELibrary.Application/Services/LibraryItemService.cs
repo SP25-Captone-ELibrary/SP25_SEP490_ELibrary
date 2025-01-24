@@ -2849,8 +2849,8 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     ? "Cutter number is not valid"
                     : "Ký hiệu xếp giá không hợp lệ");
             }
-            
-            if (record.Isbn?.Length > 13) // Isbn
+
+            if (ISBN.CleanIsbn(record.Isbn ?? string.Empty).Length > 13) // Isbn
             {
                 rowErrors.Add(isEng
                     ? "ISBN must not exceed 13 characters"
