@@ -5,6 +5,7 @@ using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.Application.Configurations;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -15,6 +16,7 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -22,6 +24,7 @@ namespace FPTU_ELibrary.API.Controllers;
 public class LibraryItemController : ControllerBase
 {
     private readonly AppSettings _appSettings;
+    private readonly IAuthorService<AuthorDto> _authorService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
     private readonly ILibraryItemAuthorService<LibraryItemAuthorDto> _itemAuthorService;
@@ -30,6 +33,7 @@ public class LibraryItemController : ControllerBase
     private readonly ISearchService _searchService;
 
     public LibraryItemController(
+        IAuthorService<AuthorDto> authorService,
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceService,
         ILibraryItemAuthorService<LibraryItemAuthorDto> itemAuthorService,
@@ -37,6 +41,7 @@ public class LibraryItemController : ControllerBase
         ISearchService searchService,
         IOptionsMonitor<AppSettings> monitor)
     {
+        _authorService = authorService;
         _libraryItemService = libraryItemService;
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
@@ -102,7 +107,7 @@ public class LibraryItemController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemByIdAsync))]
+    [HttpGet(APIRoute.LibraryItem.GetById, Name = nameof(GetLibraryItemByIdAsync))]
     public async Task<IActionResult> GetLibraryItemByIdAsync([FromRoute] int id)
     {
         return Ok(await _libraryItemService.GetDetailAsync(id));
@@ -209,18 +214,94 @@ public class LibraryItemController : ControllerBase
             ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "library-items.xlsx")
             : Ok(exportResult);
     }
-    #endregion
-
-    [HttpGet(APIRoute.LibraryItem.Search, Name = nameof(SearchLibraryItemWithElasticAsync))]
-    public async Task<IServiceResult> SearchLibraryItemWithElasticAsync(
-        [FromQuery] SearchItemRequest req, CancellationToken token)
-    {
-        return await _searchService.SearchItemAsync(req.ToSearchItemParams(), token);
-    }
+    
     [Authorize]
     [HttpPost(APIRoute.LibraryItem.CheckImagesForTraining, Name = nameof(CheckTrainingImagesForTraining))]
     public async Task<IActionResult> CheckTrainingImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
     {
         return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemIds, req.CompareList));
+    }
+    #endregion
+
+    [HttpGet(APIRoute.LibraryItem.Search, Name = nameof(SearchLibraryItemWithElasticAsync))]
+    public async Task<IActionResult> SearchLibraryItemWithElasticAsync(
+        [FromQuery] SearchItemRequest req, CancellationToken token)
+    {
+        return Ok(await _searchService.SearchItemAsync(req.ToSearchItemParams(), token));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetRecentReadByIds, Name = nameof(GetLibraryItemByIdsAsync))]
+    public async Task<IActionResult> GetLibraryItemByIdsAsync([FromQuery] RangeRequest<int> req, 
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetRecentReadByIdsAsync(
+            ids: req.Ids.ToArray(),
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize)
+        );
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetTrending, Name = nameof(GetTrendingLibraryItemAsync))]
+    public async Task<IActionResult> GetTrendingLibraryItemAsync([FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetTrendingAsync(
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetByCategory, Name = nameof(GetLibraryItemsByCategoryAsync))]
+    public async Task<IActionResult> GetLibraryItemsByCategoryAsync([FromRoute] int categoryId,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetByCategoryAsync(
+            categoryId: categoryId,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemDetailAsync))]
+    public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryItemService.GetDetailAsync(id));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetDetailEditions, Name = nameof(GetLibraryItemEditionsAsync))]
+    public async Task<IActionResult> GetLibraryItemEditionsAsync([FromRoute] int id,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetItemsInGroupAsync(
+            id: id,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetDetailReviews, Name = nameof(GetLibraryItemReviewsAsync))]
+    public async Task<IActionResult> GetLibraryItemReviewsAsync([FromRoute] int id,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetReviewsAsync(
+            id: id,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetRelatedItems, Name = nameof(GetRelatedLibraryItemsAsync))]
+    public async Task<IActionResult> GetRelatedLibraryItemsAsync([FromRoute] int id,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetRelatedItemsAsync(
+            id: id,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+    
+    [HttpGet(APIRoute.LibraryItem.GetRelatedAuthorItems, Name = nameof(GetAuthorRelatedLibraryItemsAsync))]
+    public async Task<IActionResult> GetAuthorRelatedLibraryItemsAsync([FromQuery] int authorId,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _authorService.GetRelatedAuthorItemsAsync(
+            authorId: authorId,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
     }
 }

@@ -1233,8 +1233,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
 
-                    b.Property<int>("RatingValue")
-                        .HasColumnType("int")
+                    b.Property<double>("RatingValue")
+                        .HasColumnType("float")
                         .HasColumnName("rating_value");
 
                     b.Property<string>("ReviewText")

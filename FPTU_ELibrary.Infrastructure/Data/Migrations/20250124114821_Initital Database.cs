@@ -834,7 +834,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     library_item_id = table.Column<int>(type: "int", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    rating_value = table.Column<int>(type: "int", nullable: false),
+                    rating_value = table.Column<double>(type: "float", nullable: false),
                     review_text = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_date = table.Column<DateTime>(type: "datetime", nullable: true)

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250123135437_Initital Database")]
+    [Migration("20250124114821_Initital Database")]
     partial class InititalDatabase
     {
         /// <inheritdoc />
@@ -1236,8 +1236,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
 
-                    b.Property<int>("RatingValue")
-                        .HasColumnType("int")
+                    b.Property<double>("RatingValue")
+                        .HasColumnType("float")
                         .HasColumnName("rating_value");
 
                     b.Property<string>("ReviewText")

@@ -14,7 +14,7 @@ public class LibraryItemReviewDto
     public Guid UserId { get; set; }
 
     // Review content
-    public int RatingValue { get; set; }
+    public double RatingValue { get; set; }
     public string? ReviewText { get; set; }
 
     // Creation and update datetime
@@ -25,6 +25,5 @@ public class LibraryItemReviewDto
     [JsonIgnore]
     public LibraryItemDto LibraryItem { get; set; } = null!;
 
-    [JsonIgnore]
     public UserDto User { get; set; } = null!;
 }
