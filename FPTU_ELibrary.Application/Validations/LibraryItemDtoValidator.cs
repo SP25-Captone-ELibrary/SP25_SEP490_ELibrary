@@ -48,7 +48,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 : "Lần xuất bản/tái bản phải nhỏ hơn 100 ký tự");
         // Edition number
         RuleFor(e => e.EditionNumber)
-            .Must(num => num > 0 && num < int.MaxValue)
+            .Must(num => num == null || num > 0 && num < int.MaxValue)
             .WithMessage(isEng
                 ? "Book edition number is not valid"
                 : "Số thứ tự tài liệu không hợp lệ");
@@ -138,11 +138,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 : "Ký hiệu xếp giá không hợp lệ");
         // Isbn
         RuleFor(e => e.Isbn)
-            .MaximumLength(13)
-            .WithMessage(isEng
-                ? "ISBN must not exceed 13 characters"
-                : "Mã ISBN không vượt quá 13 ký tự")
-            .Must(str => ISBN.IsValid(str, out _))
+            .Must(str => str == null || (ISBN.IsValid(str, out _) && ISBN.CleanIsbn(str).Length <= 13))
             .WithMessage(isEng
                 ? "ISBN is not valid"
                 : "Mã ISBN không hợp lệ");
