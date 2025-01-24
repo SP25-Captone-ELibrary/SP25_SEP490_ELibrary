@@ -24,6 +24,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Nest;
 using Org.BouncyCastle.Tls;
 using Serilog;
 using Exception = System.Exception;
@@ -879,6 +880,525 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetRecentReadByIdsAsync(int[] ids, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Try to get items that match request ids
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId));
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                // Include category
+                .Include(li => li.Category)
+                // Include shelf (if any)
+                .Include(li => li.Shelf)
+                // Include inventory
+                .Include(li => li.LibraryItemInventory)
+                // Include authors
+                .Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author)
+                // Include instances
+                .Include(li => li.LibraryItemInstances)
+                // Include reviews
+                .Include(li => li.LibraryItemReviews)
+            );
+
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalActualItem / pageSize);
+            
+            // Set pagination to specification after count total 
+            if (pageIndex > totalPage || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            baseSpec.ApplyPaging(
+                skip: (pageIndex - 1) * pageSize,
+                take: pageSize);
+            
+            // Add order by
+            baseSpec.AddOrderBy(li => li.LibraryItemId);
+            
+            var entities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Map to home page item dto
+                var homePageItemDtos = 
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<HomePageItemDto>(homePageItemDtos,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Get successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<HomePageItemDto>(new List<HomePageItemDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get multiple data");
+        }
+    }
+
+    public async Task<IServiceResult> GetTrendingAsync(int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>();
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                // Include category
+                .Include(li => li.Category)
+                // Include shelf (if any)
+                .Include(li => li.Shelf)
+                // Include inventory
+                .Include(li => li.LibraryItemInventory)
+                // Include authors
+                .Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author)
+                // Include instances
+                .Include(li => li.LibraryItemInstances)
+                // Include reviews
+                .Include(li => li.LibraryItemReviews)
+            );
+            
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalActualItem / pageSize);
+            
+            // Set pagination to specification after count total 
+            if (pageIndex > totalPage || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            baseSpec.ApplyPaging(
+                skip: (pageIndex - 1) * pageSize,
+                take: pageSize);
+            
+            // Add order by
+            baseSpec.AddOrderByDescending(li => li.LibraryItemReviews.Average(x => x.RatingValue));
+            
+            var entities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Map to home page item dto
+                var homePageItemDtos = 
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<HomePageItemDto>(homePageItemDtos,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Get successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<HomePageItemDto>(new List<HomePageItemDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get trending item");
+        }
+    }
+
+    public async Task<IServiceResult> GetByCategoryAsync(int categoryId, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Check exist category
+            var isExistCategory = (await _cateService.AnyAsync(c => c.CategoryId == categoryId)).Data is true;
+            if (!isExistCategory)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "category" : "phân loại"));
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.CategoryId == categoryId);
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                // Include category
+                .Include(li => li.Category)
+                // Include shelf (if any)
+                .Include(li => li.Shelf)
+                // Include inventory
+                .Include(li => li.LibraryItemInventory)
+                // Include authors
+                .Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author)
+                // Include instances
+                .Include(li => li.LibraryItemInstances)
+                // Include reviews
+                .Include(li => li.LibraryItemReviews)
+            );
+            
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalActualItem / pageSize);
+            
+            // Set pagination to specification after count total 
+            if (pageIndex > totalPage || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            baseSpec.ApplyPaging(
+                skip: (pageIndex - 1) * pageSize,
+                take: pageSize);
+            
+            // Add order by
+            baseSpec.AddOrderByDescending(li => li.LibraryItemReviews.Average(x => x.RatingValue));
+            
+            var entities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Map to home page item dto
+                var homePageItemDtos = 
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<HomePageItemDto>(homePageItemDtos,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Get successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<HomePageItemDto>(new List<HomePageItemDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get trending item");
+        }
+    }
+
+    public async Task<IServiceResult> GetItemsInGroupAsync(int id, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItem>(b => b.LibraryItemId == id);
+            // Retrieve library item and its group items
+            var libraryItemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, li => new LibraryItem()
+                {
+                    LibraryItemId = li.LibraryItemId,
+                    LibraryItemGroup = li.LibraryItemGroup != null && li.LibraryItemGroup.LibraryItems.Any()
+                        ? new LibraryItemGroup()
+                        {
+                            LibraryItems = li.LibraryItemGroup.LibraryItems
+                                .Where(li2 => li2.LibraryItemId != id)
+                                .Select(li2 => new LibraryItem()
+                            {
+                                LibraryItemId = li2.LibraryItemId,
+                                Title = li2.Title,
+                                SubTitle = li2.SubTitle,
+                                Responsibility = li2.Responsibility,
+                                Edition = li2.Edition,
+                                EditionNumber = li2.EditionNumber,
+                                Language = li2.Language,
+                                OriginLanguage = li2.OriginLanguage,
+                                Summary = li2.Summary,
+                                CoverImage = li2.CoverImage,
+                                PublicationYear = li2.PublicationYear,
+                                Publisher = li2.Publisher,
+                                PublicationPlace = li2.PublicationPlace,
+                                ClassificationNumber = li2.ClassificationNumber,
+                                CutterNumber = li2.CutterNumber,
+                                Isbn = li2.Isbn,
+                                Ean = li2.Ean,
+                                EstimatedPrice = li2.EstimatedPrice,
+                                PageCount = li2.PageCount,
+                                PhysicalDetails = li2.PhysicalDetails,
+                                Dimensions = li2.Dimensions,
+                                AccompanyingMaterial = li2.AccompanyingMaterial,
+                                Genres = li2.Genres,
+                                GeneralNote = li2.GeneralNote,
+                                BibliographicalNote = li2.BibliographicalNote,
+                                TopicalTerms = li2.TopicalTerms,
+                                AdditionalAuthors = li2.AdditionalAuthors,
+                                CategoryId = li2.CategoryId,
+                                ShelfId = li2.ShelfId,
+                                GroupId = li2.GroupId,
+                                Status = li2.Status,
+                                IsDeleted = li2.IsDeleted,
+                                IsTrained = li2.IsTrained,
+                                CanBorrow = li2.CanBorrow,
+                                TrainedAt = li2.TrainedAt,
+                                CreatedAt = li2.CreatedAt,
+                                UpdatedAt = li2.UpdatedAt,
+                                UpdatedBy = li2.UpdatedBy,
+                                CreatedBy = li2.CreatedBy,
+                                // References
+                                Category = li2.Category,
+                                LibraryItemReviews = li2.LibraryItemReviews,
+                                LibraryItemAuthors = li2.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                                {
+                                    LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                                    LibraryItemId = ba.LibraryItemId,
+                                    AuthorId = ba.AuthorId,
+                                    Author = ba.Author
+                                }).ToList(),
+                            }).ToList()
+                        } 
+                        : null,
+                });
+
+            if (libraryItemEntity != null &&
+                libraryItemEntity.LibraryItemGroup != null &&
+                libraryItemEntity.LibraryItemGroup.LibraryItems.Any())
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(libraryItemEntity);
+                // Retrieve all other items in group and map to detail 
+                var otherItemsInGroup = dto.LibraryItemGroup?.LibraryItems
+                    .Select(li => li.ToLibraryItemGroupedDetailDto()).ToList();
+
+                if (otherItemsInGroup != null && otherItemsInGroup.Any())
+                {
+                    // Pagination
+                    var totalActualItem = otherItemsInGroup.Count;
+                    var totalPage = (int) Math.Ceiling((double) totalActualItem / pageSize);
+                    
+                    // Validation pagination fields
+                    if (pageIndex < 1 || pageIndex > totalPage) pageIndex = 1;
+                    
+                    // Apply pagination
+                    otherItemsInGroup = otherItemsInGroup.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+                
+                    // Pagination result 
+                    var paginationResultDto = new PaginatedResultDto<LibraryItemDetailDto>(otherItemsInGroup,
+                        pageIndex, pageSize, totalPage, totalActualItem);
+                    
+                    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+                }
+            }
+
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<LibraryItemDetailDto>(
+                    new List<LibraryItemDetailDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get items in group");
+        }
+    }
+
+    public async Task<IServiceResult> GetReviewsAsync(int id, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemReviews)
+                    .ThenInclude(lir => lir.User)
+            );
+            // Retrieve all reviews
+            var libraryItem = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAsync(baseSpec);
+            if (libraryItem != null)
+            {
+                // Extract all reviews, convert to dto
+                var libraryItemReviews = _mapper.Map<List<LibraryItemReviewDto>>(libraryItem.LibraryItemReviews.ToList());
+                
+                // Apply pagination
+                var totalActualItem = libraryItemReviews.Count;
+                var totalPage = (int) Math.Ceiling((double) totalActualItem / pageSize);
+                
+                // Validate pagination fields
+                if (pageIndex < 1 || pageIndex > totalPage) pageIndex = 1;
+                
+                // Apply pagination
+                libraryItemReviews = libraryItemReviews
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<LibraryItemReviewDto>(libraryItemReviews,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Response with review dtos
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<LibraryItemReviewDto>(
+                    new List<LibraryItemReviewDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get item reviews");
+        }
+    }
+
+    public async Task<IServiceResult> GetRelatedItemsAsync(int id, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Check existing item 
+            var rootItemEntity = await _unitOfWork.Repository<LibraryItem, int>().GetByIdAsync(id);
+            if (rootItemEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
+            }
+            
+            // Extract genres of the root item
+            var rootGenres = rootItemEntity.Genres?
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(g => g.Trim())
+                .ToList();
+            if (rootGenres == null || !rootGenres.Any())
+            {
+                // Response empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    new PaginatedResultDto<LibraryItemDetailDto>(
+                        new List<LibraryItemDetailDto>(), 0,0,0,0));
+            }
+            
+            // Build specification to find all items has at least one genre
+            var baseSpec = new BaseSpecification<LibraryItem>(li =>
+                li.LibraryItemId != id && // Exclude root item
+                !string.IsNullOrWhiteSpace(li.Genres) &&
+                rootGenres.Any(rootGenre => li.Genres.Contains(rootGenre))); // Exist at least genre with root item
+            // Enable split query for optimization
+            baseSpec.EnableSplitQuery();
+            // Apply includes if necessary
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.Category)
+                .Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author)
+                .Include(li => li.LibraryItemReviews)
+            );
+            
+            // Retrieve all potential related items (match at least one genre)
+            var relatedItems = await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec);
+            // Convert to list 
+            var relatedItemList = relatedItems.ToList();
+            if (!relatedItemList.Any())
+            {
+                // Response empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    new PaginatedResultDto<LibraryItemDetailDto>(
+                        new List<LibraryItemDetailDto>(), 0,0,0,0));
+            }
+            
+            // Increase relevance score by count matching genre 
+            var itemsWithMatchCount = relatedItemList.Select(item =>
+            {
+                var itemGenres = item.Genres?
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(g => g.Trim())
+                    .ToList() ?? new List<string>();
+            
+                // Count the number of matching genres
+                var matchCount = itemGenres.Intersect(rootGenres).Count();
+            
+                return new
+                {
+                    Item = item,
+                    MatchCount = matchCount
+                };
+            })
+            .OrderByDescending(x => x.MatchCount) // Order by most matching genres
+            .Select(x => x.Item) // Extract the items
+            .ToList();
+            
+            // Convert to DTOs and details
+            var dtos = _mapper.Map<List<LibraryItemDto>>(itemsWithMatchCount);
+            var details = dtos.Select(li => li.ToLibraryItemGroupedDetailDto());
+
+            // Pagination
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalActualItem / pageSize);
+            
+            // Set pagination to specification after count total 
+            if (pageIndex > totalPage || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            details = details.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+            
+            // Pagination result 
+            var paginationResultDto = new PaginatedResultDto<LibraryItemDetailDto>(details,
+                pageIndex, pageSize, totalPage, totalActualItem);
+            
+            // Return the result
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get related items");
+        }
+    }
+    
+    
 //
 //     public async Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(LibraryItemDto dto, string fieldName)
 //     {

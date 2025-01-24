@@ -219,6 +219,82 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 	    }
     }
     
+    public async Task<IServiceResult> GetRelatedAuthorItemsAsync(int authorId, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Retrieve all items of specific author
+            // Build spec
+            var baseSpec = new BaseSpecification<Author>(li => li.AuthorId == authorId);
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+	            .Include(li => li.LibraryItemAuthors)
+					.ThenInclude(lia => lia.LibraryItem)
+						.ThenInclude(li => li.Category)
+            );
+            
+            // Try to retrieve with spec
+            var authorEntity = await _unitOfWork.Repository<Author, int>()
+                .GetWithSpecAsync(baseSpec);
+            // Check exist item
+            if (authorEntity == null)
+            {
+	            // Response empty
+	            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+		            new PaginatedResultDto<LibraryItemDetailDto>(
+			            new List<LibraryItemDetailDto>(), 0,0,0,0));
+            }
+            
+            // Extract all author items
+            var authorItems = authorEntity.LibraryItemAuthors
+                .Select(x => x.LibraryItem)
+                .ToList();
+            if (authorItems.Any())
+            {
+                // Convert to dto
+                var dtos = _mapper.Map<List<LibraryItemDto>>(authorItems);
+                var details = dtos.Select(x => x.ToLibraryItemGroupedDetailDto());
+                
+                // Pagination
+                var totalActualItem = authorItems.Count;
+                var totalPage = (int) Math.Ceiling((double)totalActualItem / pageSize);
+                
+                // Validate pagination fields
+                if (pageIndex < 1 || pageIndex > totalPage) pageIndex = 1;
+                
+                // Apply pagination
+                details = details.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<LibraryItemDetailDto>(details,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Return the result
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<LibraryItemDetailDto>(
+                    new List<LibraryItemDetailDto>(), 0,0,0,0));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get related author items");
+        }
+    }
+    
     public override async Task<IServiceResult> UpdateAsync(int id, AuthorDto dto)
     {
 	    // Initiate service result
