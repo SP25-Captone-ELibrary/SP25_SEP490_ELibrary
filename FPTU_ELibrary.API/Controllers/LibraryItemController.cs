@@ -219,7 +219,7 @@ public class LibraryItemController : ControllerBase
     [HttpPost(APIRoute.LibraryItem.CheckImagesForTraining, Name = nameof(CheckTrainingImagesForTraining))]
     public async Task<IActionResult> CheckTrainingImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
     {
-        return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemIds, req.CompareList));
+        return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemId, req.CompareList));
     }
     #endregion
 

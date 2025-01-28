@@ -79,7 +79,13 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
 
     public async Task<IServiceResult> GetNumberOfUnreadNotifications(string email)
     {
+        
         var userResult = await _userService.GetByEmailAsync(email);
+        if (userResult.Data is null)
+        {
+            
+        }
+
         var user = (UserDto)userResult.Data!;
 
         var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId

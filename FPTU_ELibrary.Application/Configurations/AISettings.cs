@@ -10,4 +10,5 @@ public class AISettings
     public double AuthorNamePercentage { get; set; }
     public double PublisherPercentage { get; set; }
     public int ConfidenceThreshold { get; set; }
+    public int MinFieldThreshold { get; set; }
 }
