@@ -11,4 +11,6 @@ public interface IAIClassificationService
     // Task<IServiceResult> TrainModelWithoutCreate(int editionId, List<IFormFile> images, string email);
     // Task<IServiceResult> PredictAsync(IFormFile image);
     // Task<IServiceResult> Recommendation(IFormFile image);
+    // Task<IServiceResult> GetAvailableGroup(string email, int rootItemId, List<int>? otherItemIds);
+    Task<IServiceResult> IsAbleToCreateGroup(int rootItemId, List<int>? otherItemIds);
 }

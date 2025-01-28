@@ -73,8 +73,8 @@
 			public const string AddAuthor = Base + "/management/library-items/add-author";
 			public const string AddRangeAuthor = Base + "/management/library-items/add-range-author";
 			public const string DeleteAuthor = Base + "/management/library-items/delete-author";
-			public const string Training = Base + "/management/books/editions/{id}/ai/train";
-			public const string CheckImagesForTraining = Base + "/management/books/editions/ai/check-images-for-training";
+			// public const string Training = Base + "/management/books/editions/{id}/ai/train";
+			public const string CheckImagesForTraining = Base + "/management/library-items/ai/check-images-for-training";
 			public const string DeleteRangeAuthor = Base + "/management/library-items/delete-range-author";
 			public const string Import = Base + "/management/library-items/import";
 			// [PUT] / [PATCH]
@@ -91,6 +91,14 @@
 			#endregion
 
 			public const string Search = Base + "/library-items/q";
+		}
+
+		public static class Group
+		{
+			//[POST]
+			public const string CheckAvailableGroup = Base + "/management/groups/check";
+			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
+			
 		}
 
 		/// <summary>

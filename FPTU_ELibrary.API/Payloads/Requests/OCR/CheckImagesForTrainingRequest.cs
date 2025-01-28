@@ -1,7 +1,7 @@
 namespace FPTU_ELibrary.API.Payloads.Requests.OCR;
 
-public class CheckImagesForTrainingRequest
+public class CheckImagesForTrainingRequest  
 {
-    public List<int> ItemIds { get; set;}
+    public int ItemId { get; set;}
     public List<IFormFile> CompareList { get; set; }
 }

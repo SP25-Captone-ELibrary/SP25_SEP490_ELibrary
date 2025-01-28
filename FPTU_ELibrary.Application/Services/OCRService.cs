@@ -149,7 +149,7 @@ public class OCRService : IOCRService
                 }
                 var matchResult =
                     StringUtils.CalculateFieldMatchScore(result.Data.ToString(), compareFields,
-                        _monitor.ConfidenceThreshold);
+                        _monitor.ConfidenceThreshold,_monitor.MinFieldThreshold);
                 matchResult.ImageName = image.FileName;
                 acceptableImage.Add(matchResult);
             }

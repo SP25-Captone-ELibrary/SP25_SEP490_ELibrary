@@ -19,15 +19,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.EnglishName)
                 .HasMaxLength(155)
                 .HasColumnName("english_name");
-			builder.Property(e => e.VietnameseName)
-				.HasMaxLength(155)
-				.HasColumnName("vietnamese_name");
+            builder.Property(e => e.VietnameseName)
+                .HasMaxLength(155)
+                .HasColumnName("vietnamese_name");
 
             #region Update at 14/01/2025 by Le Xuan Phuoc
             builder.Property(e => e.Prefix)
                 .HasColumnType("nvarchar(20)")
                 .HasColumnName("prefix");
             #endregion
-		}
+
+            #region Updated at 23/01/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsAllowAITraining).HasColumnName("is_allow_ai_training");
+            #endregion            
+        }
     }
 }
