@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250121044547_Initital Database")]
+    [Migration("20250124114821_Initital Database")]
     partial class InititalDatabase
     {
         /// <inheritdoc />
@@ -103,8 +103,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("author_image");
 
                     b.Property<string>("Biography")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("biography");
 
                     b.Property<DateTime>("CreateDate")
@@ -320,6 +320,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(155)
                         .HasColumnType("nvarchar(155)")
                         .HasColumnName("english_name");
+
+                    b.Property<bool>("IsAllowAITraining")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_allow_ai_training");
 
                     b.Property<string>("Prefix")
                         .IsRequired()
@@ -803,7 +807,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("cutter_number");
 
                     b.Property<string>("Dimensions")
-                        .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("dimensions");
 
@@ -858,7 +861,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("origin_language");
 
-                    b.Property<int>("PageCount")
+                    b.Property<int?>("PageCount")
                         .HasColumnType("int")
                         .HasColumnName("page_count");
 
@@ -1233,8 +1236,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
 
-                    b.Property<int>("RatingValue")
-                        .HasColumnType("int")
+                    b.Property<double>("RatingValue")
+                        .HasColumnType("float")
                         .HasColumnName("rating_value");
 
                     b.Property<string>("ReviewText")
@@ -2696,7 +2699,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryZone", "Zone")
                         .WithMany("LibrarySections")
                         .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_LibrarySection_ZoneId");
 
@@ -2708,7 +2710,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibrarySection", "Section")
                         .WithMany("LibraryShelves")
                         .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_LibraryShelf_SectionId");
 
@@ -2720,7 +2721,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryFloor", "Floor")
                         .WithMany("LibraryZones")
                         .HasForeignKey("FloorId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_LibraryZone_FloorId");
 
@@ -2866,7 +2866,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCard", "LibraryCard")
                         .WithMany("Users")
                         .HasForeignKey("LibraryCardId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("FK_LibraryCard_LibraryCardId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.SystemRole", "Role")
@@ -2905,7 +2904,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Supplier", "Supplier")
                         .WithMany("WarehouseTrackings")
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_WarehouseTracking_SupplierId");
 
@@ -2917,7 +2915,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Category", "Category")
                         .WithMany("WarehouseTrackingDetails")
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_WarehouseTrackingDetail_CategoryId");
 

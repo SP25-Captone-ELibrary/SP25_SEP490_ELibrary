@@ -11,6 +11,12 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
 {
     Task<IServiceResult> GetEnumValueAsync();
     Task<IServiceResult> GetDetailAsync(int id);
+    Task<IServiceResult> GetRecentReadByIdsAsync(int[] ids, int pageIndex, int pageSize);
+    Task<IServiceResult> GetTrendingAsync(int pageIndex, int pageSize);
+    Task<IServiceResult> GetByCategoryAsync(int categoryId, int pageIndex, int pageSize);
+    Task<IServiceResult> GetItemsInGroupAsync(int id, int pageIndex, int pageSize);
+    Task<IServiceResult> GetReviewsAsync(int id, int pageIndex, int pageSize);
+    Task<IServiceResult> GetRelatedItemsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow);
     Task<IServiceResult> SoftDeleteAsync(int id);
     Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);

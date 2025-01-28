@@ -20,7 +20,5 @@ public class LibraryItemAuthor : IAuditableEntity
     
     // Mapping entities
     public Author Author { get; set; } = null!;
-
-    [JsonIgnore]
     public LibraryItem LibraryItem { get; set; } = null!;
 }

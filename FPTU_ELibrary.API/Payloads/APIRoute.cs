@@ -64,9 +64,9 @@
 			// [GET]
 			public const string GetEnums = Base + "/management/library-items/enums";
 			public const string GetAll = Base + "/management/library-items";
-			public const string GetDetail = Base + "/management/library-items/{id}";
-			public const string CountTotalInstance = Base + "/management/books/editions/{id}/total-copy";
-			public const string CountRangeTotalInstance = Base + "/management/books/editions/total-copy";
+			public const string GetById = Base + "/management/library-items/{id}";
+			public const string CountTotalInstance = Base + "/management/library-items/{id}/total-copy";
+			public const string CountRangeTotalInstance = Base + "/management/library-items/total-copy";
 			public const string Export = Base + "/management/library-items/export";
 			// [POST]
 			public const string Create = Base + "/management/library-items";
@@ -90,6 +90,14 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
+			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
+			public const string GetTrending = Base + "/library-items/trending";
+			public const string GetByCategory = Base + "/library-items/category/{categoryId}";
+			public const string GetDetail = Base + "/library-items/{id}";
+			public const string GetDetailEditions = Base + "/library-items/{id}/editions";
+			public const string GetDetailReviews = Base + "/library-items/{id}/reviews";
+			public const string GetRelatedItems = Base + "/library-items/{id}/related-items";
+			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
 		}
 
@@ -405,13 +413,13 @@
 		public static class AIServices
 		{
 			// [GET]
-			public const string GetAvailableLanguages = Base + "/books/available-languages";	
+			public const string GetAvailableLanguages = Base + "/library-items/available-languages";	
 			//[POST]
-			public const string CheckBookEdition = Base + "/management/books/ai/check-book-edition";
-			public const string TrainingAfterCreate = Base + "/management/books/ai/train-after-create";
-			public const string Predict = Base + "/books/ai/predict";
-			public const string Recommendation = Base + "/books/ai/recommendation";
-			public const string VoiceSearching = Base + "/books/voice";
+			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
+			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train-after-create";
+			public const string Predict = Base + "/library-items/ai/predict";
+			public const string Recommendation = Base + "/library-items/ai/recommendation";
+			public const string VoiceSearching = Base + "/library-items/voice";
 
 			public const string OCR = Base + "/ocr";
 			//[PUT] | [PATCH]

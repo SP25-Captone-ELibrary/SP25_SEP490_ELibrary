@@ -93,7 +93,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				if (!await _context.RolePermissions.AnyAsync()) await SeedRolePermissionAsync();
 				else _logger.Information("Already seed data for table {0}", "Role_Permission");
 				
-				// [Book Categories]
+				// [Categories]
 				if (!await _context.Categories.AnyAsync()) await SeedCategoryAsync();
 				else _logger.Information("Already seed data for table {0}", "Book_Category");
 
@@ -128,7 +128,11 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [LibraryItems]
 				if (!await _context.LibraryItems.AnyAsync()) await SeedLibraryItemAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryItem");
-			}
+				
+				// [LibraryItemReviews]
+				if (!await _context.LibraryItemReviews.AnyAsync()) await SeedLibraryItemReviewsAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryItemReview");
+            }
             catch (Exception ex)
             {
                 _logger.Error(ex, "An error occurred while performing seed data.");
@@ -485,31 +489,36 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 {
 	                Prefix = "SD",
                     EnglishName = nameof(LibraryItemCategory.SingleBook),
-                    VietnameseName = LibraryItemCategory.SingleBook.GetDescription()
+                    VietnameseName = LibraryItemCategory.SingleBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SB",
 	                EnglishName = nameof(LibraryItemCategory.BookSeries),
-	                VietnameseName = LibraryItemCategory.BookSeries.GetDescription()
+	                VietnameseName = LibraryItemCategory.BookSeries.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SCN",
 	                EnglishName = nameof(LibraryItemCategory.SpecializedBook),
-	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "STK",
 	                EnglishName = nameof(LibraryItemCategory.ReferenceBook),
-	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
 	                Prefix = "SNV",
 	                EnglishName = nameof(LibraryItemCategory.ProfessionalBook),
-	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription()
+	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription(),
+					IsAllowAITraining = true,
                 },
                 new()
                 {
@@ -521,37 +530,43 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 {
 	                Prefix = "SMV",
 	                EnglishName = nameof(LibraryItemCategory.Multimedia),
-	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription()
+	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
                     Prefix = "TC",
                     EnglishName = nameof(LibraryItemCategory.Journal),
-                    VietnameseName = LibraryItemCategory.Journal.GetDescription()
+                    VietnameseName = LibraryItemCategory.Journal.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "NC",
 	                EnglishName = nameof(LibraryItemCategory.ResearchPaper),
-	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription()
+	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "BC",
 	                EnglishName = nameof(LibraryItemCategory.Newspaper),
-	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription()
+	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "HT",
 	                EnglishName = nameof(LibraryItemCategory.LearningSupportMaterial),
-	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription()
+	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription(),
+					IsAllowAITraining = false
                 },
                 new()
                 {
 	                Prefix = "LA",
 	                EnglishName = nameof(LibraryItemCategory.AcademicThesis),
-	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription()
+	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription(),
+					IsAllowAITraining = false
                 },
 			};
         
@@ -562,6 +577,369 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			if (saveSucc) _logger.Information("Seed library item category success.");
 		}
 
+		//	Summary:
+        //		Seeding Author
+        private async Task SeedAuthorAsync()
+        {
+	        List<Author> authors = new()
+			{
+			    new()
+			    {
+			        AuthorCode = "AUTH00001",
+			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/f/fb/To_Hoai.jpg",
+			        FullName = "Tô Hoài",
+			        Biography = "<p><strong>Nguyễn Sen</strong>, thường được biết đến với b&uacute;t danh <strong>T&ocirc; Ho&agrave;i</strong> (27 th&aacute;ng 9 năm 1920 &ndash; 6 th&aacute;ng 7 năm 2014),<a href=\"\\&quot;https://vi.wikipedia.org/wiki/T%C3%B4_Ho%C3%A0i#cite_note-1\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">[</sup></span><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">1</sup><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">]</sup></span></a> l&agrave; một nh&agrave; văn người <a title=\"\\&quot;Việt\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Vi%E1%BB%87t_Nam\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Việt Nam</a>.</p>\n<p>&nbsp;</p>\n<p>&Ocirc;ng được nh&agrave; nước Việt Nam trao tặng <a title=\"\\&quot;Giải\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Gi%E1%BA%A3i_th%C6%B0%E1%BB%9Fng_H%E1%BB%93_Ch%C3%AD_Minh\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Giải thưởng Hồ Ch&iacute; Minh</a> về Văn học &ndash; Nghệ thuật đợt 1 (1996) cho c&aacute;c t&aacute;c phẩm: <em>X&oacute;m giếng</em>, <em>Nh&agrave; ngh&egrave;o</em>, <em>O chuột</em>, <a class=\"\\&quot;mw-redirect\\&quot;\" title=\"\\&quot;Dế\" href=\"\\&quot;https://vi.wikipedia.org/wiki/D%E1%BA%BF_m%C3%A8n_phi%C3%AAu_l%C6%B0u_k%C3%BD\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><em>Dế m&egrave;n phi&ecirc;u lưu k&yacute;</em></a>, <em>N&uacute;i Cứu quốc</em>, <em>Truyện T&acirc;y Bắc</em>, <em>Mười năm</em>, <em>Xuống l&agrave;ng</em>, <em>Vỡ tỉnh</em>, <em>T&agrave;o lường</em>, <em>Họ Gi&agrave;ng ở Ph&igrave;n Sa</em>, <em>Miền T&acirc;y</em>, <em>Vợ chồng A Phủ</em>, <em>Tuổi trẻ Ho&agrave;ng Văn Thụ</em>. Một số t&aacute;c phẩm đề t&agrave;i thiếu nhi của &ocirc;ng được dịch ra nhiều ngoại ngữ kh&aacute;c nhau.</p>",
+			        Dob = new DateTime(1920, 9, 27),
+			        DateOfDeath = new DateTime(2014, 7, 6),
+			        Nationality = "Vietnam",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00002",
+			        AuthorImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8lNksAT9hFj7YFbvwb2yIDUXSC5C9P-F80w&s",
+			        FullName = "Đoàn Giỏi",
+			        Biography = "<p><strong>Đo&agrave;n Giỏi</strong> (17 th&aacute;ng 5 năm 1925 &ndash; 2 th&aacute;ng 4 năm 1989) l&agrave; một nh&agrave; văn Việt Nam nổi tiếng với c&aacute;c s&aacute;ng t&aacute;c về cuộc sống, thi&ecirc;n nhi&ecirc;n v&agrave; con người Nam Bộ; trong đ&oacute; ti&ecirc;u biểu nhất l&agrave; t&aacute;c phẩm Đất rừng phương Nam được tr&iacute;ch đoạn trong s&aacute;ch gi&aacute;o khoa Ngữ văn lớp 6 v&agrave; lớp 10. &Ocirc;ng được truy tặng Giải thưởng Nh&agrave; nước về Văn học Nghệ thuật đợt 1 năm 2001.</p>",
+			        Dob = new DateTime(1925, 7, 17),
+			        DateOfDeath = new DateTime(1989, 4,2),
+			        Nationality = "Vietnam",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00003",
+			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Carlo_Collodi.jpg/640px-Carlo_Collodi.jpg",
+			        FullName = "Carlo Collodi",
+			        Biography = "<p><strong>Carlo Lorenzini</strong>&nbsp;(24 th&aacute;ng 11 năm 1826 - 26 th&aacute;ng 10 năm 1890), được biết nhiều hơn với&nbsp;<a title=\"B&uacute;t danh\" href=\"https://vi.wikipedia.org/wiki/B%C3%BAt_danh\">b&uacute;t danh</a>&nbsp;Carlo Collodi, l&agrave; một nh&agrave; văn &Yacute; của trẻ em nổi tiếng với cuốn tiểu thuyết cổ t&iacute;ch nổi tiếng thế giới&nbsp;<em><a title=\"Những cuộc phi&ecirc;u lưu của Pinocchio\" href=\"https://vi.wikipedia.org/wiki/Nh%E1%BB%AFng_cu%E1%BB%99c_phi%C3%AAu_l%C6%B0u_c%E1%BB%A7a_Pinocchio\">Những cuộc phi&ecirc;u lưu của Pinocchio</a></em>. Collodi sinh ra tại&nbsp;<a title=\"Firenze\" href=\"https://vi.wikipedia.org/wiki/Firenze\">Firenze</a>. &Ocirc;ng c&ograve;n l&agrave; một nh&agrave; b&aacute;o, vừa l&agrave; một nh&acirc;n vi&ecirc;n cao cấp trong Ch&iacute;nh phủ, đ&atilde; từng được thưởng Qu&acirc;n c&ocirc;ng bội tinh. Trong c&aacute;c cuộc chiến tranh độc lập năm 1848 v&agrave; 1860 Collodi đ&atilde; l&agrave;m một t&igrave;nh nguyện vi&ecirc;n qu&acirc;n đội Tuscan</p>",
+			        Dob = new DateTime(1826, 11, 24),
+			        DateOfDeath = new DateTime(1890, 10,26),
+			        Nationality = "Italy",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00004",
+			        AuthorImage = "https://m.media-amazon.com/images/M/MV5BNzQ0YWMxNzYtOWM1Ni00MDM0LWI4ZDMtOTZjNzc2OThmMGY1XkEyXkFqcGc@._V1_.jpg",
+			        FullName = "Antoine de Saint-Exupéry",
+			        Biography = "<p><strong>Antoine Marie Jean-Baptiste Roger de Saint-Exup&eacute;ry</strong>, thường được biết tới với t&ecirc;n&nbsp;<strong>Antoine de Saint-Exup&eacute;ry</strong>&nbsp;hay gọi tắt l&agrave;&nbsp;<strong>Saint-Ex</strong>&nbsp;(sinh ng&agrave;y&nbsp;<a title=\"29 th&aacute;ng 6\" href=\"https://vi.wikipedia.org/wiki/29_th%C3%A1ng_6\">29 th&aacute;ng 6</a>&nbsp;năm&nbsp;<a title=\"1900\" href=\"https://vi.wikipedia.org/wiki/1900\">1900</a>&nbsp;- mất t&iacute;ch ng&agrave;y&nbsp;<a title=\"31 th&aacute;ng 7\" href=\"https://vi.wikipedia.org/wiki/31_th%C3%A1ng_7\">31 th&aacute;ng 7</a>&nbsp;năm&nbsp;<a title=\"1944\" href=\"https://vi.wikipedia.org/wiki/1944\">1944</a>) l&agrave; một&nbsp;<a title=\"Nh&agrave; văn\" href=\"https://vi.wikipedia.org/wiki/Nh%C3%A0_v%C4%83n\">nh&agrave; văn</a>&nbsp;v&agrave;&nbsp;<a title=\"Phi c&ocirc;ng\" href=\"https://vi.wikipedia.org/wiki/Phi_c%C3%B4ng\">phi c&ocirc;ng</a>&nbsp;<a title=\"Ph&aacute;p\" href=\"https://vi.wikipedia.org/wiki/Ph%C3%A1p\">Ph&aacute;p</a>&nbsp;nổi tiếng. Saint-Exup&eacute;ry được biết tới nhiều nhất với kiệt t&aacute;c văn học&nbsp;<a class=\"mw-redirect\" title=\"Ho&agrave;ng Tử B&eacute;\" href=\"https://vi.wikipedia.org/wiki/Ho%C3%A0ng_T%E1%BB%AD_B%C3%A9\">Ho&agrave;ng tử b&eacute;</a>&nbsp;(<em>Le Petit Prince</em>).</p>",
+			        Dob = new DateTime(1900, 6, 29),
+			        DateOfDeath = new DateTime(1944, 7,31),
+			        Nationality = "France",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = true
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00005",
+			        AuthorImage = "https://img.giaoduc.net.vn/w1000/Uploaded/2025/edxwpcqdh/2022_07_01/gdvn-thay-nam-3039.jpg",
+			        FullName = "PGS. TS. Nguyễn Văn Nam",
+			        Biography = "<p>L&agrave; một trong những sinh vi&ecirc;n xuất sắc của sinh vi&ecirc;n chuy&ecirc;n ng&agrave;nh Xử l&yacute; th&ocirc;ng tin&nbsp;kinh tế kh&oacute;a 1 (tương ứng với kh&oacute;a 14 của Trường), <strong>GS.TS Nguyễn Văn Nam</strong> được&nbsp;c&aacute;c thầy, c&ocirc; gi&aacute;o v&agrave; c&aacute;c bạn sinh vi&ecirc;n nhớ đến với h&igrave;nh ảnh m&aacute;i t&oacute;c bồng bềnh l&atilde;ng&nbsp;tử nhưng cũng rất &ldquo;si&ecirc;u&rdquo; trong học tập.</p>\n<p>Sau khi tốt nghiệp chuy&ecirc;n Xử l&yacute; th&ocirc;ng tin kinh tế v&agrave; được giữ lại l&agrave;m giảng vi&ecirc;n ở Khoa Ng&acirc;n h&agrave;ng (nay l&agrave; Viện Ng&acirc;n h&agrave;ng &ndash; T&agrave;i ch&iacute;nh), với tố chất của một người học to&aacute;n &Ocirc;ng đ&atilde; dấn th&acirc;n v&agrave;o ng&agrave;nh Ng&acirc;n h&agrave;ng v&agrave; Thị trường t&agrave;i ch&iacute;nh. Đ&oacute; l&agrave; ng&agrave;nh học mới mẻ ở Việt Nam v&agrave;o những năm 80 của thập kỷ trước. &Ocirc;ng đ&atilde; bảo vệ th&agrave;nh c&ocirc;ng luận &aacute;n Tiến sỹ một c&aacute;ch xuất sắc ở trường Đại học tổng hợp Humboldt &ndash; Berlin, sau đ&oacute; l&agrave;m thực tập sinh khoa học tại Thị trường chứng kho&aacute;n Franfurt/ Main, Deutsche Bank (Đức).</p>",
+			        Nationality = "Vietnam",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00006",
+			        AuthorImage = "https://staff.hnue.edu.vn/Portals/0/Images/20fa5cd3-788b-4fd4-9d97-383b95edf53a.jpg",
+			        FullName = "PGS. TS. Lê Minh Hoàng",
+			        Nationality = "Vietnam",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new()
+			    {
+			        AuthorCode = "AUTH00007",
+			        FullName = "PGS. TS. Trần Văn Lượng",
+			        Nationality = "Vietnam",
+			        CreateDate = DateTime.UtcNow,
+			        IsDeleted = false
+			    },
+			    new ()
+			    {
+				    AuthorCode = "AUTH00008",
+                    AuthorImage = "https://www.jkrowling.com/wp-content/uploads/2022/05/J.K.-Rowling-2021-Photography-Debra-Hurford-Brown-scaled.jpg",
+                    FullName = "Rowling, J. K.",
+                    Biography = "Joanne Rowling CH OBE FRSL, known by her pen name J. K. Rowling, is a British author and philanthropist. She wrote Harry Potter, a seven-volume fantasy series published from 1997 to 2007.",
+                    Dob = new DateTime(1965, 7, 31),
+                    Nationality = "British",
+                    CreateDate = DateTime.UtcNow,
+                    IsDeleted = false
+			    }
+			};
+	        
+	        // Add Range
+	        await _context.Authors.AddRangeAsync(authors);
+	        var saveSucc = await _context.SaveChangesAsync() > 0;
+
+	        if (saveSucc) _logger.Information("Seed authors successfully.");
+        }
+		
+        //	Summary:
+		//		Seeding Employee
+		private async Task SeedEmployeeAsync()
+		{
+			// Get librarian job role
+			var librarianJobRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
+				x.EnglishName == Role.Librarian.ToString());
+
+			// Check for role existence
+			if(librarianJobRole == null)
+			{
+				_logger.Error("Not found any librarian role to seed Employee");
+				return;
+			}
+
+			// Initialize employees
+			List<Employee> employees = new()
+			{
+				new()
+				{
+					EmployeeCode = "EM270925",
+					Email = "librarian@gmail.com",
+					// Password: @Employee123
+					PasswordHash = "$2a$13$2bD1T7g/kstNMw0LWEksKuUaGhuAXCXkftsfIURf7yJ6Hr20I2Aae",
+					FirstName = "Nguyen Van",
+					LastName = "A",
+					Dob = new DateTime(1995, 02, 10),
+					Phone = "0777155790",
+					Gender = Gender.Male.ToString(),
+					HireDate = new DateTime(2023, 10, 10),
+					IsActive = true,
+					CreateDate = DateTime.UtcNow,
+					TwoFactorEnabled = false,
+					PhoneNumberConfirmed = false,
+					EmailConfirmed = false,
+					RoleId = librarianJobRole.RoleId
+				}
+			};
+			
+			for (int i = 1; i <= 10; i++)
+            {
+                employees.Add(new Employee
+                {
+                    EmployeeCode = $"EM27092{i}",
+                    Email = $"employee{i}@gmail.com",
+                    PasswordHash = string.Empty,
+                    FirstName = $"First{i}",
+                    LastName = $"Last{i}",
+                    Dob = new DateTime(1990 + i, 01, i + 1),
+                    Phone = $"07771557{i:00}",
+                    Gender = i % 2 == 0 ? Gender.Male.ToString() : Gender.Female.ToString(), 
+                    HireDate = DateTime.UtcNow.AddDays(-i * 10),
+                    IsActive = false,
+                    CreateDate = DateTime.UtcNow,
+                    TwoFactorEnabled = false,
+                    PhoneNumberConfirmed = false,
+                    EmailConfirmed = false,
+                    RoleId = librarianJobRole.RoleId
+                });
+            }
+
+
+			// Add Range
+			await _context.Employees.AddRangeAsync(employees);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed employees successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding library floor
+		private async Task SeedLibraryFloorAsync()
+		{
+			List<LibraryFloor> floors = new()
+			{
+				new()
+				{
+					FloorNumber = "Floor 1", 
+					CreateDate = DateTime.Now
+				},
+				new()
+				{
+					FloorNumber = "Floor 2", 
+					CreateDate = DateTime.Now
+				}
+			};
+			
+			// Add Range
+			await _context.LibraryFloors.AddRangeAsync(floors);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library floors successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library zone
+		private async Task SeedLibraryZoneAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all current floor
+			var floors = await _context.LibraryFloors.ToListAsync();
+			
+			List<LibraryZone> zones = new()
+			{
+				new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Lounge",
+                    XCoordinate = 10.5,
+                    YCoordinate = 20.3,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Reading Room",
+                    XCoordinate = 15.2,
+                    YCoordinate = 25.8,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Study Area",
+                    XCoordinate = 5.0,
+                    YCoordinate = 10.0,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Computer Lab",
+                    XCoordinate = 30.7,
+                    YCoordinate = 40.2,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                },
+                new()
+                {
+                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
+                    ZoneName = "Rest Room",
+                    XCoordinate = 12.4,
+                    YCoordinate = 18.9,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = null,
+                    IsDeleted = false
+                }			
+			};
+			
+			// Add Range
+			await _context.LibraryZones.AddRangeAsync(zones);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library zones successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library section
+		private async Task SeedLibrarySectionAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all zones
+			var zones = await _context.LibraryZones.ToListAsync();
+			
+			List<LibrarySection> sections = new()
+			{
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Fiction",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Non-Fiction",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Science",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "History",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				},
+				new()
+				{
+					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
+					SectionName = "Novel",
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				}
+			};
+			
+			// Add Range
+			await _context.LibrarySections.AddRangeAsync(sections);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library sections successfully.");
+		}
+		
+		//	Summary:
+		//		Seeding Library shelf
+		private async Task SeedLibraryShelvesAsync()
+		{
+			// Initialize random 
+			var rnd = new Random();
+			
+			// Retrieve all existing sections
+			var sections = await _context.LibrarySections.ToListAsync();
+
+			List<LibraryShelf> shelves = new();
+			
+			// Generate shelves
+			for (int i = 0; i < 20; i++) // Example: Create 20 shelves
+			{
+				// Generate random shelf number
+				string shelfNumber = $"{(char)('A' + rnd.Next(0, 26))}-{rnd.Next(1, 100):D2}";
+
+				// Create a new shelf
+				shelves.Add(new LibraryShelf
+				{
+					SectionId = sections[rnd.Next(sections.Count)].SectionId, // Random section
+					ShelfNumber = shelfNumber,
+					CreateDate = DateTime.Now,
+					UpdateDate = null,
+					IsDeleted = false
+				});
+			}
+			
+			// Add Range
+			await _context.LibraryShelves.AddRangeAsync(shelves);
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed library shelves successfully.");
+		}
+        
         //  Summary:
         //      Seeding Library Item
         private async Task SeedLibraryItemAsync()
@@ -1122,367 +1500,45 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		}
     
         //	Summary:
-        //		Seeding Author
-        private async Task SeedAuthorAsync()
+        //		Seeding Library item review
+        private async Task SeedLibraryItemReviewsAsync()
         {
-	        List<Author> authors = new()
-			{
-			    new()
-			    {
-			        AuthorCode = "AUTH00001",
-			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/f/fb/To_Hoai.jpg",
-			        FullName = "Tô Hoài",
-			        Biography = "<p><strong>Nguyễn Sen</strong>, thường được biết đến với b&uacute;t danh <strong>T&ocirc; Ho&agrave;i</strong> (27 th&aacute;ng 9 năm 1920 &ndash; 6 th&aacute;ng 7 năm 2014),<a href=\"\\&quot;https://vi.wikipedia.org/wiki/T%C3%B4_Ho%C3%A0i#cite_note-1\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">[</sup></span><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">1</sup><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">]</sup></span></a> l&agrave; một nh&agrave; văn người <a title=\"\\&quot;Việt\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Vi%E1%BB%87t_Nam\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Việt Nam</a>.</p>\n<p>&nbsp;</p>\n<p>&Ocirc;ng được nh&agrave; nước Việt Nam trao tặng <a title=\"\\&quot;Giải\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Gi%E1%BA%A3i_th%C6%B0%E1%BB%9Fng_H%E1%BB%93_Ch%C3%AD_Minh\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Giải thưởng Hồ Ch&iacute; Minh</a> về Văn học &ndash; Nghệ thuật đợt 1 (1996) cho c&aacute;c t&aacute;c phẩm: <em>X&oacute;m giếng</em>, <em>Nh&agrave; ngh&egrave;o</em>, <em>O chuột</em>, <a class=\"\\&quot;mw-redirect\\&quot;\" title=\"\\&quot;Dế\" href=\"\\&quot;https://vi.wikipedia.org/wiki/D%E1%BA%BF_m%C3%A8n_phi%C3%AAu_l%C6%B0u_k%C3%BD\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><em>Dế m&egrave;n phi&ecirc;u lưu k&yacute;</em></a>, <em>N&uacute;i Cứu quốc</em>, <em>Truyện T&acirc;y Bắc</em>, <em>Mười năm</em>, <em>Xuống l&agrave;ng</em>, <em>Vỡ tỉnh</em>, <em>T&agrave;o lường</em>, <em>Họ Gi&agrave;ng ở Ph&igrave;n Sa</em>, <em>Miền T&acirc;y</em>, <em>Vợ chồng A Phủ</em>, <em>Tuổi trẻ Ho&agrave;ng Văn Thụ</em>. Một số t&aacute;c phẩm đề t&agrave;i thiếu nhi của &ocirc;ng được dịch ra nhiều ngoại ngữ kh&aacute;c nhau.</p>",
-			        Dob = new DateTime(1920, 9, 27),
-			        DateOfDeath = new DateTime(2014, 7, 6),
-			        Nationality = "Vietnam",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00002",
-			        AuthorImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8lNksAT9hFj7YFbvwb2yIDUXSC5C9P-F80w&s",
-			        FullName = "Đoàn Giỏi",
-			        Biography = "<p><strong>Đo&agrave;n Giỏi</strong> (17 th&aacute;ng 5 năm 1925 &ndash; 2 th&aacute;ng 4 năm 1989) l&agrave; một nh&agrave; văn Việt Nam nổi tiếng với c&aacute;c s&aacute;ng t&aacute;c về cuộc sống, thi&ecirc;n nhi&ecirc;n v&agrave; con người Nam Bộ; trong đ&oacute; ti&ecirc;u biểu nhất l&agrave; t&aacute;c phẩm Đất rừng phương Nam được tr&iacute;ch đoạn trong s&aacute;ch gi&aacute;o khoa Ngữ văn lớp 6 v&agrave; lớp 10. &Ocirc;ng được truy tặng Giải thưởng Nh&agrave; nước về Văn học Nghệ thuật đợt 1 năm 2001.</p>",
-			        Dob = new DateTime(1925, 7, 17),
-			        DateOfDeath = new DateTime(1989, 4,2),
-			        Nationality = "Vietnam",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00003",
-			        AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Carlo_Collodi.jpg/640px-Carlo_Collodi.jpg",
-			        FullName = "Carlo Collodi",
-			        Biography = "<p><strong>Carlo Lorenzini</strong>&nbsp;(24 th&aacute;ng 11 năm 1826 - 26 th&aacute;ng 10 năm 1890), được biết nhiều hơn với&nbsp;<a title=\"B&uacute;t danh\" href=\"https://vi.wikipedia.org/wiki/B%C3%BAt_danh\">b&uacute;t danh</a>&nbsp;Carlo Collodi, l&agrave; một nh&agrave; văn &Yacute; của trẻ em nổi tiếng với cuốn tiểu thuyết cổ t&iacute;ch nổi tiếng thế giới&nbsp;<em><a title=\"Những cuộc phi&ecirc;u lưu của Pinocchio\" href=\"https://vi.wikipedia.org/wiki/Nh%E1%BB%AFng_cu%E1%BB%99c_phi%C3%AAu_l%C6%B0u_c%E1%BB%A7a_Pinocchio\">Những cuộc phi&ecirc;u lưu của Pinocchio</a></em>. Collodi sinh ra tại&nbsp;<a title=\"Firenze\" href=\"https://vi.wikipedia.org/wiki/Firenze\">Firenze</a>. &Ocirc;ng c&ograve;n l&agrave; một nh&agrave; b&aacute;o, vừa l&agrave; một nh&acirc;n vi&ecirc;n cao cấp trong Ch&iacute;nh phủ, đ&atilde; từng được thưởng Qu&acirc;n c&ocirc;ng bội tinh. Trong c&aacute;c cuộc chiến tranh độc lập năm 1848 v&agrave; 1860 Collodi đ&atilde; l&agrave;m một t&igrave;nh nguyện vi&ecirc;n qu&acirc;n đội Tuscan</p>",
-			        Dob = new DateTime(1826, 11, 24),
-			        DateOfDeath = new DateTime(1890, 10,26),
-			        Nationality = "Italy",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00004",
-			        AuthorImage = "https://m.media-amazon.com/images/M/MV5BNzQ0YWMxNzYtOWM1Ni00MDM0LWI4ZDMtOTZjNzc2OThmMGY1XkEyXkFqcGc@._V1_.jpg",
-			        FullName = "Antoine de Saint-Exupéry",
-			        Biography = "<p><strong>Antoine Marie Jean-Baptiste Roger de Saint-Exup&eacute;ry</strong>, thường được biết tới với t&ecirc;n&nbsp;<strong>Antoine de Saint-Exup&eacute;ry</strong>&nbsp;hay gọi tắt l&agrave;&nbsp;<strong>Saint-Ex</strong>&nbsp;(sinh ng&agrave;y&nbsp;<a title=\"29 th&aacute;ng 6\" href=\"https://vi.wikipedia.org/wiki/29_th%C3%A1ng_6\">29 th&aacute;ng 6</a>&nbsp;năm&nbsp;<a title=\"1900\" href=\"https://vi.wikipedia.org/wiki/1900\">1900</a>&nbsp;- mất t&iacute;ch ng&agrave;y&nbsp;<a title=\"31 th&aacute;ng 7\" href=\"https://vi.wikipedia.org/wiki/31_th%C3%A1ng_7\">31 th&aacute;ng 7</a>&nbsp;năm&nbsp;<a title=\"1944\" href=\"https://vi.wikipedia.org/wiki/1944\">1944</a>) l&agrave; một&nbsp;<a title=\"Nh&agrave; văn\" href=\"https://vi.wikipedia.org/wiki/Nh%C3%A0_v%C4%83n\">nh&agrave; văn</a>&nbsp;v&agrave;&nbsp;<a title=\"Phi c&ocirc;ng\" href=\"https://vi.wikipedia.org/wiki/Phi_c%C3%B4ng\">phi c&ocirc;ng</a>&nbsp;<a title=\"Ph&aacute;p\" href=\"https://vi.wikipedia.org/wiki/Ph%C3%A1p\">Ph&aacute;p</a>&nbsp;nổi tiếng. Saint-Exup&eacute;ry được biết tới nhiều nhất với kiệt t&aacute;c văn học&nbsp;<a class=\"mw-redirect\" title=\"Ho&agrave;ng Tử B&eacute;\" href=\"https://vi.wikipedia.org/wiki/Ho%C3%A0ng_T%E1%BB%AD_B%C3%A9\">Ho&agrave;ng tử b&eacute;</a>&nbsp;(<em>Le Petit Prince</em>).</p>",
-			        Dob = new DateTime(1900, 6, 29),
-			        DateOfDeath = new DateTime(1944, 7,31),
-			        Nationality = "France",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = true
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00005",
-			        AuthorImage = "https://img.giaoduc.net.vn/w1000/Uploaded/2025/edxwpcqdh/2022_07_01/gdvn-thay-nam-3039.jpg",
-			        FullName = "PGS. TS. Nguyễn Văn Nam",
-			        Biography = "<p>L&agrave; một trong những sinh vi&ecirc;n xuất sắc của sinh vi&ecirc;n chuy&ecirc;n ng&agrave;nh Xử l&yacute; th&ocirc;ng tin&nbsp;kinh tế kh&oacute;a 1 (tương ứng với kh&oacute;a 14 của Trường), <strong>GS.TS Nguyễn Văn Nam</strong> được&nbsp;c&aacute;c thầy, c&ocirc; gi&aacute;o v&agrave; c&aacute;c bạn sinh vi&ecirc;n nhớ đến với h&igrave;nh ảnh m&aacute;i t&oacute;c bồng bềnh l&atilde;ng&nbsp;tử nhưng cũng rất &ldquo;si&ecirc;u&rdquo; trong học tập.</p>\n<p>Sau khi tốt nghiệp chuy&ecirc;n Xử l&yacute; th&ocirc;ng tin kinh tế v&agrave; được giữ lại l&agrave;m giảng vi&ecirc;n ở Khoa Ng&acirc;n h&agrave;ng (nay l&agrave; Viện Ng&acirc;n h&agrave;ng &ndash; T&agrave;i ch&iacute;nh), với tố chất của một người học to&aacute;n &Ocirc;ng đ&atilde; dấn th&acirc;n v&agrave;o ng&agrave;nh Ng&acirc;n h&agrave;ng v&agrave; Thị trường t&agrave;i ch&iacute;nh. Đ&oacute; l&agrave; ng&agrave;nh học mới mẻ ở Việt Nam v&agrave;o những năm 80 của thập kỷ trước. &Ocirc;ng đ&atilde; bảo vệ th&agrave;nh c&ocirc;ng luận &aacute;n Tiến sỹ một c&aacute;ch xuất sắc ở trường Đại học tổng hợp Humboldt &ndash; Berlin, sau đ&oacute; l&agrave;m thực tập sinh khoa học tại Thị trường chứng kho&aacute;n Franfurt/ Main, Deutsche Bank (Đức).</p>",
-			        Nationality = "Vietnam",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00006",
-			        AuthorImage = "https://staff.hnue.edu.vn/Portals/0/Images/20fa5cd3-788b-4fd4-9d97-383b95edf53a.jpg",
-			        FullName = "PGS. TS. Lê Minh Hoàng",
-			        Nationality = "Vietnam",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new()
-			    {
-			        AuthorCode = "AUTH00007",
-			        FullName = "PGS. TS. Trần Văn Lượng",
-			        Nationality = "Vietnam",
-			        CreateDate = DateTime.UtcNow,
-			        IsDeleted = false
-			    },
-			    new ()
-			    {
-				    AuthorCode = "AUTH00008",
-                    AuthorImage = "https://www.jkrowling.com/wp-content/uploads/2022/05/J.K.-Rowling-2021-Photography-Debra-Hurford-Brown-scaled.jpg",
-                    FullName = "Rowling, J. K.",
-                    Biography = "Joanne Rowling CH OBE FRSL, known by her pen name J. K. Rowling, is a British author and philanthropist. She wrote Harry Potter, a seven-volume fantasy series published from 1997 to 2007.",
-                    Dob = new DateTime(1965, 7, 31),
-                    Nationality = "British",
-                    CreateDate = DateTime.UtcNow,
-                    IsDeleted = false
-			    }
-			};
+	        // Initialize random 
+	        var rnd = new Random();
 	        
-	        // Add Range
-	        await _context.Authors.AddRangeAsync(authors);
+	        // Retrieve all library item
+	        var libraryItems = await _context.LibraryItems.ToListAsync();
+	        
+	        // Retrieve users (maximum: 20 users)
+	        var users = await _context.Users.Take(20).ToListAsync();
+	        
+	        var possibleRatings = new List<double> { 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0 };
+	        for (int i = 0; i < libraryItems.Count; i++)
+	        {
+		        var lItem = libraryItems[i];
+				
+		        // Initialize item review collection
+		        var itemReviews = new List<LibraryItemReview>();
+		        var indexThreshold = rnd.Next(1, 10);
+		        for (int j = 0; j < indexThreshold; j++)
+		        {
+			        itemReviews.Add(new LibraryItemReview()
+			        {
+				        LibraryItemId = lItem.LibraryItemId,
+				        UserId = users[rnd.Next(users.Count)].UserId,
+				        RatingValue = possibleRatings[rnd.Next(possibleRatings.Count)],
+				        CreateDate = DateTime.Now.Subtract(new TimeSpan(rnd.Next(0,100), 0,0,0))
+			        });
+		        }
+		        
+		        // Add reviews
+		        lItem.LibraryItemReviews = itemReviews;
+	        }
+	        
+	        // Save DB
 	        var saveSucc = await _context.SaveChangesAsync() > 0;
-
-	        if (saveSucc) _logger.Information("Seed authors successfully.");
+	        if(saveSucc) _logger.Information("Seed library item reviews successfully.");
         }
-        
-		//	Summary:
-		//		Seeding Employee
-		private async Task SeedEmployeeAsync()
-		{
-			// Get librarian job role
-			var librarianJobRole = await _context.SystemRoles.FirstOrDefaultAsync(x => 
-				x.EnglishName == Role.Librarian.ToString());
-
-			// Check for role existence
-			if(librarianJobRole == null)
-			{
-				_logger.Error("Not found any librarian role to seed Employee");
-				return;
-			}
-
-			// Initialize employees
-			List<Employee> employees = new()
-			{
-				new()
-				{
-					EmployeeCode = "EM270925",
-					Email = "librarian@gmail.com",
-					// Password: @Employee123
-					PasswordHash = "$2a$13$2bD1T7g/kstNMw0LWEksKuUaGhuAXCXkftsfIURf7yJ6Hr20I2Aae",
-					FirstName = "Nguyen Van",
-					LastName = "A",
-					Dob = new DateTime(1995, 02, 10),
-					Phone = "0777155790",
-					Gender = Gender.Male.ToString(),
-					HireDate = new DateTime(2023, 10, 10),
-					IsActive = true,
-					CreateDate = DateTime.UtcNow,
-					TwoFactorEnabled = false,
-					PhoneNumberConfirmed = false,
-					EmailConfirmed = false,
-					RoleId = librarianJobRole.RoleId
-				}
-			};
-			
-			for (int i = 1; i <= 10; i++)
-            {
-                employees.Add(new Employee
-                {
-                    EmployeeCode = $"EM27092{i}",
-                    Email = $"employee{i}@gmail.com",
-                    PasswordHash = string.Empty,
-                    FirstName = $"First{i}",
-                    LastName = $"Last{i}",
-                    Dob = new DateTime(1990 + i, 01, i + 1),
-                    Phone = $"07771557{i:00}",
-                    Gender = i % 2 == 0 ? Gender.Male.ToString() : Gender.Female.ToString(), 
-                    HireDate = DateTime.UtcNow.AddDays(-i * 10),
-                    IsActive = false,
-                    CreateDate = DateTime.UtcNow,
-                    TwoFactorEnabled = false,
-                    PhoneNumberConfirmed = false,
-                    EmailConfirmed = false,
-                    RoleId = librarianJobRole.RoleId
-                });
-            }
-
-
-			// Add Range
-			await _context.Employees.AddRangeAsync(employees);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed employees successfully.");
-		}
-		
-		//	Summary:
-		//		Seeding library floor
-		private async Task SeedLibraryFloorAsync()
-		{
-			List<LibraryFloor> floors = new()
-			{
-				new()
-				{
-					FloorNumber = "Floor 1", 
-					CreateDate = DateTime.Now
-				},
-				new()
-				{
-					FloorNumber = "Floor 2", 
-					CreateDate = DateTime.Now
-				}
-			};
-			
-			// Add Range
-			await _context.LibraryFloors.AddRangeAsync(floors);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library floors successfully.");
-		}
-		
-		//	Summary:
-		//		Seeding Library zone
-		private async Task SeedLibraryZoneAsync()
-		{
-			// Initialize random 
-			var rnd = new Random();
-			
-			// Retrieve all current floor
-			var floors = await _context.LibraryFloors.ToListAsync();
-			
-			List<LibraryZone> zones = new()
-			{
-				new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Lounge",
-                    XCoordinate = 10.5,
-                    YCoordinate = 20.3,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Reading Room",
-                    XCoordinate = 15.2,
-                    YCoordinate = 25.8,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Study Area",
-                    XCoordinate = 5.0,
-                    YCoordinate = 10.0,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Computer Lab",
-                    XCoordinate = 30.7,
-                    YCoordinate = 40.2,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Rest Room",
-                    XCoordinate = 12.4,
-                    YCoordinate = 18.9,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                }			
-			};
-			
-			// Add Range
-			await _context.LibraryZones.AddRangeAsync(zones);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library zones successfully.");
-		}
-		
-		//	Summary:
-		//		Seeding Library section
-		private async Task SeedLibrarySectionAsync()
-		{
-			// Initialize random 
-			var rnd = new Random();
-			
-			// Retrieve all zones
-			var zones = await _context.LibraryZones.ToListAsync();
-			
-			List<LibrarySection> sections = new()
-			{
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Fiction",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Non-Fiction",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Science",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "History",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Novel",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				}
-			};
-			
-			// Add Range
-			await _context.LibrarySections.AddRangeAsync(sections);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library sections successfully.");
-		}
-		
-		//	Summary:
-		//		Seeding Library shelf
-		private async Task SeedLibraryShelvesAsync()
-		{
-			// Initialize random 
-			var rnd = new Random();
-			
-			// Retrieve all existing sections
-			var sections = await _context.LibrarySections.ToListAsync();
-
-			List<LibraryShelf> shelves = new();
-			
-			// Generate shelves
-			for (int i = 0; i < 20; i++) // Example: Create 20 shelves
-			{
-				// Generate random shelf number
-				string shelfNumber = $"{(char)('A' + rnd.Next(0, 26))}-{rnd.Next(1, 100):D2}";
-
-				// Create a new shelf
-				shelves.Add(new LibraryShelf
-				{
-					SectionId = sections[rnd.Next(sections.Count)].SectionId, // Random section
-					ShelfNumber = shelfNumber,
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				});
-			}
-			
-			// Add Range
-			await _context.LibraryShelves.AddRangeAsync(shelves);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library shelves successfully.");
-		}
     }
 
 	//	Summary:
