@@ -260,7 +260,6 @@ namespace FPTU_ELibrary.Application.Utils
                         {
                             titlePoint.Add(value, matchPoint);
                         }
-
                         else if (titlePoint.All(x => x.Value < matchPoint))
                         {
                             //only save the highest score

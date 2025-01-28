@@ -712,7 +712,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					CreateDate = DateTime.UtcNow,
 					TwoFactorEnabled = false,
 					PhoneNumberConfirmed = false,
-					EmailConfirmed = false,
+					EmailConfirmed = true,
 					RoleId = librarianJobRole.RoleId
 				}
 			};
@@ -734,7 +734,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     CreateDate = DateTime.UtcNow,
                     TwoFactorEnabled = false,
                     PhoneNumberConfirmed = false,
-                    EmailConfirmed = false,
+                    EmailConfirmed = true,
                     RoleId = librarianJobRole.RoleId
                 });
             }

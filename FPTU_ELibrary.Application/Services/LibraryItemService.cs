@@ -255,11 +255,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 .AnyAsync(x => x.Isbn == dto.Isbn);
             if (isIsbnExist) // already exist 
             {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0007);
                 // Add error
                 customErrors.Add(
                     "isbn",
                     // Isbn already exist message
-                    [await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0007)]);
+                    [StringUtils.Format(errMsg, dto.Isbn ?? string.Empty)]);
             }
 
             // Any errors invoke when checking valid data

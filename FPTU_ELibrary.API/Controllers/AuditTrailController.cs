@@ -26,8 +26,8 @@ public class AuditTrailController : ControllerBase
     }
     
     [Authorize]
-    [HttpGet(APIRoute.AuditTrail.GetAllByEntityIdAndName, Name = nameof(GetAllAuditTrailByBookIdAsync))]
-    public async Task<IActionResult> GetAllAuditTrailByBookIdAsync([FromQuery] AuditTrailSpecParams specParams)
+    [HttpGet(APIRoute.AuditTrail.GetAllByEntityIdAndName, Name = nameof(GetAllAuditTrailByIdAsync))]
+    public async Task<IActionResult> GetAllAuditTrailByIdAsync([FromQuery] AuditTrailSpecParams specParams)
     {
         // Retrieve user email claims
         // var email = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.Email)?.Value;

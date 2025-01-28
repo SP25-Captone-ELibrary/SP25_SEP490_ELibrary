@@ -49,5 +49,8 @@ namespace FPTU_ELibrary.Application.Utils
 			// Check if the age is 18 or older
 			return age > 18;
 		}
+
+		public static DateTime TruncateToSeconds(DateTime datetime)
+			=> new (datetime.Ticks - (datetime.Ticks % TimeSpan.TicksPerSecond), datetime.Kind);
 	}
 }
