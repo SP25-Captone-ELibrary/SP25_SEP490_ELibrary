@@ -128,13 +128,13 @@ public static class LibraryItemDetailDtoExtensions
             // Inventory 
             LibraryItemInventory = dto.LibraryItemInventory,
             // Authors
-            Authors = dto.LibraryItemAuthors.Select(lia => lia.Author).ToList(),
+            Authors = dto.LibraryItemAuthors.Any() ? dto.LibraryItemAuthors.Select(lia => lia.Author).ToList() : new(),
             // Resources
-            Resources = dto.LibraryItemResources.Select(lir => lir.LibraryResource).ToList(),
+            Resources = dto.LibraryItemResources.Any() ? dto.LibraryItemResources.Select(lir => lir.LibraryResource).ToList() : new(),
             // Item instances
-            LibraryItemInstances = dto.LibraryItemInstances.ToList(),
+            LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
             // Average item reviews
-            AvgReviewedRate = Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2,
+            AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
         };
     }
 

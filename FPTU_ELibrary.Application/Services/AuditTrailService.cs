@@ -9,6 +9,7 @@ using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -17,6 +18,8 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -136,6 +139,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
             var isEng = lang == SystemLanguage.English;
             
             // Format dateUtc to (yyyy-MM-dd:HH:mm:ss.fff)
+            // var reqDateTime = DateTime.Parse(dateUtc, null, DateTimeStyles.RoundtripKind);
             var reqDateTime = DateTime.Parse(dateUtc, null, DateTimeStyles.RoundtripKind);
             // Build spec
             var baseSpec = BuildAuditTrailSpecification(reqDateTime, rootEntityName, trailType);
@@ -221,7 +225,11 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                 break;
             case TrailType.Added:
                 baseSpec = new BaseSpecification<AuditTrail>(at =>
-                    at.DateUtc == dateUtc && // with specific DateUTC 
+                    at.DateUtc.Year == dateUtc.Year &&
+                    at.DateUtc.Month == dateUtc.Month &&
+                    at.DateUtc.Day == dateUtc.Day &&
+                    at.DateUtc.Hour == dateUtc.Hour &&
+                    at.DateUtc.Minute == dateUtc.Minute &&
                     at.TrailType == trailType && // with specific trail type when added
                     relatedEntities.Contains(at.EntityName)); // match any of the related entities
                 break;
@@ -239,7 +247,8 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
     private static readonly Dictionary<string, List<string>> EntityRelationships = new()
     {
         { nameof(LibraryItem) , new List<string> { nameof(LibraryItemAuthor), nameof(LibraryItemInstance), nameof(LibraryItemResource)  } },
-        { nameof(LibraryItemInstance), new List<string> { nameof(LibraryItemConditionHistory) } }
+        { nameof(LibraryItemInstance), new List<string> { nameof(LibraryItemConditionHistory) } },
+        { nameof(LibraryItemResource), new List<string> { nameof(LibraryResource) } }
     };
 
     private void ExpandRelatedEntities(string entityName, HashSet<string> result)
@@ -321,12 +330,13 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                     LibraryItemId = int.Parse(bec.NewValues["LibraryItemId"]?.ToString() ?? "0"),
                     Barcode = bec.NewValues["Barcode"]?.ToString()!,
                     Status = bec.NewValues["Status"]?.ToString()!,
-                    CreatedAt = DateTime.Parse(bec.NewValues["CreatedAt"]?.ToString()!),
+                    CreatedAt = DateTime.Parse(bec.NewValues["CreatedAt"]?.ToString() 
+                                               ?? DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
                     UpdatedAt = DateTime.Parse(bec.NewValues["UpdatedAt"]?.ToString() ??
                                                DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                    CreatedBy = bec.NewValues["CreatedBy"]?.ToString()!,
+                    CreatedBy = bec.NewValues["CreatedBy"]?.ToString() ?? null!,
                     UpdatedBy = bec.NewValues["UpdatedBy"]?.ToString() ?? null!,
-                    IsDeleted = bool.Parse(bec.NewValues["IsDeleted"]?.ToString()!)
+                    IsDeleted = bool.TryParse(bec.NewValues["IsDeleted"]?.ToString(), out var validBool) && validBool,
                 }).ToList();
 
             if (itemInstanceDtos.Any())
@@ -354,6 +364,12 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
 
         if (copyHistoryAudits.Any()) // Exist at least 1 history
         {
+            var test = auditTrailList
+                .Where(ch => ch.EntityName == nameof(LibraryItemConditionHistory) &&
+                             ch.NewValues.Any() &&
+                             ch.NewValues.ContainsKey("LibraryItemInstanceId") &&
+                             (string.IsNullOrEmpty(libraryItemInstanceId) ||
+                              ch.NewValues["LibraryItemInstanceId"]?.ToString() == libraryItemInstanceId));
             return await Task.FromResult(
                 auditTrailList
                     .Where(ch => ch.EntityName == nameof(LibraryItemConditionHistory) &&
@@ -365,10 +381,9 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                         ConditionHistoryId = int.Parse(ch.EntityId ?? "0"),
                         LibraryItemInstanceId = int.Parse(ch.NewValues["LibraryItemInstanceId"]?.ToString() ?? "0"),
                         Condition = ch.NewValues["Condition"]?.ToString()!,
-                        CreatedAt = DateTime.Parse(ch.NewValues["CreatedAt"]?.ToString()!),
-                        UpdatedAt = DateTime.Parse(ch.NewValues["UpdatedAt"]?.ToString() ??
-                                                   DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                        CreatedBy = ch.NewValues["CreatedBy"]?.ToString()!,
+                        CreatedAt = DateTime.TryParse(ch.NewValues["CreatedAt"]?.ToString(), out var validCreatedAt) ? validCreatedAt : DateTime.MinValue,
+                        UpdatedAt = DateTime.TryParse(ch.NewValues["UpdatedAt"]?.ToString(), out var validUpdatedAt) ? validUpdatedAt : DateTime.MinValue,
+                        CreatedBy = ch.NewValues["CreatedBy"]?.ToString() ?? null!,
                         UpdatedBy = ch.NewValues["UpdatedBy"]?.ToString() ?? null!,
                     }).ToList());
         }
@@ -414,52 +429,50 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
     private async Task<LibraryItemDto?> HandleLibraryItemAddedAsync(List<AuditTrail> auditTrailList)
     {
         var itemAudit = auditTrailList // From audit trail collection
-            .Where(a => a.EntityName == nameof(LibraryItem))
-            .Select(i => new LibraryItemDto
-            {
-                LibraryItemId = int.Parse(i.EntityId ?? "0"),
-                Title = i.NewValues["Title"]?.ToString()!,
-                SubTitle = i.NewValues["SubTitle"]?.ToString(),
-                Responsibility = i.NewValues["Responsibility"]?.ToString(),
-                Edition = i.NewValues["Edition"]?.ToString(),
-                EditionNumber = int.Parse(i.NewValues["EditionNumber"]?.ToString()!),
-                Language = i.NewValues["Language"]?.ToString()!,
-                OriginLanguage = i.NewValues["OriginLanguage"]?.ToString(),
-                Summary = i.NewValues["Summary"]?.ToString(),
-                CoverImage = i.NewValues["CoverImage"]?.ToString(),
-                PublicationYear = int.Parse(i.NewValues["PublicationYear"]?.ToString()!),
-                Publisher = i.NewValues["Publisher"]?.ToString(),
-                PublicationPlace = i.NewValues["PublicationPlace"]?.ToString(),
-                ClassificationNumber = i.NewValues["ClassificationNumber"]?.ToString()!,
-                CutterNumber = i.NewValues["CutterNumber"]?.ToString()!,
-                Isbn = i.NewValues["Isbn"]?.ToString()!,
-                Ean = i.NewValues["Ean"]?.ToString(),
-                EstimatedPrice = decimal.Parse(i.NewValues["EstimatedPrice"]?.ToString()!),
-                PageCount = int.Parse(i.NewValues["PageCount"]?.ToString()!),
-                PhysicalDetails = i.NewValues["PhysicalDetails"]?.ToString(),
-                Dimensions = i.NewValues["Dimensions"]?.ToString()!,
-                AccompanyingMaterial = i.NewValues["AccompanyingMaterial"]?.ToString(),
-                Genres = i.NewValues["Genres"]?.ToString(),
-                GeneralNote = i.NewValues["GeneralNote"]?.ToString(),
-                BibliographicalNote = i.NewValues["BibliographicalNote"]?.ToString(),
-                TopicalTerms = i.NewValues["TopicalTerms"]?.ToString(),
-                AdditionalAuthors = i.NewValues["AdditionalAuthors"]?.ToString(),
-                ShelfId = int.Parse(i.NewValues["ShelfId"]?.ToString() ?? "0"),
-                CategoryId = int.Parse(i.NewValues["CategoryId"]?.ToString() ?? "0"),
-                GroupId = int.Parse(i.NewValues["GroupId"]?.ToString() ?? "0"),
-                Status = (LibraryItemStatus) Enum.Parse(typeof(LibraryItemStatus), i.NewValues["Status"]?.ToString()!),
-                IsDeleted = bool.Parse(i.NewValues["IsDeleted"]?.ToString()!),
-                CanBorrow = bool.Parse(i.NewValues["CanBorrow"]?.ToString()!),
-                IsTrained = bool.Parse(i.NewValues["IsTrained"]?.ToString()!),
-                TrainedAt = DateTime.Parse(i.NewValues["TrainedAt"]?.ToString() ??
-                                           DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                CreatedBy = i.NewValues["CreatedBy"]?.ToString()!,
-                CreatedAt = DateTime.Parse(i.NewValues["CreatedAt"]?.ToString()!),
-                UpdatedAt = DateTime.Parse(i.NewValues["UpdatedAt"]?.ToString() ??
-                                           DateTime.MinValue.ToString(CultureInfo.InvariantCulture)),
-                UpdatedBy = i.NewValues["UpdatedBy"]?.ToString() ?? null!,
-            })
-            .FirstOrDefault(); // Retrieve LibraryItem entity 
+        .Where(a => a.EntityName == nameof(LibraryItem))
+        .Select(i => new LibraryItemDto
+        {
+            LibraryItemId = int.TryParse(i.EntityId, out var libraryItemId) ? libraryItemId : 0,
+            Title = i.NewValues["Title"]?.ToString() ?? string.Empty,
+            SubTitle = i.NewValues["SubTitle"]?.ToString(),
+            Responsibility = i.NewValues["Responsibility"]?.ToString(),
+            Edition = i.NewValues["Edition"]?.ToString(),
+            EditionNumber = int.TryParse(i.NewValues["EditionNumber"]?.ToString(), out var editionNumber) ? editionNumber : 0,
+            Language = i.NewValues["Language"]?.ToString() ?? string.Empty,
+            OriginLanguage = i.NewValues["OriginLanguage"]?.ToString(),
+            Summary = i.NewValues["Summary"]?.ToString(),
+            CoverImage = i.NewValues["CoverImage"]?.ToString(),
+            PublicationYear = int.TryParse(i.NewValues["PublicationYear"]?.ToString(), out var publicationYear) ? publicationYear : 0,
+            Publisher = i.NewValues["Publisher"]?.ToString(),
+            PublicationPlace = i.NewValues["PublicationPlace"]?.ToString(),
+            ClassificationNumber = i.NewValues["ClassificationNumber"]?.ToString() ?? string.Empty,
+            CutterNumber = i.NewValues["CutterNumber"]?.ToString() ?? string.Empty,
+            Isbn = i.NewValues["Isbn"]?.ToString() ?? string.Empty,
+            Ean = i.NewValues["Ean"]?.ToString(),
+            EstimatedPrice = decimal.TryParse(i.NewValues["EstimatedPrice"]?.ToString(), out var estimatedPrice) ? estimatedPrice : 0,
+            PageCount = int.TryParse(i.NewValues["PageCount"]?.ToString(), out var pageCount) ? pageCount : 0,
+            PhysicalDetails = i.NewValues["PhysicalDetails"]?.ToString(),
+            Dimensions = i.NewValues["Dimensions"]?.ToString() ?? string.Empty,
+            AccompanyingMaterial = i.NewValues["AccompanyingMaterial"]?.ToString(),
+            Genres = i.NewValues["Genres"]?.ToString(),
+            GeneralNote = i.NewValues["GeneralNote"]?.ToString(),
+            BibliographicalNote = i.NewValues["BibliographicalNote"]?.ToString(),
+            TopicalTerms = i.NewValues["TopicalTerms"]?.ToString(),
+            AdditionalAuthors = i.NewValues["AdditionalAuthors"]?.ToString(),
+            ShelfId = int.TryParse(i.NewValues["ShelfId"]?.ToString(), out var shelfId) ? shelfId : 0,
+            CategoryId = int.TryParse(i.NewValues["CategoryId"]?.ToString(), out var categoryId) ? categoryId : 0,
+            GroupId = int.TryParse(i.NewValues["GroupId"]?.ToString(), out var groupId) ? groupId : 0,
+            Status = Enum.TryParse<LibraryItemStatus>(i.NewValues["Status"]?.ToString(), out var status) ? status : LibraryItemStatus.Draft,
+            IsDeleted = bool.TryParse(i.NewValues["IsDeleted"]?.ToString(), out var isDeleted) && isDeleted,
+            CanBorrow = bool.TryParse(i.NewValues["CanBorrow"]?.ToString(), out var canBorrow) && canBorrow,
+            IsTrained = bool.TryParse(i.NewValues["IsTrained"]?.ToString(), out var isTrained) && isTrained,
+            TrainedAt = DateTime.TryParse(i.NewValues["TrainedAt"]?.ToString(), out var trainedAt) ? trainedAt : DateTime.MinValue,
+            CreatedBy = i.NewValues["CreatedBy"]?.ToString() ?? string.Empty,
+            CreatedAt = DateTime.TryParse(i.NewValues["CreatedAt"]?.ToString(), out var createdAt) ? createdAt : DateTime.MinValue,
+            UpdatedAt = DateTime.TryParse(i.NewValues["UpdatedAt"]?.ToString(), out var updatedAt) ? updatedAt : DateTime.MinValue,
+            UpdatedBy = i.NewValues["UpdatedBy"]?.ToString()
+        })
+        .FirstOrDefault(); // Retrieve LibraryItem entity 
         
         if (itemAudit != null) // Exist item
         {

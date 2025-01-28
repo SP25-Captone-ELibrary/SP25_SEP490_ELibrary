@@ -43,9 +43,9 @@
 		/// </summary>
 		public static class AuditTrail
 		{
-			#region BookManagement
-			public const string GetAllByEntityIdAndName = Base + "/management/books/audit-trails";
-			public const string GetDetailByDateUtc = Base + "/management/books/audit-trails/detail";
+			#region LibraryManagement
+			public const string GetAllByEntityIdAndName = Base + "/management/library-items/audits";
+			public const string GetDetailByDateUtc = Base + "/management/library-items/audits/detail";
 			#endregion
 
 			#region RoleManagement
