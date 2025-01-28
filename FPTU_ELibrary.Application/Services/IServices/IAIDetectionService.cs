@@ -8,6 +8,6 @@ public interface IAIDetectionService
 {
     Task<List<BoxDto>> DetectAsync(IFormFile image);
 
-    Task<IServiceResult> ValidateImportTraining(List<int> itemIds,
-        List<IFormFile> compareList);
+    Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList);
+    Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl);
 }

@@ -3121,4 +3121,29 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 
         return (errorMessages, duplicates);
     } 
+    public async Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId)
+    {
+        foreach (var libraryItemId in libraryItemIds)
+        {
+            var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
+
+            if (item is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
+                        , "item"));
+            }
+            item.GroupId = newGroupId;
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
+        }
+
+        var isSuccess = await _unitOfWork.SaveChangesAsync();
+        if (isSuccess < 1)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+    }
 }

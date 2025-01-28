@@ -186,7 +186,7 @@ namespace FPTU_ELibrary.Application.Utils
             return Uri.TryCreate(url, UriKind.Absolute, out uriResult)
                    && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
         }
-        
+
         // Validate DCC number
         public static bool IsValidDeweyDecimal(string classificationNumber)
         {
@@ -194,11 +194,11 @@ namespace FPTU_ELibrary.Application.Utils
                 return false;
 
             classificationNumber = classificationNumber.Trim();
-            
+
             var regex = new Regex(@"^\d{1,3}(\.\d{1,10})?$", RegexOptions.Compiled);
             return regex.IsMatch(classificationNumber);
         }
-        
+
         // Validate Cutter number
         public static bool IsValidCutterNumber(string cutterNumber)
         {
@@ -206,13 +206,13 @@ namespace FPTU_ELibrary.Application.Utils
             var regex = new Regex(@"^[A-Z]{1,2}\d{1,4}(\.\d+)?[A-Z]?$");
             return regex.IsMatch(cutterNumber);
         }
-        
+
         // Validate prefix code 
         public static bool IsValidBarcodeWithPrefix(string barcode, string prefix)
         {
             return Regex.IsMatch(barcode, $@"^{prefix}\d+$");
         }
-        
+
         // Get Public Id from Url 
         public static string? GetPublicIdFromUrl(string url)
         {
@@ -233,13 +233,14 @@ namespace FPTU_ELibrary.Application.Utils
         public static MatchResultDto CalculateFieldMatchScore(
             string ocrContent,
             List<FieldMatchInputDto> fields,
-            double confidenceThreshold)
+            double confidenceThreshold,
+            int minFieldThreshold)
         {
             var finalContent = RemoveSpecialCharactersOfVietnamese(ocrContent).ToLower().Trim();
 
             var matchResult = new MatchResultDto
             {
-                FieldPoints = new List<FieldMatchedResult>()
+                FieldPointsWithThreshole = new List<FieldMatchedResult>()
             };
 
             double totalWeightedScore = 0;
@@ -248,75 +249,95 @@ namespace FPTU_ELibrary.Application.Utils
             {
                 if (field.Values == null || !field.Values.Any())
                     continue;
+
                 if (field.FieldName.Equals("Title", StringComparison.OrdinalIgnoreCase))
                 {
-                    Dictionary<string, int> titlePoint = new Dictionary<string, int>();
+                    Dictionary<string, (int FuzzinessPoint, int MatchPhrasePoint, int MatchedPoint)>
+                        titlePoints = new();
+
                     foreach (var value in field.Values)
                     {
-                        int matchPoint =
-                            FuzzySharp.Fuzz.TokenSetRatio(
-                                RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim(), finalContent);
-                        if (!titlePoint.Keys.Any())
+                        var normalizedValue = RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim();
+
+                        // Calculate FuzzinessPoint and MatchPhrasePoint
+                        int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
+                        int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+
+                        // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
+                        int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+
+                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint < matchedPoint))
                         {
-                            titlePoint.Add(value, matchPoint);
-                        }
-                        else if (titlePoint.All(x => x.Value < matchPoint))
-                        {
-                            //only save the highest score
-                            titlePoint.Clear();
-                            titlePoint.Add(value,matchPoint);
+                            // Keep only the result with the highest MatchedPoint
+                            titlePoints.Clear();
+                            titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
                         }
                     }
-                    
-                    matchResult.FieldPoints.Add(new FieldMatchedResult()
+
+                    var bestMatch = titlePoints.First();
+                    totalWeightedScore += bestMatch.Value.MatchedPoint * field.Weight;
+                    matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
                     {
                         Name = "Title or Subtitle matches most",
-                        Detail = titlePoint.Keys.First(),
-                        MatchedPoint = titlePoint[titlePoint.Keys.First()],
-                        IsPassed = titlePoint[titlePoint.Keys.First()] >= confidenceThreshold
+                        Detail = bestMatch.Key,
+                        FuzzinessPoint = bestMatch.Value.FuzzinessPoint,
+                        MatchPhrasePoint = bestMatch.Value.MatchPhrasePoint,
+                        MatchedPoint = bestMatch.Value.MatchedPoint,
+                        Threshold = minFieldThreshold,
+                        IsPassed = bestMatch.Value.MatchedPoint >= minFieldThreshold
                     });
                 }
-
-                if (field.FieldName.Equals("Authors", StringComparison.OrdinalIgnoreCase))
+                else if (field.FieldName.Equals("Authors", StringComparison.OrdinalIgnoreCase))
                 {
                     int count = 1;
-                    // Tính điểm cho từng author
                     foreach (var value in field.Values)
                     {
-                        int matchPoint =
-                            FuzzySharp.Fuzz.TokenSetRatio(
-                                RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim(), finalContent);
-                            matchResult.FieldPoints.Add(new()
-                            {
-                                Name = "Author " + count,
-                                Detail = value,
-                                MatchedPoint = matchPoint,
-                                IsPassed = matchPoint >= confidenceThreshold
-                            });
-                            count++;
+                        var normalizedValue = RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim();
+
+                        int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
+                        int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+                        int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+
+                        matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
+                        {
+                            Name = $"Author {count}",
+                            Detail = value,
+                            FuzzinessPoint = fuzzinessPoint,
+                            MatchPhrasePoint = matchPhrasePoint,
+                            MatchedPoint = matchedPoint,
+                            Threshold = minFieldThreshold,
+                            IsPassed = matchedPoint >= minFieldThreshold
+                        });
+
+                        count++;
                     }
-                    // Tính điểm trung bình cho Authors
-                    double averageAuthorScore = matchResult.FieldPoints.Where(x => x.Name.Contains("Author"))
+
+                    // Calculate average score for authors
+                    double averageAuthorScore = matchResult.FieldPointsWithThreshole
+                        .Where(x => x.Name.Contains("Author"))
                         .Average(x => x.MatchedPoint);
                     totalWeightedScore += averageAuthorScore * field.Weight;
                 }
                 else
                 {
-                    // Tính điểm cho các field khác
-                    int matchPoint = FuzzySharp.Fuzz.TokenSetRatio(
-                        RemoveSpecialCharactersOfVietnamese(field.Values.First()).ToLower().Trim(), finalContent); 
-                    if (field.FieldName.Equals("Publisher", StringComparison.OrdinalIgnoreCase))
-                    {
-                    
-                        matchResult.FieldPoints.Add(new()
-                        {
-                            Name = "Publisher",
-                            Detail = field.Values.First(),
-                            MatchedPoint = matchPoint,
-                            IsPassed = matchPoint >= confidenceThreshold
-                        });}
+                    var normalizedValue = RemoveSpecialCharactersOfVietnamese(field.Values.First()).ToLower().Trim();
 
-                    totalWeightedScore += matchPoint * field.Weight;
+                    int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
+                    int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+                    int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+
+                    matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
+                    {
+                        Name = field.FieldName,
+                        Detail = field.Values.First(),
+                        FuzzinessPoint = fuzzinessPoint,
+                        MatchPhrasePoint = matchPhrasePoint,
+                        MatchedPoint = matchedPoint,
+                        Threshold = minFieldThreshold,
+                        IsPassed = matchedPoint >= minFieldThreshold
+                    });
+
+                    totalWeightedScore += matchedPoint * field.Weight;
                 }
             }
 
@@ -324,6 +345,142 @@ namespace FPTU_ELibrary.Application.Utils
             matchResult.ConfidenceThreshold = confidenceThreshold;
             return matchResult;
         }
+
+        public static int MatchPhraseWithScore(string data, string phrase)
+        {
+            if (string.IsNullOrWhiteSpace(data) || string.IsNullOrWhiteSpace(phrase))
+                return -1;
+
+            // Normalize the input (lowercase and split into words)
+            var normalizedData = NormalizeText(data);
+            var normalizedPhrase = NormalizeText(phrase);
+
+            // Calculate match score
+            double matchScore = CalculateMatchScoreByMatchPhrase(normalizedPhrase, normalizedData);
+
+            // Return match score as an integer percentage
+            return (int)Math.Round(matchScore);
+        }
+
+        /// <summary>
+        /// Combine FuzzySharp and Damerau-Levenshtein 
+        /// </summary>
+        public static int CombinedFuzzinessScore(string data, string phrase)
+        {
+            if (string.IsNullOrWhiteSpace(data) || string.IsNullOrWhiteSpace(phrase))
+                return -1;
+
+            // Normalize input
+            var normalizedData = string.Join(" ", NormalizeText(data));
+            var normalizedPhrase = string.Join(" ", NormalizeText(phrase));
+
+            // Damerau-Levenshtein score
+            double damerauLevenshteinScore = CalculateDamerauLevenshteinPercentage(normalizedData, normalizedPhrase);
+
+            // FuzzySharp score
+            double fuzzySharpScore = FuzzySharp.Fuzz.TokenSetRatio(normalizedData, normalizedPhrase);
+
+            // Combine scores using weighted average (adjust weights as needed)
+            double combinedScore = (0.6 * damerauLevenshteinScore) + (0.4 * fuzzySharpScore);
+
+            return (int)Math.Round(combinedScore);
+        }
+
+        /// <summary>
+        /// Damerau-Levenshtein Distance Percentage Calculation
+        /// </summary>
+        private static double CalculateDamerauLevenshteinPercentage(string source, string target)
+        {
+            int distance = DamerauLevenshteinDistance(source, target);
+            int maxLength = Math.Max(source.Length, target.Length);
+
+            if (maxLength == 0)
+                return 100.0; // Nếu cả 2 chuỗi rỗng, trả về 100% (khớp hoàn toàn)
+
+            return (1.0 - ((double)distance / maxLength)) * 100;
+        }
+
+        /// <summary>
+        /// Damerau-Levenshtein Distance Calculation
+        /// </summary>
+        private static int DamerauLevenshteinDistance(string source, string target)
+        {
+            int m = source.Length;
+            int n = target.Length;
+
+            var dp = new int[m + 1, n + 1];
+
+            for (int i = 0; i <= m; i++)
+                dp[i, 0] = i;
+
+            for (int j = 0; j <= n; j++)
+                dp[0, j] = j;
+
+            for (int i = 1; i <= m; i++)
+            {
+                for (int j = 1; j <= n; j++)
+                {
+                    int cost = (source[i - 1] == target[j - 1]) ? 0 : 1;
+
+                    dp[i, j] = Math.Min(
+                        Math.Min(dp[i - 1, j] + 1, dp[i, j - 1] + 1), // Deletion/Insertion
+                        dp[i - 1, j - 1] + cost // Substitution
+                    );
+
+                    if (i > 1 && j > 1 && source[i - 1] == target[j - 2] && source[i - 2] == target[j - 1])
+                    {
+                        dp[i, j] = Math.Min(dp[i, j], dp[i - 2, j - 2] + cost); // Transposition
+                    }
+                }
+            }
+
+            return dp[m, n];
+        }
+
+        /// <summary>
+        /// Normalize input text (lowercase and split into words)
+        /// </summary>
+        private static List<string> NormalizeText(string text)
+        {
+            return text.ToLower()
+                .Split(new[] { ' ', '.', ',', ';', '!', '?' }, StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Calculate the percentage match between a phrase and a data string.
+        /// </summary>
+        private static double CalculateMatchScoreByMatchPhrase(List<string> phraseWords, List<string> itemWords)
+        {
+            int phraseLength = phraseWords.Count;
+            int itemLength = itemWords.Count;
+
+            if (phraseLength == 0 || itemLength == 0) return 0;
+
+            int maxMatch = 0;
+
+            for (int i = 0; i <= itemLength - phraseLength; i++)
+            {
+                int currentMatch = 0;
+
+                for (int j = 0; j < phraseLength; j++)
+                {
+                    if (i + j < itemLength && phraseWords[j] == itemWords[i + j])
+                    {
+                        currentMatch++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                maxMatch = Math.Max(maxMatch, currentMatch);
+            }
+
+            return (double)maxMatch / phraseLength * 100;
+        }
+
 
         public static string RemoveSpecialCharactersOfVietnamese(string content)
         {
@@ -338,13 +495,15 @@ namespace FPTU_ELibrary.Application.Utils
                     stringBuilder.Append(c);
                 }
             }
+
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC); // Trả về chuỗi không dấu
         }
+
         public static string RemoveSpecialCharacter(string content)
         {
-            return Regex.Replace(content, @"[^0-9a-zA-Z\s]", "");
+            return Regex.Replace(content, @"[^0-9a-zA-ZÀ-Ỵà-ỵ\s]", "");
         }
-       
+
         //get public id in cloudinary url
         public static string GetPublicIdFromCloudinaryUrl(string imageUrl)
         {
@@ -358,12 +517,12 @@ namespace FPTU_ELibrary.Application.Utils
 
             return publicId;
         }
-        
+
         // Remove special character at the end
         public static string SplitSpecialCharAtTheEnd(string input)
         {
             if (!string.IsNullOrEmpty(input) && char.IsPunctuation(input[^1])) input = input[..^1];
-            return input;   
+            return input;
         }
     }
 }

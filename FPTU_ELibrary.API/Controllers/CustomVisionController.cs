@@ -6,16 +6,27 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FPTU_ELibrary.API.Controllers;
-
+    
 public class CustomVisionController : ControllerBase
 {
-    // TODO: Fix conflicts
-    // private readonly IAIClassificationService _aiClassificationService;
-    //
-    // public CustomVisionController(IAIClassificationService aiClassificationService)
+    private readonly IAIClassificationService _aiClassificationService;
+    
+    public CustomVisionController(IAIClassificationService aiClassificationService)
+    {
+        _aiClassificationService = aiClassificationService;
+    }
+    // [HttpPost(APIRoute.Group.CheckAvailableGroup,Name = nameof(CheckAvailableGroup))]
+    // public async Task<IActionResult> CheckAvailableGroup([FromBody] CheckAvailableGroupRequest req)
     // {
-    //     _aiClassificationService = aiClassificationService;
-    // }
+    //     var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+    //     return Ok(await _aiClassificationService.GetAvailableGroup(email,req.RootItemId,req.OtherItemIds));
+    // } 
+    [HttpPost(APIRoute.Group.CheckItemToTrain,Name = nameof(CheckItemNeedToTrain))]
+    public async Task<IActionResult> CheckItemNeedToTrain([FromBody] CheckItemNeedToTrainRequest req)
+    {
+        return Ok(await _aiClassificationService.IsAbleToCreateGroup(req.RootItemId,req.OtherItemIds));
+    }
+        
     //
     // [HttpPost(APIRoute.AIServices.TrainingAfterCreate, Name = nameof(TrainModelAfterCreate))]
     // [Authorize]

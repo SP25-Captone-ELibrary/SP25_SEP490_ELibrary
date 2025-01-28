@@ -128,179 +128,99 @@ public class AIDetectionService : IAIDetectionService
     /// <param name="currentItemsDetail">Current group details with itemIds and coverImages</param>
     /// <param name="compareList"></param>
     /// <returns></returns>
-    public async Task<IServiceResult> ValidateImportTraining(List<int> itemIds, List<IFormFile> compareList)
+    
+    public async Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList)
     {
         try
         {
-            // Initialize dictionaries to track results
-            Dictionary<string, List<bool>> comparerResults = new Dictionary<string, List<bool>>();
-            Dictionary<string, string> notMatchImages = new Dictionary<string, string>();
-
-            foreach (var comparer in compareList)
+            // Get item details
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors).ThenInclude(lia => lia.Author));
+            var itemDetail = await _libraryItemService.GetWithSpecAsync(baseSpec);
+            if (itemDetail.Data is null)
             {
-                comparerResults[comparer.FileName] = new List<bool>();
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "book"));
             }
 
-            // Initialize the response DTO
-            var response = new CheckDuplicateImageDto<string>
+            var foundItem = (LibraryItemDto)itemDetail.Data!;
+
+            // OCR Check
+            var ocrCheckedResult = await _ocrService.CheckBookInformationAsync(new CheckedItemDto()
             {
-                ObjectMatchResult = new List<ObjectMatchResultDto<string>>(),
-                OCRResult = new List<MatchResultDto>()
+                Title = foundItem.Title,
+                SubTitle = foundItem.SubTitle,
+                Publisher = foundItem.Publisher,
+                Authors = foundItem.LibraryItemAuthors.Select(lia => lia.Author.FullName).ToList(),
+                Images = compareList,
+                GeneralNote = foundItem.GeneralNote
+            });
+            return new ServiceResult(ResultCodeConst.AIService_Success0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001)
+                , ocrCheckedResult); 
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process checking training book information");
+        }
+    }
+
+    public async Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl)
+    {
+        try
+        {
+            var coverImageData = await _httpClient.GetByteArrayAsync(coverImage);
+            var stream = new MemoryStream(coverImageData);
+            var file = new FormFile(stream, 0, stream.Length, "file", "cover.jpg")
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = "application/octet-stream"
             };
 
-            foreach (int itemId in itemIds)
+            var coverDetectedResults = await DetectAllAsync(file);
+            var bookBox = coverDetectedResults
+                .Where(r => r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                .Select(r => r.Box)
+                .FirstOrDefault();
+
+            if (bookBox == null)
             {
-                // Get item details
-                var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
-                baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors).ThenInclude(lia => lia.Author));
-                var itemDetail = await _libraryItemService.GetWithSpecAsync(baseSpec);
-                if (itemDetail.Data is null)
-                {
-                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "book"));
-                }
+                return false;
+            }
 
-                var foundItem = (LibraryItemDto)itemDetail.Data!;
+            var coverObjectCounts = CountObjectsInImage(coverDetectedResults, bookBox);
 
-                // OCR Check
-                var ocrCheckedResult = await _ocrService.CheckBookInformationAsync(new CheckedItemDto()
-                {
-                    Title = foundItem.Title,
-                    SubTitle = foundItem.SubTitle,
-                    Publisher = foundItem.Publisher,
-                    Authors = foundItem.LibraryItemAuthors.Select(lia => lia.Author.FullName).ToList(),
-                    Images = compareList,
-                    GeneralNote = foundItem.GeneralNote
-                });
-
-                var ocrCheckedResultDetails = (List<MatchResultDto>)ocrCheckedResult.Data!;
-                response.OCRResult.AddRange(ocrCheckedResultDetails);
-
-                // Identify images that failed OCR
-                var notPassedOcrCheckedItems = ocrCheckedResultDetails
-                    .Where(mr => mr.TotalPoint < mr.ConfidenceThreshold)
-                    .Select(mr => mr.ImageName)
-                    .ToList();
-
-                foreach (var imageName in notPassedOcrCheckedItems)
-                {
-                    notMatchImages[imageName] = "OCR Err";
-                    comparerResults[imageName].Add(false);
-                }
-
-                // Get cover image and detect objects
-                var coverImageData = await _httpClient.GetByteArrayAsync(foundItem.CoverImage);
-                var stream = new MemoryStream(coverImageData);
-                var file = new FormFile(stream, 0, stream.Length, "file", foundItem.Title + ".jpg")
+            foreach (var imageUrl in imagesUrl)
+            {
+                var comparerImageData = await _httpClient.GetByteArrayAsync(imageUrl);
+                var comparerStream = new MemoryStream(comparerImageData);
+                var comparerFile = new FormFile(comparerStream, 0, comparerStream.Length, "file", "comparer.jpg")
                 {
                     Headers = new HeaderDictionary(),
                     ContentType = "application/octet-stream"
                 };
 
-                var coverDetectedResults = await DetectAllAsync(file);
-                var bookBox = coverDetectedResults
-                    .Where(r => r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
-                    .Select(r => r.Box)
-                    .FirstOrDefault();
+                var comparerDetectedResults = await DetectAllAsync(comparerFile);
+                var comparerObjectCounts = CountObjectsInImage(comparerDetectedResults, bookBox);
 
-                if (bookBox == null)
+                if (!CompareObjectCounts(coverObjectCounts, comparerObjectCounts))
                 {
-                    return new ServiceResult(ResultCodeConst.SYS_Warning0003, "No book detected in cover image.");
-                }
-
-                var coverObjectCounts = CountObjectsInImage(coverDetectedResults, bookBox);
-
-                foreach (var comparer in compareList)
-                {
-                    var objectMatchResult = new ObjectMatchResultDto<string>
-                    {
-                        ImageName = comparer.FileName,
-                        ObjectMatchResults = new List<BaseObjectMatchResultDto<string>>()
-                    };
-
-                    if (notMatchImages.ContainsKey(comparer.FileName))
-                    {
-                        objectMatchResult.ObjectMatchResults.Add(new BaseObjectMatchResultDto<string>
-                        {
-                            ObjectType = null,
-                            NumberOfObject = 0,
-                            IsPassed = false
-                        });
-                        response.ObjectMatchResult.Add(objectMatchResult);
-                        
-                        continue;
-                    }
-
-                    // Detect objects in comparer image
-                    var comparerDetectedResults = await DetectAllAsync(comparer);
-                    var comparerObjectCounts = CountObjectsInImage(comparerDetectedResults, bookBox);
-
-                    bool isMatched = true;
-
-                    foreach (var comparerObject in comparerObjectCounts.Keys)
-                    {
-                        var baseObjectMatchResult = new BaseObjectMatchResultDto<string>
-                        {
-                            ObjectType = comparerObject,
-                            NumberOfObject = comparerObjectCounts[comparerObject],
-                            IsPassed = CompareObjectCounts(coverObjectCounts, comparerObjectCounts)
-                        };
-
-                        if (!baseObjectMatchResult.IsPassed)
-                        {
-                            isMatched = false;
-                        }
-
-                        objectMatchResult.ObjectMatchResults.Add(baseObjectMatchResult);
-                    }
-
-                    if (!comparerObjectCounts.Any())
-                    {
-                        var baseObjectMatchResult = new BaseObjectMatchResultDto<string>
-                        {
-                            ObjectType = null,
-                            NumberOfObject = 0,
-                            IsPassed = false
-                        };
-                    }
-
-                    comparerResults[comparer.FileName].Add(isMatched);
-                    response.ObjectMatchResult.Add(objectMatchResult);
-
-                    if (!isMatched)
-                    {
-                        notMatchImages[comparer.FileName] = "Not Matched Image";
-                    }
+                    return false;
                 }
             }
 
-            // Final evaluation of images
-            foreach (var comparer in comparerResults.Keys)
-            {
-                if (comparerResults[comparer].Any(r => r))
-                {
-                    notMatchImages.Remove(comparer);
-                }
-            }
-
-            if (notMatchImages.Count == 0)
-            {
-                return new ServiceResult(ResultCodeConst.AIService_Success0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001), response);
-            }
-
-            return new ServiceResult(
-                ResultCodeConst.SYS_Warning0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001),
-                response);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke when checking validation of import training images");
+            throw new Exception("Error invoke when checking duplication of cover image");
         }
     }
-
+    
+    
+    
     // public async Task<IServiceResult> CheckDuplicationOfGroup(List<int> itemIds, int groupId)
     // {
     //     try

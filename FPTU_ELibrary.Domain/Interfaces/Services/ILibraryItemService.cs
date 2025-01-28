@@ -31,4 +31,5 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
         IFormFile? file, List<IFormFile> coverImageFiles, 
         string[]? scanningFields, DuplicateHandle? duplicateHandle = null);
     Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec);
+    Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId);
 }
