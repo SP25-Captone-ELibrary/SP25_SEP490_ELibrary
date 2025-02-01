@@ -1,11 +1,9 @@
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
+namespace FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
 
-public class WarehouseTrackingDetailDto
+public class UpdateWarehouseTrackingDetailRequest
 {
-    public int TrackingDetailId { get; set; }
-    
     // Item Name
     public string ItemName { get; set; } = null!;
     
@@ -23,18 +21,7 @@ public class WarehouseTrackingDetailDto
     
     // Reason for stock-out or adjustment
     public TrackingDetailReason? Reason { get; set; }
-
-    // With specific warehouse tracking 
-    public int TrackingId { get; set; }
-    
-    // Specific item ID (NULL initially during Goods Receipt)
-    public int? LibraryItemId { get; set; }
     
     // For specific item category
     public int CategoryId { get; set; }
-    
-    // Navigation properties
-    public LibraryItemDto? LibraryItem { get; set; }
-    public WarehouseTrackingDto WarehouseTracking { get; set; } = null!;
-    public CategoryDto Category { get; set; } = null!;
 }

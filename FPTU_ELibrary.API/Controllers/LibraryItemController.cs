@@ -86,7 +86,8 @@ public class LibraryItemController : ControllerBase
     [HttpPost(APIRoute.LibraryItem.Create, Name = nameof(CreateLibraryItemAsync))]
     public async Task<IActionResult> CreateLibraryItemAsync([FromBody] CreateLibraryItemRequest req)
     {
-        return Ok(await _libraryItemService.CreateAsync(req.ToLibraryItemDto()));
+        return Ok(await _libraryItemService.CreateAsync(
+            dto: req.ToLibraryItemDto(), trackingDetailId: req.TrackingDetailId));
     }
 
     [Authorize]

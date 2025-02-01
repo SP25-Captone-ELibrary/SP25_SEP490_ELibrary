@@ -37,10 +37,10 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
             .WithMessage(isEng
                 ? "EnglishName cannot be null"
                 : "Tên tiếng Anh không được phép rỗng")
-            .Matches(@"^[A-Z][a-zA-Z]*$")
+            .Matches(@"^([A-Z][a-zA-Z]*)(\s[A-Z][a-zA-Z]*)*$")
             .WithMessage(isEng
-                ? "English name must not have space, uppercase first letter"
-                : "Tên tiếng Anh không được có khoảng cách, viết hoa chữ cái đầu");
+                ? "English name should start with an uppercase letter for each word, not include number"
+                : "Tên tiếng Anh bắt đầu bằng chữ cái viết hoa cho mỗi từ và không chứa số");
         // Vietnamese name
         RuleFor(c => c.VietnameseName)
             .NotEmpty()
@@ -51,9 +51,9 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
             .WithMessage(isEng
                 ? "VietnameseName cannot be null"
                 : "Tên tiếng Việt không được phép rỗng")
-            .Matches(@"^[A-ZÀ-Ỵ][a-zà-ỵ]*(?: [A-Za-zÀ-Ỵà-ỵ]*)*$")
+            .Matches(@"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$")
             .WithMessage(isEng
-                ? "Vietnamese Name should not have special character, uppercase first letter"
-                : "Tên tiếng Việt không được chứa ký tự đặc biệt hoặc số, chữ đầu phải viết hoa");
+                ? "Vietnamese Name should start with an uppercase letter for each word, not include number"
+                : "Tên Tiếng Việt bắt đầu bằng chữ cái viết hoa cho mỗi từ và không chứa số");
     }
 }

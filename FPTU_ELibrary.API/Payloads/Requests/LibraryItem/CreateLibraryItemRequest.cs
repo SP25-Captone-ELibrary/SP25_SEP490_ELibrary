@@ -36,6 +36,9 @@ public class CreateLibraryItemRequest
     public int CategoryId { get; set; }
     public int? GroupId { get; set; }
     
+    // Warehouse tracking detail
+    public int TrackingDetailId { get; set; }
+    
     // Instances  
     public List<CreateItemInstanceRequest>? LibraryItemInstances { get; set; } = new();
     // Book authors

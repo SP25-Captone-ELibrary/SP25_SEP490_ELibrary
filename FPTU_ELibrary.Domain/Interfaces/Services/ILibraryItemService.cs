@@ -9,6 +9,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> CreateAsync(TDto dto, int trackingDetailId);
     Task<IServiceResult> GetEnumValueAsync();
     Task<IServiceResult> GetDetailAsync(int id);
     Task<IServiceResult> GetRecentReadByIdsAsync(int[] ids, int pageIndex, int pageSize);

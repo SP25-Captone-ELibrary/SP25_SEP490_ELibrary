@@ -381,12 +381,17 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new ()
 				{
 					EnglishName = nameof(SystemFeatureEnum.LibraryItemManagement),
-					VietnameseName = "Quản lí sách"
+					VietnameseName = "Quản lí tài liệu"
+				},
+				new ()
+				{
+					EnglishName = nameof(SystemFeatureEnum.WarehouseTrackingManagement),
+					VietnameseName = "Quản lí kho"
 				},
 				new ()
 				{
 					EnglishName = nameof(SystemFeatureEnum.BorrowManagement),
-					VietnameseName = "Quản lí mượn trả sách"
+					VietnameseName = "Quản lí mượn trả tài liệu"
 				},
 				new ()
 				{

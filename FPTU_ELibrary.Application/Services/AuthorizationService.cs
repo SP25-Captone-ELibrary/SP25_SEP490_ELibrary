@@ -60,8 +60,8 @@ public class AuthorizationService : IAuthorizationService
 
     private SystemFeatureEnum? GetCombinedRoute(SystemFeatureEnum requestFeature)
     {
-        #region BookManagement 
-        // Route: [BookManagement] -> Combined with 
+        #region LibraryItemManagement 
+        // Route: [LibraryItemManagement] -> Combined with 
         // [AuthorManagement]
         if (requestFeature.Equals(SystemFeatureEnum.AuthorManagement))
         {
@@ -82,8 +82,8 @@ public class AuthorizationService : IAuthorizationService
         {
             return SystemFeatureEnum.LibraryItemManagement;
         }
-        // [BookAuditTrailManagement]
-        if (requestFeature.Equals(SystemFeatureEnum.BookAuditTrailManagement))
+        // [AuditTrailManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.AuditTrailManagement))
         {
             return SystemFeatureEnum.LibraryItemManagement;
         }
@@ -112,15 +112,22 @@ public class AuthorizationService : IAuthorizationService
         }
         #endregion
         
+        #region WarehouseTrackingManagement
+        // Route: [WarehouseTrackingManagement] -> Combine with [SupplierManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.SupplierManagement))
+        {
+            return SystemFeatureEnum.WarehouseTrackingManagement;
+        }
+        #endregion
+        
         #region SystemConfigurationManagement
         // Route: [SystemConfigurationManagement] -> Combine with [SystemMessageManagement] 
-        // Is [AuthorManagement]
         if (requestFeature.Equals(SystemFeatureEnum.SystemMessageManagement))
         {
             return SystemFeatureEnum.SystemConfigurationManagement;
         } 
         #endregion
-        
+
         return null;
     }
 
@@ -137,7 +144,7 @@ public class AuthorizationService : IAuthorizationService
         if (featureOfCombinedRoute == SystemFeatureEnum.RoleManagement) 
         {
             rootFeature = SystemFeatureEnum.RoleManagement;
-        // Is [BookManagement]
+        // Is [LibraryItemManagement]
         }else if (featureOfCombinedRoute == SystemFeatureEnum.LibraryItemManagement)
         {
             rootFeature = SystemFeatureEnum.LibraryItemManagement;

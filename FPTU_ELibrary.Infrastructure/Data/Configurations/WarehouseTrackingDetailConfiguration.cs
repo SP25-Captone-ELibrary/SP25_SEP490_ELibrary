@@ -26,14 +26,11 @@ public class WarehouseTrackingDetailConfiguration :
             .HasColumnName("library_item_id");
         builder.Property(e => e.ItemName)
             .HasColumnName("item_name")
-            .HasMaxLength(155)
+            .HasMaxLength(255)
             .IsRequired();
         builder.Property(e => e.ItemTotal)
             .HasColumnName("item_total")
             .IsRequired()
-            .HasDefaultValue(0);
-        builder.Property(e => e.ActualItemTotal)
-            .HasColumnName("actual_item_total")
             .HasDefaultValue(0);
         builder.Property(e => e.UnitPrice)
             .HasColumnName("unit_price")
@@ -67,5 +64,11 @@ public class WarehouseTrackingDetailConfiguration :
             .HasForeignKey(e => e.CategoryId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_WarehouseTrackingDetail_CategoryId");
+
+        #region Updated at 31/01/2025 by Le Xuan Phuoc
+        builder.Property(e => e.Isbn)
+            .HasMaxLength(13)
+            .HasColumnName("isbn");
+        #endregion
     }
 }

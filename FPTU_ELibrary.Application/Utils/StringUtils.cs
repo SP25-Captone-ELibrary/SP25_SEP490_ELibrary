@@ -20,84 +20,35 @@ namespace FPTU_ELibrary.Application.Utils
                 .Select(s => s[_rnd.Next(s.Length)])
                 .ToArray());
         }
-
-        // Generate unique code based on current timestamp
-        public static string GenerateUniqueCodeWithTimestamp(int length = 6)
+        
+        // Generate random code digits
+        public static int GenerateRandomCodeDigits(int length)
         {
-            if (length <= 0) return null!;
-
-            // Get the current timestamp
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
-
-            // Generate a random string 
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            Random random = new Random();
-            StringBuilder randomString = new StringBuilder();
-
-            for (int i = 0; i < length; i++)
-            {
-                randomString.Append(chars[random.Next(chars.Length)]);
-            }
-
-            // Combine timestamp and random string
-            string combinedCode = timestamp + randomString;
-            // Substring to specific length 
-            return combinedCode.Substring(0, Math.Min(length, combinedCode.Length));
+            return int.Parse(GenerateRandomDigitsWithTimeStamp(length));
         }
-
-        // Generates a unique token using the current UTC timestamp and a secure GUID.
-        public static string GenerateTokenWithTimestamp()
+        
+        // Generate random digits with specific time stamp
+        private static string GenerateRandomDigitsWithTimeStamp(int length)
         {
-            try
-            {
-                // Generate timestamp as a byte array
-                byte[] time = BitConverter.GetBytes(DateTime.UtcNow.ToBinary());
+            var rnd = new Random();
+    
+            // Get a timestamp (ticks)
+            long timestamp = DateTime.Now.Ticks;
+    
+            // Use the last part of the timestamp to ensure limited size 
+            string timestampPart = timestamp.ToString().Substring(timestamp.ToString().Length - Math.Min(8, length));
 
-                // Generate key with random GUID
-                byte[] key = Guid.NewGuid().ToByteArray();
-
-                // Combine timestamp and key, then encode in Base64
-                return Convert.ToBase64String(time.Concat(key).ToArray());
-            }
-            catch (Exception ex)
+            // Generate the random digits portion
+            string digits = string.Empty;
+            for (int i = 0; i < length - timestampPart.Length; ++i)
             {
-                // Handle any unexpected errors
-                throw new InvalidOperationException("Error generating token.", ex);
+                digits += rnd.Next(0, 10); 
             }
+
+            // Combine random digits with timestamp part
+            return digits + timestampPart;
         }
-
-        // Validates the provided token by decoding its timestamp and ensuring it's within a valid time frame.
-        public static bool IsValidTokenWithTimeStamp(string token, int expirationMinutes = 5)
-        {
-            try
-            {
-                // Decode the Base64 string to get the original byte array
-                byte[] tokenByteArray = Convert.FromBase64String(token);
-
-                // Extract and convert the timestamp from the first 8 bytes
-                long timestamp = BitConverter.ToInt64(tokenByteArray, 0);
-                DateTime when = DateTime.FromBinary(timestamp);
-
-                // Check if the token has expired
-                return when >= DateTime.UtcNow.AddMinutes(-expirationMinutes);
-            }
-            catch (FormatException ex)
-            {
-                // Handle invalid Base64 strings
-                throw new ArgumentException("Invalid token format.", nameof(token), ex);
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                // Handle tokens with insufficient bytes
-                throw new ArgumentException("Invalid token structure.", nameof(token), ex);
-            }
-            catch (Exception ex)
-            {
-                // Unexpected errors
-                throw new InvalidOperationException("Error validating token.", ex);
-            }
-        }
-
+        
         // Formats a string by replacing placeholders like <0>, <1>, etc., with the provided arguments.
         public static string Format(string input, params string[]? args)
         {
@@ -247,7 +198,7 @@ namespace FPTU_ELibrary.Application.Utils
 
             foreach (var field in fields)
             {
-                if (field.Values == null || !field.Values.Any())
+                if (!field.Values.Any())
                     continue;
 
                 if (field.FieldName.Equals("Title", StringComparison.OrdinalIgnoreCase))

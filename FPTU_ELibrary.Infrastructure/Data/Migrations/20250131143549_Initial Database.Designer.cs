@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250127143453_Initial Database")]
+    [Migration("20250131143549_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -36,7 +36,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("ChangedColumns")
                         .IsRequired()
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("changed_columns");
 
                     b.Property<DateTime>("DateUtc")
@@ -2359,9 +2359,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("tracking_type");
 
-                    b.Property<DateTime?>("TrainedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("TransferLocation")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
@@ -2393,20 +2390,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrackingDetailId"));
 
-                    b.Property<int?>("ActualItemTotal")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0)
-                        .HasColumnName("actual_item_total");
-
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("category_id");
 
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)")
+                        .HasColumnName("isbn");
+
                     b.Property<string>("ItemName")
                         .IsRequired()
-                        .HasMaxLength(155)
-                        .HasColumnType("nvarchar(155)")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("item_name");
 
                     b.Property<int>("ItemTotal")
