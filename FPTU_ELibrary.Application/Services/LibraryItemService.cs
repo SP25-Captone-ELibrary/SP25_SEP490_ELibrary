@@ -1,4 +1,5 @@
 using System.Globalization;
+using CloudinaryDotNet.Core;
 using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
@@ -38,13 +39,14 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     private readonly Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> _itemAuthorService;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceService;
     private readonly Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> _itemGroupService;
+    private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
     private readonly Lazy<IElasticService> _elasticService;
+    private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingService;
 
     private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
     private readonly ICloudinaryService _cloudService;
     private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAuthorService<AuthorDto> _authorService;
-    private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
 
     public LibraryItemService(
         // Lazy service
@@ -58,6 +60,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         ICategoryService<CategoryDto> cateService,
         ICloudinaryService cloudService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
+        Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingService,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -73,9 +76,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _itemGroupService = itemGroupService;
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
+        _whTrackingService = whTrackingService;
     }
 
-    public override async Task<IServiceResult> CreateAsync(LibraryItemDto dto)
+    public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
     {
         try
         {
@@ -253,27 +257,82 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             // Check exist Isbn
             var isIsbnExist = await _unitOfWork.Repository<LibraryItem, int>()
                 .AnyAsync(x => x.Isbn == dto.Isbn);
-            if (isIsbnExist) // already exist 
+            if (isIsbnExist && !string.IsNullOrEmpty(dto.Isbn)) // already exist 
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0007);
                 // Add error
                 customErrors.Add(
-                    "isbn",
+                    StringUtils.ToCamelCase(nameof(LibraryItem.Isbn)),
                     // Isbn already exist message
                     [StringUtils.Format(errMsg, dto.Isbn ?? string.Empty)]);
             }
+            
 
+            // Check exist tracking detail
+            var whTrackingDetail = (await _whTrackingService.Value.GetByIdAsync(trackingDetailId)
+                ).Data as WarehouseTrackingDetailDto;
+            if (whTrackingDetail == null)
+            {
+                // Add error 
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                    StringUtils.Format(errMsg, isEng ? "warehouse tracking detail" : "thông tin đăng ký nhập kho"));
+            }
+            else
+            {
+                // Check match ISBN (only process when item include ISBN)
+                if (!string.IsNullOrEmpty(dto.Isbn) && !Equals(whTrackingDetail.Isbn, dto.Isbn))
+                {
+                    // Add error 
+                    // ISBN of selected warehouse tracking detail doesn't match
+                    customErrors.Add(StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0007)]);
+                }
+                
+                // Check whether warehouse tracking detail exist ISBN, but not for cataloging item  
+                if (string.IsNullOrEmpty(dto.Isbn) && !string.IsNullOrEmpty(whTrackingDetail.Isbn))
+                {
+                    // Add error
+                    // Selected warehouse tracking detail is incorrect, cataloging item need ISBN to continue
+                    customErrors.Add(StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0008)]);
+                }
+                
+                // Check whether same category
+                if (!Equals(dto.CategoryId, whTrackingDetail.CategoryId)) 
+                {
+                    // Add error 
+                    // Msg: The action cannot be performed as category of item and warehouse tracking detail is different
+                    customErrors.Add(StringUtils.ToCamelCase(nameof(Category.CategoryId)), 
+                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0011)]);
+                }
+            }
+            
             // Any errors invoke when checking valid data
             if (customErrors.Any()) // exist errors
             {
                 throw new UnprocessableEntityException("Invalid data", customErrors);
             }
-
-            // Process create new book
-            await _unitOfWork.Repository<LibraryItem, int>().AddAsync(_mapper.Map<LibraryItem>(dto));
+            
+            // Process create new item
+            var mappingEntity = _mapper.Map<LibraryItem>(dto);
+            await _unitOfWork.Repository<LibraryItem, int>().AddAsync(mappingEntity);
             // Save to DB
-            if (await _unitOfWork.SaveChangesAsync() > 0) // Save successfully
+            if (await _unitOfWork.SaveChangesAsync() > 0) // Is saved
             {
+                // Process update item to warehouse tracking detail
+                var isWarehouseUpdated = (await _whTrackingService.Value.UpdateItemFromInternalAsync(
+                    trackingDetailId, mappingEntity.LibraryItemId)).Data is true;
+                if (!isWarehouseUpdated) // Fail to update item to warehouse tracking 
+                {
+                    var customMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
+                    return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                        customMsg + (isEng 
+                            ? ", but failed to add item to warehouse tracking" 
+                            : ", nhưng cập nhật tài liệu vào thông tin nhập kho thất bại"), true);
+                }
+                
+                // Save change successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0001,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
             }

@@ -2,6 +2,7 @@
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -20,13 +21,17 @@ namespace FPTU_ELibrary.Application.Services
 	public class SystemRoleService : GenericService<SystemRole, SystemRoleDto, int>,
 		ISystemRoleService<SystemRoleDto>
 	{
+		private readonly ISystemPermissionService<SystemPermissionDto> _permissionService;
+
 		public SystemRoleService(
+			ISystemPermissionService<SystemPermissionDto> permissionService,
 			ISystemMessageService msgService,
 			IUnitOfWork unitOfWork,
 			IMapper mapper,
 			ILogger logger)
 			: base(msgService, unitOfWork, mapper, logger)
 		{
+			_permissionService = permissionService;
 		}
 
 		// Override get by id
@@ -148,6 +153,65 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		// Override update 
+		public override async Task<IServiceResult> UpdateAsync(int id, SystemRoleDto dto)
+		{
+			try
+			{
+				// Check exist role entity
+				var existingEntity = await _unitOfWork.Repository<SystemRole, int>().GetByIdAsync(id);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, "role"));
+				}
+				
+				// Get access denied permission
+				var accessDenied = (await _permissionService.GetWithSpecAsync(new BaseSpecification<SystemPermission>(
+					p => p.EnglishName == nameof(Permission.AccessDenied)))
+					).Data as SystemPermissionDto;
+				
+				// Check constraints with other tables
+				// Not allow to update when exist any role permissions
+				if (await _unitOfWork.Repository<SystemRole, int>().CountAsync(new BaseSpecification<SystemRole>(
+					    c => c.RoleId == id // with specific role id
+					         && (c.RolePermissions.Any(rp => accessDenied != null && rp.PermissionId != accessDenied.PermissionId) // exist in any role permission
+								|| c.Users.Any() // exist in any user
+								|| c.Employees.Any()) // exist in any employee
+				    )) > 0) // Total count greater than 0
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Warning0008,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0008));
+				}
+			
+				// Process update role
+				existingEntity.VietnameseName = dto.VietnameseName;
+				existingEntity.EnglishName = dto.EnglishName;
+				existingEntity.RoleType = dto.RoleType;
+				
+				// Perform update
+				await _unitOfWork.Repository<SystemRole, int>().UpdateAsync(existingEntity);
+				// Save DB
+				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+				if (isSaved)
+				{
+					// Update success
+					return new ServiceResult(ResultCodeConst.SYS_Success0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+				}
+				
+				// Fail to save
+				return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update role");
+			}
+		}
+		
 		public async Task<IServiceResult> GetByNameAsync(Role role)
 		{
 			try

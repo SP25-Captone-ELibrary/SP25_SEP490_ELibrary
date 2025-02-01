@@ -23,7 +23,6 @@ public class WarehouseTrackingDto
     public DateTime EntryDate { get; set; }
     
     // Creation, update datetime and employee is charge of 
-    public DateTime? TrainedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;

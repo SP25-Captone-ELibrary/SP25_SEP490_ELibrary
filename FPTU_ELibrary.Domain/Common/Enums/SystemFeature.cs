@@ -23,6 +23,8 @@ public enum SystemFeature
     SystemConfigurationManagement,
     [Description("/management/system-health")]
     SystemHealthManagement,
+    [Description("/management/warehouse-tracking")] // Combine with supplier
+    WarehouseTrackingManagement,
     
     // Combined Features
     [Description("/management/authors")]
@@ -39,8 +41,10 @@ public enum SystemFeature
     SystemMessageManagement,
     [Description("/management/resources")]
     ResourceManagement,
-    [Description("/management/books/audit-trails")]
-    BookAuditTrailManagement,
+    [Description("/management/library-items/audits")]
+    AuditTrailManagement,
     [Description("/management/roles/audit-trails")]
     RoleAuditTrailManagement,
+    [Description("/management/suppliers")]
+    SupplierManagement
 }

@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
 using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class WarehouseTracking
+public class WarehouseTracking : IAuditableEntity
 {
     public int TrackingId { get; set; }
     public int SupplierId { get; set; }
@@ -22,8 +23,7 @@ public class WarehouseTracking
     // Entry date    
     public DateTime EntryDate { get; set; }
     
-    // Creation, update datetime and employee is charge of 
-    public DateTime? TrainedAt { get; set; }
+    // Creation, update datetime 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;

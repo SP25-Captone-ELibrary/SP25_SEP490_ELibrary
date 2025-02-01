@@ -24,5 +24,4 @@
     <ProjectReference Include="..\FPTU_ELibrary.Domain\FPTU_ELibrary.Domain.csproj" />
     <ProjectReference Include="..\FPTU_ELibrary.Infrastructure\FPTU_ELibrary.Infrastructure.csproj" />
   </ItemGroup>
-
 </Project>

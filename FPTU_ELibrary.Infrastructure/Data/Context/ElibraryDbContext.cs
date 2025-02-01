@@ -382,7 +382,8 @@ public class ElibraryDbContext : DbContext
 		{
 			typeof(LibraryItem), typeof(LibraryItemInstance), typeof(LibraryResource), typeof(LibraryItemAuthor),
 			typeof(LibraryItemConditionHistory), 
-			typeof(SystemRole), typeof(RolePermission)
+			typeof(SystemRole), typeof(RolePermission),
+			typeof(WarehouseTracking), typeof(WarehouseTrackingDetail)
 		};
 		return auditEnabledEntityTypes.Contains(entityType);
 	}

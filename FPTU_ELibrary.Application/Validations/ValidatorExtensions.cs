@@ -29,6 +29,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(LibraryItemInventoryDto) => (IValidator<T>)new LibraryItemInventoryDtoValidator(),
 				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),
 				{ } when typeof(T) == typeof(EmployeeDto) => (IValidator<T>)new EmployeeDtoValidator(language),
+				{ } when typeof(T) == typeof(SupplierDto) => (IValidator<T>)new SupplierDtoValidator(language),
 				{ } when typeof(T) == typeof(SystemRoleDto) => (IValidator<T>)new SystemRoleDtoValidator(),
 				{ } when typeof(T) == typeof(RefreshTokenDto) => (IValidator<T>)new RefreshTokenDtoValidator(),
 				{ } when typeof(T) == typeof(AuthenticateUserDto) => (IValidator<T>)new AuthenticatedUserDtoValidator(language),
@@ -36,6 +37,8 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(NotificationRecipientDto) => (IValidator<T>)new NotificationRecipientDtoValidator(language),
 				{ } when typeof(T) == typeof(CategoryDto) => (IValidator<T>)new CategoryDtoValidator(language),
 				{ } when typeof(T) == typeof(FinePolicyDto) => (IValidator<T>)new FinePolicyDtoValidator(language),
+				{ } when typeof(T) == typeof(WarehouseTrackingDto) => (IValidator<T>)new WarehouseTrackingDtoValidator(language),
+				{ } when typeof(T) == typeof(WarehouseTrackingDetailDto) => (IValidator<T>)new WarehouseTrackingDetailDtoValidator(language),
 				_ => null
 			};
 		}

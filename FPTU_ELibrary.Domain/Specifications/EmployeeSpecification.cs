@@ -189,8 +189,8 @@ public class EmployeeSpecification : BaseSpecification<Employee>
     {
         if (string.IsNullOrEmpty(propertyName)) return;
 
-        // Initialize expression parameter with type of LibraryItem (x)
-        var parameter = Expression.Parameter(typeof(LibraryItem), "x");
+        // Initialize expression parameter with type of Employee (x)
+        var parameter = Expression.Parameter(typeof(Employee), "x");
         // Assign property base on property name (x.PropertyName)
         var property = Expression.Property(parameter, propertyName);
         // Building a complete sort lambda expression (x => x.PropertyName)
