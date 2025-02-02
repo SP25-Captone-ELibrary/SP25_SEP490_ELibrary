@@ -15,26 +15,24 @@ public class CustomVisionController : ControllerBase
     {
         _aiClassificationService = aiClassificationService;
     }
-    // [HttpPost(APIRoute.Group.CheckAvailableGroup,Name = nameof(CheckAvailableGroup))]
-    // public async Task<IActionResult> CheckAvailableGroup([FromBody] CheckAvailableGroupRequest req)
-    // {
-    //     var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-    //     return Ok(await _aiClassificationService.GetAvailableGroup(email,req.RootItemId,req.OtherItemIds));
-    // } 
-    [HttpPost(APIRoute.Group.CheckItemToTrain,Name = nameof(CheckItemNeedToTrain))]
-    public async Task<IActionResult> CheckItemNeedToTrain([FromBody] CheckItemNeedToTrainRequest req)
+    [HttpPost(APIRoute.Group.CheckAvailableGroup,Name = nameof(CheckAvailableGroup))]
+    public async Task<IActionResult> CheckAvailableGroup([FromBody] CheckAvailableGroupRequest req)
     {
         return Ok(await _aiClassificationService.IsAbleToCreateGroup(req.RootItemId,req.OtherItemIds));
+    } 
+    [HttpPost(APIRoute.Group.DefineGroup,Name = nameof(DefineGroup))]
+    public async Task<IActionResult> DefineGroup([FromBody]CheckAvailableGroupRequest req)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _aiClassificationService.GetAvailableGroup(email,req.RootItemId,req.OtherItemIds));
     }
-        
-    //
-    // [HttpPost(APIRoute.AIServices.TrainingAfterCreate, Name = nameof(TrainModelAfterCreate))]
-    // [Authorize]
-    // public async Task<IActionResult> TrainModelAfterCreate([FromForm] TrainModelAfterCreateRequest req)
-    // {
-    //     var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-    //     return Ok(await _aiClassificationService.TrainModelAfterCreate(req.BookCode,req.ImageList,email));
-    // }
+    [HttpPost(APIRoute.AIServices.TrainingAfterCreate, Name = nameof(TrainModelAfterCreate))]
+    [Authorize]
+    public async Task<IActionResult> TrainModelAfterCreate([FromForm] TrainModelAfterCreateRequest req)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _aiClassificationService.TrainModel(req.BookCode,req.ImageList,email));
+    }
     //
     // [HttpPost(APIRoute.BookEdition.Training, Name = nameof(TrainingSingleEdition))]
     // [Authorize]

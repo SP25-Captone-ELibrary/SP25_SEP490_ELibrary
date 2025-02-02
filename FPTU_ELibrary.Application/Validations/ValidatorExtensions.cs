@@ -39,6 +39,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(FinePolicyDto) => (IValidator<T>)new FinePolicyDtoValidator(language),
 				{ } when typeof(T) == typeof(WarehouseTrackingDto) => (IValidator<T>)new WarehouseTrackingDtoValidator(language),
 				{ } when typeof(T) == typeof(WarehouseTrackingDetailDto) => (IValidator<T>)new WarehouseTrackingDetailDtoValidator(language),
+				{ } when typeof(T) == typeof(LibraryItemGroupDto) => (IValidator<T>)new LibraryItemGroupDtoValidator(language),
 				_ => null
 			};
 		}

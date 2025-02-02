@@ -147,12 +147,14 @@ public class OCRService : IOCRService
                         Weight = _monitor.AuthorNamePercentage
                     });
                 }
+
                 var matchResult =
                     StringUtils.CalculateFieldMatchScore(result.Data.ToString(), compareFields,
-                        _monitor.ConfidenceThreshold,_monitor.MinFieldThreshold);
+                        _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
                 matchResult.ImageName = image.FileName;
                 acceptableImage.Add(matchResult);
             }
+
             return new ServiceResult(ResultCodeConst.AIService_Success0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001)
                 , acceptableImage);

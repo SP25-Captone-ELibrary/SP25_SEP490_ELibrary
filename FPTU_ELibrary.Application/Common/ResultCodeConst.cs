@@ -457,6 +457,15 @@ namespace FPTU_ELibrary.Application.Common
         /// Recommendation is just for 1 book.
         /// </summary>
         public static string AIService_Warning0004 = "AIService.Warning0004";
+        /// <summary>
+        /// Existing items in categories that are not allow to train AI
+        /// </summary>
+        public static string AIService_Warning0005 = "AIService.Warning0005";
+        /// <summary>
+        /// One or more items grouped
+        /// </summary>
+        public static string AIService_Warning0006 = "AIService.Warning0006";
+
         #endregion
 
         #region Warehouse Tracking
