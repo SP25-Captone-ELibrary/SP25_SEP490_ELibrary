@@ -8,7 +8,10 @@ using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
 using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
+using FPTU_ELibrary.API.Payloads.Requests.Supplier;
 using FPTU_ELibrary.API.Payloads.Requests.User;
+using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
+using FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
@@ -17,6 +20,7 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 
@@ -28,6 +32,7 @@ namespace FPTU_ELibrary.API.Extensions
 	public static class PayloadExtensions
 	{
 		#region Auth
+
 		// Mapping from typeof(SignInRequest) to typeof(AuthenticateUserDto)
 		public static AuthenticateUserDto ToAuthenticatedUser(this SignInRequest req)
 			=> new AuthenticateUserDto
@@ -35,7 +40,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Email = req.Email,
 				Password = null!
 			};
-		
+
 		// Mapping from typeof(SignInWithOtpRequest) to typeof(AuthenticateUserDto)
 		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithOtpRequest req)
 			=> new AuthenticateUserDto
@@ -43,7 +48,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Email = req.Email,
 				Password = null!
 			};
-		
+
 		// Mapping from typeof(SignInWithPasswordRequest) to typeof(AuthenticateUserDto)
 		public static AuthenticateUserDto ToAuthenticatedUser(this SignInWithPasswordRequest req)
 			=> new AuthenticateUserDto
@@ -63,9 +68,11 @@ namespace FPTU_ELibrary.API.Extensions
 				Password = req.Password,
 				IsEmployee = false
 			};
+
 		#endregion
 
 		#region Author
+
 		// Mapping from typeof(CreateAuthorRequest) to typeof(AuthorDto)
 		public static AuthorDto ToAuthorDto(this CreateAuthorRequest req)
 		{
@@ -86,8 +93,8 @@ namespace FPTU_ELibrary.API.Extensions
 				CreateDate = currentLocalDateTime,
 				IsDeleted = false
 			};
-		}		
-		
+		}
+
 		// Mapping from typeof(UpdateAuthorRequest) to typeof(AuthorDto)
 		public static AuthorDto ToAuthorDto(this UpdateAuthorRequest req)
 		{
@@ -95,7 +102,7 @@ namespace FPTU_ELibrary.API.Extensions
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new AuthorDto()
 			{
 				AuthorCode = req.AuthorCode,
@@ -108,11 +115,12 @@ namespace FPTU_ELibrary.API.Extensions
 				UpdateDate = currentLocalDateTime,
 				IsDeleted = false
 			};
-		}		
-		
+		}
+
 		#endregion
 
 		#region Library Item
+
 		// Mapping from typeof(CreateLibraryItemRequest) to typeof(LibraryItemDto)
 		public static LibraryItemDto ToLibraryItemDto(this CreateLibraryItemRequest req)
 		{
@@ -154,8 +162,9 @@ namespace FPTU_ELibrary.API.Extensions
 				// Inventory
 				LibraryItemInventory = new LibraryItemInventoryDto()
 				{
-					TotalUnits	= req.LibraryItemInstances != null && req.LibraryItemInstances.Any() 
-						? req.LibraryItemInstances.Count : 0,
+					TotalUnits = req.LibraryItemInstances != null && req.LibraryItemInstances.Any()
+						? req.LibraryItemInstances.Count
+						: 0,
 					AvailableUnits = 0,
 					BorrowedUnits = 0,
 					RequestUnits = 0,
@@ -170,18 +179,18 @@ namespace FPTU_ELibrary.API.Extensions
 					? req.LibraryResources.Select(lr => new LibraryItemResourceDto()
 					{
 						LibraryResource = lr.ToLibraryResourceDto()
-					}).ToList() 
+					}).ToList()
 					: new List<LibraryItemResourceDto>()
 			};
 		}
-		
+
 		// Mapping from typeof(CreateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
 		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this CreateItemInstanceRequest req)
 		{
 			return new LibraryItemInstanceDto()
 			{
 				Barcode = req.Barcode,
-				
+
 				// Add default one history status
 				LibraryItemConditionHistories = new List<LibraryItemConditionHistoryDto>()
 				{
@@ -192,7 +201,7 @@ namespace FPTU_ELibrary.API.Extensions
 				}
 			};
 		}
-		
+
 		// Mapping from typeof(CreateLibraryResourceRequest) to typeof(LibraryResourceDto)
 		public static LibraryResourceDto ToLibraryResourceDto(this CreateLibraryResourceRequest req)
 		{
@@ -210,7 +219,7 @@ namespace FPTU_ELibrary.API.Extensions
 				IsDeleted = false
 			};
 		}
-		
+
 		// Mapping from typeof(UpdateLibraryItemRequest) to typeof(LibraryItemDto)
 		public static LibraryItemDto ToLibraryItemDto(this UpdateLibraryItemRequest req)
 			=> new()
@@ -247,8 +256,9 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 
 		#endregion
-		
+
 		#region Library Item Resource
+
 		// Mapping from typeof(UpdateLibraryResourceRequest) to typeof(LibraryResourceDto)
 		public static LibraryResourceDto ToLibraryResourceDto(this UpdateLibraryResourceRequest req)
 			=> new()
@@ -262,17 +272,19 @@ namespace FPTU_ELibrary.API.Extensions
 				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
 				BorrowPrice = req.BorrowPrice,
 			};
+
 		#endregion
 
 		#region Library Item Instance
+
 		// Mapping from typeof(UpdateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
 		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this UpdateItemInstanceRequest req)
 			=> new()
 			{
 				Status = req.Status,
 				Barcode = req.Barcode
-			};	
-		
+			};
+
 		// Mapping from typeof(UpdateRangeItemInstanceRequest) to typeof(LibraryItemInstanceDto)
 		public static List<LibraryItemInstanceDto> ToListLibraryItemInstanceDto(
 			this UpdateRangeItemInstanceRequest req)
@@ -282,7 +294,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Status = r.Status,
 				Barcode = r.Barcode
 			}).ToList();
-		
+
 		// Mapping from typeof(CreateRangeItemInstanceRequest) to typeof(LibraryItemInstanceDto)
 		public static List<LibraryItemInstanceDto> ToListLibraryItemInstanceDto(this CreateRangeItemInstanceRequest req)
 			=> req.LibraryItemInstances.Select(bec => new LibraryItemInstanceDto()
@@ -296,9 +308,11 @@ namespace FPTU_ELibrary.API.Extensions
 					}
 				}
 			}).ToList();
+
 		#endregion
-		
+
 		#region User
+
 		// Mapping from typeof(CreateUserRequest) to typeof(UserDto)
 		public static UserDto ToUser(this CreateUserRequest req)
 		{
@@ -306,7 +320,7 @@ namespace FPTU_ELibrary.API.Extensions
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new UserDto
 			{
 				Email = req.Email,
@@ -333,7 +347,7 @@ namespace FPTU_ELibrary.API.Extensions
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new UserDto
 			{
 				FirstName = req.FirstName,
@@ -349,6 +363,7 @@ namespace FPTU_ELibrary.API.Extensions
 		#endregion
 
 		#region Employee
+
 		// Mapping from typeof(CreateEmployeeRequest) to typeof(EmployeeDto)
 		public static EmployeeDto ToEmployeeDtoForCreate(this CreateEmployeeRequest req)
 		{
@@ -356,7 +371,7 @@ namespace FPTU_ELibrary.API.Extensions
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new EmployeeDto()
 			{
 				EmployeeCode = req.EmployeeCode,
@@ -370,7 +385,7 @@ namespace FPTU_ELibrary.API.Extensions
 				HireDate = req.HireDate,
 				TerminationDate = req.TerminationDate,
 				RoleId = req.RoleId,
-			
+
 				// Set default authorization values
 				CreateDate = currentLocalDateTime,
 				IsActive = false,
@@ -379,14 +394,14 @@ namespace FPTU_ELibrary.API.Extensions
 				TwoFactorEnabled = false
 			};
 		}
-		
+
 		public static EmployeeDto ToEmployeeDtoForUpdate(this UpdateRequest req)
 		{
 			// Current local datetime
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new EmployeeDto()
 			{
 				EmployeeCode = req.EmployeeCode,
@@ -409,7 +424,7 @@ namespace FPTU_ELibrary.API.Extensions
 			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 				// Vietnam timezone
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-			
+
 			return new EmployeeDto()
 			{
 				FirstName = req.FirstName,
@@ -433,12 +448,13 @@ namespace FPTU_ELibrary.API.Extensions
 				RoleId = roleId,
 				EnglishName = req.EnglishName,
 				VietnameseName = req.VietnameseName,
-				RoleType = ((Role)req.RoleTypeIdx).ToString()
+				RoleType = req.RoleTypeIdx.ToString()
 			};
 
 		#endregion
-		
+
 		#region Category
+
 		public static CategoryDto ToCategoryForUpdate(this UpdateCategoryRequest req)
 		{
 			return new CategoryDto()
@@ -450,9 +466,11 @@ namespace FPTU_ELibrary.API.Extensions
 				IsAllowAITraining = req.IsAllowAITraining
 			};
 		}
+
 		#endregion
-		
-		#region FinePolicy	
+
+		#region FinePolicy
+
 		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
 		{
 			return new FinePolicyDto()
@@ -464,6 +482,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Description = req.Description
 			};
 		}
+
 		public static FinePolicyDto ToFinePolicyDto(this UpdateFinePolicyRequest req)
 		{
 			return new FinePolicyDto()
@@ -475,9 +494,131 @@ namespace FPTU_ELibrary.API.Extensions
 				Description = req.Description
 			};
 		}
-		
+
 		#endregion
 
+		#region Supplier
+
+		// Mapping from typeof(CreateSupplierRequest) to typeof(SupplierDto)
+		public static SupplierDto ToSupplierDto(this CreateSupplierRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+			return new()
+			{
+				SupplierName = req.SupplierName,
+				SupplierType = req.SupplierType,
+				ContactPerson = req.ContactPerson,
+				ContactEmail = req.ContactEmail,
+				ContactPhone = req.ContactPhone,
+				Address = req.Address,
+				Country = req.Country,
+				City = req.City,
+				IsDeleted = false,
+				IsActive = true,
+				CreatedAt = currentLocalDateTime
+			};
+		}
+
+		// Mapping from typeof(UpdateSupplierRequest) to typeof(SupplierDto)
+		public static SupplierDto ToSupplierDto(this UpdateSupplierRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+			return new()
+			{
+				SupplierName = req.SupplierName,
+				SupplierType = req.SupplierType,
+				ContactPerson = req.ContactPerson,
+				ContactEmail = req.ContactEmail,
+				ContactPhone = req.ContactPhone,
+				Address = req.Address,
+				Country = req.Country,
+				City = req.City,
+				IsDeleted = false,
+				IsActive = true,
+				UpdatedAt = currentLocalDateTime
+			};
+		}
+
+		#endregion
+
+		#region Warehouse Tracking
+
+		// Mapping from (CreateWarehouseTracking) to typeof(WarehouseTrackingDto)
+		public static WarehouseTrackingDto ToWarehouseTrackingDto(this CreateWarehouseTrackingRequest req)
+		{
+			return new WarehouseTrackingDto()
+			{
+				SupplierId = req.SupplierId,
+				TotalItem = req.TotalItem,
+				TotalAmount = req.TotalAmount,
+				TrackingType = req.TrackingType,
+				TransferLocation = req.TransferLocation,
+				Description = req.Description,
+				EntryDate = req.EntryDate,
+				ExpectedReturnDate = req.ExpectedReturnDate
+			};
+		}
+
+		// Mapping from (UpdateWarehouseTrackingRequest) to typeof(WarehouseTrackingDto)
+		public static WarehouseTrackingDto ToWarehouseTrackingDto(this UpdateWarehouseTrackingRequest req)
+		{
+			return new WarehouseTrackingDto()
+			{
+				SupplierId = req.SupplierId,
+				TotalItem = req.TotalItem,
+				TotalAmount = req.TotalAmount,
+				TrackingType = req.TrackingType,
+				TransferLocation = req.TransferLocation,
+				Description = req.Description,
+				EntryDate = req.EntryDate,
+				ExpectedReturnDate = req.ExpectedReturnDate
+			};
+		}
+
+		#endregion
+
+		#region Warehouse Traking Detail
+		// Mapping from (CreateWarehouseTrackingDetailRequest) to typeof(WarehouseTrackingDetailDto)
+		public static WarehouseTrackingDetailDto ToWarehouseTrackingDetailDto(
+			this CreateWarehouseTrackingDetailRequest req)
+		{
+			return new()
+			{
+				ItemName = req.ItemName,
+				ItemTotal = req.ItemTotal,
+				Isbn = req.Isbn != null ? ISBN.CleanIsbn(req.Isbn) : null,
+				UnitPrice = req.UnitPrice,
+				TotalAmount = req.TotalAmount,
+				Reason = req.Reason,
+				CategoryId = req.CategoryId
+			};
+		}
+		
+		// Mapping from (UpdateWarehouseTrackingDetailRequest) to typeof(WarehouseTrackingDetailDto)
+		public static WarehouseTrackingDetailDto ToWarehouseTrackingDetailDto(
+			this UpdateWarehouseTrackingDetailRequest req)
+		{
+			return new()
+			{
+				ItemName = req.ItemName,
+				ItemTotal = req.ItemTotal,
+				Isbn = req.Isbn != null ? ISBN.CleanIsbn(req.Isbn) : null,
+				UnitPrice = req.UnitPrice,
+				TotalAmount = req.TotalAmount,
+				Reason = req.Reason,
+				CategoryId = req.CategoryId
+			};
+		}
+		#endregion
+		
 		#region AIService
 
 		// public static CheckedBookEditionDto ToCheckedBookEditionDto(

@@ -22,7 +22,6 @@ using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.CognitiveServices.Speech;
 using OfficeOpenXml;
 
 namespace FPTU_ELibrary.Application
@@ -70,10 +69,13 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
             services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
+            services.AddScoped<ISupplierService<SupplierDto>, SupplierService>();
             services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IUserService<UserDto>, UserService>();
+            services.AddScoped<IWarehouseTrackingService<WarehouseTrackingDto>, WarehouseTrackingService>();
+            services.AddScoped<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>, WarehouseTrackingDetailService>();
 
             services
                 .ConfigureMapster() // Add mapster

@@ -16,7 +16,7 @@ namespace FPTU_ELibrary.Domain.Common.Enums
 		[Description("Người dùng thông thường")]
 		GeneralMember,
 		
-		//	RoleType: [EMPLOYEE]
+		// RoleType: [EMPLOYEE]
 		// Group 1: Professional Library Staff
 		[Description("Thủ thư trưởng")]
 		HeadLibrarian,

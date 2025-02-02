@@ -183,6 +183,15 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
              {
                  throw new UnprocessableEntityException("Invalid data", customErrors);
              }
+             
+             // Check constraints with other tables
+             // Not allow to update when exist any library items or warehouse tracking details
+             if (await _unitOfWork.Repository<Category, int>().AnyAsync(new BaseSpecification<Category>(
+                     c => c.CategoryId == id && (c.WarehouseTrackingDetails.Any() || c.LibraryItems.Any()))))
+             {
+                 return new ServiceResult(ResultCodeConst.SYS_Warning0008,
+                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0008));
+             }
 
              // Update properties
              existingEntity.Prefix = dto.Prefix;

@@ -113,6 +113,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Cannot delete {0} as it is in use
 		/// </summary>
 		public static string SYS_Warning0007 = "SYS.Warning0007";
+		/// <summary>
+		/// [WARNING] Cannot edit because it is bound to other data
+		/// </summary>
+		public static string SYS_Warning0008 = "SYS.Warning0008";
 		#endregion
 
 		#region Auth
@@ -319,8 +323,6 @@ namespace FPTU_ELibrary.Application.Common
 		/// [Warning] Employee code already exist
 		/// </summary>
 		public const string Employee_Warning0001 = "Employee.Warning0001";
-		
-
 		#endregion
 
 		#region Author
@@ -410,9 +412,15 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryItem_Fail0002 = "LibraryItem.Fail0002";
 		#endregion
+
+		#region Supplier
+		/// <summary>
+		/// [WARNING] The action cannot be performed, as the supplier is in the warehouse tracking information has been approved
+		/// </summary>
+		public const string Supplier_Warning0001 = "Supplier.Warning0001";
+		#endregion
 		
         #region AIService
-
         /// <summary>
         /// Data matched with image
         /// </summary>
@@ -458,6 +466,54 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string AIService_Warning0006 = "AIService.Warning0006";
 
+        #endregion
+
+        #region Warehouse Tracking
+        /// <summary>
+        /// [WARNING] Do not allow to change status from {0} to {1}
+        /// </summary>
+        public const string WarehouseTracking_Warning0001 = "WarehouseTracking.Warning0001";
+        /// <summary>
+        /// [WARNING] The action cannot be performed. Please switch warehouse tracking information to draft
+        /// </summary>
+        public const string WarehouseTracking_Warning0002 = "WarehouseTracking.Warning0002";
+        /// <summary>
+        /// [WARNING] Cannot delete warehouse tracking information, as existing item has been cataloged
+        /// </summary>
+        public const string WarehouseTracking_Warning0003 = "WarehouseTracking.Warning0003";
+        /// <summary>
+        /// [WARNING] Cannot change status to completed, as existing item has not been cataloged yet
+        /// </summary>
+        public const string WarehouseTracking_Warning0004 = "WarehouseTracking.Warning0004";
+        /// <summary>
+        /// [WARNING] Cannot change status to completed, as total item instance is not
+        /// enough compared to the total of warehouse tracking information
+        /// </summary>
+        public const string WarehouseTracking_Warning0005 = "WarehouseTracking.Warning0005";
+        /// <summary>
+        /// [WARNING] This action cannot be performed, as warehouse tracking detail already exist cataloged item
+        /// </summary>
+        public const string WarehouseTracking_Warning0006 = "WarehouseTracking.Warning0006";
+        /// <summary>
+        /// [WARNING] ISBN of selected warehouse tracking detail doesn't match
+        /// </summary>
+        public const string WarehouseTracking_Warning0007 = "WarehouseTracking.Warning0007";
+        /// <summary>
+        /// [WARNING] Selected warehouse tracking detail is incorrect, cataloging item need ISBN to continue
+        /// </summary>
+        public const string WarehouseTracking_Warning0008 = "WarehouseTracking.Warning0008";
+        /// <summary>
+        /// [WARNING] Cannot change data as warehouse tracking was completed or cancelled
+        /// </summary>
+        public const string WarehouseTracking_Warning0009 = "WarehouseTracking.Warning0009";
+        /// <summary>
+        /// [WARNING] Cannot process delete as warehouse tracking detail still contains item
+        /// </summary>
+        public const string WarehouseTracking_Warning0010 = "WarehouseTracking.Warning0010";
+        /// <summary>
+        /// [WARNING] The action cannot be performed as category of item and warehouse tracking detail is different
+        /// </summary>
+        public const string WarehouseTracking_Warning0011 = "WarehouseTracking.Warning0011";
         #endregion
 
         #endregion

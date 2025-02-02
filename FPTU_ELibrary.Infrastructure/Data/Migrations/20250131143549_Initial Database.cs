@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InititalDatabase : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -24,7 +24,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
                     old_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
                     new_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
-                    changed_columns = table.Column<string>(type: "nvarchar(500)", nullable: false)
+                    changed_columns = table.Column<string>(type: "nvarchar(1000)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -340,7 +340,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     expected_return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     actual_return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     entry_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    TrainedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -807,7 +806,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     library_item_resource_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     library_item_id = table.Column<int>(type: "int", nullable: false),
-                    resource_id = table.Column<int>(type: "int", nullable: false)
+                    resource_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -914,9 +917,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     tracking_detail_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    item_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: false),
+                    item_name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     item_total = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
-                    actual_item_total = table.Column<int>(type: "int", nullable: true, defaultValue: 0),
+                    isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: true),
                     unit_price = table.Column<decimal>(type: "decimal(10,2)", nullable: false, defaultValue: 0.0m),
                     total_amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false, defaultValue: 0.0m),
                     reason = table.Column<string>(type: "nvarchar(50)", nullable: true),

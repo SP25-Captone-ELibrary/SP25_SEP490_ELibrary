@@ -12,9 +12,9 @@ public class WarehouseTrackingDetail
     // Number of items
     public int ItemTotal { get; set; }
 
-    // Actual item total after cataloging
-    public int? ActualItemTotal { get; set; }
-
+    // ISBN
+    public string? Isbn { get; set; }
+    
     // Unit price of the item
     public decimal UnitPrice { get; set; }
     

@@ -33,7 +33,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("ChangedColumns")
                         .IsRequired()
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("changed_columns");
 
                     b.Property<DateTime>("DateUtc")
@@ -1198,6 +1198,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LibraryItemResourceId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
                     b.Property<int>("LibraryItemId")
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
@@ -1205,6 +1215,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("ResourceId")
                         .HasColumnType("int")
                         .HasColumnName("resource_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("LibraryItemResourceId")
                         .HasName("PK_LibraryItemResource");
@@ -2337,9 +2356,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("tracking_type");
 
-                    b.Property<DateTime?>("TrainedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("TransferLocation")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
@@ -2371,20 +2387,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrackingDetailId"));
 
-                    b.Property<int?>("ActualItemTotal")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0)
-                        .HasColumnName("actual_item_total");
-
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("category_id");
 
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)")
+                        .HasColumnName("isbn");
+
                     b.Property<string>("ItemName")
                         .IsRequired()
-                        .HasMaxLength(155)
-                        .HasColumnType("nvarchar(155)")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("item_name");
 
                     b.Property<int>("ItemTotal")

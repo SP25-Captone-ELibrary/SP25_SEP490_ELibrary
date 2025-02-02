@@ -43,9 +43,9 @@
 		/// </summary>
 		public static class AuditTrail
 		{
-			#region BookManagement
-			public const string GetAllByEntityIdAndName = Base + "/management/books/audit-trails";
-			public const string GetDetailByDateUtc = Base + "/management/books/audit-trails/detail";
+			#region LibraryManagement
+			public const string GetAllByEntityIdAndName = Base + "/management/library-items/audits";
+			public const string GetDetailByDateUtc = Base + "/management/library-items/audits/detail";
 			#endregion
 
 			#region RoleManagement
@@ -56,7 +56,7 @@
 		}
 
 		/// <summary>
-		/// Book edition endpoints
+		/// Library item endpoints
 		/// </summary>
 		public static class LibraryItem
 		{
@@ -101,6 +101,9 @@
 			public const string Search = Base + "/library-items/q";
 		}
 
+		/// <summary>
+		/// Group endpoints
+		/// </summary>
 		public static class Group
 		{
 			//[POST]
@@ -110,7 +113,7 @@
 		}
 
 		/// <summary>
-		/// Book resource endpoints
+		/// Library resource endpoints
 		/// </summary>
 		public static class LibraryItemResource
 		{
@@ -132,6 +135,9 @@
 			#endregion
 		}
 
+		/// <summary>
+		/// Library item instance endpoints
+		/// </summary>
 		public static class LibraryItemInstance
 		{
 			#region Management
@@ -279,7 +285,7 @@
 		}
 
 		/// <summary>
-		/// Role management endpoints
+		/// Role endpoints
 		/// </summary>
 		public static class Role
 		{
@@ -317,7 +323,7 @@
 		}
 
 		/// <summary>
-		/// Library shelf
+		/// Library shelf endpoints
 		/// </summary>
 		public static class LibraryLocation
 		{
@@ -342,7 +348,7 @@
 		}
 
 		/// <summary>
-		/// Role management endpoints
+		/// Notification endpoints
 		/// </summary>
 		public static class Notification
 		{
@@ -370,7 +376,7 @@
 		}
 
 		/// <summary>
-		/// BookCategory endpoints
+		/// Category endpoints
 		/// </summary>
 		public static class Category
 		{
@@ -425,6 +431,66 @@
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}
+
+		/// <summary>
+		/// Warehouse tracking endpoints
+		/// </summary>
+		public static class WarehouseTracking
+		{
+			#region management
+			// [GET]
+            public const string GetAll = Base + "/management/warehouse-trackings";
+            public const string GetById = Base + "/management/warehouse-trackings/{id}";
+            // [POST]
+            public const string Create = Base + "/management/warehouse-trackings";
+            // [PUT]
+            public const string Update = Base + "/management/warehouse-trackings/{id}";
+            // [DELETE]
+            public const string Delete = Base + "/management/warehouse-trackings/{id}";
+			#endregion
+
+			#region HeadLibrian only
+			// [PATCH]
+			public const string UpdateStatus = Base + "/management/warehouse-trackings/{id}/status";
+			#endregion
+		}
+
+		/// <summary>
+		/// Warehouse tracking detail endpoints
+		/// </summary>
+		public static class WarehouseTrackingDetail
+		{
+			// [GET]
+			public const string GetById = Base + "/management/warehouse-trackings/details/{id}";
+			public const string GetAllByTrackingId = Base + "/management/warehouse-trackings/{trackingId}/details";
+			public const string GetAllNotExistItemByTrackingId = Base + "/management/warehouse-trackings/{trackingId}/details/no-item";
+			// [POST]
+			public const string Import = Base + "/management/warehouse-trackings/{trackingId}/details/import";
+			public const string AddToTracking = Base + "/management/warehouse-trackings/{trackingId}/details";
+			// [PUT]
+			public const string Update = Base + "/management/warehouse-trackings/details/{id}";
+			public const string UpdateItem = Base + "/management/warehouse-trackings/details/{id}/item";
+			// [DELETE]
+			public const string DeleteItem = Base + "/management/warehouse-trackings/details/{id}/item";
+			public const string Delete = Base + "/management/warehouse-trackings/details/{id}";
+		}
 		
+		/// <summary>
+		/// Supplier endpoints
+		/// </summary>
+		public static class Supplier
+		{
+			// [GET]
+			public const string GetAll = Base + "/management/suppliers";
+			public const string GetById = Base + "/management/suppliers/{id}";
+			public const string Export = Base + "/management/suppliers/export";
+			// [POST]
+			public const string Create = Base + "/management/suppliers";
+			public const string Import = Base + "/management/suppliers/import";
+			// [PUT] & [PATCH]
+			public const string Update = Base + "/management/suppliers/{id}";
+			// [DELETE]
+			public const string Delete = Base + "/management/suppliers/{id}";
+		}
 	}
 }
