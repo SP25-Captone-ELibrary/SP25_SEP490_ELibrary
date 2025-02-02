@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Serilog;
 using System.Net.Http.Headers;
+using System.Text;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -16,6 +17,7 @@ using FPTU_ELibrary.Domain.Specifications;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using OpenCvSharp;
 
 namespace FPTU_ELibrary.Application.Services;
 
@@ -128,7 +130,6 @@ public class AIDetectionService : IAIDetectionService
     /// <param name="currentItemsDetail">Current group details with itemIds and coverImages</param>
     /// <param name="compareList"></param>
     /// <returns></returns>
-    
     public async Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList)
     {
         try
@@ -157,7 +158,7 @@ public class AIDetectionService : IAIDetectionService
             });
             return new ServiceResult(ResultCodeConst.AIService_Success0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001)
-                , ocrCheckedResult); 
+                , ocrCheckedResult);
         }
         catch (Exception ex)
         {
@@ -166,61 +167,129 @@ public class AIDetectionService : IAIDetectionService
         }
     }
 
-    public async Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl)
-    {
-        try
-        {
-            var coverImageData = await _httpClient.GetByteArrayAsync(coverImage);
-            var stream = new MemoryStream(coverImageData);
-            var file = new FormFile(stream, 0, stream.Length, "file", "cover.jpg")
-            {
-                Headers = new HeaderDictionary(),
-                ContentType = "application/octet-stream"
-            };
-
-            var coverDetectedResults = await DetectAllAsync(file);
-            var bookBox = coverDetectedResults
-                .Where(r => r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
-                .Select(r => r.Box)
-                .FirstOrDefault();
-
-            if (bookBox == null)
-            {
-                return false;
-            }
-
-            var coverObjectCounts = CountObjectsInImage(coverDetectedResults, bookBox);
-
-            foreach (var imageUrl in imagesUrl)
-            {
-                var comparerImageData = await _httpClient.GetByteArrayAsync(imageUrl);
-                var comparerStream = new MemoryStream(comparerImageData);
-                var comparerFile = new FormFile(comparerStream, 0, comparerStream.Length, "file", "comparer.jpg")
-                {
-                    Headers = new HeaderDictionary(),
-                    ContentType = "application/octet-stream"
-                };
-
-                var comparerDetectedResults = await DetectAllAsync(comparerFile);
-                var comparerObjectCounts = CountObjectsInImage(comparerDetectedResults, bookBox);
-
-                if (!CompareObjectCounts(coverObjectCounts, comparerObjectCounts))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when checking duplication of cover image");
-        }
-    }
-    
-    
-    
+    // public async Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl)
+    // {
+    //     try
+    //     {
+    //         var coverImageData = await _httpClient.GetByteArrayAsync(coverImage);
+    //         var stream = new MemoryStream(coverImageData);
+    //         var file = new FormFile(stream, 0, stream.Length, "file", "cover.jpg")
+    //         {
+    //             Headers = new HeaderDictionary(),
+    //             ContentType = "application/octet-stream"
+    //         };
+    //
+    //         var coverDetectedResults = await DetectAllAsync(file);
+    //         var objectBox = coverDetectedResults
+    //             // .Where(r => r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+    //             .Select(r => r.Box)
+    //             // .FirstOrDefault();
+    //             .ToList();
+    //
+    //         if (coverDetectedResults.Any(r =>
+    //                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
+    //         {
+    //             var bookBox = coverDetectedResults.Where(r =>
+    //                     r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+    //                 .Select(r => r.Box)
+    //                 .FirstOrDefault();
+    //             var coverObjectCounts = CountObjectsInImage(coverDetectedResults, bookBox);
+    //             foreach (var imageUrl in imagesUrl)
+    //             {
+    //                 var comparerImageData = await _httpClient.GetByteArrayAsync(imageUrl);
+    //                 var comparerStream = new MemoryStream(comparerImageData);
+    //                 var comparerFile = new FormFile(comparerStream, 0, comparerStream.Length, "file", "comparer.jpg")
+    //                 {
+    //                     Headers = new HeaderDictionary(),
+    //                     ContentType = "application/octet-stream"
+    //                 };
+    //
+    //                 var comparerDetectedResults = await DetectAllAsync(comparerFile);
+    //                 var comparerObjectCounts = CountObjectsInImage(comparerDetectedResults, bookBox);
+    //
+    //                 if (!CompareObjectCounts(coverObjectCounts, comparerObjectCounts))
+    //                 {
+    //                     return false;
+    //                 }
+    //             }
+    //         }
+    //         else
+    //         {
+    //             var coverObjectCounts = CountObjectsInImage(coverDetectedResults, null);
+    //             foreach (var imageUrl in imagesUrl)
+    //             {
+    //                 var comparerImageData = await _httpClient.GetByteArrayAsync(imageUrl);
+    //                 var comparerStream = new MemoryStream(comparerImageData);
+    //                 var comparerFile = new FormFile(comparerStream, 0, comparerStream.Length, "file", "comparer.jpg")
+    //                 {
+    //                     Headers = new HeaderDictionary(),
+    //                     ContentType = "application/octet-stream"
+    //                 };
+    //
+    //                 var comparerDetectedResults = await DetectAllAsync(comparerFile);
+    //                 var comparerObjectCounts = CountObjectsInImage(comparerDetectedResults, null);
+    //
+    //                 if (!CompareObjectCounts(coverObjectCounts, comparerObjectCounts))
+    //                 {
+    //                     return false;
+    //                 }
+    //             }
+    //         }
+    //         return true;
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.Error(ex.Message);
+    //         throw new Exception("Error invoke when checking duplication of cover image");
+    //     }
+    // }
+    // public async Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl)
+    // {
+    //     try
+    //     {
+    //         var coverImageGetResponse = await _httpClient.GetAsync(coverImage);
+    //         var coverImageBytes = coverImageGetResponse.Content.ReadAsByteArrayAsync().Result;
+    //         var coverImageMat = Cv2.ImDecode(coverImageBytes, ImreadModes.Color);
+    //
+    //         foreach (var imageUrl in imagesUrl)
+    //         {
+    //             var otherImageGetResponse = await _httpClient.GetAsync(coverImage);
+    //             var otherImageBytes = coverImageGetResponse.Content.ReadAsByteArrayAsync().Result;
+    //             var otherImageMat = Cv2.ImDecode(otherImageBytes, ImreadModes.Color);
+    //
+    //             // Initialize ORB detector
+    //             var orb = ORB.Create();
+    //
+    //             // Detect and compute keypoints and descriptors
+    //             var kp1 = new KeyPoint[0];
+    //             var kp2 = new KeyPoint[0];
+    //             var des1 = new Mat();
+    //             var des2 = new Mat();
+    //             orb.DetectAndCompute(coverImageMat, null, out kp1, des1);
+    //             orb.DetectAndCompute(otherImageMat, null, out kp2, des2);
+    //
+    //             // Match descriptors using BFMatcher
+    //             var bf = new BFMatcher(NormTypes.Hamming, crossCheck: true);
+    //             var matches = bf.Match(des1, des2);
+    //
+    //             // Filter good matches (distance threshold)
+    //             var goodMatches = matches.Where(m => m.Distance < 50).ToList();
+    //
+    //             // Set threshold for matching
+    //             if (goodMatches.Count >= 15) // Assuming 15 as the threshold for "similarity"
+    //             {
+    //                 return true;
+    //             }
+    //         }
+    //
+    //         return false;
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.Error(ex.Message);
+    //         return false;
+    //     }
+    // }
     // public async Task<IServiceResult> CheckDuplicationOfGroup(List<int> itemIds, int groupId)
     // {
     //     try
@@ -272,23 +341,39 @@ public class AIDetectionService : IAIDetectionService
     /// <param name="detectedResults"></param>
     /// <param name="bookBox"></param>
     /// <returns></returns>
-    private Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto bookBox)
+    private Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox)
     {
         var objectCounts = new Dictionary<string, int>();
-
-        foreach (var result in detectedResults)
+        if (bookBox is null)
         {
-            // Only check the object that inside the book cover image
-            if (result.Box.X1 > bookBox.X1 && result.Box.X2 < bookBox.X2 &&
-                result.Box.Y1 > bookBox.Y1 && result.Box.Y2 < bookBox.Y2)
+            foreach (var detectResultDto in detectedResults)
             {
-                if (objectCounts.ContainsKey(result.Name))
+                if (objectCounts.ContainsKey(detectResultDto.Name))
                 {
-                    objectCounts[result.Name]++;
+                    objectCounts[detectResultDto.Name]++;
                 }
                 else
                 {
-                    objectCounts[result.Name] = 1;
+                    objectCounts[detectResultDto.Name] = 1;
+                }
+            }
+        }
+        else
+        {
+            foreach (var result in detectedResults)
+            {
+                // Only check the object that inside the book cover image
+                if (result.Box.X1 > bookBox.X1 && result.Box.X2 < bookBox.X2 &&
+                    result.Box.Y1 > bookBox.Y1 && result.Box.Y2 < bookBox.Y2)
+                {
+                    if (objectCounts.ContainsKey(result.Name))
+                    {
+                        objectCounts[result.Name]++;
+                    }
+                    else
+                    {
+                        objectCounts[result.Name] = 1;
+                    }
                 }
             }
         }

@@ -105,7 +105,7 @@
 		{
 			//[POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
-			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
+			public const string DefineGroup = Base + "/management/groups/define-group"; 
 			
 		}
 
@@ -416,7 +416,7 @@
 			public const string GetAvailableLanguages = Base + "/library-items/available-languages";	
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
-			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train-after-create";
+			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string VoiceSearching = Base + "/library-items/voice";
