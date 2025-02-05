@@ -426,8 +426,9 @@
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string VoiceSearching = Base + "/library-items/voice";
-
+			public const string RawDetect = Base + "/library-items/ai/raw-detect";
 			public const string OCR = Base + "/ocr";
+			public const string OCRDetail = Base + "/library-items/{id}/ocr-detail";
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}

@@ -14,10 +14,15 @@ using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using OpenCvSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Processing;
+using Path = System.IO.Path;
 
 namespace FPTU_ELibrary.Application.Services;
 
@@ -85,7 +90,7 @@ public class AIDetectionService : IAIDetectionService
         }
     }
 
-    private async Task<List<DetectResultDto>> DetectAllAsync(IFormFile image)
+    public async Task<List<DetectResultDto>> DetectAllAsync(IFormFile image)
     {
         try
         {
@@ -341,7 +346,7 @@ public class AIDetectionService : IAIDetectionService
     /// <param name="detectedResults"></param>
     /// <param name="bookBox"></param>
     /// <returns></returns>
-    private Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox)
+    public Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox)
     {
         var objectCounts = new Dictionary<string, int>();
         if (bookBox is null)
@@ -379,6 +384,139 @@ public class AIDetectionService : IAIDetectionService
         }
 
         return objectCounts;
+    }
+
+    public async Task<IServiceResult> RawDetectAsync(IFormFile image)
+    {
+        try
+        {
+            // Gửi request detect objects
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_monitor.DetectModelUrl), "model");
+            content.Add(new StringContent(_monitor.DetectImageSize.ToString()), "imgsz");
+            content.Add(new StringContent(_monitor.DetectConfidence.ToString()), "conf");
+            content.Add(new StringContent(_monitor.DetectIOU.ToString()), "iou");
+
+            using var fileStream = image.OpenReadStream();
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(image.ContentType);
+            content.Add(fileContent, "file", image.FileName);
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _monitor.DetectAPIUrl)
+            {
+                Content = content
+            };
+            request.Headers.Add("x-api-key", _monitor.DetectAPIKey);
+
+            // Nhận response
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            // Xử lý response
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            var settings = new JsonSerializerSettings
+            {
+                MissingMemberHandling = MissingMemberHandling.Ignore,
+                NullValueHandling = NullValueHandling.Ignore
+            };
+
+            var responseDto = JsonConvert.DeserializeObject<DetectResponseDto>(stringResponse, settings)
+                              ?? throw new InvalidOperationException("Invalid API response");
+
+            // Validate response data
+            var imageResults = responseDto.Images?.FirstOrDefault()?.Results;
+            if (imageResults == null || !imageResults.Any())
+            {
+                return new ServiceResult(
+                    ResultCodeConst.AIService_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003)
+                );
+            }
+
+            // Xử lý ảnh
+            using var imageStream = image.OpenReadStream();
+            using var processedImage = await Image.LoadAsync(imageStream);
+            var random = new Random();
+            var objectInfos = new List<ObjectInfoDto>();
+
+            foreach (var result in imageResults)
+            {
+                // Validate box coordinates
+                if (result.Box == null) continue;
+
+                var width = processedImage.Width;
+                var height = processedImage.Height;
+
+                // Chuyển đổi tọa độ
+                var (x1, y1, x2, y2) = ConvertBoxCoordinates(result.Box, width, height);
+
+                // Tạo màu ngẫu nhiên
+                var (r, g, b) = GenerateRandomColor(random);
+                var color = Color.FromRgb(r, g, b);
+
+                // Vẽ bounding box
+                processedImage.Mutate(ctx => ctx.DrawPolygon(
+                    color,
+                    10,
+                    new PointF(x1, y1),
+                    new PointF(x2, y1),
+                    new PointF(x2, y2),
+                    new PointF(x1, y2)
+                ));
+
+                // Thêm thông tin đối tượng
+                objectInfos.Add(new ObjectInfoDto
+                {
+                    Name = result.Name ?? "Unknown",
+                    Percentage = result.Confidence * 100,
+                    Color = $"{r},{g},{b}"
+                });
+            }
+
+            var memoryStream = new MemoryStream();
+            await processedImage.SaveAsPngAsync(memoryStream);
+            var base64String = Convert.ToBase64String(memoryStream.ToArray());
+
+            var finalResponse = new RawDetectionResultResponse
+            {
+                ProcessedImage = $"data:image/png;base64,{base64String}", // Thêm data URI scheme
+                ObjectsDetected = objectInfos
+            };
+
+            return new ServiceResult(
+                ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                finalResponse
+            );
+            // return new ServiceResult(
+            //     ResultCodeConst.SYS_Success0002,
+            //     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
+            // );
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Object detection failed");
+            throw new Exception("Error invoke when detecting objects");
+        }
+    }
+
+    private (float x1, float y1, float x2, float y2) ConvertBoxCoordinates(BoxDto box, int width, int height)
+    {
+        return (
+            (float)(box.X1 * width),
+            (float)(box.Y1 * height),
+            (float)(box.X2 * width),
+            (float)(box.Y2 * height)
+        );
+    }
+
+    private (byte r, byte g, byte b) GenerateRandomColor(Random random)
+    {
+        return (
+            (byte)random.Next(0, 256),
+            (byte)random.Next(0, 256),
+            (byte)random.Next(0, 256)
+        );
     }
 
     /// <summary>

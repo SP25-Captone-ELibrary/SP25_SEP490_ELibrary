@@ -82,6 +82,7 @@ public class AIClassificationService : IAIClassificationService
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                 StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "group"));
         }
+
         var groupValue = (LibraryItemGroupDto)group.Data!;
         if (groupValue.LibraryItems.Any(li => li.Category.IsAllowAITraining == false))
         {
@@ -536,7 +537,7 @@ public class AIClassificationService : IAIClassificationService
     {
         try
         {
-            // Lấy thông tin LibraryItem hiện tại
+            // get current LibraryItem 
             var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == currentLibraryItemId);
             baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author));
@@ -544,8 +545,7 @@ public class AIClassificationService : IAIClassificationService
             var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
             var mainAuthor = libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
                 .Author.FullName;
-
-            // Lấy các nhóm có tiềm năng dựa vào CutterNumber, ClassificationNumber, Author
+            
             var groupSpec = new BaseSpecification<LibraryItemGroup>(lig =>
                 lig.CutterNumber == libraryItemValue.CutterNumber &&
                 lig.ClassificationNumber == libraryItemValue.ClassificationNumber &&
@@ -554,23 +554,21 @@ public class AIClassificationService : IAIClassificationService
             var potentialGroups = await _libraryItemGroupService.GetAllWithSpecAsync(groupSpec);
 
             if (potentialGroups.Data is null || !((List<LibraryItemGroupDto>)potentialGroups.Data).Any())
-                return 0; // Không tìm thấy nhóm phù hợp
+                return 0; 
 
             var groupList = (List<LibraryItemGroupDto>)potentialGroups.Data!;
-
-            // Tính điểm cho từng nhóm tiềm năng
             int bestGroupId = 0;
             double bestScore = 0;
 
             foreach (var group in groupList)
             {
-                // Tính điểm cho Title và SubTitle
+                // calculate Title and SubTitle
                 var titleScore = StringUtils.CombinedFuzzinessScore(libraryItemValue.Title, group.Title);
                 var subTitleScore = libraryItemValue.SubTitle != null && group.SubTitle != null
                     ? StringUtils.CombinedFuzzinessScore(libraryItemValue.SubTitle, group.SubTitle)
                     : 0;
 
-                // Xác định trạng thái cho Title và SubTitle
+                // check status for Title and SubTitle
                 var titleStatus = CompareFieldStatus(libraryItemValue.Title, group.Title);
                 int subTitleStatus;
                 if (string.IsNullOrEmpty(libraryItemValue.SubTitle) &&
@@ -585,18 +583,15 @@ public class AIClassificationService : IAIClassificationService
                         StringUtils.RemoveSpecialCharacter(group.SubTitle ?? ""));
                 }
 
-                // Kết hợp điểm của Title và SubTitle
+                // combine Title and SubTitle status
                 var combinedStatus = CombineTitleSubTitleStatus(titleStatus, subTitleStatus, group.SubTitle == null);
 
-                // Gán điểm cho nhóm dựa vào trạng thái kết hợp
                 double groupScore = combinedStatus switch
                 {
-                    (int)FieldGroupCheckedStatus.GroupSuccess => 100, // Điểm cao nhất
-                    (int)FieldGroupCheckedStatus.AbleToForceGrouped => 50, // Điểm trung bình
-                    _ => 0 // Điểm thấp nếu không phù hợp
+                    (int)FieldGroupCheckedStatus.GroupSuccess => 100,
+                    (int)FieldGroupCheckedStatus.AbleToForceGrouped => 50,
+                    _ => 0 
                 };
-
-                // Kiểm tra nếu nhóm này có điểm cao nhất
                 if (groupScore > bestScore)
                 {
                     bestScore = groupScore;
@@ -613,100 +608,103 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
-
-    
+    // first version of predict function
     // public async Task<IServiceResult> PredictAsync(IFormFile image)
     // {
     //     try
     //     {
     //         // Detect bounding boxes for books
-    //         var bookBoxes = await _aiDetectionService.DetectAsync(image);
-    //
-    //         if (!bookBoxes.Any())
+    //         var bookBoxes = await _aiDetectionService.DetectAllAsync(image);
+    //         // Count Object In Box
+    //         Dictionary<string, int> coverObjectCounts = new Dictionary<string, int>();
+    //         if (bookBoxes.Any(r =>
+    //                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
     //         {
-    //             return new ServiceResult(ResultCodeConst.AIService_Warning0003,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+    //             var bookBox = bookBoxes.Where(r =>
+    //                     r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+    //                 .Select(r => r.Box)
+    //                 .FirstOrDefault();
+    //             coverObjectCounts = _aiDetectionService.CountObjectsInImage(bookBoxes, bookBox);
     //         }
-    //
+    //         coverObjectCounts = _aiDetectionService.CountObjectsInImage(bookBoxes, null);
+    //         
     //         // Crop images based on bounding boxes
     //         using (var imageStream = image.OpenReadStream())
     //         using (var ms = new MemoryStream())
     //         {
     //             await imageStream.CopyToAsync(ms);
     //             var imageBytes = ms.ToArray();
-    //             var croppedImages = CropImages(imageBytes, bookBoxes);
-    //             List<Guid> bookCodes = new List<Guid>();
-    //             var predictResponse = new PredictionResponseDto()
+    //             if (bookBoxes.Any())
     //             {
-    //                 NumberOfBookDetected = croppedImages.Count,
-    //                 LibraryItemPrediction = new List<PossibleLibraryItem>()
-    //             };
-    //             // detect and predict base on cropped images
-    //             foreach (var croppedImage in croppedImages)
-    //             {
-    //                 var content = new ByteArrayContent(croppedImage);
-    //                 content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-    //                 _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
-    //                 var response = await _httpClient.PostAsync(_basePredictUrl, content);
-    //                 response.EnsureSuccessStatusCode();
-    //                 var jsonResponse = await response.Content.ReadAsStringAsync();
-    //                 var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
-    //                     new JsonSerializerOptions
-    //                     {
-    //                         PropertyNameCaseInsensitive = true,
-    //                     });
-    //                 var bestPrediction =
-    //                     predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
-    //                 var baseSpec = new BaseSpecification<Book>(x =>
-    //                     x.BookCodeForAITraining.ToString().ToLower().Equals(bestPrediction.TagName));
-    //                 baseSpec.ApplyInclude(q =>
-    //                     q.Include(x => x.BookEditions)
-    //                         .ThenInclude(be => be.BookEditionAuthors)
-    //                         .ThenInclude(ea => ea.Author));
-    //                 var bookSearchResult = await _bookService.GetWithSpecAsync(baseSpec);
-    //                 if (bookSearchResult.ResultCode != ResultCodeConst.SYS_Success0002)
+    //                 var bookBoxesCoordinates = bookBoxes.Select(x => x.Box).ToList();
+    //                 var croppedImages = CropImages(imageBytes, bookBoxesCoordinates);
+    //                 var predictResponse = new PredictionResponseDto()
     //                 {
-    //                     return bookSearchResult;
-    //                 }
-    //
-    //                 var book = (BookDto)bookSearchResult.Data!;
-    //                 var availableEdition = new List<LibraryItemDto>();
-    //
-    //                 foreach (var edition in book.BookEditions)
+    //                     NumberOfBookDetected = croppedImages.Count,
+    //                     LibraryItemPrediction = new List<PossibleLibraryItem>()
+    //                 };
+    //                 // detect and predict base on cropped images
+    //                 foreach (var croppedImage in croppedImages)
     //                 {
-    //                     var stream = new MemoryStream(croppedImage);
-    //                     var bookInfo = new CheckedBookEditionDto()
-    //                     {
-    //                         Title = edition.EditionTitle,
-    //                         Authors = edition.BookEditionAuthors.Where(x => x.BookEditionId == edition.BookEditionId)
-    //                             .Select(x => x.Author.FullName).ToList(),
-    //                         Publisher = edition.Publisher ?? " ",
-    //                         Image = new FormFile(stream, 0, stream.Length, "file", edition.EditionTitle
-    //                             + edition.EditionNumber)
+    //                     var content = new ByteArrayContent(croppedImage);
+    //                     content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+    //                     _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+    //                     var response = await _httpClient.PostAsync(_basePredictUrl, content);
+    //                     response.EnsureSuccessStatusCode();
+    //                     var jsonResponse = await response.Content.ReadAsStringAsync();
+    //                     var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+    //                         new JsonSerializerOptions
     //                         {
-    //                             Headers = new HeaderDictionary(),
-    //                             ContentType = "application/octet-stream"
-    //                         }
-    //                     };
-    //                     var compareResult = await _ocrService.CheckBookInformationAsync(bookInfo);
-    //                     var compareResultValue = (MatchResultDto)compareResult.Data!;
-    //                     if (compareResultValue.TotalPoint > compareResultValue.ConfidenceThreshold)
+    //                             PropertyNameCaseInsensitive = true,
+    //                         });
+    //                     var bestPrediction =
+    //                         predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+    //                     var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+    //                         x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+    //                     groupBaseSpec.ApplyInclude(q =>
+    //                         q.Include(x => x.LibraryItems)
+    //                             .ThenInclude(be => be.LibraryItemAuthors)
+    //                             .ThenInclude(ea => ea.Author));
+    //                     var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+    //                     if (group.ResultCode != ResultCodeConst.SYS_Success0002)
     //                     {
-    //                         availableEdition.Add(edition);
+    //                         return group;
     //                     }
+    //                     var groupValue = (LibraryItemGroupDto)group.Data!;
+    //                     foreach (var groupValueLibraryItem in groupValue.LibraryItems)
+    //                     {
+    //                         var coverImage = _httpClient.GetAsync(groupValueLibraryItem.CoverImage).Result;
+    //                         var mainAuthor =
+    //                             groupValueLibraryItem.LibraryItemAuthors.First(x
+    //                                     => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+    //                                 .Author.FullName;
+    //                         var ocrCheck = new CheckedItemDto()
+    //                         {
+    //                             Title = groupValueLibraryItem.Title,
+    //                             Authors = new List<string>() { mainAuthor },
+    //                             Publisher = groupValueLibraryItem.Publisher ?? " ",
+    //                             Images = new List<IFormFile>()
+    //                             {
+    //                                 new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+    //                                     coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+    //                                     groupValueLibraryItem.Title)
+    //                                 {
+    //                                     Headers = new HeaderDictionary(),
+    //                                     ContentType = "application/octet-stream"
+    //                                 }
+    //                             }
+    //                         };
+    //                         var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+    //                         var compareResultValue = (MatchResultDto)compareResult.Data!;
+    //                         
+    //                     }
+    //                     
     //                 }
     //
-    //                 //add available edition to response
-    //                 predictResponse.LibraryItemPrediction.Add(new PossibleLibraryItem()
-    //                 {
-    //                     LibraryItemDetails = availableEdition,
-    //                     BookCode = book.BookCodeForAITraining.ToString()
-    //                 });
+    //                 return new ServiceResult(ResultCodeConst.AIService_Success0003,
+    //                     await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003), predictResponse
+    //                 );
     //             }
-    //
-    //             return new ServiceResult(ResultCodeConst.AIService_Success0003,
-    //                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003), predictResponse
-    //             );
     //         }
     //     }
     //     catch (Exception ex)
@@ -715,7 +713,7 @@ public class AIClassificationService : IAIClassificationService
     //         throw new Exception("Error invoke when Predict Book Model");
     //     }
     // }
-    
+
     // public async Task<IServiceResult> Recommendation(IFormFile image)
     // {
     //     try
@@ -821,8 +819,484 @@ public class AIClassificationService : IAIClassificationService
     //         throw new Exception("Error invoke when giving recommendation Book Model");
     //     }
     // }
+    public async Task<IServiceResult> PredictAsync(IFormFile image)
+    {
+        try
+        {
+            var objectDetects = await _aiDetectionService.DetectAllAsync(image);
+            if (!objectDetects.Any())
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+            }
     
+            var bookBox = objectDetects
+                .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (objectDetects
+                    .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                    .ToList().Count > 1 || objectDetects
+                    .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                    .ToList().Count < 0)
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
+            }
     
+            // response property
+            Dictionary<int, double> itemTotalPoint = new Dictionary<int, double>();
+            Dictionary<int, MatchResultDto> itemOrcMatchResult = new Dictionary<int, MatchResultDto>();
+            LibraryItemGroupDto groupValue = new LibraryItemGroupDto();
+            if (bookBox.Any())
+            {
+                var targetBox = bookBox.Select(x => x.Box).FirstOrDefault();
+                // crop image
+                using var imageStream = image.OpenReadStream();
+                using var ms = new MemoryStream();
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var croppedImage = CropImages(imageBytes, bookBox.Select(x => x.Box).ToList()).First();
+                // count object in book
+                var coverObjectCounts = _aiDetectionService.CountObjectsInImage(objectDetects, targetBox);
+                // predict
+                var content = new ByteArrayContent(croppedImage);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                var imageResponse = await _httpClient.PostAsync(_basePredictUrl, content);
+                imageResponse.EnsureSuccessStatusCode();
+                var jsonResponse = await imageResponse.Content.ReadAsStringAsync();
+                var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    });
+                var bestPrediction =
+                    predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+                var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+                    x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+                groupBaseSpec.ApplyInclude(q =>
+                    q.Include(x => x.LibraryItems)
+                        .ThenInclude(be => be.LibraryItemAuthors)
+                        .ThenInclude(ea => ea.Author));
+                var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+                if (group.ResultCode != ResultCodeConst.SYS_Success0002)
+                {
+                    return group;
+                }
+    
+                groupValue = (LibraryItemGroupDto)group.Data!;
+                foreach (var groupValueLibraryItem in groupValue.LibraryItems)
+                {
+                    //count object of item's cover image
+                    var coverImage = _httpClient.GetAsync(groupValueLibraryItem.CoverImage).Result;
+                    var coverImageFile = new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                        coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                        groupValueLibraryItem.Title)
+                    {
+                        Headers = new HeaderDictionary(),
+                        ContentType = "application/octet-stream"
+                    };
+                    // count object in cover image
+                    var itemObjectsDetected = await _aiDetectionService.DetectAllAsync(image);
+                    // check if item's cover image has book object
+                    Dictionary<string, int> itemCountObjects;
+                    if (itemObjectsDetected.Any(r =>
+                            r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var itemBookBox = itemObjectsDetected.Where(r =>
+                                r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                            .Select(r => r.Box)
+                            .FirstOrDefault();
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                    }
+                    else
+                    {
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
+                    }
+    
+                    // check how many object in cover image that match with object in book
+                    // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
+                    var matchCount = coverObjectCounts.Count(pair =>
+                        itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
+                    var totalObject = coverObjectCounts.Count;
+                    var matchRate = (double)matchCount / totalObject;
+    
+                    // ocr check
+                    var mainAuthor = groupValueLibraryItem.GeneralNote ??
+                                     groupValueLibraryItem.LibraryItemAuthors.First(x
+                                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                                         .Author.FullName;
+    
+                    var ocrCheck = new CheckedItemDto()
+                    {
+                        Title = groupValueLibraryItem.Title,
+                        Authors = new List<string>() { mainAuthor },
+                        Publisher = groupValueLibraryItem.Publisher ?? " ",
+                        Images = new List<IFormFile>()
+                        {
+                            new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                                coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                                groupValueLibraryItem.Title)
+                            {
+                                Headers = new HeaderDictionary(),
+                                ContentType = "application/octet-stream"
+                            }
+                        }
+                    };
+                    var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+                    var compareResultValue = (MatchResultDto)compareResult.Data!;
+                    var ocrPoint = compareResultValue.TotalPoint;
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue);
+                }
+            }
+            else
+            {
+                using var imageStream = image.OpenReadStream();
+                using var ms = new MemoryStream();
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var content = new ByteArrayContent(imageBytes);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                var imageResponse = await _httpClient.PostAsync(_basePredictUrl, content);
+                imageResponse.EnsureSuccessStatusCode();
+                var coverObjectCounts = _aiDetectionService.CountObjectsInImage(objectDetects, null);
+                var jsonResponse = await imageResponse.Content.ReadAsStringAsync();
+                var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    });
+                var bestPrediction =
+                    predictionResult.Predictions.MaxBy(p => p.Probability);
+                var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+                    x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+                groupBaseSpec.EnableSplitQuery();
+                groupBaseSpec.ApplyInclude(q =>
+                    q.Include(x => x.LibraryItems)
+                        .ThenInclude(be => be.LibraryItemAuthors)
+                        .ThenInclude(ea => ea.Author)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemInstances));
+                var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+                if (group.ResultCode != ResultCodeConst.SYS_Success0002)
+                {
+                    return group;
+                }
+    
+                groupValue = (LibraryItemGroupDto)group.Data!;
+                foreach (var groupValueLibraryItem in groupValue.LibraryItems)
+                {
+                    //count object of item's cover image
+                    var coverImage = _httpClient.GetAsync(groupValueLibraryItem.CoverImage).Result;
+                    var coverImageFile = new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                        coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                        groupValueLibraryItem.Title)
+                    {
+                        Headers = new HeaderDictionary(),
+                        ContentType = "application/octet-stream"
+                    };
+                    // count object in cover image
+                    var itemObjectsDetected = await _aiDetectionService.DetectAllAsync(image);
+                    // check if item's cover image has book object
+                    Dictionary<string, int> itemCountObjects;
+                    if (itemObjectsDetected.Any(r =>
+                            r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var itemBookBox = itemObjectsDetected.Where(r =>
+                                r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                            .Select(r => r.Box)
+                            .FirstOrDefault();
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                    }
+                    else
+                    {
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
+                    }
+    
+                    // check how many object in cover image that match with object in book
+                    // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
+                    var matchCount = coverObjectCounts.Count(pair =>
+                        itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
+                    var totalObject = coverObjectCounts.Count;
+                    var matchRate = (double)matchCount / totalObject;
+    
+                    // ocr check
+                    var mainAuthor = groupValueLibraryItem.GeneralNote ??
+                                     groupValueLibraryItem.LibraryItemAuthors.First(x
+                                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                                         .Author.FullName;
+    
+                    var ocrCheck = new CheckedItemDto()
+                    {
+                        Title = groupValueLibraryItem.Title,
+                        Authors = new List<string>() { mainAuthor },
+                        Publisher = groupValueLibraryItem.Publisher ?? " ",
+                        Images = new List<IFormFile>()
+                        {
+                           coverImageFile
+                        }
+                    };
+                    var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+                    var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
+                    var ocrPoint = compareResultValue.First().TotalPoint;
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.First());
+                }
+            }
+            var response = new PredictionResponseDto()
+            {
+                OtherItems = new List<ItemPredictedDetailDto>()
+            };
+            
+            //choose the best item
+            int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
+            var bestItem = groupValue.LibraryItems.FirstOrDefault(x => x.LibraryItemId == bestItemId);
+            var bestItemDetail = bestItem.ToLibraryItemDetailWithoutGroupDto();
+            var bestItemPredictResponse = new ItemPredictedDetailDto
+            {
+                OCRResult = itemOrcMatchResult[bestItemId],
+                LibraryItemDetail = bestItemDetail
+            };
+            response.BestItem = bestItemPredictResponse;
+            // add other items detail
+            foreach (var groupValueLibraryItem in groupValue.LibraryItems.ToList().Except(new List<LibraryItemDto>()
+                     {
+                         bestItem
+                     }))
+            {
+                var itemDetail = groupValueLibraryItem.ToLibraryItemDetailWithoutGroupDto();
+                var itemPredictResponse = new ItemPredictedDetailDto
+                {
+                    OCRResult = itemOrcMatchResult[groupValueLibraryItem.LibraryItemId],
+                    LibraryItemDetail = itemDetail
+                };
+                response.OtherItems.Add(itemPredictResponse);
+            }
+            return new ServiceResult(ResultCodeConst.AIService_Success0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004), response);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Predict Book Model");
+        }
+    }
+
+    // #region Predict Function
+    //   public async Task<IServiceResult> PredictAsync(IFormFile image)
+    // {
+    //     try
+    //     {
+    //         var objectDetects = await _aiDetectionService.DetectAllAsync(image);
+    //         if (!objectDetects.Any())
+    //         {
+    //             return new ServiceResult(ResultCodeConst.AIService_Warning0003,
+    //                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+    //         }
+    //
+    //         var bookBoxes = objectDetects
+    //             .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+    //             .ToList();
+    //
+    //         if (bookBoxes.Count != 1)
+    //         {
+    //             return new ServiceResult(ResultCodeConst.AIService_Warning0004,
+    //                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
+    //         }
+    //
+    //         // Common processing
+    //         var (croppedImage, coverObjectCounts) = await ProcessImageAndObjects(image, objectDetects, bookBoxes);
+    //         var predictionResult = await GetPredictionResult(croppedImage);
+    //         var groupValue = await GetLibraryItemGroup(predictionResult);
+    //
+    //         if (groupValue.ResultCode != ResultCodeConst.SYS_Success0002)
+    //         {
+    //             return groupValue;
+    //         }
+    //
+    //         var (itemTotalPoint, itemOrcMatchResult) = await ProcessLibraryItems(
+    //             groupValue.Data as LibraryItemGroupDto,
+    //             coverObjectCounts,
+    //             objectDetects
+    //         );
+    //
+    //         var response = BuildResponse(itemTotalPoint, itemOrcMatchResult, groupValue.Data as LibraryItemGroupDto);
+    //
+    //         return new ServiceResult(ResultCodeConst.AIService_Success0004,
+    //             await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004), response);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.Error(ex.Message);
+    //         throw new Exception("Error invoke when Predict Book Model");
+    //     }
+    // }
+    //
+    // private async Task<(byte[] Image, Dictionary<string, int> ObjectCounts)> ProcessImageAndObjects(
+    //     IFormFile image,
+    //     IEnumerable<DetectResultDto> objectDetects,
+    //     List<DetectResultDto> bookBoxes)
+    // {
+    //     var targetBox = bookBoxes.Select(x => x.Box).FirstOrDefault();
+    //     var imageBytes = await ReadImageBytes(image);
+    //
+    //     var croppedImage = bookBoxes.Any()
+    //         ? CropImages(imageBytes, bookBoxes.Select(x => x.Box).ToList()).First()
+    //         : imageBytes;
+    //
+    //     var objectCounts = _aiDetectionService.CountObjectsInImage(objectDetects.ToList(), targetBox);
+    //     return (croppedImage, objectCounts);
+    // }
+    //
+    // private async Task<PredictResultDto> GetPredictionResult(byte[] imageData)
+    // {
+    //     using var content = new ByteArrayContent(imageData);
+    //     content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+    //     _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+    //
+    //     var response = await _httpClient.PostAsync(_basePredictUrl, content);
+    //     response.EnsureSuccessStatusCode();
+    //
+    //     return JsonSerializer.Deserialize<PredictResultDto>(
+    //         await response.Content.ReadAsStringAsync(),
+    //         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    // }
+    //
+    // private async Task<IServiceResult> GetLibraryItemGroup(PredictResultDto predictionResult)
+    // {
+    //     var bestPrediction = predictionResult.Predictions.MaxBy(p => p.Probability);
+    //     var groupSpec = new BaseSpecification<LibraryItemGroup>(x =>
+    //         x.AiTrainingCode.ToString().Equals(bestPrediction.TagName, StringComparison.OrdinalIgnoreCase));
+    //
+    //     groupSpec.ApplyInclude(q =>
+    //         q.Include(x => x.LibraryItems)
+    //             .ThenInclude(be => be.LibraryItemAuthors)
+    //             .ThenInclude(ea => ea.Author)
+    //             .Include(x=>x.LibraryItems)
+    //             .ThenInclude(li => li.Category)
+    //             .Include(x=>x.LibraryItems)
+    //             .ThenInclude(li => li.LibraryItemReviews));
+    //
+    //     return await _libraryItemGroupService.GetWithSpecAsync(groupSpec);
+    // }
+    //
+    // private async Task<(Dictionary<int, double>, Dictionary<int, MatchResultDto>)> ProcessLibraryItems(
+    //     LibraryItemGroupDto group,
+    //     Dictionary<string, int> coverObjectCounts,
+    //     IEnumerable<DetectResultDto> objectDetects)
+    // {
+    //     var itemTotalPoint = new Dictionary<int, double>();
+    //     var itemOrcMatchResult = new Dictionary<int, MatchResultDto>();
+    //
+    //     foreach (var item in group.LibraryItems)
+    //     {
+    //         var (matchRate, ocrPoint) = await ProcessSingleItem(item, coverObjectCounts, objectDetects);
+    //         itemTotalPoint.Add(item.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
+    //     }
+    //
+    //     return (itemTotalPoint, itemOrcMatchResult);
+    // }
+    //
+    // private async Task<(double MatchRate, double OcrPoint)> ProcessSingleItem(
+    //     LibraryItemDto item,
+    //     Dictionary<string, int> coverObjectCounts,
+    //     IEnumerable<DetectResultDto> objectDetects)
+    // {
+    //     var coverImage = await _httpClient.GetAsync(item.CoverImage);
+    //     var coverImageFile = await CreateFormFile(coverImage, item.Title);
+    //
+    //     var itemObjects = await _aiDetectionService.DetectAllAsync(coverImageFile);
+    //     var itemCounts = CountObjectsWithBookCheck(itemObjects);
+    //
+    //     var matchCount = coverObjectCounts.Count(pair =>
+    //         itemCounts.TryGetValue(pair.Key, out int value) && value == pair.Value);
+    //
+    //     var matchRate = (double)matchCount / coverObjectCounts.Count;
+    //     var ocrPoint = await GetOcrPoint(item, coverImage);
+    //
+    //     return (matchRate, ocrPoint);
+    // }
+    //
+    // private Dictionary<string, int> CountObjectsWithBookCheck(IEnumerable<DetectResultDto> detects)
+    // {
+    //     var bookBox = detects
+    //         .FirstOrDefault(r => r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))?
+    //         .Box;
+    //
+    //     return _aiDetectionService.CountObjectsInImage(detects.ToList(), bookBox);
+    // }
+    //
+    // private async Task<byte[]> ReadImageBytes(IFormFile image)
+    // {
+    //     await using var stream = image.OpenReadStream();
+    //     using var ms = new MemoryStream();
+    //     await stream.CopyToAsync(ms);
+    //     return ms.ToArray();
+    // }
+    //
+    // private async Task<IFormFile> CreateFormFile(HttpResponseMessage response, string title)
+    // {
+    //     return new FormFile(
+    //         await response.Content.ReadAsStreamAsync(),
+    //         0,
+    //         (await response.Content.ReadAsByteArrayAsync()).Length,
+    //         "file",
+    //         title)
+    //     {
+    //         Headers = new HeaderDictionary(),
+    //         ContentType = "application/octet-stream"
+    //     };
+    // }
+    //
+    // private async Task<double> GetOcrPoint(LibraryItemDto item, HttpResponseMessage coverImage)
+    // {
+    //     var ocrCheck = new CheckedItemDto
+    //     {
+    //         Title = item.Title,
+    //         Authors = new List<string> { GetMainAuthor(item) },
+    //         Publisher = item.Publisher ?? " ",
+    //         Images = new List<IFormFile> { await CreateFormFile(coverImage, item.Title) }
+    //     };
+    //
+    //     var result = await _ocrService.CheckBookInformationAsync(ocrCheck);
+    //     return ((MatchResultDto)result.Data!).TotalPoint;
+    // }
+    //
+    // private string GetMainAuthor(LibraryItemDto item)
+    // {
+    //     return item.GeneralNote ?? item.LibraryItemAuthors
+    //         .First(x => x.LibraryItemId == item.LibraryItemId)
+    //         .Author.FullName;
+    // }
+    //
+    // private PredictionResponseDto BuildResponse(
+    //     Dictionary<int, double> itemPoints,
+    //     Dictionary<int, MatchResultDto> matchResults,
+    //     LibraryItemGroupDto group)
+    // {
+    //     var bestItemId = itemPoints.MaxBy(x => x.Value).Key;
+    //     var bestItem = group.LibraryItems.First(x => x.LibraryItemId == bestItemId);
+    //
+    //     return new PredictionResponseDto
+    //     {
+    //         BestItem = CreateItemDetail(bestItem, matchResults[bestItemId]),
+    //         OtherItems = group.LibraryItems
+    //             .Where(x => x.LibraryItemId != bestItemId)
+    //             .Select(x => CreateItemDetail(x, matchResults[x.LibraryItemId]))
+    //             .ToList()
+    //     };
+    // }
+    //
+    // private ItemPredictedDetailDto CreateItemDetail(LibraryItemDto item, MatchResultDto matchResult)
+    // {
+    //     return new ItemPredictedDetailDto
+    //     {
+    //         OCRResult = matchResult,
+    //         LibraryItemDetail = item.ToLibraryItemDetailDto()
+    //     };
+    // }
+    // #endregion
     private async Task<List<TagDto>> GetTagAsync(BaseConfigurationBackgroudDto dto)
     {
         try
@@ -1057,6 +1531,7 @@ public class AIClassificationService : IAIClassificationService
             throw new Exception("Error invoke when publishing iteration");
         }
     }
+
     private List<byte[]> CropImages(byte[] imageBytes, List<BoxDto> boxes)
     {
         var croppedImages = new List<byte[]>();

@@ -38,6 +38,7 @@
     <PackageReference Include="QRCoder" Version="1.4.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.5" />
   </ItemGroup>
   <ItemGroup>
 	<Using Include="BCrypt.Net.BCrypt" Alias="BC" />

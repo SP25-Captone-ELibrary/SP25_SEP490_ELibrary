@@ -10,4 +10,5 @@ public interface IOCRService
     // Task<IServiceResult> CheckBookInformationAsync(CheckedBookEditionDto dto);
     // Task<IServiceResult> CheckTrainingInputAsync(int bookEditionId, List<IFormFile>images);
     Task<IServiceResult> CheckBookInformationAsync(CheckedItemDto dto);
+    Task<IServiceResult> OcrDetailAsync(IFormFile image, int bestItemId);
 }

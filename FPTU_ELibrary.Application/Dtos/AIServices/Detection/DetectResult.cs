@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 
 namespace FPTU_ELibrary.Application.Dtos.AIServices.Detection;
@@ -21,6 +22,13 @@ public class DetectResultDto
 
     [JsonProperty("name")]
     public string Name { get; set; }
+    [JsonProperty("confidence")] 
+    public double Confidence { get; set; } = 0;
+}
+public class RawDetectResponseDto
+{
+    [JsonProperty("images")]
+    public List<RawDetectionResultResponse> Images { get; set; }
 }
 
 public class BoxDto
@@ -36,4 +44,16 @@ public class BoxDto
 
     [JsonProperty("y2")]
     public double Y2 { get; set; }
+}
+public class RawDetectionResultResponse
+{
+    public string ProcessedImage { get; set; }
+    public List<ObjectInfoDto> ObjectsDetected { get; set; }
+}
+
+public class ObjectInfoDto
+{
+    public string Name { get; set; }
+    public double Percentage { get; set; }
+    public string Color { get; set; }
 }
