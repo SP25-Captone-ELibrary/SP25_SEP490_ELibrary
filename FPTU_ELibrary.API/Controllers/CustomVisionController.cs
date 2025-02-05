@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
 using FPTU_ELibrary.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
@@ -10,10 +11,13 @@ namespace FPTU_ELibrary.API.Controllers;
 public class CustomVisionController : ControllerBase
 {
     private readonly IAIClassificationService _aiClassificationService;
-    
-    public CustomVisionController(IAIClassificationService aiClassificationService)
+    private readonly IAIDetectionService _aiDetectionService;
+
+    public CustomVisionController(IAIClassificationService aiClassificationService
+        ,IAIDetectionService aiDetectionService)
     {
         _aiClassificationService = aiClassificationService;
+        _aiDetectionService = aiDetectionService;
     }
     [HttpPost(APIRoute.Group.CheckAvailableGroup,Name = nameof(CheckAvailableGroup))]
     public async Task<IActionResult> CheckAvailableGroup([FromBody] CheckAvailableGroupRequest req)
@@ -32,6 +36,17 @@ public class CustomVisionController : ControllerBase
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         return Ok(await _aiClassificationService.TrainModel(req.BookCode,req.ImageList,email));
+    }
+    [Authorize]
+    [HttpPost(APIRoute.AIServices.RawDetect, Name = nameof(RawDetect))]
+    public async Task<IActionResult> RawDetect([FromForm] RawDetectRequest req)
+    {
+        return Ok(await _aiDetectionService.RawDetectAsync(req.ImageToDetect));
+    }
+    [HttpPost(APIRoute.AIServices.Predict, Name = nameof(Predict))]
+    public async Task<IActionResult> Predict([FromForm] PredictRequest req)
+    {
+        return Ok(await _aiClassificationService.PredictAsync(req.ImageToPredict));
     }
     //
     // [HttpPost(APIRoute.BookEdition.Training, Name = nameof(TrainingSingleEdition))]

@@ -13,14 +13,26 @@ public class PredictionDto
     public double Probability { get; set; }
 }
 
+// public class PredictionResponseDto
+// {
+//     public int NumberOfBookDetected { get; set; }
+//     public List<PossibleLibraryItem> LibraryItemPrediction { get; set; }
+// }
+//
+// public class PossibleLibraryItem
+// {
+//     public string BookCode { get; set; }
+//     public List<LibraryItemDto> LibraryItemDetails { get; set; }
+// }
+
 public class PredictionResponseDto
 {
-    public int NumberOfBookDetected { get; set; }
-    public List<PossibleLibraryItem> LibraryItemPrediction { get; set; }
+    public ItemPredictedDetailDto BestItem { get; set; }
+    public List<ItemPredictedDetailDto> OtherItems { get; set; }
 }
 
-public class PossibleLibraryItem
+public class ItemPredictedDetailDto
 {
-    public string BookCode { get; set; }
-    public List<LibraryItemDto> LibraryItemDetails { get; set; }
+    public MatchResultDto OCRResult { get; set; }
+    public LibraryItemDetailDto LibraryItemDetail { get; set; }
 }
