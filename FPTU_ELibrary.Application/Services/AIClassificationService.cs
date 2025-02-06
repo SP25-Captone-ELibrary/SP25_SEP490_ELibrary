@@ -72,11 +72,11 @@ public class AIClassificationService : IAIClassificationService
         // Đọc dữ liệu file vào MemoryStream trước khi chạy background task
         var fileDataList = new List<(byte[] FileBytes, string FileName)>();
         var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
-            => lig.AiTrainingCode.Equals(trainingCode));
+            => lig.AiTrainingCode.Equals(trainingCode.ToString()));
         groupBaseSpec.ApplyInclude(q => q.Include(
                 lig => lig.LibraryItems)
             .ThenInclude(li => li.Category));
-        var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+        var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec,false);
         if (group.Data is null)
         {
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
