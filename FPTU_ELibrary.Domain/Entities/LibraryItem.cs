@@ -69,7 +69,7 @@ public class LibraryItem : IAuditableEntity
     public ICollection<UserFavorite> UserFavorites { get; set; } = new List<UserFavorite>();
     
     [JsonIgnore]
-    public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
+    public ICollection<BorrowRequestDetail> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetail>();
     
     [JsonIgnore]
     public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>(); 

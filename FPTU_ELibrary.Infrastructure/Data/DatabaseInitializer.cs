@@ -132,13 +132,17 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [LibraryItemReviews]
 				if (!await _context.LibraryItemReviews.AnyAsync()) await SeedLibraryItemReviewsAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryItemReview");
+				
+				// [LibraryCards]
+				if (!await _context.LibraryCards.AnyAsync()) await SeedLibraryCardAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryCard");
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "An error occurred while performing seed data.");
             }
         }
-
+		
         //  Summary:
 		//      Seeding System role
 		private async Task SeedSystemRoleAsync()
@@ -945,8 +949,44 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			if (saveSucc) _logger.Information("Seed library shelves successfully.");
 		}
         
+		//	Summary:
+		//		Seeding Library card
+		private async Task SeedLibraryCardAsync()
+		{
+			// Get all admin 
+			var admins = await _context.Users
+				.Where(u => u.Role.EnglishName == nameof(Role.Administration))
+				.ToListAsync();
+
+			// Add card for each admin
+			foreach (var admin in admins)
+			{
+				admin.LibraryCard = new()
+				{
+					FullName = $"{admin.FirstName} {admin.LastName}",
+					Avatar = admin.Avatar ?? string.Empty,
+					Barcode = DatabaseInitializerExtensions.GenerateBarcode("EC"),
+					IssuanceMethod = LibraryCardIssuanceMethod.Online,
+					Status = LibraryCardStatus.Active,
+					IsExtended = false,
+					IsReminderSent = false,
+					ExtensionCount = 0,
+					IssueDate = DateTime.Now,
+					ExpiryDate = DateTime.Now.AddYears(2)
+				};
+				
+			}
+			
+			// Update range  
+			_context.Users.UpdateRange(admins);
+			
+			// Save DB
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+			if(saveSucc) _logger.Information("Seed library cards successfully.");
+		}
+		
         //  Summary:
-        //      Seeding Library Item
+        //      Seeding Library item
         private async Task SeedLibraryItemAsync()
         {
 			// Get librarian
@@ -1557,6 +1597,12 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			var attribute = field?.GetCustomAttribute<DescriptionAttribute>();
 
 			return attribute?.Description ?? value.ToString();
+		}
+		
+		// Barcode generator
+		public static string GenerateBarcode(string prefix)
+		{
+			return $"{prefix}-{Guid.NewGuid().ToString("N").Substring(20).ToUpper()}";
 		}
 	}
 }

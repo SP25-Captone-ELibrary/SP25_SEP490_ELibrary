@@ -1,6 +1,7 @@
 ﻿using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.Author;
+using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.API.Payloads.Requests.Category;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
@@ -16,6 +17,7 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -119,6 +121,19 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 
+		#region Borrow
+		// Mapping from (CreateBorrowRequest) to typeof(BorrowRequestDto)
+		public static BorrowRequestDto ToBorrowRequestDto(this CreateBorrowRequest req)
+			=> new()
+			{
+				Description = req.Description,
+				BorrowRequestDetails = req.LibraryItemIds.Select(lId => new BorrowRequestDetailDto()
+				{
+					LibraryItemId = lId
+				}).ToList()
+			};
+		#endregion
+		
 		#region Library Item
 
 		// Mapping from typeof(CreateLibraryItemRequest) to typeof(LibraryItemDto)

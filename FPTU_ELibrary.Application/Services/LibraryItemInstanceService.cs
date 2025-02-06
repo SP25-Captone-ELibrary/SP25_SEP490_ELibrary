@@ -1,4 +1,5 @@
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Exceptions;
@@ -12,6 +13,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Nest;
@@ -23,23 +25,26 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryItemInstanceService : GenericService<LibraryItemInstance, LibraryItemInstanceDto, int>,
     ILibraryItemInstanceService<LibraryItemInstanceDto>
 {
+    private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
+    private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
     private readonly ILibraryItemService<LibraryItemDto> _libItemService;
-    private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventoryService;
     private readonly ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> _conditionHistoryService;
 
     public LibraryItemInstanceService(
+        IBorrowRequestService<BorrowRequestDto> borrowReqService,
+        IBorrowRecordService<BorrowRecordDto> borrowRecService,
         ILibraryItemService<LibraryItemDto> libItemService,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventoryService,
         ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> conditionHistoryService,
-        ILibraryShelfService<LibraryShelfDto> libShelfService,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+        _borrowReqService = borrowReqService;
+        _borrowRecService = borrowRecService;
         _libItemService = libItemService;
-        _libShelfService = libShelfService;
         _inventoryService = inventoryService;
         _conditionHistoryService = conditionHistoryService;
     }
@@ -192,10 +197,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 .Include(bec => bec.LibraryItem)
                     // Include category
                     .ThenInclude(li => li.Category)
-                // Include borrow records
-                .Include(bec => bec.BorrowRecords)
-                // Include borrow requests
-                .Include(bec => bec.BorrowRequests)
             );
             var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>()
                 .GetWithSpecAsync(baseSpec);
@@ -223,7 +224,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             if (!Equals(existingEntity.Status, enumStatus.ToString())) // Change detected
             {
                 // Do not allow to update BORROWED/RESERVED status
-                // With RESERVED status of edition copy, it will change automatically when 
+                // With RESERVED status of item instance, it will change automatically when 
                 // someone return their borrowed book and assigned that book to others, who are in reservation queue
                 if (enumStatus == LibraryItemInstanceStatus.Borrowed ||
                     enumStatus == LibraryItemInstanceStatus.Reserved)
@@ -246,17 +247,22 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     }
                 }
 
-                // Check whether edition copy is borrowed or reserved
-                var hasConstraint =
-                    existingEntity.BorrowRecords.Any(br =>
-                        // Check any record not current in RETURNED status
-                        br.Status != nameof(BorrowRecordStatus.Returned)) ||
-                    existingEntity.BorrowRequests.Any(br =>
-                        // Check any request not current in REJECTED or CANCELLED status
-                        br.Status != nameof(BorrowRequestStatus.Rejected) &&
-                        br.Status != nameof(BorrowRequestStatus.Cancelled));
-                if (hasConstraint) // Has any constraint 
+                // Check whether item instance is borrowed or reserved
+                var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
+                    br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
+                          br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                          br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
+                              brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == id)) // With specific instance 
+                )).Data is true; // Convert object to boolean 
+                
+                var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(
+                    bRec => bRec.Status != BorrowRecordStatus.Returned && // Exclude elements with returned status
+                            bRec.BorrowRecordDetails.Any(brd => brd.LibraryItemInstanceId == id)) // Exist in any borrow record details
+                    ).Data is true; // Convert object to boolean 
+                
+                if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
                 {
+                    // Cannot change data that is on borrowing or reserved
                     return new ServiceResult(ResultCodeConst.LibraryItem_Warning0008,
                         await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0008));
                 }
@@ -561,10 +567,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     .Include(bec => bec.LibraryItem)
                     // Include category
                     .ThenInclude(li => li.Category)
-                    // Include borrow requests 
-                    .Include(ec => ec.BorrowRequests)
-                    // Include borrow records
-                    .Include(ec => ec.BorrowRecords)
                 );
                 // Get library item instance by id and include constraints
                 var itemInstanceEntity = await _unitOfWork.Repository<LibraryItemInstance, int>()
@@ -599,7 +601,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     if (!Equals(itemInstanceEntity.Status, toUpdateStatus.ToString())) // Change detected
                     {
                         // Do not allow to update BORROWED/RESERVED status
-                        // With RESERVED status of edition copy, it will change automatically when 
+                        // With RESERVED status of item instance, it will change automatically when 
                         // someone return their borrowed book and assigned that book to others, who are in reservation queue
                         if (toUpdateStatus == LibraryItemInstanceStatus.Borrowed ||
                             toUpdateStatus == LibraryItemInstanceStatus.Reserved)
@@ -625,15 +627,19 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         }
                         
                         // Check whether item instance is borrowed or reserved
-                        var hasConstraint =
-                            itemInstanceEntity.BorrowRecords.Any(br =>
-                                // Check any record not current in RETURNED status
-                                br.Status != nameof(BorrowRecordStatus.Returned)) ||
-                            itemInstanceEntity.BorrowRequests.Any(br =>
-                                // Check any request not current in REJECTED or CANCELLED status
-                                br.Status != nameof(BorrowRequestStatus.Rejected) &&
-                                br.Status != nameof(BorrowRequestStatus.Cancelled));
-                        if (hasConstraint) // Has any constraint 
+                        var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
+                            br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
+                                  br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                                  br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
+                                      brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == itemInstanceEntity.LibraryItemInstanceId)) // With specific instance 
+                        )).Data is true; // Convert object to boolean  
+                
+                        var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(
+                                    bRec => bRec.Status != BorrowRecordStatus.Returned && // Exclude elements with returned status
+                                            bRec.BorrowRecordDetails.Any(brd => brd.LibraryItemInstanceId == itemInstanceEntity.LibraryItemInstanceId)) // Exist in any borrow record details
+                            ).Data is true; // Convert object to boolean 
+                        
+                        if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
                         {
                             // Error key
                             var key = $"libraryItemInstances.[{i}]";
@@ -775,13 +781,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             // Build specification query
             var baseSpec =
                 new BaseSpecification<LibraryItemInstance>(x => x.LibraryItemInstanceId == libraryItemInstanceId);
-            // Include borrow records and requests relation
-            baseSpec.ApplyInclude(q => q
-                // Include borrow records
-                .Include(bec => bec.BorrowRecords)
-                // Include borrow requests
-                .Include(bec => bec.BorrowRequests)
-            );
             var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>()
                 .GetWithSpecAsync(baseSpec);
             if (existingEntity == null || existingEntity.IsDeleted)
@@ -791,16 +790,20 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     StringUtils.Format(errMsg, isEng ? "library item instance" : "bản sao"));
             }
 
-            // Check whether edition copy is borrowed or reserved
-            var hasConstraint =
-                existingEntity.BorrowRecords.Any(br =>
-                    // Check any record not current in RETURNED status
-                    br.Status != nameof(BorrowRecordStatus.Returned)) ||
-                existingEntity.BorrowRequests.Any(br =>
-                    // Check any request not current in REJECTED or CANCELLED status
-                    br.Status != nameof(BorrowRequestStatus.Rejected) &&
-                    br.Status != nameof(BorrowRequestStatus.Cancelled));
-            if (hasConstraint) // Has any constraint 
+            // Check whether item instance is borrowed or reserved
+            var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
+                br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
+                      br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                      br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
+                          brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == libraryItemInstanceId)) // With specific instance 
+            )).Data is true; // Convert object to boolean  
+                
+            var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(
+                        bRec => bRec.Status != BorrowRecordStatus.Returned && // Exclude elements with returned status
+                                bRec.BorrowRecordDetails.Any(brd => brd.LibraryItemInstanceId == libraryItemInstanceId)) // Exist in any borrow record details
+                ).Data is true; // Convert object to boolean 
+                        
+            if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0008,
                     await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0008));
@@ -869,13 +872,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 e.LibraryItemId == libraryItemId &&
                 // Any id match request list
                 libraryItemInstanceIds.Contains(e.LibraryItemInstanceId));
-            // Include borrow records and requests relation
-            baseSpec.ApplyInclude(q => q
-                // Include borrow records
-                .Include(bec => bec.BorrowRecords)
-                // Include borrow requests
-                .Include(bec => bec.BorrowRequests)
-            );
             var itemInstanceEntities = await _unitOfWork.Repository<LibraryItemInstance, int>()
                 .GetAllWithSpecAsync(baseSpec);
             // Check if any data already soft delete
@@ -899,16 +895,20 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             {
                 var ec = itemInstanceList[i];
 
-                // Check whether edition copy is borrowed or reserved
-                var hasConstraint =
-                    ec.BorrowRecords.Any(br =>
-                        // Check any record not current in RETURNED status
-                        br.Status != nameof(BorrowRecordStatus.Returned)) ||
-                    ec.BorrowRequests.Any(br =>
-                        // Check any request not current in REJECTED or CANCELLED status
-                        br.Status != nameof(BorrowRequestStatus.Rejected) &&
-                        br.Status != nameof(BorrowRequestStatus.Cancelled));
-                if (hasConstraint) // Has any constraint 
+                // Check whether item instance is borrowed or reserved
+                var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
+                    br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
+                          br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                          br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
+                              brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == ec.LibraryItemInstanceId)) // With specific instance 
+                )).Data is true; // Convert object to boolean  
+                
+                var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(
+                            bRec => bRec.Status != BorrowRecordStatus.Returned && // Exclude elements with returned status
+                                    bRec.BorrowRecordDetails.Any(brd => brd.LibraryItemInstanceId == ec.LibraryItemInstanceId)) // Exist in any borrow record details
+                    ).Data is true; // Convert object to boolean 
+                
+                if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
                 {
                     // Add error
                     customErrs.Add($"ids[{i}]",

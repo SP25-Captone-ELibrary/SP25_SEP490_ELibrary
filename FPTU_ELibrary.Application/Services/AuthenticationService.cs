@@ -1176,7 +1176,7 @@ namespace FPTU_ELibrary.Application.Services
                 // Map to RefreshTokenDto
                 var refreshTokenDto = (getRefreshTokenResult.Data as RefreshTokenDto)!;
                 // Retrieve refresh token limit
-                var maxRefreshTokenLifeSpan = _appSettings.MaxRefreshTokenLifeSpan;
+                var maxRefreshTokenLifeSpan = _webTokenSettings.MaxRefreshTokenLifeSpan;
                 // Check whether valid refresh token limit
                 if (refreshTokenDto.RefreshCount + 1 > maxRefreshTokenLifeSpan)
                 {

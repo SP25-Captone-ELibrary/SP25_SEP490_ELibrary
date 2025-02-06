@@ -1,11 +1,11 @@
 ﻿using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
-using FPTU_ELibrary.Application.Dtos.Users;
 
 namespace FPTU_ELibrary.Application.Dtos
 {
@@ -54,9 +54,7 @@ namespace FPTU_ELibrary.Application.Dtos
 		// Mapping entities
 		public SystemRoleDto Role { get; set; } = null!;
 		public LibraryCardDto? LibraryCard { get; set; } 
-		public ICollection<BorrowRecordDto> BorrowRecords { get; set; } = new List<BorrowRecordDto>();
-		public ICollection<BorrowRequestDto> BorrowRequests { get; set; } = new List<BorrowRequestDto>();
-		public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
+		
 		public ICollection<NotificationRecipientDto> NotificationRecipients { get; set; } = new List<NotificationRecipientDto>();
 
 		[JsonIgnore]

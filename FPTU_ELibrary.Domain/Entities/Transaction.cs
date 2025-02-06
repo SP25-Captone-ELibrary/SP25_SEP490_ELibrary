@@ -19,7 +19,7 @@ public class Transaction
     public int PaymentMethodId { get; set; }
     public int? FineId { get; set; }
     public int? DigitalBorrowId { get; set; }
-    public Guid? LibraryCardId { get; set; }
+    public int? LibraryCardPackageId { get; set; }
 
     public int InvoiceId { get; set; }
     
@@ -28,6 +28,6 @@ public class Transaction
     public PaymentMethod PaymentMethod { get; set; } = null!;
     public Fine? Fine { get; set; }
     public DigitalBorrow? DigitalBorrow { get; set; }
-    public LibraryCard? LibraryCard { get; set; }
+    public LibraryCardPackage? LibraryCardPackage { get; set; }
     public Invoice Invoice { get; set; } = null!;
 }

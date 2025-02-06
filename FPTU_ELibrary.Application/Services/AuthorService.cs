@@ -325,7 +325,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 			{
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-					StringUtils.Format(errMsg, typeof(Author).ToString().ToLower()));
+					StringUtils.Format(errMsg, isEng ? "author" : "tác giả"));
 			}
 			else
 			{
@@ -441,6 +441,11 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
     {
 	    try
 	    {
+		    // Determine current system language
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+		    
 		    // Build a base specification to filter by AuthorId
 		    var baseSpec = new BaseSpecification<Author>(a => a.AuthorId == id);
 
@@ -450,7 +455,7 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 		    {
 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-				    StringUtils.Format(errMsg, nameof(Author).ToLower()));
+				    StringUtils.Format(errMsg, isEng ? "author" : "tác giả"));
 		    }
 
 		    // Check whether author in the trash bin

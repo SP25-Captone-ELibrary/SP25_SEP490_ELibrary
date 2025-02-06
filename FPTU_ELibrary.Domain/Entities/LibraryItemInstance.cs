@@ -29,10 +29,13 @@ public class LibraryItemInstance : IAuditableEntity
     public LibraryItem LibraryItem { get; set; } = null!;
 
     [JsonIgnore]
-    public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
+    public ICollection<BorrowRecordDetail> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetail>();
 
     [JsonIgnore]
-    public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
+    public ICollection<BorrowRequestDetail> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetail>();
+    
+    [JsonIgnore]
+    public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
     
     public ICollection<LibraryItemConditionHistory> LibraryItemConditionHistories { get; set; } = new List<LibraryItemConditionHistory>();
 }
