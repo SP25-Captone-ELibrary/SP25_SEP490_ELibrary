@@ -227,13 +227,21 @@ public class AIClassificationService : IAIClassificationService
             var suitableGroupId = await SuitableLibraryGroup(rootItemId);
             var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == rootItemId);
             baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-                .ThenInclude(lia => lia.Author));
+                .ThenInclude(lia => lia.Author)
+                .Include(li => li.LibraryItemGroup)!);
             // Get root item
             var rootItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
             var rootItemValue = (LibraryItemDto)rootItem.Data!;
             if (rootItemValue.GroupId != null)
-                return new ServiceResult(ResultCodeConst.AIService_Warning0006,
-                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0006));
+            {
+                response.TrainingCode = Guid.Parse(rootItemValue.LibraryItemGroup!.AiTrainingCode);
+                response.NewLibraryIdsToTrain.Add(rootItemId);
+                if (otherItemIds != null) response.NewLibraryIdsToTrain.AddRange(otherItemIds);
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    response); 
+            }
+
             // Case suitable group is found
             if (suitableGroupId != 0)
             {
@@ -365,7 +373,7 @@ public class AIClassificationService : IAIClassificationService
                     { nameof(libraryItemValue.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
                     { nameof(libraryItemValue.SubTitle), (int)FieldGroupCheckedStatus.GroupSuccess }
                 },
-                ItemId = libraryItemValue.LibraryItemId,
+                Item = libraryItemValue,
                 IsRoot = true
             });
 
@@ -428,7 +436,7 @@ public class AIClassificationService : IAIClassificationService
                     determineOverallStatus.Add(itemCheckedResult);
                     itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.Title), titleStatus);
                     itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.SubTitle), subTitleStatus);
-                    itemCheckedResult.ItemId = candidateItemValue.LibraryItemId;
+                    itemCheckedResult.Item = candidateItemValue;
                     itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
                     listPropertiesChecked.Add(itemCheckedResult);
                 }
