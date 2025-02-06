@@ -1,6 +1,6 @@
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
-using FPTU_ELibrary.Application.Dtos.Users;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.Payments;
@@ -22,7 +22,7 @@ public class TransactionDto
     public int PaymentMethodId { get; set; }
     public int? FineId { get; set; }
     public int? DigitalBorrowId { get; set; }
-    public Guid? LibraryCardId { get; set; }
+    public int? LibraryCardPackageId { get; set; }
 
     public int InvoiceId { get; set; }
     
@@ -31,6 +31,6 @@ public class TransactionDto
     public PaymentMethodDto PaymentMethod { get; set; } = null!;
     public FineDto? Fine { get; set; }
     public DigitalBorrowDto? DigitalBorrow { get; set; }
-    public LibraryCardDto? LibraryCard { get; set; }
+    public LibraryCardPackageDto? LibraryCardPackage { get; set; }
     public InvoiceDto Invoice { get; set; } = null!;
 }

@@ -29,6 +29,7 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
             .HasColumnType("datetime")
             .HasColumnName("date_utc");
         builder.Property(e => e.TrailType)
+            .HasColumnType("nvarchar(20)")
             .HasConversion<string>()
             .HasColumnName("trail_type");
         builder.Property(e => e.ChangedColumns)

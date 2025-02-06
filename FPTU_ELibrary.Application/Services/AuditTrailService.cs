@@ -187,8 +187,8 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
                     new AuditTrailDetailDto()
                     {
-                        OldValue = oldData,
-                        NewValue = newData
+                        OldValues = oldData,
+                        NewValues = newData
                     });
             }
             else if(auditTrailList.Any()) // TrailType include [Added]/[None]/[Modified]/[Deleted]

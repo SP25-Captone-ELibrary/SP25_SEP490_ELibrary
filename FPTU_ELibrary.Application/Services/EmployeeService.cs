@@ -1237,12 +1237,12 @@ namespace FPTU_ELibrary.Application.Services
 				        || dob > DateTime.Now))                            // In the future
 				{
 					rowErrors.Add(isEng ? "Not valid date of birth" : "Ngày sinh không hợp lệ");
-				}else if (!string.IsNullOrEmpty(record.HireDate) // Invalid hire date
-				          && !DateTime.TryParse(record.HireDate, out _))
+				}else if (string.IsNullOrEmpty(record.HireDate) // Invalid hire date
+				          || !DateTime.TryParse(record.HireDate, out _))
 				{
 					rowErrors.Add(isEng ? "Not valid hire date" : "Ngày bắt đầu làm việc không hợp lệ");
-				}else if (!string.IsNullOrEmpty(record.TerminationDate) // Invalid terminate date
-				          && !DateTime.TryParse(record.TerminationDate, out _))
+				}else if (string.IsNullOrEmpty(record.TerminationDate) // Invalid terminate date
+				          || !DateTime.TryParse(record.TerminationDate, out _))
 				{
 					rowErrors.Add(isEng ? "Not valid hire date" : "Ngày nghỉ việc không hợp lệ");
 				}

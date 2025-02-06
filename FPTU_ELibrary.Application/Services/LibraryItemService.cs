@@ -329,17 +329,23 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     return new ServiceResult(ResultCodeConst.SYS_Success0001,
                         customMsg + (isEng 
                             ? ", but failed to add item to warehouse tracking" 
-                            : ", nhưng cập nhật tài liệu vào thông tin nhập kho thất bại"), true);
+                            : ", nhưng cập nhật tài liệu vào thông tin nhập kho thất bại"), new CreateLibraryItemResult()
+                        {
+                            LibraryItemId = mappingEntity.LibraryItemId
+                        });
                 }
                 
                 // Save change successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), new CreateLibraryItemResult()
+                    {
+                        LibraryItemId = mappingEntity.LibraryItemId
+                    });
             }
 
             // Fail to save
             return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
         }
         catch (UnprocessableEntityException)
         {
@@ -960,8 +966,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Include authors
                 .Include(li => li.LibraryItemAuthors)
                     .ThenInclude(lia => lia.Author)
-                // Include instances
-                .Include(li => li.LibraryItemInstances)
                 // Include reviews
                 .Include(li => li.LibraryItemReviews)
             );
@@ -1014,6 +1018,63 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetNewArrivalsAsync(int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>();
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Add order descending by create datetime 
+            baseSpec.AddOrderByDescending(li => li.CreatedAt);
+            
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalActualItem / pageSize);
+            
+            // Set pagination to specification after count total 
+            if (pageIndex > totalPage || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            baseSpec.ApplyPaging(
+                skip: (pageIndex - 1) * pageSize,
+                take: pageSize);
+            
+            var entities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Map to home page item dto
+                var homePageItemDtos = 
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<HomePageItemDto>(homePageItemDtos,
+                    pageIndex, pageSize, totalPage, totalActualItem);
+                
+                // Get successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new PaginatedResultDto<HomePageItemDto>(new List<HomePageItemDto>(), 0,0,0,0));
+            
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get new arrival library items");
+        }
+    }
+    
     public async Task<IServiceResult> GetTrendingAsync(int pageIndex, int pageSize)
     {
         try
@@ -1033,8 +1094,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Include authors
                 .Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author)
-                // Include instances
-                .Include(li => li.LibraryItemInstances)
                 // Include reviews
                 .Include(li => li.LibraryItemReviews)
             );
@@ -1120,8 +1179,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Include authors
                 .Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author)
-                // Include instances
-                .Include(li => li.LibraryItemInstances)
                 // Include reviews
                 .Include(li => li.LibraryItemReviews)
             );

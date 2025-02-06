@@ -68,6 +68,8 @@ namespace FPTU_ELibrary.API.Extensions
 		{
 			// Configure AppSettings
 			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+			// Configure BorrowSettings
+			services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
 			// Configure ElasticSettings
 			services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
 			// Configure WebTokenSettings
@@ -131,6 +133,7 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return services;
 		}
+		
 		public static IServiceCollection ConfigureRedis(this IServiceCollection services,
 			IConfiguration configuration,
 			IWebHostEnvironment env)
@@ -199,6 +202,15 @@ namespace FPTU_ELibrary.API.Extensions
 			return services;
 		}
 
+		public static IServiceCollection ConfigureBackgroundServices(this IServiceCollection services)
+		{
+			// Register ReminderService inheriting from BackgroundService
+			services.AddHostedService<ReminderService>();
+			services.AddHostedService<ChangeStatusService>();
+			
+			return services;
+		}
+		
 		public static IServiceCollection ConfigureCamelCaseForValidation(this IServiceCollection services)
 		{
 			ValidatorOptions.Global.PropertyNameResolver = CamelCasePropertyNameResolver.ResolvePropertyName;

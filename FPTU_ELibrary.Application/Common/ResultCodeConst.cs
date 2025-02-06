@@ -224,6 +224,53 @@ namespace FPTU_ELibrary.Application.Common
 		public static string Auth_Fail0003 = "Auth.Fail0003";
 		#endregion
 
+		#region Borrow
+		/// <summary>
+		/// [SUCCESS] Total {0} item(s) have been borrowed successfully
+		/// </summary>
+		public const string Borrow_Success0001 = "Borrow.Success0001";
+		/// <summary>
+		/// [SUCCESS] Cancel borrowing {0} item(s) successfully
+		/// </summary>
+		public const string Borrow_Success0002 = "Borrow.Success0002";
+		/// <summary>
+		/// [WARNING] Required at least {0} item(s) to process
+		/// </summary>
+		public const string Borrow_Warning0001 = "Borrow.Warning0001";
+		/// <summary>
+		/// [WARNING] Item quantity is not available
+		/// </summary>
+		public const string Borrow_Warning0002 = "Borrow.Warning0002";
+		/// <summary>
+		/// [WARNING] Duplicate items are not allowed. You can only borrow one copy of each item per time
+		/// </summary>
+		public const string Borrow_Warning0003 = "Borrow.Warning0003";
+		/// <summary>
+		/// [WARNING] The item is currently borrowed and cannot be borrowed again
+		/// </summary>
+		public const string Borrow_Warning0004 = "Borrow.Warning0004";
+		/// <summary>
+		/// [WARNING] You can borrow up to {0} items at a time
+		/// </summary>
+		public const string Borrow_Warning0005 = "Borrow.Warning0005";
+		/// <summary>
+		/// [WARNING] Cannot cancel because item has been proceeded
+		/// </summary>
+		public const string Borrow_Warning0006 = "Borrow.Warning0006";
+		/// <summary>
+		/// [WARNING] Cannot process as borrow request has been expired
+		/// </summary>
+		public const string Borrow_Warning0007 = "Borrow.Warning0007";
+		/// <summary>
+		/// [WARNING] Cannot process as library card is incorrect
+		/// </summary>
+		public const string Borrow_Warning0008 = "Borrow.Warning0008";
+		/// <summary>
+		/// [FAIL] An error occurred, the item borrowing registration failed
+		/// </summary>
+		public const string Borrow_Fail0001 = "Borrow.Fail0001";
+		#endregion
+		
 		#region Role
 		/// <summary>
 		/// [WARNING] Role name already exist, please check again
@@ -413,6 +460,29 @@ namespace FPTU_ELibrary.Application.Common
 		public const string LibraryItem_Fail0002 = "LibraryItem.Fail0002";
 		#endregion
 
+		#region Library Card
+		/// <summary>
+		/// [SUCCESS] Library card is valid
+		/// </summary>
+		public const string LibraryCard_Success0001 = "LibraryCard.Success0001";
+		/// <summary>
+		/// [WARNING] Your library card is not activated yet. Please make a payment to activate your card
+		/// </summary>
+		public const string LibraryCard_Warning0001 = "LibraryCard.Warning0001";
+		/// <summary>
+		/// [WARNING] Your library card has expired. Please renew it to continue using library services
+		/// </summary>
+		public const string LibraryCard_Warning0002 = "LibraryCard.Warning0002";
+		/// <summary>
+		/// [WARNING] Your library card has been suspended due to a violation or administrative action. Please contact the library for assistance (Activated at {0})
+		/// </summary>
+		public const string LibraryCard_Warning0003 = "LibraryCard.Warning0003";
+		/// <summary>
+		/// [WARNING] You need a library card to access this service
+		/// </summary>
+		public const string LibraryCard_Warning0004 = "LibraryCard.Warning0004";
+		#endregion
+		
 		#region Supplier
 		/// <summary>
 		/// [WARNING] The action cannot be performed, as the supplier is in the warehouse tracking information has been approved

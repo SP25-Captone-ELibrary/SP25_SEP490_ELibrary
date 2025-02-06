@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
@@ -8,29 +10,26 @@ public class BorrowRequestDto
     // Key
     public int BorrowRequestId { get; set; }
 
-    // Request for which item
-    public int? LibraryItemId { get; set; }
-
-    // Request for particular instance 
-    public int? LibraryItemInstanceId { get; set; }
-
     // Who make request
-    public Guid UserId { get; set; }
+    public Guid LibraryCardId { get; set; }
 
     // Create and expiration datetime
     public DateTime RequestDate { get; set; }
     public DateTime ExpirationDate { get; set; }
 
     // Request detail and status
-    public string Status { get; set; } = null!;
-    public string BorrowType { get; set; } = null!;
+    public BorrowRequestStatus Status { get; set; } 
     public string? Description { get; set; }
+    
+    // Cancellation properties
+    public DateTime? CancelledAt { get; set; }
+    public string? CancellationReason { get; set; }
 
+    // Remind user before expiration (via email or system notification)
+    public bool IsReminderSent { get; set; }
+    
     // Mapping entities
-    public LibraryItemDto? LibraryItem { get; set; }
-    public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
-    public UserDto User { get; set; } = null!;
+    public LibraryCardDto LibraryCard { get; set; } = null!;
 
-    [JsonIgnore]
-    public ICollection<BorrowRecordDto> BorrowRecords { get; set; } = new List<BorrowRecordDto>();
+    public ICollection<BorrowRequestDetailDto> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetailDto>();
 }

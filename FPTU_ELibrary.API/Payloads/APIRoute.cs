@@ -55,6 +55,17 @@
 			#endregion
 		}
 
+		public static class BorrowRequest
+		{
+			#region Management
+			#endregion
+			
+			public const string GetAll = Base + "/borrows/requests";
+			public const string GetById = Base + "/borrows/requests/{id}";
+			public const string Create = Base + "/borrows/requests";
+			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
+		}
+		
 		/// <summary>
 		/// Library item endpoints
 		/// </summary>
@@ -90,6 +101,7 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
+			public const string GetNewArrivals = Base + "/library-items/new-arrivals";
 			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
 			public const string GetTrending = Base + "/library-items/trending";
 			public const string GetByCategory = Base + "/library-items/category/{categoryId}";

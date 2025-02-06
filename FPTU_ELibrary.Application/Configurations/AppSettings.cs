@@ -4,9 +4,10 @@
 	//		Configure system configuration elements
 	public class AppSettings
 	{
-		public int MaxRefreshTokenLifeSpan { get; set; }
-		public string RecoveryPasswordRedirectUri { get; set; } = string.Empty;
 		public int PageSize { get; set; }
+		public string LibraryLocation { get; set; } = null!;
+		public string LibraryContact { get; set; } = null!;
+		public string LibraryName { get; set; } = null!;
 		public string AESKey { get; set; } = null!;
 		public string AESIV { get; set; } = null!;
 	}

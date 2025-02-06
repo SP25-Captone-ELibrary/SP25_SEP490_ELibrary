@@ -9,7 +9,6 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
     public void Configure(EntityTypeBuilder<LibraryCard> builder)
     {
         #region Added at 13/01/2025 by Le Xuan Phuoc
-
         builder.HasKey(e => e.LibraryCardId).HasName("PK_LibraryCard_LibraryCardId");
         
         builder.ToTable("Library_Card");
@@ -28,20 +27,39 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
             .HasColumnType("nvarchar(50)")
             .HasColumnName("barcode");
         builder.Property(e => e.IssuanceMethod)
+            .HasConversion<string>()
             .HasColumnType("nvarchar(50)")
             .HasColumnName("issuance_method");
-        builder.Property(e => e.RequestStatus)
+        builder.Property(e => e.Status)
+            .HasConversion<string>()
             .HasColumnType("nvarchar(50)")
-            .HasColumnName("request_status");
+            .HasColumnName("status");
         builder.Property(e => e.IssueDate)
             .HasColumnType("datetime")
             .HasColumnName("issue_date");
         builder.Property(e => e.ExpiryDate)
             .HasColumnType("datetime")
             .HasColumnName("expiry_date");
-        builder.Property(e => e.IsActive).HasColumnName("is_active");
         builder.Property(e => e.IsExtended).HasColumnName("is_extended");
         builder.Property(e => e.ExtensionCount).HasColumnName("extension_count");
+        #endregion
+
+        #region Update at 04/02/2025 by Le Xuan Phuoc
+        // builder.Property(e => e.IsActive).HasColumnName("is_active");
+        
+        builder.Property(e => e.SuspensionEndDate)
+            .HasColumnType("datetime")
+            .HasColumnName("suspension_end_date");
+        #endregion
+
+        #region Update at 06/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.IsAllowBorrowMore).HasColumnName("is_allow_borrow_more");
+        builder.Property(e => e.MaxItemOnceTime)
+            .HasDefaultValue(0)
+            .HasColumnName("max_item_once_time");
+        builder.Property(e => e.TotalMissedPickUp)
+            .HasDefaultValue(0)
+            .HasColumnName("total_missed_pick_up");
         #endregion
     }
 }

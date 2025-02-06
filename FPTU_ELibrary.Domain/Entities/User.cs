@@ -17,9 +17,7 @@ public class User : BaseUser
     // Mapping entities
     public SystemRole Role { get; set; } = null!;
     public LibraryCard? LibraryCard { get; set; } 
-    public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
-    public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
-    public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
+    
     public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 
     [JsonIgnore]

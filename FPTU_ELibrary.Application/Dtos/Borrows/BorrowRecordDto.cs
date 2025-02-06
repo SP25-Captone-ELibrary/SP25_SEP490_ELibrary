@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
-using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
@@ -9,43 +10,39 @@ public class BorrowRecordDto
     // Key
     public int BorrowRecordId { get; set; }
 
+    // Optional link to BorrowRequest (only for remote borrowing)
+    public int? BorrowRequestId { get; set; }  
+    
     // Foreign keys
-    public int? LibraryItemInstanceId { get; set; }
-    public Guid BorrowerId { get; set; }
+    public Guid LibraryCardId { get; set; }
 
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
-    public string BorrowType { get; set; } = null!;
     public DateTime DueDate { get; set; }
     public DateTime? ReturnDate { get; set; }
-    public string Status { get; set; } = null!;
-
+    public BorrowRecordStatus Status { get; set; } 
+    
+    // True if borrowed via kiosk
+    public bool SelfServiceBorrow { get; set; } 
+    
     // Total time allow to extend borrow days
     public int ExtensionLimit { get; set; }
-
     
     // Borrow items condition tracking
     public string BorrowCondition { get; set; } = null!;
     public string? ReturnCondition { get; set; }
     public DateTime? ConditionCheckDate { get; set; }
 
-
     // Borrow Request information
     public DateTime RequestDate { get; set; }
     public DateTime ProcessedDate { get; set; }
     public Guid ProcessedBy { get; set; }
-    public decimal? DepositFee { get; set; }
-
-    // Refund information
-    public bool? DepositRefunded { get; set; }
-    public DateTime? RefundDate { get; set; }
-
 
     // Mapping entities
-    public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
+    public BorrowRequestDto? BorrowRequest { get; set; }
     public EmployeeDto ProcessedByNavigation { get; set; } = null!;
-    public UserDto Borrower { get; set; } = null!;
-    public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
+    public LibraryCardDto LibraryCard { get; set; } = null!;
     
-    //public BorrowRequest BorrowRequest { get; set; } = null!;
+    public ICollection<BorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetailDto>();
+    public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
 }

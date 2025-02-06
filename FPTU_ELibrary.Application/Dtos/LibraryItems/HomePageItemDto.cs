@@ -96,8 +96,8 @@ public static class HomePageItemDtoExtensions
             LibraryItemInventory = dto.LibraryItemInventory,
 
             // Navigations
-            LibraryItemInstances = dto.LibraryItemInstances.ToList(),
-            AvgReviewedRate = Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2,
-            Authors = dto.LibraryItemAuthors.Select(ba => ba.Author).ToList()
+            LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
+            AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : new(),
+            Authors = dto.LibraryItemAuthors.Any() ? dto.LibraryItemAuthors.Select(ba => ba.Author).ToList() : new()
         };
 }

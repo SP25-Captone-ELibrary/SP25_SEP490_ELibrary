@@ -242,6 +242,14 @@ public class LibraryItemController : ControllerBase
         );
     }
 
+    [HttpGet(APIRoute.LibraryItem.GetNewArrivals, Name = nameof(GetNewArrivalsLibraryItemAsync))]
+    public async Task<IActionResult> GetNewArrivalsLibraryItemAsync([FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetNewArrivalsAsync(
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+    
     [HttpGet(APIRoute.LibraryItem.GetTrending, Name = nameof(GetTrendingLibraryItemAsync))]
     public async Task<IActionResult> GetTrendingLibraryItemAsync([FromQuery] int? pageIndex, [FromQuery] int? pageSize)
     {

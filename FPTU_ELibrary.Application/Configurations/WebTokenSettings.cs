@@ -11,6 +11,7 @@
         public bool RequireExpirationTime { get; set; }
         public bool ValidateLifetime { get; set; }
         public int TokenLifeTimeInMinutes { get; set; }
+        public int MaxRefreshTokenLifeSpan { get; set; }
         public int RefreshTokenLifeTimeInMinutes { get; set; }
         public int RecoveryPasswordLifeTimeInMinutes { get; set; }
         public int MfaTokenLifeTimeInMinutes { get; set; }
