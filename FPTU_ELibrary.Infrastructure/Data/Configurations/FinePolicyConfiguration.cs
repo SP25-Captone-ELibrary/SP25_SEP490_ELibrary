@@ -14,7 +14,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.Property(e => e.FinePolicyId).HasColumnName("fine_policy_id");
             builder.Property(e => e.ConditionType)
-                .HasMaxLength(100)
+                .HasColumnType("nvarchar(100)")
                 .HasConversion<string>()
                 .HasColumnName("condition_type");
             builder.Property(e => e.Description)

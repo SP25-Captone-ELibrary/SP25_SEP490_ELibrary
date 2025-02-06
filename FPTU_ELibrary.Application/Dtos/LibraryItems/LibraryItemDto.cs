@@ -70,7 +70,7 @@ public class LibraryItemDto
     public ICollection<UserFavoriteDto> UserFavorites { get; set; } = new List<UserFavoriteDto>();
     
     [JsonIgnore]
-    public ICollection<BorrowRequestDto> BorrowRequests { get; set; } = new List<BorrowRequestDto>();
+    public ICollection<BorrowRequestDetailDto> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetailDto>();
     
     [JsonIgnore]
     public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>(); 

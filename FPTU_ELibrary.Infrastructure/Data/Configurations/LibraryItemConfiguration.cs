@@ -93,6 +93,7 @@ public class LibraryItemConfiguration : IEntityTypeConfiguration<LibraryItem>
         builder.Property(e => e.ShelfId).HasColumnName("shelf_id");
         builder.Property(e => e.GroupId).HasColumnName("group_id");
         builder.Property(e => e.Status)
+            .HasColumnType("nvarchar(20)")
             .HasConversion<string>()
             .HasColumnName("status");
         builder.Property(e => e.IsDeleted).HasColumnName("is_deleted");

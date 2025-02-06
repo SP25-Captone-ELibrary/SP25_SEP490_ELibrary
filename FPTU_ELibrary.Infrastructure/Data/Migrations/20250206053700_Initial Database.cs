@@ -20,11 +20,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     entity_id = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     entity_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    trail_type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    trail_type = table.Column<string>(type: "nvarchar(20)", nullable: false),
                     date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
                     old_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
                     new_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
-                    changed_columns = table.Column<string>(type: "nvarchar(1000)", nullable: false)
+                    changed_columns = table.Column<string>(type: "nvarchar(800)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -77,7 +77,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     fine_policy_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     fine_policy_title = table.Column<string>(type: "nvarchar(255)", nullable: false),
-                    condition_type = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    condition_type = table.Column<string>(type: "nvarchar(100)", nullable: false),
                     fine_amount_per_day = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
                     fixed_fine_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
@@ -96,16 +96,38 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     avatar = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: false),
                     barcode = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     issuance_method = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    request_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    is_active = table.Column<bool>(type: "bit", nullable: false),
+                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    is_allow_borrow_more = table.Column<bool>(type: "bit", nullable: false),
+                    max_item_once_time = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    IsReminderSent = table.Column<bool>(type: "bit", nullable: false),
+                    total_missed_pick_up = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     is_extended = table.Column<bool>(type: "bit", nullable: false),
                     extension_count = table.Column<int>(type: "int", nullable: false),
                     issue_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    expiry_date = table.Column<DateTime>(type: "datetime", nullable: true)
+                    expiry_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    suspension_end_date = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LibraryCard_LibraryCardId", x => x.library_card_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Library_Card_Package",
+                columns: table => new
+                {
+                    library_card_package_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    package_name = table.Column<string>(type: "nvarchar(100)", nullable: false),
+                    price = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    duration_in_months = table.Column<int>(type: "int", nullable: false),
+                    is_active = table.Column<bool>(type: "bit", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    description = table.Column<string>(type: "nvarchar(1000)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryCardPackage_LibraryCardPackageId", x => x.library_card_package_id);
                 });
 
             migrationBuilder.CreateTable(
@@ -297,6 +319,31 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_SystemRole_RoleId", x => x.role_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Borrow_Request",
+                columns: table => new
+                {
+                    borrow_request_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    request_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    expiration_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    status = table.Column<string>(type: "nvarchar(20)", nullable: false),
+                    description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    cancelled_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true),
+                    is_reminder_sent = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BorrowRequest_BorrowRequestId", x => x.borrow_request_id);
+                    table.ForeignKey(
+                        name: "FK_BorrowRequest_LibraryCardId",
+                        column: x => x.library_card_id,
+                        principalTable: "Library_Card",
+                        principalColumn: "library_card_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -530,6 +577,47 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Borrow_Record",
+                columns: table => new
+                {
+                    borrow_record_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    borrow_request_id = table.Column<int>(type: "int", nullable: true),
+                    library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    borrow_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    due_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    return_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    self_service_borrow = table.Column<bool>(type: "bit", nullable: false),
+                    extension_limit = table.Column<int>(type: "int", nullable: false),
+                    borrow_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    return_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    processed_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    proceesed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BorrowRecord_BorrowRecordId", x => x.borrow_record_id);
+                    table.ForeignKey(
+                        name: "FK_BorrowRecord_BorrowRequestId",
+                        column: x => x.borrow_request_id,
+                        principalTable: "Borrow_Request",
+                        principalColumn: "borrow_request_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BorrowRecord_LibraryCardId",
+                        column: x => x.library_card_id,
+                        principalTable: "Library_Card",
+                        principalColumn: "library_card_id");
+                    table.ForeignKey(
+                        name: "FK_BorrowRecord_ProcessedBy",
+                        column: x => x.proceesed_by,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Digital_Borrow",
                 columns: table => new
                 {
@@ -659,6 +747,40 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Fine",
+                columns: table => new
+                {
+                    fine_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    borrow_record_id = table.Column<int>(type: "int", nullable: false),
+                    fine_policy_id = table.Column<int>(type: "int", nullable: false),
+                    fine_note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    expiry_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Fine_FineId", x => x.fine_id);
+                    table.ForeignKey(
+                        name: "FK_Fine_BorrowRecordId",
+                        column: x => x.borrow_record_id,
+                        principalTable: "Borrow_Record",
+                        principalColumn: "borrow_record_id");
+                    table.ForeignKey(
+                        name: "FK_Fine_CreateBY",
+                        column: x => x.CreatedBy,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
+                    table.ForeignKey(
+                        name: "FK_Fine_FindPolicyId",
+                        column: x => x.fine_policy_id,
+                        principalTable: "Fine_Policy",
+                        principalColumn: "fine_policy_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Library_Item",
                 columns: table => new
                 {
@@ -693,7 +815,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     category_id = table.Column<int>(type: "int", nullable: false),
                     shelf_id = table.Column<int>(type: "int", nullable: true),
                     group_id = table.Column<int>(type: "int", nullable: true),
-                    status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    status = table.Column<string>(type: "nvarchar(20)", nullable: false),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
                     can_borrow = table.Column<bool>(type: "bit", nullable: false),
                     is_trained = table.Column<bool>(type: "bit", nullable: false),
@@ -722,6 +844,63 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.shelf_id,
                         principalTable: "Library_Shelf",
                         principalColumn: "shelf_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Transaction",
+                columns: table => new
+                {
+                    transaction_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    transaction_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    description = table.Column<string>(type: "nvarchar(255)", nullable: false),
+                    transaction_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    transaction_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    transaction_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    canceled_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    cancellation_reason = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    payment_method_id = table.Column<int>(type: "int", nullable: false),
+                    fine_id = table.Column<int>(type: "int", nullable: true),
+                    digital_borrow_id = table.Column<int>(type: "int", nullable: true),
+                    library_card_package_id = table.Column<int>(type: "int", nullable: true),
+                    invoice_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Transaction_TransactionId", x => x.transaction_id);
+                    table.ForeignKey(
+                        name: "FK_Transaction_DigitalBorrowId",
+                        column: x => x.digital_borrow_id,
+                        principalTable: "Digital_Borrow",
+                        principalColumn: "digital_borrow_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_FineId",
+                        column: x => x.fine_id,
+                        principalTable: "Fine",
+                        principalColumn: "fine_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_InvoiceId",
+                        column: x => x.invoice_id,
+                        principalTable: "Invoice",
+                        principalColumn: "invoice_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_LibraryCardPackageId",
+                        column: x => x.library_card_package_id,
+                        principalTable: "Library_Card_Package",
+                        principalColumn: "library_card_package_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_PaymentMethodId",
+                        column: x => x.payment_method_id,
+                        principalTable: "Payment_Method",
+                        principalColumn: "payment_method_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_UserId",
+                        column: x => x.user_id,
+                        principalTable: "User",
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -858,36 +1037,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Reservation_Queue",
-                columns: table => new
-                {
-                    queue_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    library_item_id = table.Column<int>(type: "int", nullable: false),
-                    expected_available_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    reserved_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    reservation_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    deposit_expiration_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    deposit_fee = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    deposit_paid = table.Column<bool>(type: "bit", nullable: true, defaultValue: false),
-                    queue_status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ReservationQueue_QueueId", x => x.queue_id);
-                    table.ForeignKey(
-                        name: "FK_ReservationQueue_ItemId",
-                        column: x => x.library_item_id,
-                        principalTable: "Library_Item",
-                        principalColumn: "library_item_id");
-                    table.ForeignKey(
-                        name: "FK_ReservationQueue_ReservedBy",
-                        column: x => x.reserved_by,
-                        principalTable: "User",
-                        principalColumn: "user_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "User_Favorite",
                 columns: table => new
                 {
@@ -949,38 +1098,59 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Borrow_Request",
+                name: "Borrow_Record_Detail",
                 columns: table => new
                 {
-                    borrow_request_id = table.Column<int>(type: "int", nullable: false)
+                    borrow_record_detail_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    library_item_id = table.Column<int>(type: "int", nullable: true),
-                    library_item_instance_id = table.Column<int>(type: "int", nullable: true),
-                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    request_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    expiration_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    BorrowType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                    borrow_record_id = table.Column<int>(type: "int", nullable: false),
+                    library_item_instance_id = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BorrowRequest_BorrowRequestId", x => x.borrow_request_id);
+                    table.PrimaryKey("PK_BorrowRecordDetail_BorrowRecordDetailId", x => x.borrow_record_detail_id);
                     table.ForeignKey(
-                        name: "FK_BorrowRequest_ItemId",
+                        name: "FK_BorrowRecordDetail_BorrowRecordId",
+                        column: x => x.borrow_record_id,
+                        principalTable: "Borrow_Record",
+                        principalColumn: "borrow_record_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BorrowRecordDetail_ItemInstanceId",
+                        column: x => x.library_item_instance_id,
+                        principalTable: "Library_Item_Instance",
+                        principalColumn: "library_item_instance_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Borrow_Request_Detail",
+                columns: table => new
+                {
+                    borrow_request_detail_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    borrow_request_id = table.Column<int>(type: "int", nullable: false),
+                    library_item_id = table.Column<int>(type: "int", nullable: false),
+                    LibraryItemInstanceId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BorrowRequestDetail_BorrowRequestDetailId", x => x.borrow_request_detail_id);
+                    table.ForeignKey(
+                        name: "FK_BorrowRequestDetail_BorrowRequestId",
+                        column: x => x.borrow_request_id,
+                        principalTable: "Borrow_Request",
+                        principalColumn: "borrow_request_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BorrowRequestDetail_ItemId",
                         column: x => x.library_item_id,
                         principalTable: "Library_Item",
                         principalColumn: "library_item_id");
                     table.ForeignKey(
-                        name: "FK_BorrowRequest_ItemInstanceId",
-                        column: x => x.library_item_instance_id,
+                        name: "FK_Borrow_Request_Detail_Library_Item_Instance_LibraryItemInstanceId",
+                        column: x => x.LibraryItemInstanceId,
                         principalTable: "Library_Item_Instance",
                         principalColumn: "library_item_instance_id");
-                    table.ForeignKey(
-                        name: "FK_BorrowRequest_UserId",
-                        column: x => x.user_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1007,160 +1177,54 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Borrow_Record",
+                name: "Reservation_Queue",
                 columns: table => new
                 {
-                    borrow_record_id = table.Column<int>(type: "int", nullable: false)
+                    queue_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    library_item_id = table.Column<int>(type: "int", nullable: false),
                     library_item_instance_id = table.Column<int>(type: "int", nullable: true),
-                    borrower_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    borrow_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    borrow_type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    due_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    return_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    extension_limit = table.Column<int>(type: "int", nullable: false),
-                    borrow_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    return_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    request_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    processed_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    proceesed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    deposit_fee = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    DepositRefunded = table.Column<bool>(type: "bit", nullable: true),
-                    RefundDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    BorrowRequestId = table.Column<int>(type: "int", nullable: true)
+                    library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    queue_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    expected_available_date_min = table.Column<DateTime>(type: "datetime", nullable: true),
+                    expected_available_date_max = table.Column<DateTime>(type: "datetime", nullable: true),
+                    reservation_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    expiry_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_notified = table.Column<bool>(type: "bit", nullable: false),
+                    cancelled_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
+                    cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BorrowRecord_BorrowRecordId", x => x.borrow_record_id);
+                    table.PrimaryKey("PK_ReservationQueue_QueueId", x => x.queue_id);
                     table.ForeignKey(
-                        name: "FK_BorrowRecord_BorrowerId",
-                        column: x => x.borrower_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
+                        name: "FK_ReservationQueue_ItemId",
+                        column: x => x.library_item_id,
+                        principalTable: "Library_Item",
+                        principalColumn: "library_item_id");
                     table.ForeignKey(
-                        name: "FK_BorrowRecord_ItemInstanceId",
-                        column: x => x.library_item_instance_id,
-                        principalTable: "Library_Item_Instance",
-                        principalColumn: "library_item_instance_id");
-                    table.ForeignKey(
-                        name: "FK_BorrowRecord_ProcessedBy",
-                        column: x => x.proceesed_by,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                    table.ForeignKey(
-                        name: "FK_Borrow_Record_Borrow_Request_BorrowRequestId",
-                        column: x => x.BorrowRequestId,
-                        principalTable: "Borrow_Request",
-                        principalColumn: "borrow_request_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Fine",
-                columns: table => new
-                {
-                    fine_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    borrow_record_id = table.Column<int>(type: "int", nullable: false),
-                    fine_policy_id = table.Column<int>(type: "int", nullable: false),
-                    fine_note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
-                    expiry_at = table.Column<DateTime>(type: "datetime", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Fine_FineId", x => x.fine_id);
-                    table.ForeignKey(
-                        name: "FK_Fine_BorrowRecordId",
-                        column: x => x.borrow_record_id,
-                        principalTable: "Borrow_Record",
-                        principalColumn: "borrow_record_id");
-                    table.ForeignKey(
-                        name: "FK_Fine_CreateBY",
-                        column: x => x.CreatedBy,
-                        principalTable: "Employee",
-                        principalColumn: "employee_id");
-                    table.ForeignKey(
-                        name: "FK_Fine_FindPolicyId",
-                        column: x => x.fine_policy_id,
-                        principalTable: "Fine_Policy",
-                        principalColumn: "fine_policy_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Transaction",
-                columns: table => new
-                {
-                    transaction_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    transaction_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    description = table.Column<string>(type: "nvarchar(255)", nullable: false),
-                    transaction_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    transaction_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    transaction_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
-                    canceled_at = table.Column<DateTime>(type: "datetime", nullable: true),
-                    cancellation_reason = table.Column<string>(type: "nvarchar(50)", nullable: true),
-                    payment_method_id = table.Column<int>(type: "int", nullable: false),
-                    fine_id = table.Column<int>(type: "int", nullable: true),
-                    digital_borrow_id = table.Column<int>(type: "int", nullable: true),
-                    library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    invoice_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Transaction_TransactionId", x => x.transaction_id);
-                    table.ForeignKey(
-                        name: "FK_Transaction_DigitalBorrowId",
-                        column: x => x.digital_borrow_id,
-                        principalTable: "Digital_Borrow",
-                        principalColumn: "digital_borrow_id");
-                    table.ForeignKey(
-                        name: "FK_Transaction_FineId",
-                        column: x => x.fine_id,
-                        principalTable: "Fine",
-                        principalColumn: "fine_id");
-                    table.ForeignKey(
-                        name: "FK_Transaction_InvoiceId",
-                        column: x => x.invoice_id,
-                        principalTable: "Invoice",
-                        principalColumn: "invoice_id");
-                    table.ForeignKey(
-                        name: "FK_Transaction_LibraryCardId",
+                        name: "FK_ReservationQueue_LibraryCardId",
                         column: x => x.library_card_id,
                         principalTable: "Library_Card",
                         principalColumn: "library_card_id");
                     table.ForeignKey(
-                        name: "FK_Transaction_PaymentMethodId",
-                        column: x => x.payment_method_id,
-                        principalTable: "Payment_Method",
-                        principalColumn: "payment_method_id");
-                    table.ForeignKey(
-                        name: "FK_Transaction_UserId",
-                        column: x => x.user_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
+                        name: "FK_ReservationQueue_LibraryItemInstanceId",
+                        column: x => x.library_item_instance_id,
+                        principalTable: "Library_Item_Instance",
+                        principalColumn: "library_item_instance_id");
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Record_borrower_id",
+                name: "IX_Borrow_Record_borrow_request_id",
                 table: "Borrow_Record",
-                column: "borrower_id");
+                column: "borrow_request_id",
+                unique: true,
+                filter: "[borrow_request_id] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Record_BorrowRequestId",
+                name: "IX_Borrow_Record_library_card_id",
                 table: "Borrow_Record",
-                column: "BorrowRequestId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Record_library_item_instance_id",
-                table: "Borrow_Record",
-                column: "library_item_instance_id");
+                column: "library_card_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Borrow_Record_proceesed_by",
@@ -1168,19 +1232,34 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "proceesed_by");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Request_library_item_id",
-                table: "Borrow_Request",
-                column: "library_item_id");
+                name: "IX_Borrow_Record_Detail_borrow_record_id",
+                table: "Borrow_Record_Detail",
+                column: "borrow_record_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Request_library_item_instance_id",
-                table: "Borrow_Request",
+                name: "IX_Borrow_Record_Detail_library_item_instance_id",
+                table: "Borrow_Record_Detail",
                 column: "library_item_instance_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Borrow_Request_user_id",
+                name: "IX_Borrow_Request_library_card_id",
                 table: "Borrow_Request",
-                column: "user_id");
+                column: "library_card_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Detail_borrow_request_id",
+                table: "Borrow_Request_Detail",
+                column: "borrow_request_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Detail_library_item_id",
+                table: "Borrow_Request_Detail",
+                column: "library_item_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Detail_LibraryItemInstanceId",
+                table: "Borrow_Request_Detail",
+                column: "LibraryItemInstanceId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Digital_Borrow_resource_id",
@@ -1328,14 +1407,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Reservation_Queue_library_card_id",
+                table: "Reservation_Queue",
+                column: "library_card_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Reservation_Queue_library_item_id",
                 table: "Reservation_Queue",
                 column: "library_item_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Reservation_Queue_reserved_by",
+                name: "IX_Reservation_Queue_library_item_instance_id",
                 table: "Reservation_Queue",
-                column: "reserved_by");
+                column: "library_item_instance_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Role_Permission_feature_id",
@@ -1368,9 +1452,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "invoice_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transaction_library_card_id",
+                name: "IX_Transaction_library_card_package_id",
                 table: "Transaction",
-                column: "library_card_id");
+                column: "library_card_package_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transaction_payment_method_id",
@@ -1431,6 +1515,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Audit_Trail");
 
             migrationBuilder.DropTable(
+                name: "Borrow_Record_Detail");
+
+            migrationBuilder.DropTable(
+                name: "Borrow_Request_Detail");
+
+            migrationBuilder.DropTable(
                 name: "Library_Item_Author");
 
             migrationBuilder.DropTable(
@@ -1479,6 +1569,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Notification");
 
             migrationBuilder.DropTable(
+                name: "Library_Item_Instance");
+
+            migrationBuilder.DropTable(
                 name: "System_Feature");
 
             migrationBuilder.DropTable(
@@ -1494,10 +1587,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Invoice");
 
             migrationBuilder.DropTable(
+                name: "Library_Card_Package");
+
+            migrationBuilder.DropTable(
                 name: "Payment_Method");
 
             migrationBuilder.DropTable(
                 name: "Warehouse_Tracking");
+
+            migrationBuilder.DropTable(
+                name: "Library_Item");
 
             migrationBuilder.DropTable(
                 name: "Library_Resource");
@@ -1509,28 +1608,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Fine_Policy");
 
             migrationBuilder.DropTable(
-                name: "Supplier");
-
-            migrationBuilder.DropTable(
-                name: "Employee");
-
-            migrationBuilder.DropTable(
-                name: "Borrow_Request");
-
-            migrationBuilder.DropTable(
-                name: "Library_Item_Instance");
-
-            migrationBuilder.DropTable(
                 name: "User");
 
             migrationBuilder.DropTable(
-                name: "Library_Item");
-
-            migrationBuilder.DropTable(
-                name: "Library_Card");
-
-            migrationBuilder.DropTable(
-                name: "System_Role");
+                name: "Supplier");
 
             migrationBuilder.DropTable(
                 name: "Category");
@@ -1542,7 +1623,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Library_Shelf");
 
             migrationBuilder.DropTable(
+                name: "Borrow_Request");
+
+            migrationBuilder.DropTable(
+                name: "Employee");
+
+            migrationBuilder.DropTable(
                 name: "Library_Section");
+
+            migrationBuilder.DropTable(
+                name: "Library_Card");
+
+            migrationBuilder.DropTable(
+                name: "System_Role");
 
             migrationBuilder.DropTable(
                 name: "Library_Zone");

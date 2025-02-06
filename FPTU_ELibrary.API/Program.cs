@@ -21,6 +21,8 @@ builder.Services
         .AddCacheHealthCheck();
 
 builder.Services
+    // Configure background services
+    .ConfigureBackgroundServices()
     // Configure endpoints, swagger
     .ConfigureEndpoints()
     // Configure Serilog

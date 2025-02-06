@@ -25,7 +25,9 @@ public class ElibraryDbContext : DbContext
     public DbSet<AuditTrail> AuditTrails { get; set; }
     public DbSet<Author> Authors { get; set; }
     public DbSet<BorrowRecord> BorrowRecords { get; set; }
+    public DbSet<BorrowRecordDetail> BorrowRecordDetails { get; set; }
     public DbSet<BorrowRequest> BorrowRequests { get; set; }
+    public DbSet<BorrowRequestDetail> BorrowRequestDetails { get; set; }
     public DbSet<Category> Categories { get; set; }
     public DbSet<DigitalBorrow> DigitalBorrows { get; set; }
     public DbSet<Employee> Employees { get; set; }
@@ -40,6 +42,7 @@ public class ElibraryDbContext : DbContext
     public DbSet<LibraryItemReview> LibraryItemReviews { get; set; }
     public DbSet<LibraryItemConditionHistory> LibraryItemConditionHistories { get; set; }
     public DbSet<LibraryCard> LibraryCards { get; set; }
+    public DbSet<LibraryCardPackage> LibraryCardPackages { get; set; }
     public DbSet<LibraryFloor> LibraryFloors { get; set; }
     public DbSet<LibraryPath> LibraryPaths { get; set; }
     public DbSet<LibrarySection> LibrarySections { get; set; }
