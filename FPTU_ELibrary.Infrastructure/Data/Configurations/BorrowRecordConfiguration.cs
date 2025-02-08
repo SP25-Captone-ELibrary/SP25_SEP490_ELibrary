@@ -25,7 +25,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.DueDate)
                 .HasColumnType("datetime")
                 .HasColumnName("due_date");
-            builder.Property(e => e.ExtensionLimit).HasColumnName("extension_limit");
+            builder.Property(e => e.TotalExtension).HasColumnName("total_extension");
             builder.Property(e => e.ReturnCondition)
                 .HasMaxLength(50)
                 .HasColumnName("return_condition");
@@ -34,9 +34,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnName("return_date");
 
 			#region Update at: 11-10-2024 by Le Xuan Phuoc
-			builder.Property(e => e.ProcessedDate)
-				.HasColumnType("datetime")
-				.HasColumnName("processed_date");
             builder.Property(e => e.ProcessedBy).HasColumnName("proceesed_by");
             builder.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.BorrowRecords)
                 .HasForeignKey(d => d.ProcessedBy)
@@ -101,6 +98,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasConstraintName("FK_BorrowRecord_BorrowRequestId");
 
             builder.HasIndex(br => br.BorrowRequestId).IsUnique(); // Ensure only one BorrowRecord per BorrowRequest
+            #endregion
+
+            #region Update at: 06/02/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.ProcessedDate)
+            //     .HasColumnType("datetime")
+            //     .HasColumnName("processed_date");
             #endregion
         }
 	}

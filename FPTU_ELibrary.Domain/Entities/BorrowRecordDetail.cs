@@ -9,6 +9,9 @@ public class BorrowRecordDetail
     
     // Specific library item instance
     public int LibraryItemInstanceId { get; set; }
+
+    // Maximum of 5 image public id (use only when using Kiosk machine)
+    public string? ImagePublicIds { get; set; }
     
     // Mapping entities
     public BorrowRecord BorrowRecord { get; set; } = null!;

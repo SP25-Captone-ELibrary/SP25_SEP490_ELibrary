@@ -63,7 +63,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     english_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: false),
                     vietnamese_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: false),
                     description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    is_allow_ai_training = table.Column<bool>(type: "bit", nullable: false)
+                    is_allow_ai_training = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    total_borrow_days = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {
@@ -589,11 +590,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     self_service_borrow = table.Column<bool>(type: "bit", nullable: false),
-                    extension_limit = table.Column<int>(type: "int", nullable: false),
+                    total_extension = table.Column<int>(type: "int", nullable: false),
                     borrow_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     return_condition = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    processed_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     proceesed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
@@ -799,7 +799,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     publisher = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     publication_place = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     classification_number = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    cutter_number = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    cutter_number = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: true),
                     ean = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     estimated_price = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
@@ -1104,7 +1104,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     borrow_record_detail_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     borrow_record_id = table.Column<int>(type: "int", nullable: false),
-                    library_item_instance_id = table.Column<int>(type: "int", nullable: false)
+                    library_item_instance_id = table.Column<int>(type: "int", nullable: false),
+                    image_public_ids = table.Column<string>(type: "nvarchar(200)", nullable: true)
                 },
                 constraints: table =>
                 {

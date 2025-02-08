@@ -234,6 +234,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0002 = "Borrow.Success0002";
 		/// <summary>
+		/// [SUCCESS] Total {0} item(s) have been added to borrow record successfully
+		/// </summary>
+		public const string Borrow_Success0003 = "Borrow.Success0003";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -266,9 +270,33 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0008 = "Borrow.Warning0008";
 		/// <summary>
+		/// [WARNING] The total number of items entered is not enough compared to the total number registered to borrow
+		/// </summary>
+		public const string Borrow_Warning0009 = "Borrow.Warning0009";
+		/// <summary>
+		/// [WARNING] The total number of items entered exceeds the total number registered for borrowing
+		/// </summary>
+		public const string Borrow_Warning0010 = "Borrow.Warning0010";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been processed
+		/// </summary>
+		public const string Borrow_Warning0011 = "Borrow.Warning0011";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been cancelled
+		/// </summary>
+		public const string Borrow_Warning0012 = "Borrow.Warning0012";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been expired
+		/// </summary>
+		public const string Borrow_Warning0013 = "Borrow.Warning0013";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";
+		/// <summary>
+		/// [FAIL] An error occured, failed to create borrow record
+		/// </summary>
+		public const string Borrow_Fail0002 = "Borrow.Fail0002";
 		#endregion
 		
 		#region Role
@@ -481,6 +509,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] You need a library card to access this service
 		/// </summary>
 		public const string LibraryCard_Warning0004 = "LibraryCard.Warning0004";
+		/// <summary>
+		/// [WARNING] Library card does not match the card registered to borrow
+		/// </summary>
+		public const string LibraryCard_Warning0005 = "LibraryCard.Warning0005";
 		#endregion
 		
 		#region Supplier

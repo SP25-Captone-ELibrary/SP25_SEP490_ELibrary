@@ -8,7 +8,7 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
 {
     public void Configure(EntityTypeBuilder<BorrowRecordDetail> builder)
     {
-        #region Added at: 04/02/2025
+        #region Added at: 04/02/2025 by Le Xuan Phuoc
         builder.HasKey(e => e.BorrowRecordDetailId).HasName("PK_BorrowRecordDetail_BorrowRecordDetailId");
 
         builder.ToTable("Borrow_Record_Detail");
@@ -26,6 +26,13 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
             .HasForeignKey(d => d.LibraryItemInstanceId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_BorrowRecordDetail_ItemInstanceId");
+        #endregion
+
+        #region Update at: 06/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.ImagePublicIds)
+            .HasColumnType("nvarchar(200)")
+            .IsRequired(false)
+            .HasColumnName("image_public_ids");
         #endregion
     }
 }

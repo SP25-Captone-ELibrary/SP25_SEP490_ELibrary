@@ -156,20 +156,20 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
                 if (e.EstimatedPrice < 1000)
                 {
                     return isEng
-                        ? "EstimatedPrice must be at least 1.000 VND"
+                        ? "Estimated price must be at least 1.000 VND"
                         : "Giá phải ít nhất là 1.000 VND";
                 }
                 else if (e.EstimatedPrice > 9999999999)
                 {
                     return isEng
-                        ? "EstimatedPrice exceeds the maximum limit of 9.999.999.999 VND"
+                        ? "Estimated price exceeds the maximum limit of 9.999.999.999 VND"
                         : "Giá vượt quá giới hạn tối đa là 9.999.999.999 VND";
                 }
         
                 // Default message (shouldn't occur because of the Must condition)
                 return isEng
-                    ? "Invalid EstimatedPrice value"
-                    : "Giá trị EstimatedPrice không hợp lệ";
+                    ? "Invalid Estimated price value"
+                    : "Giá tiền ước tính không hợp lệ";
             });
         // Page count
         RuleFor(e => e.PageCount)

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250206053700_Initial Database")]
+    [Migration("20250206153424_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -177,10 +177,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("due_date");
 
-                    b.Property<int>("ExtensionLimit")
-                        .HasColumnType("int")
-                        .HasColumnName("extension_limit");
-
                     b.Property<Guid>("LibraryCardId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("library_card_id");
@@ -188,10 +184,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<Guid>("ProcessedBy")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("proceesed_by");
-
-                    b.Property<DateTime>("ProcessedDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("processed_date");
 
                     b.Property<string>("ReturnCondition")
                         .HasMaxLength(50)
@@ -210,6 +202,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("status");
+
+                    b.Property<int>("TotalExtension")
+                        .HasColumnType("int")
+                        .HasColumnName("total_extension");
 
                     b.HasKey("BorrowRecordId")
                         .HasName("PK_BorrowRecord_BorrowRecordId");
@@ -237,6 +233,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("BorrowRecordId")
                         .HasColumnType("int")
                         .HasColumnName("borrow_record_id");
+
+                    b.Property<string>("ImagePublicIds")
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("image_public_ids");
 
                     b.Property<int>("LibraryItemInstanceId")
                         .HasColumnType("int")
@@ -356,13 +356,21 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("english_name");
 
                     b.Property<bool>("IsAllowAITraining")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_allow_ai_training");
 
                     b.Property<string>("Prefix")
                         .IsRequired()
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("prefix");
+
+                    b.Property<int>("TotalBorrowDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_borrow_days");
 
                     b.Property<string>("VietnameseName")
                         .IsRequired()
@@ -895,7 +903,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("CutterNumber")
-                        .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("cutter_number");
 
@@ -2624,15 +2631,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRequestDetail_ItemId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemInstance", "LibraryItemInstance")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemInstance", null)
                         .WithMany("BorrowRequestDetails")
                         .HasForeignKey("LibraryItemInstanceId");
 
                     b.Navigation("BorrowRequest");
 
                     b.Navigation("LibraryItem");
-
-                    b.Navigation("LibraryItemInstance");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrow", b =>

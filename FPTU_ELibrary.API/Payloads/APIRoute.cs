@@ -55,15 +55,38 @@
 			#endregion
 		}
 
+		/// <summary>
+		/// Borrow request endpoints
+		/// </summary>
 		public static class BorrowRequest
 		{
 			#region Management
+			// [GET]
+			public const string GetAllManagement = Base + "/management/borrows/requests";
+			public const string GetByIdManagement = Base + "/management/borrows/requests/{id}";
+			public const string CheckExistBarcode = Base + "/management/borrows/requests/{id}/exist-barcode";
 			#endregion
 			
+			// [GET]
 			public const string GetAll = Base + "/borrows/requests";
 			public const string GetById = Base + "/borrows/requests/{id}";
+			// [POST]
 			public const string Create = Base + "/borrows/requests";
+			// [PATCH]
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
+		}
+
+		/// <summary>
+		/// Borrow
+		/// </summary>
+		public static class BorrowRecord
+		{
+			#region Management
+			// [GET]
+			public const string GetAll = Base + "/management/borrows/records";
+			// [POST]
+			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
+			#endregion
 		}
 		
 		/// <summary>
@@ -114,17 +137,6 @@
 		}
 
 		/// <summary>
-		/// Group endpoints
-		/// </summary>
-		public static class Group
-		{
-			//[POST]
-			public const string CheckAvailableGroup = Base + "/management/groups/check";
-			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
-			
-		}
-
-		/// <summary>
 		/// Library resource endpoints
 		/// </summary>
 		public static class LibraryItemResource
@@ -155,6 +167,7 @@
 			#region Management
 			// [GET]
 			public const string GetById = Base + "/management/library-items/instances/{id}";
+			public const string GetByBarcode = Base + "/management/library-items/instances/code";
 			// [POST]
 			public const string AddRange = Base + "/management/library-items/{id}/instances";
 			// [PUT] / [PATCH]
@@ -168,6 +181,43 @@
 			public const string Delete = Base + "/management/library-items/instances/{id}";
 			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
 			#endregion
+		}
+
+		/// <summary>
+		/// Library card endpoints
+		/// </summary>
+		public static class LibraryCard
+		{
+			// [POST]
+			public const string OnlineRegister = Base + "/library-cards/online-register";
+		}
+		
+		/// <summary>
+		/// Library card package endpoints
+		/// </summary>
+		public static class LibraryCardPackage
+		{
+			#region Management
+			// [GET]
+			public const string GetAll = Base + "/management/packages";
+			public const string GetById = Base + "/management/packages/{id}";
+			// [POST]
+			public const string Create = Base + "/management/packages";
+			// [PUT]
+			public const string Update = Base + "/management/packages/{id}";
+			// [DELETE]
+			public const string Delete = Base + "/management/packages/{id}";
+			#endregion
+		}
+		
+		/// <summary>
+		/// Group endpoints
+		/// </summary>
+		public static class Group
+		{
+			// [POST]
+			public const string CheckAvailableGroup = Base + "/management/groups/check";
+			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
 		}
 		
 		/// <summary>

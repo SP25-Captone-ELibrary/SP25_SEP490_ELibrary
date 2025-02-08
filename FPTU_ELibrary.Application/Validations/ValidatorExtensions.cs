@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
@@ -29,6 +30,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(LibraryResourceDto) => (IValidator<T>)new LibraryResourceDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryItemInstanceDto) => (IValidator<T>)new LibraryItemInstanceDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryItemInventoryDto) => (IValidator<T>)new LibraryItemInventoryDtoValidator(),
+				{ } when typeof(T) == typeof(LibraryCardPackageDto) => (IValidator<T>)new LibraryCardPackageDtoValidator(language),
 				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),
 				{ } when typeof(T) == typeof(EmployeeDto) => (IValidator<T>)new EmployeeDtoValidator(language),
 				{ } when typeof(T) == typeof(SupplierDto) => (IValidator<T>)new SupplierDtoValidator(language),

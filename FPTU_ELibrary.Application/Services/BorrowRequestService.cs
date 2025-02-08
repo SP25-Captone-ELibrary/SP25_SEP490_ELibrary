@@ -51,6 +51,119 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     }
 
 
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<BorrowRequest> spec, bool tracked = true)
+    {
+        try
+        {
+            // Check for proper specification
+            var borrowReqSpec = spec as BorrowRequestSpecification;
+            if (borrowReqSpec == null) // is null specification
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }	
+            
+            // Count total borrow request
+            var totalBorrowReqWithSpec = await _unitOfWork.Repository<BorrowRequest, int>().CountAsync(borrowReqSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalBorrowReqWithSpec / borrowReqSpec.PageSize);
+
+            // Set pagination to specification after count total borrow req
+            if (borrowReqSpec.PageIndex > totalPage
+                || borrowReqSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                borrowReqSpec.PageIndex = 1; // Set default to first page
+            }
+
+            // Apply pagination
+            borrowReqSpec.ApplyPaging(
+                skip: borrowReqSpec.PageSize * (borrowReqSpec.PageIndex - 1),
+                take: borrowReqSpec.PageSize);
+            
+            // Get all with spec
+            var entities = await _unitOfWork.Repository<BorrowRequest, int>()
+                .GetAllWithSpecAsync(borrowReqSpec, tracked: false);
+			
+            if (entities.Any()) // Exist data
+            {
+                // Convert to dto collection 
+                var borrowReqDtos = _mapper.Map<List<BorrowRequestDto>>(entities);
+                				
+                // Set null borrow request details
+                borrowReqDtos.ForEach(br => br.BorrowRequestDetails = new List<BorrowRequestDetailDto>());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<BorrowRequestDto>(borrowReqDtos,
+                    borrowReqSpec.PageIndex, borrowReqSpec.PageSize, totalPage, totalBorrowReqWithSpec);
+				
+                // Response with pagination 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+			
+            // Not found any data
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                // Mapping entities to dto 
+                _mapper.Map<IEnumerable<BorrowRequestDto>>(entities));
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get all borrow data");
+        }
+    }
+
+    public override async Task<IServiceResult> GetByIdAsync(int id)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build specification
+            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(br => br.BorrowRequestDetails)
+                    .ThenInclude(brd => brd.LibraryItem)
+                        .ThenInclude(li => li.Shelf)
+                .Include(br => br.BorrowRequestDetails)
+                    .ThenInclude(brd => brd.LibraryItem)
+                        .ThenInclude(li => li.Category)
+                .Include(br => br.BorrowRequestDetails)
+                    .ThenInclude(brd => brd.LibraryItem)
+                        .ThenInclude(li => li.LibraryItemInstances)
+                .Include(br => br.LibraryCard)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "borrow request" : "lịch sử đăng ký mượn"));
+            }
+            
+            // Get data success
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                _mapper.Map<BorrowRequestDto>(existingEntity));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when progress get borrow data by id");
+        }
+    }
+
     public async Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec)
     {
         try
@@ -63,7 +176,13 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 .Include(u => u.LibraryCard)!
             );
             var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException(); // Not found user 
+            if (userDto == null) // Not found user
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    new List<BorrowRequestDto>());
+            }
 
             if (userDto.LibraryCardId == null)
             {
@@ -148,7 +267,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 .Include(u => u.LibraryCard)!
             );
             var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException(); // Not found user 
+            if (userDto == null) // Not found user
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
 
             if (userDto.LibraryCardId == null)
             {
@@ -164,6 +288,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             borrowReqSpec.ApplyInclude(q => q
                 .Include(br => br.BorrowRequestDetails)
                     .ThenInclude(brd => brd.LibraryItem)
+                        .ThenInclude(li => li.LibraryItemInstances)
             );
             // Retrieve with spec
             var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(borrowReqSpec);
@@ -402,7 +527,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 LibraryCardId = validCardId,
                 BorrowRequestDetails = borrowDetails,
                 RequestDate = currentLocalDateTime,
-                ExpirationDate = currentLocalDateTime.AddDays(_borrowSettings.BorrowExpirationInDays),
+                ExpirationDate = currentLocalDateTime.AddDays(_borrowSettings.BorrowRequestExpirationInDays),
                 Status = BorrowRequestStatus.Created,
                 IsReminderSent = false
             };
@@ -444,7 +569,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
 
-    public async Task<IServiceResult> CancelAsync(string email, int borrowRequestId, string? cancellationReason)
+    public async Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason)
     {
         try
         {
@@ -479,7 +604,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             if (validateCardRes.ResultCode != ResultCodeConst.LibraryCard_Success0001) return validateCardRes;
             
             // Build specification
-            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == borrowRequestId);
+            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
             // Apply include 
             baseSpec.ApplyInclude(q => q
                 // Include request details
@@ -577,6 +702,89 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process cancel borrow request");
+        }
+    }
+
+    public async Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status)
+    {
+        try
+        {
+            // Check exist borrow request
+            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>()
+                .GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                // Fail to update
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+            }
+            
+            // Check for status change
+            if (Equals(existingEntity.Status, status))
+            {
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+            
+            // Update prop
+            existingEntity.Status = status;
+            
+            // Process update without save changes
+            await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+            
+            // Mark as update success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update borrow request status without save changes");
+        }
+    }
+
+    public async Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            var libItemDto = (await _libItemSvc.GetByInstanceBarcodeAsync(barcode)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                    StringUtils.Format(errMsg, isEng ? "item instance by barcode" : "tài liệu"));
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<BorrowRequest>(br =>
+                br.BorrowRequestId == id &&
+                br.BorrowRequestDetails.Any(
+                    brd => brd.LibraryItemId == libItemDto.LibraryItemId));
+            // Check exist
+            var isExistInRequest = await _unitOfWork.Repository<BorrowRequest, int>().AnyAsync(baseSpec);
+            if (!isExistInRequest)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? $"item match code '{barcode}' in registered borrow request"
+                        : $"tài liệu với số ĐKCB '{barcode}' trong yêu cầu đăng ký mượn"), false);
+            }
+            
+            // Is exist
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when check exist barcode in request");
         }
     }
     

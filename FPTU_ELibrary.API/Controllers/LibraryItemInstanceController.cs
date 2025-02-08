@@ -21,10 +21,17 @@ public class LibraryItemInstanceController : ControllerBase
     }
     
     [Authorize]
-    [HttpGet(APIRoute.LibraryItemInstance.GetById, Name = nameof(GetEditionCopyByIdAsync))]
-    public async Task<IActionResult> GetEditionCopyByIdAsync([FromRoute] int id)
+    [HttpGet(APIRoute.LibraryItemInstance.GetById, Name = nameof(GetLibraryItemInstanceByIdAsync))]
+    public async Task<IActionResult> GetLibraryItemInstanceByIdAsync([FromRoute] int id)
     {
         return Ok(await _itemInstanceService.GetByIdAsync(id));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItemInstance.GetByBarcode, Name = nameof(GetLibraryItemInstanceByBarcodeAsync))]
+    public async Task<IActionResult> GetLibraryItemInstanceByBarcodeAsync([FromQuery] string barcode)
+    {
+        return Ok(await _itemInstanceService.GetByBarcodeAsync(barcode: barcode));
     }
     
     [Authorize]

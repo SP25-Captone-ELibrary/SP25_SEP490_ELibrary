@@ -500,6 +500,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     EnglishName = nameof(LibraryItemCategory.SingleBook),
                     VietnameseName = LibraryItemCategory.SingleBook.GetDescription(),
 					IsAllowAITraining = true,
+					TotalBorrowDays = 30
                 },
                 new()
                 {
@@ -507,6 +508,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                EnglishName = nameof(LibraryItemCategory.BookSeries),
 	                VietnameseName = LibraryItemCategory.BookSeries.GetDescription(),
 					IsAllowAITraining = true,
+					TotalBorrowDays = 30
                 },
                 new()
                 {
@@ -514,6 +516,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                EnglishName = nameof(LibraryItemCategory.SpecializedBook),
 	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription(),
 					IsAllowAITraining = true,
+					TotalBorrowDays = 90
                 },
                 new()
                 {
@@ -521,6 +524,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                EnglishName = nameof(LibraryItemCategory.ReferenceBook),
 	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription(),
 					IsAllowAITraining = true,
+					TotalBorrowDays = 90
                 },
                 new()
                 {
@@ -528,54 +532,62 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                EnglishName = nameof(LibraryItemCategory.ProfessionalBook),
 	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription(),
 					IsAllowAITraining = true,
+					TotalBorrowDays = 60
                 },
                 new()
                 {
 	                Prefix = "SVH",
 	                EnglishName = nameof(LibraryItemCategory.Literature),
-	                VietnameseName = LibraryItemCategory.Literature.GetDescription()
+	                VietnameseName = LibraryItemCategory.Literature.GetDescription(),
+	                TotalBorrowDays = 30
                 },
                 new()
                 {
 	                Prefix = "SMV",
 	                EnglishName = nameof(LibraryItemCategory.Multimedia),
 	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 60
                 },
                 new()
                 {
                     Prefix = "TC",
                     EnglishName = nameof(LibraryItemCategory.Journal),
                     VietnameseName = LibraryItemCategory.Journal.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 30
                 },
                 new()
                 {
 	                Prefix = "NC",
 	                EnglishName = nameof(LibraryItemCategory.ResearchPaper),
 	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 90
                 },
                 new()
                 {
 	                Prefix = "BC",
 	                EnglishName = nameof(LibraryItemCategory.Newspaper),
 	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 20
                 },
                 new()
                 {
 	                Prefix = "HT",
 	                EnglishName = nameof(LibraryItemCategory.LearningSupportMaterial),
 	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 90
                 },
                 new()
                 {
 	                Prefix = "LA",
 	                EnglishName = nameof(LibraryItemCategory.AcademicThesis),
 	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription(),
-					IsAllowAITraining = false
+					IsAllowAITraining = false,
+					TotalBorrowDays = 90
                 },
 			};
         

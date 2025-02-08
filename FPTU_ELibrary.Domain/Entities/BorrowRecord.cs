@@ -22,16 +22,15 @@ public class BorrowRecord
     // True if borrowed via kiosk
     public bool SelfServiceBorrow { get; set; } 
 
-    // Total time allow to extend borrow days
-    public int ExtensionLimit { get; set; }
+    // Total extension time  
+    public int TotalExtension { get; set; }
 
     // Borrow items condition tracking
     public string BorrowCondition { get; set; } = null!;
     public string? ReturnCondition { get; set; }
     public DateTime? ConditionCheckDate { get; set; }
 
-    // Borrow Request information
-    public DateTime ProcessedDate { get; set; }
+    // Borrow record processed by which employee
     public Guid ProcessedBy { get; set; }
 
     // Mapping entities

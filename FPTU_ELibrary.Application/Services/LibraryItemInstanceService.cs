@@ -1,9 +1,11 @@
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -16,6 +18,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Nest;
 using Serilog;
 using Exception = System.Exception;
@@ -25,8 +28,10 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryItemInstanceService : GenericService<LibraryItemInstance, LibraryItemInstanceDto, int>,
     ILibraryItemInstanceService<LibraryItemInstanceDto>
 {
+    private readonly AppSettings _appSettings;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
+    private readonly ICategoryService<CategoryDto> _cateService;
     private readonly ILibraryItemService<LibraryItemDto> _libItemService;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventoryService;
     private readonly ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> _conditionHistoryService;
@@ -34,16 +39,20 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     public LibraryItemInstanceService(
         IBorrowRequestService<BorrowRequestDto> borrowReqService,
         IBorrowRecordService<BorrowRecordDto> borrowRecService,
+        ICategoryService<CategoryDto> cateService,
         ILibraryItemService<LibraryItemDto> libItemService,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventoryService,
         ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> conditionHistoryService,
+        IOptionsMonitor<AppSettings> monitor,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+        _appSettings = monitor.CurrentValue;
         _borrowReqService = borrowReqService;
         _borrowRecService = borrowRecService;
+        _cateService = cateService;
         _libItemService = libItemService;
         _inventoryService = inventoryService;
         _conditionHistoryService = conditionHistoryService;
@@ -243,7 +252,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0011,
                             StringUtils.Format(errMsg, isEng
                                 ? "Shelf location not found"
-                                : "Không tìm thấy vị trí kệ cho sách"));
+                                : "Không tìm thấy vị trí kệ cho tài liệu"));
                     }
                 }
 
@@ -377,6 +386,116 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         }
     }
 
+    public async Task<IServiceResult> GetByBarcodeAsync(string barcode)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(li => Equals(li.Barcode, barcode));
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: li => new LibraryItemInstance()
+                {
+                    LibraryItemInstanceId = li.LibraryItemInstanceId,   
+                    LibraryItemId = li.LibraryItemId,   
+                    Barcode = li.Barcode,   
+                    Status = li.Status,   
+                    CreatedAt = li.CreatedAt,   
+                    UpdatedAt = li.UpdatedAt,   
+                    CreatedBy = li.CreatedBy,   
+                    UpdatedBy = li.UpdatedBy,   
+                    IsDeleted = li.IsDeleted,   
+                    LibraryItem = new LibraryItem()
+                    {
+                        LibraryItemId = li.LibraryItem.LibraryItemId,
+                        Title = li.LibraryItem.Title,
+                        SubTitle = li.LibraryItem.SubTitle,
+                        Responsibility = li.LibraryItem.Responsibility,
+                        Edition = li.LibraryItem.Edition,
+                        EditionNumber = li.LibraryItem.EditionNumber,
+                        Language = li.LibraryItem.Language,
+                        OriginLanguage = li.LibraryItem.OriginLanguage,
+                        Summary = li.LibraryItem.Summary,
+                        CoverImage = li.LibraryItem.CoverImage,
+                        PublicationYear = li.LibraryItem.PublicationYear,
+                        Publisher = li.LibraryItem.Publisher,
+                        PublicationPlace = li.LibraryItem.PublicationPlace,
+                        ClassificationNumber = li.LibraryItem.ClassificationNumber,
+                        CutterNumber = li.LibraryItem.CutterNumber,
+                        Isbn = li.LibraryItem.Isbn,
+                        Ean = li.LibraryItem.Ean,
+                        EstimatedPrice = li.LibraryItem.EstimatedPrice,
+                        PageCount = li.LibraryItem.PageCount,
+                        PhysicalDetails = li.LibraryItem.PhysicalDetails,
+                        Dimensions = li.LibraryItem.Dimensions,
+                        AccompanyingMaterial = li.LibraryItem.AccompanyingMaterial,
+                        Genres = li.LibraryItem.Genres,
+                        GeneralNote = li.LibraryItem.GeneralNote,
+                        BibliographicalNote = li.LibraryItem.BibliographicalNote,
+                        TopicalTerms = li.LibraryItem.TopicalTerms,
+                        AdditionalAuthors = li.LibraryItem.AdditionalAuthors,
+                        CategoryId = li.LibraryItem.CategoryId,
+                        ShelfId = li.LibraryItem.ShelfId,
+                        GroupId = li.LibraryItem.GroupId,
+                        Status = li.LibraryItem.Status,
+                        IsDeleted = li.LibraryItem.IsDeleted,
+                        IsTrained = li.LibraryItem.IsTrained,
+                        CanBorrow = li.LibraryItem.CanBorrow,
+                        TrainedAt = li.LibraryItem.TrainedAt,
+                        CreatedAt = li.LibraryItem.CreatedAt,
+                        UpdatedAt = li.LibraryItem.UpdatedAt,
+                        UpdatedBy = li.LibraryItem.UpdatedBy,
+                        CreatedBy = li.LibraryItem.CreatedBy,
+                        // References
+                        Category = li.LibraryItem.Category,
+                        Shelf = li.LibraryItem.Shelf,
+                        LibraryItemInventory = li.LibraryItem.LibraryItemInventory,
+                        LibraryItemAuthors = li.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                        {
+                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                            LibraryItemId = ba.LibraryItemId,
+                            AuthorId = ba.AuthorId,
+                            Author = ba.Author
+                        }).ToList()
+                    },
+                    LibraryItemConditionHistories = li.LibraryItemConditionHistories.Select(c => new LibraryItemConditionHistory()
+                    {
+                        ConditionHistoryId = c.ConditionHistoryId,
+                        LibraryItemInstanceId = c.LibraryItemInstanceId,
+                        Condition = c.Condition,
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt,
+                        CreatedBy = c.CreatedBy,
+                        UpdatedBy = c.UpdatedBy,
+                    }).OrderByDescending(x => x.CreatedAt).ToList()
+                });
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "item instance" : "tài liệu"));
+            }
+            
+            // Convert to dto
+            var dto = _mapper.Map<LibraryItemInstanceDto>(existingEntity);
+            // Get data success
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                // Convert to get instance by barcode result dto
+                dto.ToGetByBarcodeResultDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get library item instance by barcode");
+        }
+    }
+    
     public async Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId,
         List<LibraryItemInstanceDto> itemInstances)
     {
@@ -387,6 +506,23 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
+            // Check exist library item
+            // Build spec
+            var libItemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == libraryItemId);
+            // Apply include
+            libItemSpec.ApplyInclude(q => q.Include(li => li.Category));
+            // Retrieve item with spec
+            var libItemDto = (await _libItemService.GetWithSpecAsync(libItemSpec)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "item to process add range instance" 
+                        : "tài liệu để thêm nhiều bản sao"));
+            }
+            
             // Initialize custom errors
             var customErrors = new Dictionary<string, string[]>();
             var uniqueList = new HashSet<string>();
@@ -425,6 +561,31 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         customErrors.Add(
                             $"libraryItemInstances[{i}].barcode",
                             [StringUtils.Format(errMsg, $"'{itemInstances[i].Barcode}'")]);
+                    }
+                    
+                    // Try to validate with category prefix
+                    var isValidBarcode =
+                        StringUtils.IsValidBarcodeWithPrefix(itemInstances[i].Barcode, libItemDto.Category.Prefix);
+                    if (!isValidBarcode)
+                    {
+                        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0006);
+                        // Add errors
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                            key: $"libraryItemInstances[{i}].barcode",
+                            msg: StringUtils.Format(errMsg, $"'{libItemDto.Category.Prefix}'"));
+                    }
+                        
+                    // Try to validate barcode length
+                    var barcodeNumLength = itemInstances[i].Barcode.Length - libItemDto.Category.Prefix.Length; 
+                    if (barcodeNumLength != _appSettings.InstanceBarcodeNumLength) // Different from threshold value
+                    {
+                        // Add errors
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                            key: $"libraryItemInstances[{i}].barcode",
+                            msg: isEng 
+                                ? $"Total barcode number after prefix must equals to {_appSettings.InstanceBarcodeNumLength}"
+                                : $"Tổng chữ số sau tiền tố phải bằng {_appSettings.InstanceBarcodeNumLength}"
+                        );
                     }
                 }
                 else
@@ -1226,6 +1387,203 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process count total copy");
+        }
+    }
+
+    public async Task<IServiceResult> UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+        List<int> libraryItemInstanceIds,
+        LibraryItemInstanceStatus status,
+        bool isProcessBorrowRequest)
+    {
+        try
+        {
+            // Determine current lang context 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(li =>
+                // All exist in request ids
+                libraryItemInstanceIds.Contains(li.LibraryItemInstanceId));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+                    .ThenInclude(l => l.LibraryItemInventory!)
+            );
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<LibraryItemInstance, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (!entities.Any())
+            {
+                // Fail to update
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+            }
+            
+            // Iterate each instance to update status
+            foreach (var instance in entities)
+            {
+                // Check current status
+                var currStatus = instance.Status;
+                
+                // Assign inventory
+                var inventory = instance.LibraryItem.LibraryItemInventory;
+                
+                // Handle update status for each type 
+                switch (currStatus)
+                {
+                    case nameof(LibraryItemInstanceStatus.InShelf):
+                        // Case 1: InShelf -> Borrowed (both online & in-person borrow)
+                        if (status == LibraryItemInstanceStatus.Borrowed)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Borrowed);
+                            
+                            // Update inventory quantity
+                            if (inventory != null)
+                            {
+                                // Is process from borrow request
+                                if (isProcessBorrowRequest && inventory.RequestUnits > 0)
+                                {
+                                    // Reduce request units
+                                    inventory.RequestUnits--;
+                                    // Increase borrowed units
+                                    inventory.BorrowedUnits++;
+                                }
+                                else if(!isProcessBorrowRequest && inventory.AvailableUnits > 0)
+                                {
+                                    // Reduce available units
+                                    inventory.AvailableUnits--;
+                                    // Increase borrowed units
+                                    inventory.BorrowedUnits++;
+                                }
+                            }
+                        }
+                        // Case 2: InShelf -> OutOfShelf
+                        if (status == LibraryItemInstanceStatus.OutOfShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+                            
+                            if (inventory != null && inventory.AvailableUnits > 0)
+                            {
+                                // Reduce available units
+                                inventory.AvailableUnits--;
+                            }
+                        }
+                        // Case 3: InShelf -> InShelf (no effect)
+                        // Case 4: InShelf -> Reserved (not allow)
+                        break;
+                    case nameof(LibraryItemInstanceStatus.OutOfShelf):
+                        // Case 1: OutOfShelf -> InShelf
+                        if (status == LibraryItemInstanceStatus.InShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.InShelf);
+                            
+                            // Required to have a status
+                            if (instance.LibraryItem.Shelf == null)
+                            {
+                                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0011);
+                                // Required shelf location
+                                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0011,
+                                    StringUtils.Format(errMsg, isEng
+                                        ? $"Shelf location not found for item '{instance.LibraryItem.Title}'"
+                                        : $"Không tìm thấy vị trí kệ cho tài liệu '{instance.LibraryItem.Title}'"));
+                            }
+
+                            if (inventory != null)
+                            {
+                                // Increase availability
+                                inventory.AvailableUnits++;
+                            }
+                        }
+                        // Case 2: OutOfShelf -> OutOfShelf (no effect)
+                        // Case 3: OutOfShelf -> Borrowed (not allow)
+                        // Case 4: OutOfShelf -> Reserved (not allow)
+                        break;
+                    case nameof(LibraryItemInstanceStatus.Borrowed):
+                        // Case 1: Borrowed -> InShelf (return item)
+                        if (status == LibraryItemInstanceStatus.InShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.InShelf);
+                            
+                            if (inventory != null && inventory.BorrowedUnits > 0)
+                            {
+                                // Reduce borrow units
+                                inventory.BorrowedUnits--;
+                                // Increase availability units
+                                inventory.AvailableUnits++;
+                            }
+                        }
+                        // Case 2: Borrowed -> OutOfShelf (not allow) 
+                        // Case 2: Borrowed -> Borrowed (no effect) 
+                        // Case 4: Borrowed -> Reserved (assign item to reservation queue)
+                        if (status == LibraryItemInstanceStatus.Reserved)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
+                            
+                            if (inventory != null && inventory.BorrowedUnits > 0)
+                            {
+                                // Reduce borrow units
+                                inventory.BorrowedUnits--;
+                                // Increase reserved units
+                                inventory.ReservedUnits++;
+                            }
+                        }
+                        break;
+                    case nameof(LibraryItemInstanceStatus.Reserved):
+                        // Case 1: Reserved -> InShelf (not allow)
+                        // Case 2: Reserved -> OutOfShelf (reservation expired but not found any other reservation)
+                        if (status == LibraryItemInstanceStatus.OutOfShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+                            
+                            if (inventory != null && inventory.ReservedUnits > 0)
+                            {
+                                // Reduce reserved units
+                                inventory.ReservedUnits--;
+                            }
+                        }
+                        // Case 3: Reserved -> Reserved (assign from one reservation to another)
+                        if (status == LibraryItemInstanceStatus.Reserved)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
+                        }
+                        // Case 4: Reserved -> Borrowed (reservation's person comes to pick up item)
+                        if (status == LibraryItemInstanceStatus.Borrowed)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Borrowed);
+                            
+                            if (inventory != null && inventory.ReservedUnits > 0)
+                            {
+                                // Reduce reserved units
+                                inventory.ReservedUnits--;
+                                // Increase borrowed unties
+                                inventory.BorrowedUnits++;
+                            }
+                        }
+                        break;
+                }
+                
+                // Process update
+                await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(instance);
+            }
+            
+            // Updated without save change
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range status with item's inventory");
         }
     }
 }

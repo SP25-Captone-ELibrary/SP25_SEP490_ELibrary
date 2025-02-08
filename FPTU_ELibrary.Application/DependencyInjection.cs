@@ -70,6 +70,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ILibraryZoneService<LibraryZoneDto>, LibraryZoneService>();
             services.AddScoped<ILibrarySectionService<LibrarySectionDto>, LibrarySectionService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
+            services.AddScoped<ILibraryCardPackageService<LibraryCardPackageDto>, LibraryCardPackageService>();
             services.AddScoped<INotificationService<NotificationDto>, NotificationService>();
             services.AddScoped<INotificationRecipientService<NotificationRecipientDto>, NotificationRecipientService>();
             services.AddScoped<IRefreshTokenService<RefreshTokenDto>, RefreshTokenService>();

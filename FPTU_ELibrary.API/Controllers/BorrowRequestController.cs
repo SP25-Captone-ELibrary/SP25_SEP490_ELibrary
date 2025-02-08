@@ -10,6 +10,7 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -28,8 +29,32 @@ public class BorrowRequestController : ControllerBase
     }
     
     #region Management
-    #endregion
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRequest.GetAllManagement, Name = nameof(GetAllManagementAsync))]
+    public async Task<IActionResult> GetAllManagementAsync([FromQuery] BorrowRequestSpecParams specParams)
+    {
+        return Ok(await _borrowReqSvc.GetAllWithSpecAsync(new BorrowRequestSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize,
+            callFromManagement: true)));
+    }
 
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRequest.GetByIdManagement, Name = nameof(GetByIdManagementAsync))]
+    public async Task<IActionResult> GetByIdManagementAsync([FromRoute] int id)
+    {
+        return Ok(await _borrowReqSvc.GetByIdAsync(id));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRequest.CheckExistBarcode, Name = nameof(CheckExistBarcodeInRequestAsync))]
+    public async Task<IActionResult> CheckExistBarcodeInRequestAsync([FromRoute] int id, [FromQuery] string barcode)
+    {
+        return Ok(await _borrowReqSvc.CheckExistBarcodeInRequestAsync(id: id, barcode: barcode));
+    }
+    #endregion
+    
     [Authorize]
     [HttpGet(APIRoute.BorrowRequest.GetAll, Name = nameof(GetAllBorrowRequestWithEmailAsync))]
     public async Task<IActionResult> GetAllBorrowRequestWithEmailAsync([FromQuery] BorrowRequestSpecParams specParams)
@@ -40,7 +65,8 @@ public class BorrowRequestController : ControllerBase
             spec: new BorrowRequestSpecification(
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
-                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                callFromManagement: false)));
     }
 
     [HttpGet(APIRoute.BorrowRequest.GetById, Name = nameof(GetBorrowRequestByIdWithEmailAsync))]
@@ -65,7 +91,7 @@ public class BorrowRequestController : ControllerBase
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowReqSvc.CancelAsync(
             email: email ?? string.Empty,
-            borrowRequestId: id, 
+            id: id, 
             cancellationReason: cancellationReason));
     }
 }

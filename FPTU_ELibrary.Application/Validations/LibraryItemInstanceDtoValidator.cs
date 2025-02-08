@@ -13,8 +13,7 @@ public class LibraryItemInstanceDtoValidator : AbstractValidator<LibraryItemInst
             (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(langContext);
         var isEng = langEnum == SystemLanguage.English;
 
-        // TODO: Determine code specific type
-        // Validate book edition copy barcode
+        // Validate item instance barcode
         RuleFor(x => x.Barcode);
         
         // Add copy history validators
