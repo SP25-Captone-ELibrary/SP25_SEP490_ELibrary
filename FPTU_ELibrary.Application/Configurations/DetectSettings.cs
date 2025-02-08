@@ -2,6 +2,7 @@ namespace FPTU_ELibrary.Application.Configurations;
 
 public class DetectSettings
 {
+    public string HFApiKey { get; set; }
     public string DetectAPIUrl { get; set; }
     public string DetectAPIKey { get; set; }
     public string DetectModelUrl { get; set; }

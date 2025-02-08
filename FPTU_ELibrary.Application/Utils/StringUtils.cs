@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using MimeKit.Tnef;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace FPTU_ELibrary.Application.Utils
 {
@@ -341,12 +342,16 @@ namespace FPTU_ELibrary.Application.Utils
         /// Damerau-Levenshtein Distance Percentage Calculation
         /// </summary>
         private static double CalculateDamerauLevenshteinPercentage(string source, string target)
-        {
-            int distance = DamerauLevenshteinDistance(source, target);
+        {            int distance = DamerauLevenshteinDistance(source, target);
+            if (distance == -1)
+            {
+                return (double)target.Length/source.Length * 100;    
+            }
+
             int maxLength = Math.Max(source.Length, target.Length);
 
             if (maxLength == 0)
-                return 100.0; // Nếu cả 2 chuỗi rỗng, trả về 100% (khớp hoàn toàn)
+                return 100.0;
 
             return (1.0 - ((double)distance / maxLength)) * 100;
         }
@@ -356,6 +361,11 @@ namespace FPTU_ELibrary.Application.Utils
         /// </summary>
         private static int DamerauLevenshteinDistance(string source, string target)
         {
+            if (source.Contains(target))
+            {
+                return -1;
+            }
+
             int m = source.Length;
             int n = target.Length;
 

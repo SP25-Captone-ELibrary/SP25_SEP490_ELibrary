@@ -138,6 +138,69 @@ public static class LibraryItemDetailDtoExtensions
         };
     }
 
+    public static LibraryItemDetailDto ToLibraryItemDetailWithoutGroupDto(this LibraryItemDto dto)
+    {
+        return new LibraryItemDetailDto()
+        {
+            // Library item details
+            LibraryItemId = dto.LibraryItemId,
+            Title = dto.Title,
+            SubTitle = dto.SubTitle,
+            Responsibility = dto.Responsibility,
+            Edition = dto.Edition,
+            EditionNumber = dto.EditionNumber,
+            Language = dto.Language,
+            OriginLanguage = dto.OriginLanguage,
+            Summary = dto.Summary,
+            CoverImage = dto.CoverImage,
+            PublicationYear = dto.PublicationYear,
+            Publisher = dto.Publisher,
+            PublicationPlace = dto.PublicationPlace,
+            ClassificationNumber = dto.ClassificationNumber,
+            CutterNumber = dto.CutterNumber,
+            Isbn = dto.Isbn,
+            Ean = dto.Ean,
+            EstimatedPrice = dto.EstimatedPrice,
+            PageCount = dto.PageCount ?? 0,
+            PhysicalDetails = dto.PhysicalDetails,
+            Dimensions = dto.Dimensions ?? string.Empty,
+            AccompanyingMaterial = dto.AccompanyingMaterial,
+            Genres = dto.Genres,
+            GeneralNote = dto.GeneralNote,
+            BibliographicalNote = dto.BibliographicalNote,
+            TopicalTerms = dto.TopicalTerms,
+            AdditionalAuthors = dto.AdditionalAuthors,
+            IsDeleted = dto.IsDeleted,
+            CanBorrow = dto.CanBorrow,
+            IsTrained = dto.IsTrained,
+            TrainedAt = dto.TrainedAt,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            CreatedBy = dto.CreatedBy,
+            UpdatedBy = dto.UpdatedBy,
+            // Category
+            CategoryId = dto.CategoryId,
+            Category = dto.Category,
+            // Shelf 
+            ShelfId = dto.ShelfId,
+            Shelf = dto.Shelf,
+            // Group 
+            GroupId = dto.GroupId,
+            // Status
+            Status = dto.Status,
+            // Inventory 
+            LibraryItemInventory = dto.LibraryItemInventory,
+            // Authors
+            Authors = dto.LibraryItemAuthors.Any() ? dto.LibraryItemAuthors.Select(lia => lia.Author).ToList() : new(),
+            // Resources
+            Resources = dto.LibraryItemResources.Any() ? dto.LibraryItemResources.Select(lir => lir.LibraryResource).ToList() : new(),
+            // Item instances
+            LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
+            // Average item reviews
+            AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+        };
+    }
+
     public static LibraryItemDetailDto ToLibraryItemGroupedDetailDto(this LibraryItemDto dto)
     {
         return new LibraryItemDetailDto()

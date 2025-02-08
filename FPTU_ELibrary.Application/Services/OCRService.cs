@@ -15,6 +15,7 @@ using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Exception = System.Exception;
 
 namespace FPTU_ELibrary.Application.Services.IServices;
 
@@ -39,7 +40,7 @@ public class OCRService : IOCRService
         _libraryItemService = libraryItemService;
     }
 
-    private async Task<IServiceResult> ReadFileStreamAsync(Stream imageStream)
+    private async Task<IServiceResult> ReadRawFileSteam(Stream imageStream)
     {
         try
         {
@@ -75,7 +76,28 @@ public class OCRService : IOCRService
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
 
-            var textResults = results.AnalyzeResult.ReadResults;
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), results);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process checking create book information");
+        }
+    }
+
+    private async Task<IServiceResult> ReadFileStreamAsync(Stream imageStream)
+    {
+        try
+        {
+            var results = await ReadRawFileSteam(imageStream);
+            if (results.ResultCode != ResultCodeConst.SYS_Success0002)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            var textResults = ((ReadOperationResult)results.Data).AnalyzeResult.ReadResults;
             var extractedText = string.Join(" ", textResults.SelectMany(page => page.Lines.Select(line => line.Text)))
                 .Replace("\r", "")
                 .Replace("\n", " ");
@@ -147,12 +169,14 @@ public class OCRService : IOCRService
                         Weight = _monitor.AuthorNamePercentage
                     });
                 }
+
                 var matchResult =
                     StringUtils.CalculateFieldMatchScore(result.Data.ToString(), compareFields,
-                        _monitor.ConfidenceThreshold,_monitor.MinFieldThreshold);
+                        _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
                 matchResult.ImageName = image.FileName;
                 acceptableImage.Add(matchResult);
             }
+
             return new ServiceResult(ResultCodeConst.AIService_Success0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001)
                 , acceptableImage);
@@ -163,6 +187,232 @@ public class OCRService : IOCRService
             throw new Exception("Error invoke when process checking create book information");
         }
     }
+
+    public async Task<IServiceResult> OcrDetailAsync(IFormFile image, int bestItemId)
+    {
+        try
+        {
+            // Dictionary to store data for response
+            Dictionary<int, MatchResultDto> fieldMatchedResult = new Dictionary<int, MatchResultDto>();
+
+            // Read raw detail from image
+            var rawOrcResult = await ReadRawFileSteam(image.OpenReadStream());
+            if (rawOrcResult.ResultCode != ResultCodeConst.SYS_Success0002)
+            {
+                return rawOrcResult;
+            }
+
+            var textResults = (rawOrcResult.Data as ReadOperationResult).AnalyzeResult.ReadResults;
+            string ocrValue = string.Join(" ", textResults.SelectMany(page => page.Lines.Select(line => line.Text)))
+                .Replace("\r", "")
+                .Replace("\n", " ");
+            var processedOcrValue = textResults.SelectMany(page =>
+                page.Lines.Select(line =>
+                    line.Text.Replace("\r", "")
+                        .Replace("\n", " "))).ToList();
+            var itemBaseSpec = new BaseSpecification<LibraryItem>(x => x.LibraryItemId == bestItemId);
+            itemBaseSpec.ApplyInclude(q => q.Include(x => x.LibraryItemAuthors)
+                .ThenInclude(ea => ea.Author));
+            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemBaseSpec);
+            if (libraryItem.ResultCode != ResultCodeConst.SYS_Success0002)
+            {
+                return libraryItem;
+            }
+
+            var dto = (LibraryItemDto)libraryItem.Data!;
+            var mainAuthor = dto.LibraryItemAuthors.Select(x => x.Author.FullName).ToList();
+            for (var i = 0; i < processedOcrValue.Count; i++)
+            {
+                List<FieldMatchInputDto> compareFields = new List<FieldMatchInputDto>()
+                {
+                    new FieldMatchInputDto()
+                    {
+                        FieldName = "Title",
+                        Values = new List<string>() { dto.Title },
+                        Weight = _monitor.TitlePercentage
+                    },
+                    new FieldMatchInputDto()
+                    {
+                        FieldName = "Publisher",
+                        Values = new List<string>() { dto.Publisher },
+                        Weight = _monitor.PublisherPercentage
+                    }
+                };
+                // check if SubTitle is existed
+                if (dto.SubTitle is not null)
+                {
+                    compareFields.First(cf => cf.FieldName.Equals("Title"))
+                        .Values.Add(dto.SubTitle);
+                }
+
+                // check if GeneralNote is existed
+                if (dto.GeneralNote is not null)
+                {
+                    compareFields.Add(new FieldMatchInputDto()
+                    {
+                        FieldName = "Authors",
+                        Values = new List<string>() { dto.GeneralNote },
+                        Weight = _monitor.AuthorNamePercentage
+                    });
+                }
+                else
+                {
+                    compareFields.Add(new FieldMatchInputDto()
+                    {
+                        FieldName = "Authors",
+                        Values = mainAuthor,
+                        Weight = _monitor.AuthorNamePercentage
+                    });
+                }
+
+                var matchResult =
+                    StringUtils.CalculateFieldMatchScore(processedOcrValue[i], compareFields,
+                        _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
+                matchResult.ImageName = image.FileName;
+                fieldMatchedResult.Add(i, matchResult);
+            }
+
+            // get best matched title
+            var bestMatchedWithTitleLine = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.Equals("Title or Subtitle matches most")))
+                .MaxBy(x => x.Value.FieldPointsWithThreshole
+                    .Where(fp => fp.Name.Equals("Title or Subtitle matches most"))
+                    .Select(fp => fp.MatchedPoint)
+                    .DefaultIfEmpty(0) 
+                    .Max()
+                );
+
+            var bestTitleMatched = new StringComparision()
+            {
+                MatchLine = processedOcrValue[bestMatchedWithTitleLine.Key],
+                MatchPhrasePoint = bestMatchedWithTitleLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.Equals("Title or Subtitle matches most")).MatchPhrasePoint,
+                FuzzinessPoint = bestMatchedWithTitleLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.Equals("Title or Subtitle matches most")).FuzzinessPoint,
+                FieldThreshold = double.Round(_monitor.TitlePercentage),
+                PropertyName = "Title"
+            };
+            //get best matched author
+            var bestMatchedWithAuthorLine = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.ToLower().Contains("author")))
+                .MaxBy(x => x.Value.FieldPointsWithThreshole
+                    .Where(fp => fp.Name.ToLower().Contains("author"))
+                    .Select(fp => fp.MatchedPoint)
+                    .DefaultIfEmpty(0) // Tránh lỗi danh sách rỗng
+                    .Max()
+                );
+            var bestAuthorMatched = new StringComparision()
+            {
+                MatchLine = processedOcrValue[bestMatchedWithAuthorLine.Key],
+                MatchPhrasePoint = bestMatchedWithAuthorLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.ToLower().Contains("author")).MatchPhrasePoint,
+                FuzzinessPoint = bestMatchedWithAuthorLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.ToLower().Contains("author")).FuzzinessPoint,
+                FieldThreshold = double.Round(_monitor.AuthorNamePercentage),
+                PropertyName = "Author"
+            };
+            //get best matched publisher
+            var bestMatchedWithPublisherLine = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.ToLower().Contains("publisher")))
+                .MaxBy(x => x.Value.FieldPointsWithThreshole
+                    .Where(fp => fp.Name.ToLower().Contains("publisher"))
+                    .Select(fp => fp.MatchedPoint)
+                    .DefaultIfEmpty(0) // Tránh lỗi danh sách rỗng
+                    .Max()
+                );
+            var bestPublisherMatched = new StringComparision()
+            {
+                MatchLine = processedOcrValue[bestMatchedWithPublisherLine.Key],
+                MatchPhrasePoint = bestMatchedWithPublisherLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.ToLower().Contains("publisher")).MatchPhrasePoint,
+                FuzzinessPoint = bestMatchedWithPublisherLine.Value.FieldPointsWithThreshole.First(x
+                    => x.Name.ToLower().Contains("publisher")).FuzzinessPoint,
+                FieldThreshold = double.Round(_monitor.PublisherPercentage),
+                PropertyName = "Publisher"
+            };
+            var response = new PredictAnalysisDto()
+            {
+                StringComparisions = new List<StringComparision>(),
+                LineStatisticDtos = new List<OcrLineStatisticDto>()
+            };
+            response.StringComparisions.Add(bestTitleMatched);
+            response.StringComparisions.Add(bestAuthorMatched);
+            response.StringComparisions.Add(bestPublisherMatched);
+
+            foreach (var (key, value) in fieldMatchedResult)
+            {
+                var titleMatched =
+                    value.FieldPointsWithThreshole.First(x => x.Name.Equals("Title or Subtitle matches most"));
+                var authorMatched = value.FieldPointsWithThreshole.First(x => x.Name.ToLower().Contains("author"));
+                var publisherMatched =
+                    value.FieldPointsWithThreshole.First(x => x.Name.ToLower().Contains("publisher"));
+                response.LineStatisticDtos.Add(new OcrLineStatisticDto()
+                {
+                    LineValue = processedOcrValue[key],
+                    TitleMatchPercentage = titleMatched.MatchedPoint,
+                    AuthorMatchPercentage = authorMatched.MatchedPoint,
+                    PublisherMatchPercentage = publisherMatched.MatchedPoint
+                });
+            }
+
+            // use combination of every line to define the total matched point
+            List<FieldMatchInputDto> combineCompareFields = new List<FieldMatchInputDto>()
+            {
+                new FieldMatchInputDto()
+                {
+                    FieldName = "Title",
+                    Values = new List<string>() { dto.Title },
+                    Weight = _monitor.TitlePercentage
+                },
+                new FieldMatchInputDto()
+                {
+                    FieldName = "Publisher",
+                    Values = new List<string>() { dto.Publisher },
+                    Weight = _monitor.PublisherPercentage
+                }
+            };
+            // check if SubTitle is existed
+            if (dto.SubTitle is not null)
+            {
+                combineCompareFields.First(cf => cf.FieldName.Equals("Title"))
+                    .Values.Add(dto.SubTitle);
+            }
+
+            // check if GeneralNote is existed
+            if (dto.GeneralNote is not null)
+            {
+                combineCompareFields.Add(new FieldMatchInputDto()
+                {
+                    FieldName = "Authors",
+                    Values = new List<string>() { dto.GeneralNote },
+                    Weight = _monitor.AuthorNamePercentage
+                });
+            }
+            else
+            {
+                combineCompareFields.Add(new FieldMatchInputDto()
+                {
+                    FieldName = "Authors",
+                    Values = mainAuthor,
+                    Weight = _monitor.AuthorNamePercentage
+                });
+            }
+
+            var combineMatchResult =
+                StringUtils.CalculateFieldMatchScore(ocrValue, combineCompareFields,
+                    _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
+            response.MatchPercentage = combineMatchResult.TotalPoint;
+            response.OverallPercentage = _monitor.MinFieldThreshold;
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), response);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process checking create book information");
+        }
+    }
+
     // public async Task<IServiceResult> CheckBookInformationAsync(CheckedBookEditionDto dto)
     // {
     //     try

@@ -23,6 +23,11 @@ public class OCRController : ControllerBase
     {
         return Ok(await _ocrService.CheckBookInformationAsync(req.ToCheckedItemDto()));
     }
+    [HttpPost(APIRoute.AIServices.OCRDetail,Name = nameof(OCRDetailAI))]
+    public async Task<IActionResult> OCRDetailAI([FromForm] PredictRequest req,[FromRoute] int id)
+    {
+        return Ok(await _ocrService.OcrDetailAsync(req.ImageToPredict,id));
+    }
     // [Authorize]
     // [HttpPost(APIRoute.AIServices.CheckBookEdition,Name = nameof(CheckBookEdition))]
     // public async Task<IActionResult> CheckBookEdition([FromForm] CheckBookEditionWithImageRequest dto)

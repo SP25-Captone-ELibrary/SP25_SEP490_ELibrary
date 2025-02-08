@@ -218,6 +218,7 @@
 			// [POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
+			public const string DefineGroup = Base + "/management/groups/define-group"; 
 		}
 		
 		/// <summary>

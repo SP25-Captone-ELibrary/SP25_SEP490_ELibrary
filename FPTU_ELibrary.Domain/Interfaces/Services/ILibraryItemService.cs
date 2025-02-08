@@ -26,7 +26,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> UndoDeleteAsync(int id);
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
-    // Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode);
+    Task<IServiceResult> UpdateTrainingStatusAsync(List<int> libraryItemIds);
     // Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(TDto dto, string fieldName);
     Task<IServiceResult> UpdateStatusAsync(int id);
     Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId);

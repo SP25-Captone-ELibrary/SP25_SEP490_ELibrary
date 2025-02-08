@@ -9,5 +9,7 @@ public interface IAIDetectionService
     Task<List<BoxDto>> DetectAsync(IFormFile image);
 
     Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList);
-    Task<bool> HasTheSameCoverImage(string coverImage, List<string> imagesUrl);
+    Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox);
+    Task<List<DetectResultDto>> DetectAllAsync(IFormFile image);
+    Task<IServiceResult> RawDetectAsync(IFormFile image);
 }
