@@ -245,6 +245,12 @@ public class OCRService : IOCRService
                         .Values.Add(dto.SubTitle);
                 }
 
+                compareFields.Add(new FieldMatchInputDto()
+                {
+                    FieldName = "Authors",
+                    Values = mainAuthor,
+                    Weight = _monitor.AuthorNamePercentage
+                });
                 // check if GeneralNote is existed
                 if (dto.GeneralNote is not null)
                 {
@@ -252,15 +258,6 @@ public class OCRService : IOCRService
                     {
                         FieldName = "Authors",
                         Values = new List<string>() { dto.GeneralNote },
-                        Weight = _monitor.AuthorNamePercentage
-                    });
-                }
-                else
-                {
-                    compareFields.Add(new FieldMatchInputDto()
-                    {
-                        FieldName = "Authors",
-                        Values = mainAuthor,
                         Weight = _monitor.AuthorNamePercentage
                     });
                 }
@@ -272,64 +269,205 @@ public class OCRService : IOCRService
                 fieldMatchedResult.Add(i, matchResult);
             }
 
-            // get best matched title
-            var bestMatchedWithTitleLine = fieldMatchedResult
-                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.Equals("Title or Subtitle matches most")))
-                .MaxBy(x => x.Value.FieldPointsWithThreshole
-                    .Where(fp => fp.Name.Equals("Title or Subtitle matches most"))
-                    .Select(fp => fp.MatchedPoint)
-                    .DefaultIfEmpty(0) 
-                    .Max()
-                );
+            StringComparision bestTitleMatched;
+            StringComparision bestAuthorMatched;
+            StringComparision bestPublisherMatched;
 
-            var bestTitleMatched = new StringComparision()
+
+            // Get best matched title
+            var titleMatchedEntries = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole
+                    .Any(fp => fp.Name == "Title or Subtitle matches most"))
+                .ToList();
+
+            if (titleMatchedEntries.Any())
             {
-                MatchLine = processedOcrValue[bestMatchedWithTitleLine.Key],
-                MatchPhrasePoint = bestMatchedWithTitleLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.Equals("Title or Subtitle matches most")).MatchPhrasePoint,
-                FuzzinessPoint = bestMatchedWithTitleLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.Equals("Title or Subtitle matches most")).FuzzinessPoint,
-                FieldThreshold = double.Round(_monitor.TitlePercentage),
-                PropertyName = "Title"
-            };
-            //get best matched author
-            var bestMatchedWithAuthorLine = fieldMatchedResult
-                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.ToLower().Contains("author")))
-                .MaxBy(x => x.Value.FieldPointsWithThreshole
-                    .Where(fp => fp.Name.ToLower().Contains("author"))
-                    .Select(fp => fp.MatchedPoint)
-                    .DefaultIfEmpty(0) // Tránh lỗi danh sách rỗng
-                    .Max()
-                );
-            var bestAuthorMatched = new StringComparision()
+                var entriesWithMaxPoints = titleMatchedEntries
+                    .Select(x => new
+                    {
+                        Entry = x,
+                        MaxPoint = x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name == "Title or Subtitle matches most")
+                            .Max(fp => Math.Max(fp.FuzzinessPoint, fp.MatchPhrasePoint))
+                    })
+                    .ToList();
+
+                var overallMaxPoint = entriesWithMaxPoints.Max(x => x.MaxPoint);
+                
+                var bestMatchedWithTitleLine = entriesWithMaxPoints
+                    .Where(x => x.MaxPoint == overallMaxPoint)
+                    .Select(x => x.Entry)
+                    .ToList();
+
+                bestTitleMatched = new StringComparision
+                {
+                    FuzzinessPoint = bestMatchedWithTitleLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name == "Title or Subtitle matches most")
+                            .Select(fp => fp.FuzzinessPoint)
+                            .First()),
+                    MatchPhrasePoint = bestMatchedWithTitleLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name == "Title or Subtitle matches most")
+                            .Select(fp => fp.MatchPhrasePoint)
+                            .First()),
+                    FieldThreshold = double.Round(_monitor.TitlePercentage * 100),
+                    PropertyName = "Title",
+                };
+                if(overallMaxPoint < _monitor.MinFieldThreshold)
+                {
+                    bestTitleMatched.MatchLine = "";
+                }
+                else
+                {
+                    bestTitleMatched.MatchLine = string.Join(" ", bestMatchedWithTitleLine.Select(x => processedOcrValue[x.Key]));
+                }
+            }
+            else
             {
-                MatchLine = processedOcrValue[bestMatchedWithAuthorLine.Key],
-                MatchPhrasePoint = bestMatchedWithAuthorLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.ToLower().Contains("author")).MatchPhrasePoint,
-                FuzzinessPoint = bestMatchedWithAuthorLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.ToLower().Contains("author")).FuzzinessPoint,
-                FieldThreshold = double.Round(_monitor.AuthorNamePercentage),
-                PropertyName = "Author"
-            };
-            //get best matched publisher
-            var bestMatchedWithPublisherLine = fieldMatchedResult
-                .Where(x => x.Value.FieldPointsWithThreshole.Any(fp => fp.Name.ToLower().Contains("publisher")))
-                .MaxBy(x => x.Value.FieldPointsWithThreshole
-                    .Where(fp => fp.Name.ToLower().Contains("publisher"))
-                    .Select(fp => fp.MatchedPoint)
-                    .DefaultIfEmpty(0) // Tránh lỗi danh sách rỗng
-                    .Max()
-                );
-            var bestPublisherMatched = new StringComparision()
+                bestTitleMatched = new StringComparision
+                {
+                    MatchLine = string.Empty,
+                    FuzzinessPoint = 0,
+                    MatchPhrasePoint = 0,
+                    FieldThreshold = double.Round(_monitor.TitlePercentage * 100),
+                    PropertyName = "Title",
+                };
+            }
+
+            bestTitleMatched.MatchPercentage = bestTitleMatched.MatchPhrasePoint > bestTitleMatched.FuzzinessPoint
+                ? bestTitleMatched.MatchPhrasePoint
+                : bestTitleMatched.FuzzinessPoint;
+            // Get best matched author
+            var authorMatchedEntries = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole
+                    .Any(fp => fp.Name.ToLower().Contains("author")))
+                .ToList();
+
+            if (authorMatchedEntries.Any())
             {
-                MatchLine = processedOcrValue[bestMatchedWithPublisherLine.Key],
-                MatchPhrasePoint = bestMatchedWithPublisherLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.ToLower().Contains("publisher")).MatchPhrasePoint,
-                FuzzinessPoint = bestMatchedWithPublisherLine.Value.FieldPointsWithThreshole.First(x
-                    => x.Name.ToLower().Contains("publisher")).FuzzinessPoint,
-                FieldThreshold = double.Round(_monitor.PublisherPercentage),
-                PropertyName = "Publisher"
-            };
+                var entriesWithMaxPoints = authorMatchedEntries
+                    .Select(x => new
+                    {
+                        Entry = x,
+                        MaxPoint = x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("author"))
+                            .Max(fp => Math.Max(fp.FuzzinessPoint, fp.MatchPhrasePoint))
+                    })
+                    .ToList();
+
+                var overallMaxPoint = entriesWithMaxPoints.Max(x => x.MaxPoint);
+
+                var bestMatchedWithAuthorLine = entriesWithMaxPoints
+                    .Where(x => x.MaxPoint == overallMaxPoint)
+                    .Select(x => x.Entry)
+                    .ToList();
+
+                bestAuthorMatched = new StringComparision
+                {
+                    FuzzinessPoint = bestMatchedWithAuthorLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("author"))
+                            .Select(fp => fp.FuzzinessPoint)
+                            .First()),
+                    MatchPhrasePoint = bestMatchedWithAuthorLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("author"))
+                            .Select(fp => fp.MatchPhrasePoint)
+                            .First()),
+                    FieldThreshold = double.Round(_monitor.AuthorNamePercentage * 100),
+                    PropertyName = "Author"
+                };
+                if(overallMaxPoint < _monitor.MinFieldThreshold)
+                {
+                    bestAuthorMatched.MatchLine = "";
+                }
+                else
+                {
+                    bestAuthorMatched.MatchLine = string.Join(" ", bestMatchedWithAuthorLine.Select(x => processedOcrValue[x.Key]));
+                }
+            }
+            else
+            {
+                bestAuthorMatched = new StringComparision
+                {
+                    MatchLine = string.Empty,
+                    FuzzinessPoint = 0,
+                    MatchPhrasePoint = 0,
+                    FieldThreshold = double.Round(_monitor.AuthorNamePercentage * 100),
+                    PropertyName = "Author"
+                };
+            }
+
+            bestAuthorMatched.MatchPercentage = bestAuthorMatched.MatchPhrasePoint > bestAuthorMatched.FuzzinessPoint
+                ? bestAuthorMatched.MatchPhrasePoint
+                : bestAuthorMatched.FuzzinessPoint;
+
+            // Get best matched publisher
+            var publisherMatchedEntries = fieldMatchedResult
+                .Where(x => x.Value.FieldPointsWithThreshole
+                    .Any(fp => fp.Name.ToLower().Contains("publisher")))
+                .ToList();
+
+            if (publisherMatchedEntries.Any())
+            {
+                var entriesWithMaxPoints = publisherMatchedEntries
+                    .Select(x => new
+                    {
+                        Entry = x,
+                        MaxPoint = x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("publisher"))
+                            .Max(fp => Math.Max(fp.FuzzinessPoint, fp.MatchPhrasePoint))
+                    })
+                    .ToList();
+
+                var overallMaxPoint = entriesWithMaxPoints.Max(x => x.MaxPoint);
+
+                var bestMatchedWithPublisherLine = entriesWithMaxPoints
+                    .Where(x => x.MaxPoint == overallMaxPoint)
+                    .Select(x => x.Entry)
+                    .ToList();
+
+                bestPublisherMatched = new StringComparision
+                {
+                    FuzzinessPoint = bestMatchedWithPublisherLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("publisher"))
+                            .Select(fp => fp.FuzzinessPoint)
+                            .First()),
+                    MatchPhrasePoint = bestMatchedWithPublisherLine.Average(x =>
+                        x.Value.FieldPointsWithThreshole
+                            .Where(fp => fp.Name.ToLower().Contains("publisher"))
+                            .Select(fp => fp.MatchPhrasePoint)
+                            .First()),
+                    FieldThreshold = double.Round(_monitor.PublisherPercentage * 100),
+                    PropertyName = "Publisher"
+                };
+                if(overallMaxPoint < _monitor.MinFieldThreshold)
+                {
+                    bestPublisherMatched.MatchLine = "";
+                }
+                else
+                {
+                    bestPublisherMatched.MatchLine = string.Join(" ", bestMatchedWithPublisherLine.Select(x => processedOcrValue[x.Key]));
+                }
+            }
+            else
+            {
+                bestPublisherMatched = new StringComparision
+                {
+                    MatchLine = string.Empty,
+                    FuzzinessPoint = 0,
+                    MatchPhrasePoint = 0,
+                    FieldThreshold = double.Round(_monitor.PublisherPercentage * 100),
+                    PropertyName = "Publisher"
+                };
+            }
+
+            bestPublisherMatched.MatchPercentage =
+                bestPublisherMatched.MatchPhrasePoint > bestPublisherMatched.FuzzinessPoint
+                    ? bestPublisherMatched.MatchPhrasePoint
+                    : bestPublisherMatched.FuzzinessPoint;
             var response = new PredictAnalysisDto()
             {
                 StringComparisions = new List<StringComparision>(),
@@ -349,9 +487,15 @@ public class OCRService : IOCRService
                 response.LineStatisticDtos.Add(new OcrLineStatisticDto()
                 {
                     LineValue = processedOcrValue[key],
-                    TitleMatchPercentage = titleMatched.MatchedPoint,
-                    AuthorMatchPercentage = authorMatched.MatchedPoint,
-                    PublisherMatchPercentage = publisherMatched.MatchedPoint
+                    MatchedTitlePercentage = titleMatched.MatchPhrasePoint > titleMatched.FuzzinessPoint
+                        ? titleMatched.MatchPhrasePoint
+                        : titleMatched.FuzzinessPoint,
+                    MatchedAuthorPercentage = authorMatched.MatchPhrasePoint > authorMatched.FuzzinessPoint
+                        ? authorMatched.MatchPhrasePoint
+                        : authorMatched.FuzzinessPoint,
+                    MatchedPublisherPercentage = publisherMatched.MatchPhrasePoint > publisherMatched.FuzzinessPoint
+                        ? publisherMatched.MatchPhrasePoint
+                        : publisherMatched.FuzzinessPoint
                 });
             }
 
@@ -378,6 +522,12 @@ public class OCRService : IOCRService
                     .Values.Add(dto.SubTitle);
             }
 
+            combineCompareFields.Add(new FieldMatchInputDto()
+            {
+                FieldName = "Authors",
+                Values = mainAuthor,
+                Weight = _monitor.AuthorNamePercentage
+            });
             // check if GeneralNote is existed
             if (dto.GeneralNote is not null)
             {
@@ -385,15 +535,6 @@ public class OCRService : IOCRService
                 {
                     FieldName = "Authors",
                     Values = new List<string>() { dto.GeneralNote },
-                    Weight = _monitor.AuthorNamePercentage
-                });
-            }
-            else
-            {
-                combineCompareFields.Add(new FieldMatchInputDto()
-                {
-                    FieldName = "Authors",
-                    Values = mainAuthor,
                     Weight = _monitor.AuthorNamePercentage
                 });
             }

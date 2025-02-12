@@ -33,6 +33,6 @@ public class PredictionResponseDto
 
 public class ItemPredictedDetailDto
 {
-    public MatchResultDto OCRResult { get; set; }
-    public LibraryItemDetailDto LibraryItemDetail { get; set; }
+    public MinimisedMatchResultDto OCRResult { get; set; }
+    public int LibraryItemId { get; set; }
 }

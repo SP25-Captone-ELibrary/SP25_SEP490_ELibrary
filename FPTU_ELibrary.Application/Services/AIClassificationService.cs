@@ -616,6 +616,86 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
+    public async Task<IServiceResult> RecommendBook(int currentItemId)
+    {
+        var currentBookBaseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == currentItemId);
+        currentBookBaseSpec.ApplyInclude(q =>
+            q.Include(x => x.LibraryItemAuthors)
+                .ThenInclude(ea => ea.Author));
+        var currenBook = await _libraryItemService.GetWithSpecAsync(currentBookBaseSpec);
+        if (currenBook.Data is null)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "book"));
+        }
+
+        var currentBookValue = (LibraryItemDto)currenBook.Data!;
+        
+        var recommendBookBaseSpec = new BaseSpecification<LibraryItem>(li => li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
+        recommendBookBaseSpec.ApplyInclude(q =>
+            q.Include(x => x.LibraryItemAuthors)
+            .ThenInclude(ea => ea.Author));
+            
+        var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
+        if (allItem.Data is null)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
+        }
+        
+        var allItemValue = (List<LibraryItemDto>)allItem.Data!;
+        var scoredBooks = allItemValue
+            .Select(b => new
+            {
+                Book = b,
+                Score = CalculateMatchScore(currentBookValue, b),
+                MatchedProperties = GetMatchedProperties(currentBookValue, b)
+            })
+            .OrderByDescending(x => x.Score)
+            .Take(5)
+            .ToList();
+        var recommendedBooks = scoredBooks
+            .Select(b => new RecommendBookDetails
+            {
+                ItemDetailDto = (b.Book).ToLibraryItemDetailDto(),
+                MatchedProperties = b.MatchedProperties
+            })
+            .ToList();
+        return new ServiceResult(ResultCodeConst.AIService_Success0004,
+            await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004),
+            recommendedBooks);
+    }
+    private int CalculateMatchScore(LibraryItemDto currentBook, LibraryItemDto otherBook)
+    {
+        int score = 0;
+
+        if (currentBook.Title == otherBook.Title) score++;
+        if (currentBook.SubTitle == otherBook.SubTitle) score++;
+        if (currentBook.Language == otherBook.Language) score++;
+        if (currentBook.OriginLanguage == otherBook.OriginLanguage) score++;
+        if (currentBook.PublicationYear == otherBook.PublicationYear) score++;
+        if (currentBook.Publisher == otherBook.Publisher) score++;
+        if (currentBook.ClassificationNumber == otherBook.ClassificationNumber) score++;
+        if (currentBook.CutterNumber == otherBook.CutterNumber) score++;
+        
+        return score;
+    }
+        
+    private List<MatchedProperties> GetMatchedProperties(LibraryItemDto currentBook, LibraryItemDto otherBook)
+    {
+        return new List<MatchedProperties>
+        {
+            new MatchedProperties { Name = "Title", IsMatched = currentBook.Title == otherBook.Title },
+            new MatchedProperties { Name = "SubTitle", IsMatched = currentBook.SubTitle == otherBook.SubTitle },
+            new MatchedProperties { Name = "Language", IsMatched = currentBook.Language == otherBook.Language },
+            new MatchedProperties { Name = "OriginLanguage", IsMatched = currentBook.OriginLanguage == otherBook.OriginLanguage },
+            new MatchedProperties { Name = "PublicationYear", IsMatched = currentBook.PublicationYear == otherBook.PublicationYear },
+            new MatchedProperties { Name = "Publisher", IsMatched = currentBook.Publisher == otherBook.Publisher },
+            new MatchedProperties { Name = "ClassificationNumber", IsMatched = currentBook.ClassificationNumber == otherBook.ClassificationNumber },
+            new MatchedProperties { Name = "CutterNumber", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber }
+        };
+    }
+
     // first version of predict function
     // public async Task<IServiceResult> PredictAsync(IFormFile image)
     // {
@@ -852,7 +932,7 @@ public class AIClassificationService : IAIClassificationService
     
             // response property
             Dictionary<int, double> itemTotalPoint = new Dictionary<int, double>();
-            Dictionary<int, MatchResultDto> itemOrcMatchResult = new Dictionary<int, MatchResultDto>();
+            Dictionary<int, MinimisedMatchResultDto> itemOrcMatchResult = new Dictionary<int, MinimisedMatchResultDto>();
             LibraryItemGroupDto groupValue = new LibraryItemGroupDto();
             if (bookBox.Any())
             {
@@ -954,7 +1034,7 @@ public class AIClassificationService : IAIClassificationService
                     var compareResultValue = (MatchResultDto)compareResult.Data!;
                     var ocrPoint = compareResultValue.TotalPoint;
                     itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
-                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.ToMinimisedMatchResultDto());
                 }
             }
             else
@@ -1049,7 +1129,7 @@ public class AIClassificationService : IAIClassificationService
                     var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
                     var ocrPoint = compareResultValue.First().TotalPoint;
                     itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
-                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.First());
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.First().ToMinimisedMatchResultDto());
                 }
             }
             var response = new PredictionResponseDto()
@@ -1059,25 +1139,20 @@ public class AIClassificationService : IAIClassificationService
             
             //choose the best item
             int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
-            var bestItem = groupValue.LibraryItems.FirstOrDefault(x => x.LibraryItemId == bestItemId);
-            var bestItemDetail = bestItem.ToLibraryItemDetailWithoutGroupDto();
+            itemTotalPoint.Remove(bestItemId);
             var bestItemPredictResponse = new ItemPredictedDetailDto
             {
                 OCRResult = itemOrcMatchResult[bestItemId],
-                LibraryItemDetail = bestItemDetail
+                LibraryItemId = bestItemId,
             };
             response.BestItem = bestItemPredictResponse;
             // add other items detail
-            foreach (var groupValueLibraryItem in groupValue.LibraryItems.ToList().Except(new List<LibraryItemDto>()
-                     {
-                         bestItem
-                     }))
+            foreach (var groupValueLibraryItemId in itemTotalPoint.Keys)
             {
-                var itemDetail = groupValueLibraryItem.ToLibraryItemDetailWithoutGroupDto();
                 var itemPredictResponse = new ItemPredictedDetailDto
                 {
-                    OCRResult = itemOrcMatchResult[groupValueLibraryItem.LibraryItemId],
-                    LibraryItemDetail = itemDetail
+                    OCRResult = itemOrcMatchResult[groupValueLibraryItemId],
+                    LibraryItemId = groupValueLibraryItemId
                 };
                 response.OtherItems.Add(itemPredictResponse);
             }

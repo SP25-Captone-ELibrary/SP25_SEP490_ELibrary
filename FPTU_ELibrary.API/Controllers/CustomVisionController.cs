@@ -37,11 +37,10 @@ public class CustomVisionController : ControllerBase
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         return Ok(await _aiClassificationService.TrainModel(req.BookCode,req.ImageList,email));
     }
-    [Authorize]
     [HttpPost(APIRoute.AIServices.RawDetect, Name = nameof(RawDetect))]
-    public async Task<IActionResult> RawDetect([FromForm] RawDetectRequest req)
+    public async Task<IActionResult> RawDetect([FromForm] RawDetectRequest req,[FromRoute]int id)
     {
-        return Ok(await _aiDetectionService.RawDetectAsync(req.ImageToDetect));
+        return Ok(await _aiDetectionService.RawDetectAsync(req.ImageToDetect,id));
     }
     [HttpPost(APIRoute.AIServices.Predict, Name = nameof(Predict))]
     public async Task<IActionResult> Predict([FromForm] PredictRequest req)
@@ -63,9 +62,9 @@ public class CustomVisionController : ControllerBase
     //     return Ok(await _aiClassificationService.PredictAsync(req.ImageToPredict));
     // }
     //
-    // [HttpPost(APIRoute.AIServices.Recommendation, Name = nameof(Recommendation))]
-    // public async Task<IActionResult> Recommendation([FromForm] PredictRequest req)
-    // {
-    //     return Ok(await _aiClassificationService.Recommendation(req.ImageToPredict));
-    // }
+    [HttpPost(APIRoute.AIServices.Recommendation, Name = nameof(Recommendation))]
+    public async Task<IActionResult> Recommendation([FromRoute] int id)
+    {
+        return Ok(await _aiClassificationService.RecommendBook(id));
+    }
 }

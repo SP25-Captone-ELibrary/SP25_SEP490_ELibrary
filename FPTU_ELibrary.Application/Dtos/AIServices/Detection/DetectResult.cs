@@ -47,13 +47,12 @@ public class BoxDto
 }
 public class RawDetectionResultResponse
 {
-    public string ProcessedImage { get; set; }
-    public List<ObjectInfoDto> ObjectsDetected { get; set; }
+    public List<ObjectInfoDto> ImportImageDetected { get; set; }
+    public List<ObjectInfoDto> CurrentItemDetected { get; set; }
 }
 
 public class ObjectInfoDto
 {
     public string Name { get; set; }
     public double Percentage { get; set; }
-    public string Color { get; set; }
 }

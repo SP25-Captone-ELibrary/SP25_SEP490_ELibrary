@@ -15,6 +15,7 @@ public class StringComparision
     public double FuzzinessPoint { get; set; }
     public double  FieldThreshold { get; set; }
     public string PropertyName { get; set; }
+    public double MatchPercentage { get; set; }
 
 }
 
@@ -22,7 +23,7 @@ public class StringComparision
 public class OcrLineStatisticDto
 { 
     public string LineValue { get; set; }
-    public int TitleMatchPercentage { get; set; }
-    public int AuthorMatchPercentage { get; set; }
-    public int PublisherMatchPercentage { get; set; }
+    public int MatchedTitlePercentage { get; set; }
+    public int MatchedAuthorPercentage { get; set; }
+    public int MatchedPublisherPercentage { get; set; }
 }
