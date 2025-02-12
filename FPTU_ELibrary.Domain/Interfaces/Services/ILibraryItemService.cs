@@ -34,4 +34,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
         string[]? scanningFields, DuplicateHandle? duplicateHandle = null);
     Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec);
     Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId);
+
+    Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(
+        ISpecification<LibraryItem> specification, bool tracked = true);
 }

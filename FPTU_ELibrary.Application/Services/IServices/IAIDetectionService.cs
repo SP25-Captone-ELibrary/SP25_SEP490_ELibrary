@@ -11,5 +11,5 @@ public interface IAIDetectionService
     Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList);
     Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox);
     Task<List<DetectResultDto>> DetectAllAsync(IFormFile image);
-    Task<IServiceResult> RawDetectAsync(IFormFile image);
+    Task<IServiceResult> RawDetectAsync(IFormFile image,int id);
 }

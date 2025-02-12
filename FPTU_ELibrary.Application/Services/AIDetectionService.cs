@@ -22,6 +22,7 @@ using Newtonsoft.Json;
 using OpenCvSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Processing;
+using MultipartFormDataContent = System.Net.Http.MultipartFormDataContent;
 using Path = System.IO.Path;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -386,101 +387,64 @@ public class AIDetectionService : IAIDetectionService
         return objectCounts;
     }
 
-    public async Task<IServiceResult> RawDetectAsync(IFormFile image)
+    public async Task<IServiceResult> RawDetectAsync(IFormFile image, int id)
     {
         try
         {
-            // Gửi request detect objects
-            using var content = new MultipartFormDataContent();
-            content.Add(new StringContent(_monitor.DetectModelUrl), "model");
-            content.Add(new StringContent(_monitor.DetectImageSize.ToString()), "imgsz");
-            content.Add(new StringContent(_monitor.DetectConfidence.ToString()), "conf");
-            content.Add(new StringContent(_monitor.DetectIOU.ToString()), "iou");
-
-            using var fileStream = image.OpenReadStream();
-            var fileContent = new StreamContent(fileStream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(image.ContentType);
-            content.Add(fileContent, "file", image.FileName);
-
-            var request = new HttpRequestMessage(HttpMethod.Post, _monitor.DetectAPIUrl)
-            {
-                Content = content
-            };
-            request.Headers.Add("x-api-key", _monitor.DetectAPIKey);
-
-            // Nhận response
-            using var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            // Xử lý response
-            var stringResponse = await response.Content.ReadAsStringAsync();
-            var settings = new JsonSerializerSettings
-            {
-                MissingMemberHandling = MissingMemberHandling.Ignore,
-                NullValueHandling = NullValueHandling.Ignore
-            };
-
-            var responseDto = JsonConvert.DeserializeObject<DetectResponseDto>(stringResponse, settings)
-                              ?? throw new InvalidOperationException("Invalid API response");
-
-            // Validate response data
-            var imageResults = responseDto.Images?.FirstOrDefault()?.Results;
-            if (imageResults == null || !imageResults.Any())
+            var item = await _libraryItemService.GetByIdAsync(id);
+            if (item.Data == null)
             {
                 return new ServiceResult(
-                    ResultCodeConst.AIService_Warning0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003)
+                    ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002)
                 );
             }
 
-            // Xử lý ảnh
-            using var imageStream = image.OpenReadStream();
-            using var processedImage = await Image.LoadAsync(imageStream);
-            var random = new Random();
-            var objectInfos = new List<ObjectInfoDto>();
+            var itemValue = (LibraryItemDto)item.Data!;
 
-            foreach (var result in imageResults)
+            // Tải ảnh từ Cloudinary
+            using var cloudinaryResponse = await _httpClient.GetAsync(itemValue.CoverImage);
+            if (!cloudinaryResponse.IsSuccessStatusCode)
             {
-                // Validate box coordinates
-                if (result.Box == null) continue;
-
-                var width = processedImage.Width;
-                var height = processedImage.Height;
-
-                // Chuyển đổi tọa độ
-                var (x1, y1, x2, y2) = ConvertBoxCoordinates(result.Box, width, height);
-
-                // Tạo màu ngẫu nhiên
-                var (r, g, b) = GenerateRandomColor(random);
-                var color = Color.FromRgb(r, g, b);
-
-                // Vẽ bounding box
-                processedImage.Mutate(ctx => ctx.DrawPolygon(
-                    color,
-                    10,
-                    new PointF(x1, y1),
-                    new PointF(x2, y1),
-                    new PointF(x2, y2),
-                    new PointF(x1, y2)
-                ));
-
-                // Thêm thông tin đối tượng
-                objectInfos.Add(new ObjectInfoDto
-                {
-                    Name = result.Name ?? "Unknown",
-                    Percentage = result.Confidence * 100,
-                    Color = $"{r},{g},{b}"
-                });
+                return new ServiceResult(
+                    ResultCodeConst.AIService_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004)
+                );
             }
 
-            var memoryStream = new MemoryStream();
-            await processedImage.SaveAsPngAsync(memoryStream);
-            var base64String = Convert.ToBase64String(memoryStream.ToArray());
+            await using var cloudinaryStream = await cloudinaryResponse.Content.ReadAsStreamAsync();
 
+            // Gửi request detect objects (cho cả ảnh upload và ảnh từ Cloudinary)
+            var detectTasks = new List<Task<DetectResponseDto>>();
+            detectTasks.Add(DetectObjectsAsync(image.OpenReadStream(), image.FileName, image.ContentType));
+            detectTasks.Add(DetectObjectsAsync(cloudinaryStream, "cloudinary_image.jpg", "image/jpeg"));
+
+            var detectResults = await Task.WhenAll(detectTasks);
+
+            var uploadedImageResults =
+                detectResults[0].Images.FirstOrDefault()?.Results ?? new List<DetectResultDto>();
+
+            var cloudinaryImageResults =
+                detectResults[1].Images.FirstOrDefault()?.Results ?? new List<DetectResultDto>();
+            
+            // Chuyển đổi kết quả phát hiện
+            var detectedObjects = uploadedImageResults.Select(result => new ObjectInfoDto
+            {
+                Name = result.Name ?? "Unknown",
+                Percentage = result.Confidence * 100
+            }).ToList();
+
+            var currentDetectedObjects = cloudinaryImageResults.Select(result => new ObjectInfoDto
+            {
+                Name = result.Name ?? "Unknown",
+                Percentage = result.Confidence * 100
+            }).ToList();
+
+            // Chuẩn bị response
             var finalResponse = new RawDetectionResultResponse
             {
-                ProcessedImage = $"data:image/png;base64,{base64String}", // Thêm data URI scheme
-                ObjectsDetected = objectInfos
+                ImportImageDetected = detectedObjects,
+                CurrentItemDetected = currentDetectedObjects
             };
 
             return new ServiceResult(
@@ -488,10 +452,6 @@ public class AIDetectionService : IAIDetectionService
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
                 finalResponse
             );
-            // return new ServiceResult(
-            //     ResultCodeConst.SYS_Success0002,
-            //     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
-            // );
         }
         catch (Exception ex)
         {
@@ -500,6 +460,36 @@ public class AIDetectionService : IAIDetectionService
         }
     }
 
+
+    private async Task<DetectResponseDto?> DetectObjectsAsync(Stream imageStream, string fileName, string contentType)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(_monitor.DetectModelUrl), "model");
+        content.Add(new StringContent(_monitor.DetectImageSize.ToString()), "imgsz");
+        content.Add(new StringContent(_monitor.DetectConfidence.ToString()), "conf");
+        content.Add(new StringContent(_monitor.DetectIOU.ToString()), "iou");
+
+        var fileContent = new StreamContent(imageStream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, _monitor.DetectAPIUrl)
+        {
+            Content = content
+        };
+        request.Headers.Add("x-api-key", _monitor.DetectAPIKey);
+
+        using var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var stringResponse = await response.Content.ReadAsStringAsync();
+
+        return JsonConvert.DeserializeObject<DetectResponseDto>(stringResponse, new JsonSerializerSettings
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore
+        });
+    }
+    
     private (float x1, float y1, float x2, float y2) ConvertBoxCoordinates(BoxDto box, int width, int height)
     {
         return (
