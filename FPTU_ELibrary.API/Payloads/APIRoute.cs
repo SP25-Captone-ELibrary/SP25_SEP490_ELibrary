@@ -84,9 +84,13 @@
 			#region Management
 			// [GET]
 			public const string GetAll = Base + "/management/borrows/records";
+			public const string GetById = Base + "/management/borrows/records/{id}";
 			// [POST]
 			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
+			public const string Create = Base + "/management/borrows/records";
 			#endregion
+			
+			public const string SelfCheckout = Base + "/management/borrows/records/self-checkout";
 		}
 		
 		/// <summary>
@@ -129,6 +133,8 @@
 			public const string GetTrending = Base + "/library-items/trending";
 			public const string GetByCategory = Base + "/library-items/category/{categoryId}";
 			public const string GetDetail = Base + "/library-items/{id}";
+			public const string GetByBarcode = Base + "/library-items/get-by-barcode";
+			public const string GetByIsbn = Base + "/library-items/get-by-isbn";
 			public const string GetDetailEditions = Base + "/library-items/{id}/editions";
 			public const string GetDetailReviews = Base + "/library-items/{id}/reviews";
 			public const string GetRelatedItems = Base + "/library-items/{id}/related-items";
@@ -188,8 +194,54 @@
 		/// </summary>
 		public static class LibraryCard
 		{
+			#region Library Card Holder Management
 			// [POST]
-			public const string OnlineRegister = Base + "/library-cards/online-register";
+			public const string Create = Base + "/management/library-card-holders";
+			// [GET]
+			public const string GetAllCardHolders = Base + "/management/library-card-holders";
+			public const string GetCardHolderById = Base + "/management/library-card-holders/{userId}";
+			public const string GetAllCardHolderBorrowRequest = Base + "/management/library-card-holders/{userId}/borrows/requests";
+			public const string GetAllCardHolderBorrowRecord = Base + "/management/library-card-holders/{userId}/borrows/records";
+			public const string GetAllCardHolderDigitalBorrow = Base + "/management/library-card-holders/{userId}/borrows/digital";
+			public const string GetAllCardHolderReservation = Base + "/management/library-card-holders/{userId}/reservations";
+			public const string GetAllCardHolderInvoice = Base + "/management/library-card-holders/{userId}/invoices";
+			public const string GetAllCardHolderTransaction = Base + "/management/library-card-holders/{userId}/transactions";
+			public const string GetAllCardHolderNotification = Base + "/management/library-card-holders/{userId}/notifications";
+			// [PUT]
+			public const string UpdateHolder = Base + "/management/library-card-holders/{userId}";
+			#endregion
+
+			#region Library Card Management
+			// [GET]
+			public const string GetAllCard = Base + "/management/library-cards";
+			public const string GetCardById = Base + "/management/library-cards/{id}";
+			// [POST]
+			public const string AddCard = Base + "/management/library-cards";
+			// [PUT]
+			public const string UpdateCard = Base + "/management/library-cards/{id}";
+			// [PATCH]
+			public const string SuspendCard = Base + "/management/library-cards/{id}/suspend";
+			public const string UnsuspendCard = Base + "/management/library-cards/{id}/un-suspend";
+			public const string ArchiveCard = Base + "/management/library-cards/{userId}/archive-card"; 
+			// [DELETE]
+			public const string DeleteCard = Base + "/management/library-cards/{id}";
+			#endregion
+			
+			// [GET]
+			public const string CheckCardExtension = Base + "/library-cards/{id}/check-extension";
+			public const string GetByBarcode = Base + "/library-card-holders/get-by-barcode";
+			public const string GetCardHolderDetailByEmail = Base + "/library-card-holders/detail";
+			public const string GetAllCardHolderBorrowRequestByEmail = Base + "/library-card-holders/borrows/requests";
+			public const string GetAllCardHolderBorrowRecordByEmail = Base + "/library-card-holders/borrows/records";
+			public const string GetAllCardHolderDigitalBorrowByEmail = Base + "/library-card-holders/borrows/digital";
+			public const string GetAllCardHolderReservationByEmail = Base + "/library-card-holders/reservations";
+			public const string GetAllCardHolderInvoiceByEmail = Base + "/library-card-holders/invoices";
+			public const string GetAllCardHolderTransactionByEmail = Base + "/library-card-holders/transactions";
+			public const string GetAllCardHolderNotificationByEmail = Base + "/library-card-holders/notifications";
+			// [POST]
+			public const string Register = Base + "/library-cards/register";
+			public const string ConfirmRegister = Base + "/library-cards/confirm-register";
+			public const string ConfirmExtend = Base + "/library-cards/confirm-extend";
 		}
 		
 		/// <summary>
@@ -207,6 +259,18 @@
 			public const string Update = Base + "/management/packages/{id}";
 			// [DELETE]
 			public const string Delete = Base + "/management/packages/{id}";
+			#endregion
+		}
+		
+		/// <summary>
+		/// Library item condition endpoints
+		/// </summary>
+		public static class LibraryItemCondition
+		{
+			#region Management
+			// [GET]
+			public const string GetAll = Base + "/management/conditions";
+			
 			#endregion
 		}
 		
@@ -443,18 +507,22 @@
 		/// </summary>
 		public static class Category
 		{
+			#region Management
 			// [CREATE]
-			public const string Create = Base + "/management/categories";
-			//	[PUT] | [PATCH]
-			public const string Update = Base + "/management/categories/{id}";
-			// [DELETE]
-			public const string HardDelete = Base + "/management/categories/{id}";
-			public const string HardDeleteRange = Base + "/management/categories";
-			// public const string Delete = Base + "/management/categories/{id}";
-			// [GET]
-			public const string GetAll = Base + "/management/categories";
-			public const string GetById = Base + "/management/categories/{id}";
-			public const string Import = Base + "/management/categories/import";
+            public const string Create = Base + "/management/categories";
+            //	[PUT] | [PATCH]
+            public const string Update = Base + "/management/categories/{id}";
+            // [DELETE]
+            public const string HardDelete = Base + "/management/categories/{id}";
+            public const string HardDeleteRange = Base + "/management/categories";
+            // public const string Delete = Base + "/management/categories/{id}";
+            // [GET]
+            public const string GetAll = Base + "/management/categories";
+            public const string GetById = Base + "/management/categories/{id}";
+            public const string Import = Base + "/management/categories/import";
+			#endregion
+
+			public const string GetAllPublic = Base + "/categories";
 		}
 
 		/// <summary>
@@ -485,12 +553,13 @@
 			public const string GetAvailableLanguages = Base + "/library-items/available-languages";	
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
-			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train-after-create";
+			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string VoiceSearching = Base + "/library-items/voice";
-
+			public const string RawDetect = Base + "/library-items/ai/raw-detect";
 			public const string OCR = Base + "/ocr";
+			public const string OCRDetail = Base + "/library-items/{id}/ocr-detail";
 			//[PUT] | [PATCH]
 			//[DELETE]
 		}

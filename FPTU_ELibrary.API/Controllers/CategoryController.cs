@@ -25,7 +25,8 @@ public class CategoryController : ControllerBase
         _categoryService = categoryService;
         _appSettings = appSettings.CurrentValue;
     }
-    
+
+    #region Management
     [HttpPost(APIRoute.Category.Create, Name = nameof(CreateCategoryAsync))]
     [Authorize]
     public async Task<IActionResult> CreateCategoryAsync([FromBody] CreateCategoryRequest req)
@@ -76,5 +77,16 @@ public class CategoryController : ControllerBase
     public async Task<IActionResult> ImportCategoryAsync([FromForm] ImportBookCategoryRequest req)
     {
         return Ok(await _categoryService.ImportCategoryAsync(req.File, req.DuplicateHandle));
+    }
+    
+
+    #endregion
+    
+    [HttpGet(APIRoute.Category.GetAllPublic, Name = nameof(GetAllCategoryFromPublicAsync))]
+    public async Task<IActionResult> GetAllCategoryFromPublicAsync([FromQuery] CategorySpecParams categorySpecParams)
+    {
+        return Ok(await _categoryService.GetAllWithSpecAsync(new CategorySpecification(
+            categorySpecParams: categorySpecParams, pageIndex: categorySpecParams.PageIndex ?? 1,
+            pageSize: categorySpecParams.PageSize ?? _appSettings.PageSize), false));
     }
 }

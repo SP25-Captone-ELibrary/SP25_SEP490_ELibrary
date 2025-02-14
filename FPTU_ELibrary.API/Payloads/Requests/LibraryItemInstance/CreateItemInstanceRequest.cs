@@ -4,5 +4,6 @@ public class CreateItemInstanceRequest
 {
     public string Barcode { get; set; } = null!;
     // Good, Worn, Damaged
-    public string ConditionStatus { get; set; } = null!;
+    // public string ConditionStatus { get; set; } = null!;
+    public int ConditionId { get; set; }
 }

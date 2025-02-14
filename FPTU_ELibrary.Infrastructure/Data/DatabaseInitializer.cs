@@ -125,6 +125,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				if (!await _context.LibraryShelves.AnyAsync()) await SeedLibraryShelvesAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryShelf");
 				
+				// [LibraryItemConditions]
+				if (!await _context.LibraryItemConditions.AnyAsync()) await SeedLibraryItemConditionAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryItemCondition");
+				
 				// [LibraryItems]
 				if (!await _context.LibraryItems.AnyAsync()) await SeedLibraryItemAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryItem");
@@ -290,6 +294,23 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					PasswordHash = "$2a$13$qUsCGtDD.dTou8YyhK.1YuKNjS7IM25cl/D0vd8EPaV40uvoG/l9u",
 					FirstName = "Xuan",
 					LastName = "Phuoc",
+					Dob = new DateTime(1995, 02, 10),
+					Phone = "099999999",
+					Gender = Gender.Male.ToString(),
+					IsActive = true,
+					CreateDate = DateTime.UtcNow,
+					TwoFactorEnabled = false,
+					PhoneNumberConfirmed = false,
+					EmailConfirmed = true,
+					RoleId = adminRole.RoleId 
+				},
+				new()
+				{
+					Email = "huynvqse171850@fpt.edu.vn",
+					// @Admin123
+					PasswordHash = "$2a$13$qUsCGtDD.dTou8YyhK.1YuKNjS7IM25cl/D0vd8EPaV40uvoG/l9u",
+					FirstName = "Huy",
+					LastName = "NVQ",
 					Dob = new DateTime(1995, 02, 10),
 					Phone = "099999999",
 					Gender = Gender.Male.ToString(),
@@ -997,6 +1018,41 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			if(saveSucc) _logger.Information("Seed library cards successfully.");
 		}
 		
+		//	Summary:
+		//		Seeding Library item condition
+		private async Task SeedLibraryItemConditionAsync()
+		{
+			List<LibraryItemCondition> conditions = new()
+			{
+				new()
+				{
+					EnglishName = nameof(LibraryItemConditionStatus.Good),
+					VietnameseName = LibraryItemConditionStatus.Good.GetDescription()
+				},
+				new()
+				{
+					EnglishName = nameof(LibraryItemConditionStatus.Damaged),
+					VietnameseName = LibraryItemConditionStatus.Damaged.GetDescription()
+				},
+				new()
+				{
+					EnglishName = nameof(LibraryItemConditionStatus.Worn),
+					VietnameseName = LibraryItemConditionStatus.Worn.GetDescription()
+				},
+				new()
+				{
+					EnglishName = nameof(LibraryItemConditionStatus.Lost),
+					VietnameseName = LibraryItemConditionStatus.Lost.GetDescription()
+				}
+			};
+			
+			// Add range 
+			await _context.LibraryItemConditions.AddRangeAsync(conditions);
+			// Save DB
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+			if(saveSucc) _logger.Information("Seed library item conditions successfully");
+		}
+		
         //  Summary:
         //      Seeding Library item
         private async Task SeedLibraryItemAsync()
@@ -1021,10 +1077,19 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			
 			// Get library shelves
 			var libraryShelves = await _context.LibraryShelves.ToListAsync();
-
 			if(!libraryShelves.Any())
 			{
 				_logger.Error("Not found any shelf to process seeding library item");
+				return;
+			}
+			
+			// Retrieve all item condition
+			var goodCondition = await _context.LibraryItemConditions
+				.Where(c => c.EnglishName == nameof(LibraryItemConditionStatus.Good))
+				.FirstOrDefaultAsync();
+			if(goodCondition == null)
+			{
+				_logger.Error("Not found any good item condition to process seeding library item");
 				return;
 			}
 			
@@ -1042,6 +1107,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			// Add group 
 			await _context.LibraryItemGroups.AddAsync(itemGrp1);
 			await _context.SaveChangesAsync();
+			
 			
 			// Random 
 			var rnd = new Random();
@@ -1140,7 +1206,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1152,7 +1218,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1164,7 +1230,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1176,7 +1242,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1188,7 +1254,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    }
@@ -1251,7 +1317,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1263,7 +1329,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1275,7 +1341,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1287,7 +1353,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    },
@@ -1299,7 +1365,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						    {
 							    new ()
 							    {
-								    Condition = nameof(LibraryItemConditionStatus.Good)
+								    ConditionId = goodCondition.ConditionId
 							    }
 						    }
 					    }

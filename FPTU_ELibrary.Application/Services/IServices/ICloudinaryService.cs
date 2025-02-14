@@ -10,4 +10,7 @@ public interface ICloudinaryService
     Task<IServiceResult> UpdateAsync(string publicId, IFormFile file, FileType fileType);
     Task<IServiceResult> DeleteAsync(string publicId, FileType fileType);
     Task<IServiceResult> IsExistAsync(string publicId, FileType fileType);
+    Task<IServiceResult> GetMediaUrlAsync(string publicId, FileType fileType);
+    Task<IServiceResult> BuildMediaUrlAsync(string publicId, FileType fileType);
+    // Task<IServiceResult> GetRangeMediaUrlAsync(List<string> publicIds, FileType fileType);
 }

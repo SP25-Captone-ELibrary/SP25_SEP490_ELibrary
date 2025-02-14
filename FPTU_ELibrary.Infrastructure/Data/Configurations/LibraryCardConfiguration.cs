@@ -40,8 +40,12 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
         builder.Property(e => e.ExpiryDate)
             .HasColumnType("datetime")
             .HasColumnName("expiry_date");
-        builder.Property(e => e.IsExtended).HasColumnName("is_extended");
-        builder.Property(e => e.ExtensionCount).HasColumnName("extension_count");
+        builder.Property(e => e.IsExtended)
+            .HasDefaultValue(false)
+            .HasColumnName("is_extended");
+        builder.Property(e => e.ExtensionCount)
+            .HasDefaultValue(0)
+            .HasColumnName("extension_count");
         #endregion
 
         #region Update at 04/02/2025 by Le Xuan Phuoc
@@ -53,13 +57,29 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
         #endregion
 
         #region Update at 06/02/2025 by Le Xuan Phuoc
-        builder.Property(e => e.IsAllowBorrowMore).HasColumnName("is_allow_borrow_more");
+        builder.Property(e => e.IsReminderSent)
+            .HasDefaultValue(false)
+            .HasColumnName("is_reminder_sent");
+        builder.Property(e => e.IsAllowBorrowMore)
+            .HasDefaultValue(false)
+            .HasColumnName("is_allow_borrow_more");
         builder.Property(e => e.MaxItemOnceTime)
             .HasDefaultValue(0)
             .HasColumnName("max_item_once_time");
         builder.Property(e => e.TotalMissedPickUp)
             .HasDefaultValue(0)
             .HasColumnName("total_missed_pick_up");
+        #endregion
+
+        #region Update at 11/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.IsArchived)
+            .HasDefaultValue(false)
+            .HasColumnName("is_archived");
+        builder.Property(e => e.ArchiveReason)
+            .HasColumnType("nvarchar(250)")
+            .HasColumnName("archive_reason");
+        builder.Property(e => e.PreviousUserId)
+            .HasColumnName("previous_user_id");
         #endregion
     }
 }

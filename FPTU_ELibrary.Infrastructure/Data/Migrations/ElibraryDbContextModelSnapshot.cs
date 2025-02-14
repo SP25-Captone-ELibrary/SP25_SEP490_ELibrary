@@ -152,12 +152,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BorrowRecordId"));
 
-                    b.Property<string>("BorrowCondition")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("borrow_condition");
-
                     b.Property<DateTime>("BorrowDate")
                         .HasColumnType("datetime")
                         .HasColumnName("borrow_date");
@@ -165,10 +159,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int?>("BorrowRequestId")
                         .HasColumnType("int")
                         .HasColumnName("borrow_request_id");
-
-                    b.Property<DateTime?>("ConditionCheckDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("condition_check_date");
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime")
@@ -178,14 +168,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("library_card_id");
 
-                    b.Property<Guid>("ProcessedBy")
+                    b.Property<Guid?>("ProcessedBy")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("proceesed_by");
-
-                    b.Property<string>("ReturnCondition")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("return_condition");
 
                     b.Property<DateTime?>("ReturnDate")
                         .HasColumnType("datetime")
@@ -231,6 +216,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("borrow_record_id");
 
+                    b.Property<DateTime?>("ConditionCheckDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("condition_check_date");
+
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
                     b.Property<string>("ImagePublicIds")
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("image_public_ids");
@@ -239,10 +232,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_instance_id");
 
+                    b.Property<int?>("ReturnConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("return_condition_id");
+
                     b.HasKey("BorrowRecordDetailId")
                         .HasName("PK_BorrowRecordDetail_BorrowRecordDetailId");
 
                     b.HasIndex("BorrowRecordId");
+
+                    b.HasIndex("ConditionId");
 
                     b.HasIndex("LibraryItemInstanceId");
 
@@ -463,7 +462,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("email_confirmed");
 
                     b.Property<string>("EmailVerificationCode")
@@ -528,7 +529,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("phone");
 
                     b.Property<bool>("PhoneNumberConfirmed")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("phone_number_confirmed");
 
                     b.Property<string>("PhoneVerificationCode")
@@ -554,7 +557,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("two_factor_enabled");
 
                     b.Property<string>("TwoFactorSecretKey")
@@ -705,6 +710,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("library_card_id")
                         .HasDefaultValueSql("(newsequentialid())");
 
+                    b.Property<string>("ArchiveReason")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("archive_reason");
+
                     b.Property<string>("Avatar")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -722,7 +731,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("expiry_date");
 
                     b.Property<int>("ExtensionCount")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("extension_count");
 
                     b.Property<string>("FullName")
@@ -731,15 +742,28 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("full_name");
 
                     b.Property<bool>("IsAllowBorrowMore")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_allow_borrow_more");
 
-                    b.Property<bool>("IsExtended")
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsExtended")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_extended");
 
                     b.Property<bool>("IsReminderSent")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_reminder_sent");
 
                     b.Property<string>("IssuanceMethod")
                         .IsRequired()
@@ -755,6 +779,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0)
                         .HasColumnName("max_item_once_time");
+
+                    b.Property<Guid?>("PreviousUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("previous_user_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1085,6 +1113,31 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Library_Item_Author", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", b =>
+                {
+                    b.Property<int>("ConditionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ConditionId");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConditionId"));
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("english_name");
+
+                    b.Property<string>("VietnameseName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("vietnamese_name");
+
+                    b.HasKey("ConditionId")
+                        .HasName("PK_LibraryItemCondition_ConditionId");
+
+                    b.ToTable("Library_Item_Condition", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItemConditionHistory", b =>
                 {
                     b.Property<int>("ConditionHistoryId")
@@ -1094,11 +1147,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConditionHistoryId"));
 
-                    b.Property<string>("Condition")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("condition");
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
@@ -1125,6 +1176,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.HasKey("ConditionHistoryId")
                         .HasName("PK_ConditionHistory");
+
+                    b.HasIndex("ConditionId");
 
                     b.HasIndex("LibraryItemInstanceId");
 
@@ -2174,7 +2227,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("description");
 
@@ -2273,7 +2325,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("email_confirmed");
 
                     b.Property<string>("EmailVerificationCode")
@@ -2304,6 +2358,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool>("IsEmployeeCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_employee_created");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2333,7 +2393,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("phone");
 
                     b.Property<bool>("PhoneNumberConfirmed")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("phone_number_confirmed");
 
                     b.Property<string>("PhoneVerificationCode")
@@ -2355,7 +2417,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("two_factor_backup_codes");
 
                     b.Property<bool>("TwoFactorEnabled")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("two_factor_enabled");
 
                     b.Property<string>("TwoFactorSecretKey")
@@ -2502,6 +2566,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("category_id");
 
+                    b.Property<int>("ConditionId")
+                        .HasColumnType("int")
+                        .HasColumnName("condition_id");
+
                     b.Property<string>("Isbn")
                         .HasMaxLength(13)
                         .HasColumnType("nvarchar(13)")
@@ -2548,6 +2616,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("ConditionId");
+
                     b.HasIndex("LibraryItemId");
 
                     b.HasIndex("TrackingId");
@@ -2572,7 +2642,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "ProcessedByNavigation")
                         .WithMany("BorrowRecords")
                         .HasForeignKey("ProcessedBy")
-                        .IsRequired()
                         .HasConstraintName("FK_BorrowRecord_ProcessedBy");
 
                     b.Navigation("BorrowRequest");
@@ -2591,6 +2660,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRecordDetail_BorrowRecordId");
 
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", "Condition")
+                        .WithMany("BorrowRecordDetails")
+                        .HasForeignKey("ConditionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BorrowRecordDetail_ConditionId");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemInstance", "LibraryItemInstance")
                         .WithMany("BorrowRecordDetails")
                         .HasForeignKey("LibraryItemInstanceId")
@@ -2598,6 +2673,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasConstraintName("FK_BorrowRecordDetail_ItemInstanceId");
 
                     b.Navigation("BorrowRecord");
+
+                    b.Navigation("Condition");
 
                     b.Navigation("LibraryItemInstance");
                 });
@@ -2753,11 +2830,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItemConditionHistory", b =>
                 {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", "Condition")
+                        .WithMany("LibraryItemConditionHistories")
+                        .HasForeignKey("ConditionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_ConditionHistory_ConditionId");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemInstance", "LibraryItemInstance")
                         .WithMany("LibraryItemConditionHistories")
                         .HasForeignKey("LibraryItemInstanceId")
                         .IsRequired()
                         .HasConstraintName("FK_ConditionHistory_LibraryItemInstanceId");
+
+                    b.Navigation("Condition");
 
                     b.Navigation("LibraryItemInstance");
                 });
@@ -3075,6 +3160,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_WarehouseTrackingDetail_CategoryId");
 
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", "Condition")
+                        .WithMany("WarehouseTrackingDetails")
+                        .HasForeignKey("ConditionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_WarehouseTrackingDetail_ConditionId");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItem", "LibraryItem")
                         .WithMany("WarehouseTrackingDetails")
                         .HasForeignKey("LibraryItemId")
@@ -3088,6 +3179,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasConstraintName("FK_WarehouseTrackingDetail_TrackingId");
 
                     b.Navigation("Category");
+
+                    b.Navigation("Condition");
 
                     b.Navigation("LibraryItem");
 
@@ -3185,6 +3278,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("ReservationQueues");
 
                     b.Navigation("UserFavorites");
+
+                    b.Navigation("WarehouseTrackingDetails");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", b =>
+                {
+                    b.Navigation("BorrowRecordDetails");
+
+                    b.Navigation("LibraryItemConditionHistories");
 
                     b.Navigation("WarehouseTrackingDetails");
                 });

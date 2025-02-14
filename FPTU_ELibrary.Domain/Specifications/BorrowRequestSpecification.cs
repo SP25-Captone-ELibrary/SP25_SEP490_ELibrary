@@ -11,7 +11,7 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
     
-    public BorrowRequestSpecification(BorrowRequestSpecParams specParams, int pageIndex, int pageSize, bool callFromManagement)
+    public BorrowRequestSpecification(BorrowRequestSpecParams specParams, int pageIndex, int pageSize)
         :base(br => 
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) || 
@@ -20,6 +20,12 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
                 (!string.IsNullOrEmpty(br.Description) && br.Description.Contains(specParams.Search)) ||
                 // Cancellation reason
                 (!string.IsNullOrEmpty(br.CancellationReason) && br.CancellationReason.Contains(specParams.Search)) ||
+                // Email 
+                br.LibraryCard.Users.Any(u => u.Email == specParams.Search) ||
+                // Card barcode
+                (!string.IsNullOrEmpty(br.LibraryCard.Barcode) && br.LibraryCard.Barcode.Contains(specParams.Search)) ||
+                // Card fullname
+                (!string.IsNullOrEmpty(br.LibraryCard.FullName) && br.LibraryCard.FullName.Contains(specParams.Search)) ||
                 // BorrowRequestDetails
                 // BorrowRequest -> BorrowRequestDetails
                 br.BorrowRequestDetails.Any(brd => 
@@ -46,28 +52,18 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
         EnableSplitQuery();
         
         // Apply include 
-        if (callFromManagement) // Management only
-        {
-            ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-                    .ThenInclude(brd => brd.LibraryItem)
-                        .ThenInclude(li => li.Shelf)
-                .Include(br => br.BorrowRequestDetails)
-                    .ThenInclude(brd => brd.LibraryItem)
-                        .ThenInclude(li => li.Category)
-                .Include(br => br.BorrowRequestDetails)
-                    .ThenInclude(brd => brd.LibraryItem)
-                        .ThenInclude(li => li.LibraryItemInstances)
-                .Include(br => br.LibraryCard)
-            );
-        }
-        else // Default
-        {
-            ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-                .ThenInclude(brd => brd.LibraryItem)
-            );
-        }
+        ApplyInclude(q => q
+            .Include(br => br.BorrowRequestDetails)
+            .ThenInclude(brd => brd.LibraryItem)
+            .ThenInclude(li => li.Shelf)
+            .Include(br => br.BorrowRequestDetails)
+            .ThenInclude(brd => brd.LibraryItem)
+            .ThenInclude(li => li.Category)
+            .Include(br => br.BorrowRequestDetails)
+            .ThenInclude(brd => brd.LibraryItem)
+            .ThenInclude(li => li.LibraryItemInstances)
+            .Include(br => br.LibraryCard)
+        );
         
         // Add filter 
         if (specParams.Status != null) // Status
@@ -129,433 +125,429 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
             }
         }
         
-        // Check whether call from management
-        if (callFromManagement) // Only enable advanced filter for management
+        // Advanced filter
+        if (specParams.F != null && specParams.F.Any())
         {
-            // Advanced filter
-            if (specParams.F != null && specParams.F.Any())
+            // Convert to advanced filter list
+            var filerList = specParams.FromParamsToListAdvancedFilter();
+            if (filerList != null)
             {
-                // Convert to advanced filter list
-                var filerList = specParams.FromParamsToListAdvancedFilter();
-                if (filerList != null)
+                foreach (var filter in filerList)
                 {
-                    foreach (var filter in filerList)
+                    if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Title).ToLowerInvariant())
                     {
-                        if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Title).ToLowerInvariant())
+                        // Determine operator
+                        switch (filter.Operator)
                         {
-                            // Determine operator
-                            switch (filter.Operator)
-                            {
-                                case FilterOperator.Includes:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.Title.Contains(filter.Value ?? string.Empty)));
-                                    break;
-                                case FilterOperator.Equals:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        Equals(brd.LibraryItem.Title, filter.Value)));
-                                    break;
-                                case FilterOperator.NotEqualsTo:
-                                    AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
-                                        Equals(brd.LibraryItem.Title, filter.Value)));
-                                    break;
-                            }
+                            case FilterOperator.Includes:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.Title.Contains(filter.Value ?? string.Empty)));
+                                break;
+                            case FilterOperator.Equals:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    Equals(brd.LibraryItem.Title, filter.Value)));
+                                break;
+                            case FilterOperator.NotEqualsTo:
+                                AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
+                                    Equals(brd.LibraryItem.Title, filter.Value)));
+                                break;
                         }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryCard).ToLowerInvariant())
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryCard).ToLowerInvariant())
+                    {
+                        // Determine operator
+                        switch (filter.Operator)
                         {
-                            // Determine operator
-                            switch (filter.Operator)
-                            {
-                                case FilterOperator.Includes:
-                                    AddFilter(br => br.LibraryCard.Barcode.Contains(filter.Value ?? string.Empty));
-                                    break;
-                                case FilterOperator.Equals:
-                                    AddFilter(br => br.LibraryCard.Barcode.Equals(filter.Value));
-                                    break;
-                                case FilterOperator.NotEqualsTo:
-                                    AddFilter(br => !br.LibraryCard.Barcode.Equals(filter.Value));
-                                    break;
-                            }
+                            case FilterOperator.Includes:
+                                AddFilter(br => br.LibraryCard.Barcode.Contains(filter.Value ?? string.Empty));
+                                break;
+                            case FilterOperator.Equals:
+                                AddFilter(br => br.LibraryCard.Barcode.Equals(filter.Value));
+                                break;
+                            case FilterOperator.NotEqualsTo:
+                                AddFilter(br => !br.LibraryCard.Barcode.Equals(filter.Value));
+                                break;
                         }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.ClassificationNumber).ToLowerInvariant())
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.ClassificationNumber).ToLowerInvariant())
+                    {
+                        // Determine operator
+                        switch (filter.Operator)
                         {
-                            // Determine operator
-                            switch (filter.Operator)
-                            {
-                                case FilterOperator.Includes:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.ClassificationNumber != null &&
-                                        brd.LibraryItem.ClassificationNumber.Contains(filter.Value ?? string.Empty)));
-                                    break;
-                                case FilterOperator.Equals:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.ClassificationNumber != null &&
-                                        Equals(brd.LibraryItem.ClassificationNumber, filter.Value)));
-                                    break;
-                                case FilterOperator.NotEqualsTo:
-                                    AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.ClassificationNumber != null &&
-                                        Equals(brd.LibraryItem.ClassificationNumber, filter.Value)));
-                                    break;
-                            }
+                            case FilterOperator.Includes:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.ClassificationNumber != null &&
+                                    brd.LibraryItem.ClassificationNumber.Contains(filter.Value ?? string.Empty)));
+                                break;
+                            case FilterOperator.Equals:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.ClassificationNumber != null &&
+                                    Equals(brd.LibraryItem.ClassificationNumber, filter.Value)));
+                                break;
+                            case FilterOperator.NotEqualsTo:
+                                AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.ClassificationNumber != null &&
+                                    Equals(brd.LibraryItem.ClassificationNumber, filter.Value)));
+                                break;
                         }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.CutterNumber).ToLowerInvariant())
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.CutterNumber).ToLowerInvariant())
+                    {
+                        // Determine operator
+                        switch (filter.Operator)
                         {
-                            // Determine operator
-                            switch (filter.Operator)
-                            {
-                                case FilterOperator.Includes:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.CutterNumber != null &&
-                                        brd.LibraryItem.CutterNumber.Contains(filter.Value ?? string.Empty)));
-                                    break;
-                                case FilterOperator.Equals:
-                                    AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.CutterNumber != null &&
-                                        Equals(brd.LibraryItem.CutterNumber, filter.Value)));
-                                    break;
-                                case FilterOperator.NotEqualsTo:
-                                    AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
-                                        brd.LibraryItem.CutterNumber != null &&
-                                        Equals(brd.LibraryItem.CutterNumber, filter.Value)));
-                                    break;
-                            }
+                            case FilterOperator.Includes:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.CutterNumber != null &&
+                                    brd.LibraryItem.CutterNumber.Contains(filter.Value ?? string.Empty)));
+                                break;
+                            case FilterOperator.Equals:
+                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.CutterNumber != null &&
+                                    Equals(brd.LibraryItem.CutterNumber, filter.Value)));
+                                break;
+                            case FilterOperator.NotEqualsTo:
+                                AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
+                                    brd.LibraryItem.CutterNumber != null &&
+                                    Equals(brd.LibraryItem.CutterNumber, filter.Value)));
+                                break;
                         }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Isbn).ToLowerInvariant())
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Isbn).ToLowerInvariant())
+                    {
+                        var isbnList = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (isbnList != null)
                         {
-                            var isbnList = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (isbnList != null)
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                            foreach (var isbn in isbnList)
                             {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                foreach (var isbn in isbnList)
+                                // Determine operator
+                                switch (filter.Operator)
                                 {
-                                    // Determine operator
-                                    switch (filter.Operator)
+                                    case FilterOperator.Includes:
+                                        includeExpressions.Add(br => 
+                                            string.IsNullOrEmpty(isbn) ||
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
+                                                Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower()))
+                                        );
+                                        break;
+                                    case FilterOperator.Equals:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(isbn) || 
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
+                                                Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower())));
+                                        break;
+                                    case FilterOperator.NotEqualsTo:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(isbn) || 
+                                            !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
+                                                Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower())));
+                                        break;
+                                }
+                            }
+                            
+                            if (includeExpressions.Any())
+                            {
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
                                     {
-                                        case FilterOperator.Includes:
-                                            includeExpressions.Add(br => 
-                                                string.IsNullOrEmpty(isbn) ||
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
-                                                    Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower()))
-                                            );
-                                            break;
-                                        case FilterOperator.Equals:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(isbn) || 
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
-                                                    Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower())));
-                                            break;
-                                        case FilterOperator.NotEqualsTo:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(isbn) || 
-                                                !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Isbn != null && 
-                                                    Equals(brd.LibraryItem.Isbn.ToLower(), isbn.ToLower())));
-                                            break;
-                                    }
-                                }
-                                
-                                if (includeExpressions.Any())
-                                {
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
+                                        if (exp1 != null)
                                         {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
-                                }
-                            }
-                        }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Genres).ToLowerInvariant())
-                        {
-                            var genres = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (genres != null)
-                            {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                    // Determine operator
-                                    switch (filter.Operator)
-                                    {
-                                        case FilterOperator.Includes:
-                                            foreach (var genre in genres)
-                                            {
-                                                includeExpressions.Add(br => 
-                                                    string.IsNullOrEmpty(genre) ||
-                                                    br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
-                                                        brd.LibraryItem.Genres.ToLower().Contains(genre.ToLower()))
-                                                );
-                                            }       
-                                            break;
-                                        case FilterOperator.Equals:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(filter.Value) || 
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
-                                                    Equals(brd.LibraryItem.Genres.ToLower(), filter.Value)));
-                                            break;
-                                        case FilterOperator.NotEqualsTo:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(filter.Value) || 
-                                                !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
-                                                    Equals(brd.LibraryItem.Genres.ToLower(), filter.Value)));
-                                            break;
-                                }
-                                
-                                if (includeExpressions.Any())
-                                {
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
-                                        {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
-                                }
-                            }
-                        }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.TopicalTerms).ToLowerInvariant())
-                        {
-                            var topicalTerms = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (topicalTerms != null)
-                            {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                    // Determine operator
-                                    switch (filter.Operator)
-                                    {
-                                        case FilterOperator.Includes:
-                                            foreach (var term in topicalTerms)
-                                            {
-                                                includeExpressions.Add(br =>
-                                                    string.IsNullOrEmpty(term) ||
-                                                    br.BorrowRequestDetails.Any(brd =>
-                                                        brd.LibraryItem.TopicalTerms != null &&
-                                                        brd.LibraryItem.TopicalTerms.ToLower().Contains(term.ToLower()))
-                                                );
-                                            }
-                                            break;
-                                        case FilterOperator.Equals:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(filter.Value) || 
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.TopicalTerms != null && 
-                                                    Equals(brd.LibraryItem.TopicalTerms.ToLower(), filter.Value.ToLower())));
-                                            break;
-                                        case FilterOperator.NotEqualsTo:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(filter.Value) || 
-                                                !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.TopicalTerms != null && 
-                                                    Equals(brd.LibraryItem.TopicalTerms.ToLower(), filter.Value.ToLower())));
-                                            break;
-                                }
-                                
-                                if (includeExpressions.Any())
-                                {
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
-                                        {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
-                                }
-                            }
-                        }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())
-                        {
-                            var shelfNums = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (shelfNums != null)
-                            {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                foreach (var shelfNum in shelfNums)
-                                {
-                                    // Determine operator
-                                    switch (filter.Operator)
-                                    {
-                                        case FilterOperator.Includes:
-                                            includeExpressions.Add(br => 
-                                                string.IsNullOrEmpty(shelfNum) ||
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
-                                                    Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower()))
-                                            );
-                                            break;
-                                        case FilterOperator.Equals:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(shelfNum) || 
-                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
-                                                    Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
-                                            break;
-                                        case FilterOperator.NotEqualsTo:
-                                            AddFilter(br => 
-                                                string.IsNullOrEmpty(shelfNum) || 
-                                                !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
-                                                    Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
-                                            break;
-                                    }
-                                }
-                                
-                                if (includeExpressions.Any())
-                                {
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber1)
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber2)
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber1) ||
-                                    //       br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber2)
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
-                                        {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
-                                }
-                            }
-                        }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(Category).ToLowerInvariant())
-                        {
-                            var categoryIds = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (categoryIds != null)
-                            {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                foreach (var categoryId in categoryIds)
-                                {
-                                    // Try parse to integer
-                                    if (int.TryParse(categoryId, out var numCateId))
-                                    {
-                                        // Determine operator
-                                        switch (filter.Operator)
-                                        {
-                                            case FilterOperator.Includes:
-                                                includeExpressions.Add(br => br.BorrowRequestDetails.Any(brd => 
-                                                    Equals(brd.LibraryItem.CategoryId, numCateId)));
-                                                break;
-                                            case FilterOperator.Equals:
-                                                AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                                    Equals(brd.LibraryItem.CategoryId, numCateId)));
-                                                break;
-                                            case FilterOperator.NotEqualsTo:
-                                                AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
-                                                    Equals(brd.LibraryItem.CategoryId, numCateId)));
-                                                break;
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
                                         }
-                                    }
-                                }
+        
+                                        return _ => false;
+                                    });
                                 
-                                if (includeExpressions.Any())
-                                {
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId1)
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId2)
-                                    // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId1) ||
-                                    //       br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId2)
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
-                                        {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
-                                }
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
                             }
                         }
-                        else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItemInstance.Barcode).ToLowerInvariant())
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.Genres).ToLowerInvariant())
+                    {
+                        var genres = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (genres != null)
                         {
-                            var barcodes = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
-                            if (barcodes != null)
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                                // Determine operator
+                                switch (filter.Operator)
+                                {
+                                    case FilterOperator.Includes:
+                                        foreach (var genre in genres)
+                                        {
+                                            includeExpressions.Add(br => 
+                                                string.IsNullOrEmpty(genre) ||
+                                                br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
+                                                    brd.LibraryItem.Genres.ToLower().Contains(genre.ToLower()))
+                                            );
+                                        }       
+                                        break;
+                                    case FilterOperator.Equals:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(filter.Value) || 
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
+                                                Equals(brd.LibraryItem.Genres.ToLower(), filter.Value)));
+                                        break;
+                                    case FilterOperator.NotEqualsTo:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(filter.Value) || 
+                                            !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Genres != null && 
+                                                Equals(brd.LibraryItem.Genres.ToLower(), filter.Value)));
+                                        break;
+                            }
+                            
+                            if (includeExpressions.Any())
                             {
-                                // Initialize base spec to retrieve building filter when operator is 'includes'
-                                List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
-                                foreach (var barcode in barcodes)
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
+                                    {
+                                        if (exp1 != null)
+                                        {
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
+                                        }
+        
+                                        return _ => false;
+                                    });
+                                
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
+                            }
+                        }
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItem.TopicalTerms).ToLowerInvariant())
+                    {
+                        var topicalTerms = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (topicalTerms != null)
+                        {
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                                // Determine operator
+                                switch (filter.Operator)
+                                {
+                                    case FilterOperator.Includes:
+                                        foreach (var term in topicalTerms)
+                                        {
+                                            includeExpressions.Add(br =>
+                                                string.IsNullOrEmpty(term) ||
+                                                br.BorrowRequestDetails.Any(brd =>
+                                                    brd.LibraryItem.TopicalTerms != null &&
+                                                    brd.LibraryItem.TopicalTerms.ToLower().Contains(term.ToLower()))
+                                            );
+                                        }
+                                        break;
+                                    case FilterOperator.Equals:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(filter.Value) || 
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.TopicalTerms != null && 
+                                                Equals(brd.LibraryItem.TopicalTerms.ToLower(), filter.Value.ToLower())));
+                                        break;
+                                    case FilterOperator.NotEqualsTo:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(filter.Value) || 
+                                            !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.TopicalTerms != null && 
+                                                Equals(brd.LibraryItem.TopicalTerms.ToLower(), filter.Value.ToLower())));
+                                        break;
+                            }
+                            
+                            if (includeExpressions.Any())
+                            {
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
+                                    {
+                                        if (exp1 != null)
+                                        {
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
+                                        }
+        
+                                        return _ => false;
+                                    });
+                                
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
+                            }
+                        }
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryShelf.ShelfNumber).ToLowerInvariant())
+                    {
+                        var shelfNums = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (shelfNums != null)
+                        {
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                            foreach (var shelfNum in shelfNums)
+                            {
+                                // Determine operator
+                                switch (filter.Operator)
+                                {
+                                    case FilterOperator.Includes:
+                                        includeExpressions.Add(br => 
+                                            string.IsNullOrEmpty(shelfNum) ||
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
+                                                Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower()))
+                                        );
+                                        break;
+                                    case FilterOperator.Equals:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(shelfNum) || 
+                                            br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
+                                                Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                        break;
+                                    case FilterOperator.NotEqualsTo:
+                                        AddFilter(br => 
+                                            string.IsNullOrEmpty(shelfNum) || 
+                                            !br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf != null && 
+                                                Equals(brd.LibraryItem.Shelf.ShelfNumber.ToLower(), shelfNum.ToLower())));
+                                        break;
+                                }
+                            }
+                            
+                            if (includeExpressions.Any())
+                            {
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber1)
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber2)
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber1) ||
+                                //       br.BorrowRequestDetails.Any(brd => brd.LibraryItem.Shelf.ShelfNumber2)
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
+                                    {
+                                        if (exp1 != null)
+                                        {
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
+                                        }
+        
+                                        return _ => false;
+                                    });
+                                
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
+                            }
+                        }
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(Category).ToLowerInvariant())
+                    {
+                        var categoryIds = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (categoryIds != null)
+                        {
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                            foreach (var categoryId in categoryIds)
+                            {
+                                // Try parse to integer
+                                if (int.TryParse(categoryId, out var numCateId))
                                 {
                                     // Determine operator
                                     switch (filter.Operator)
                                     {
                                         case FilterOperator.Includes:
                                             includeExpressions.Add(br => br.BorrowRequestDetails.Any(brd => 
-                                                brd.LibraryItem.LibraryItemInstances.Any(li => 
-                                                    Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                                Equals(brd.LibraryItem.CategoryId, numCateId)));
                                             break;
                                         case FilterOperator.Equals:
                                             AddFilter(br => br.BorrowRequestDetails.Any(brd => 
-                                                brd.LibraryItem.LibraryItemInstances.Any(li => 
-                                                    Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                                Equals(brd.LibraryItem.CategoryId, numCateId)));
                                             break;
                                         case FilterOperator.NotEqualsTo:
                                             AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
-                                                brd.LibraryItem.LibraryItemInstances.Any(li => 
-                                                    Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                                Equals(brd.LibraryItem.CategoryId, numCateId)));
                                             break;
                                     }
                                 }
-            
-                                if (includeExpressions.Any())
-                                {
-                                    var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
-                                        (exp1, exp2) =>
+                            }
+                            
+                            if (includeExpressions.Any())
+                            {
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId1)
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId2)
+                                // br => br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId1) ||
+                                //       br.BorrowRequestDetails.Any(brd => brd.LibraryItem.CategoryId2)
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
+                                    {
+                                        if (exp1 != null)
                                         {
-                                            if (exp1 != null)
-                                            {
-                                                // Try to combined body of different expression with 'OR' operator
-                                                var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
-                                                
-                                                // Return combined body
-                                                return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
-                                            }
-            
-                                            return _ => false;
-                                        });
-                                    
-                                    // Apply filter with 'includes'
-                                    if(resultExpression != null) AddFilter(resultExpression);
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
+                                        }
+        
+                                        return _ => false;
+                                    });
+                                
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
+                            }
+                        }
+                    }
+                    else if (filter.FieldName.ToLowerInvariant() == nameof(LibraryItemInstance.Barcode).ToLowerInvariant())
+                    {
+                        var barcodes = filter.Value?.Split(",").Select(x => x.Trim()).ToList();
+                        if (barcodes != null)
+                        {
+                            // Initialize base spec to retrieve building filter when operator is 'includes'
+                            List<Expression<Func<BorrowRequest, bool>>> includeExpressions = new();
+                            foreach (var barcode in barcodes)
+                            {
+                                // Determine operator
+                                switch (filter.Operator)
+                                {
+                                    case FilterOperator.Includes:
+                                        includeExpressions.Add(br => br.BorrowRequestDetails.Any(brd => 
+                                            brd.LibraryItem.LibraryItemInstances.Any(li => 
+                                                Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                        break;
+                                    case FilterOperator.Equals:
+                                        AddFilter(br => br.BorrowRequestDetails.Any(brd => 
+                                            brd.LibraryItem.LibraryItemInstances.Any(li => 
+                                                Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                        break;
+                                    case FilterOperator.NotEqualsTo:
+                                        AddFilter(br => !br.BorrowRequestDetails.Any(brd => 
+                                            brd.LibraryItem.LibraryItemInstances.Any(li => 
+                                                Equals(li.Barcode.ToLower(), barcode.ToLower()))));
+                                        break;
                                 }
+                            }
+        
+                            if (includeExpressions.Any())
+                            {
+                                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                    (exp1, exp2) =>
+                                    {
+                                        if (exp1 != null)
+                                        {
+                                            // Try to combined body of different expression with 'OR' operator
+                                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                            
+                                            // Return combined body
+                                            return Expression.Lambda<Func<BorrowRequest, bool>>(body, exp1.Parameters);
+                                        }
+        
+                                        return _ => false;
+                                    });
+                                
+                                // Apply filter with 'includes'
+                                if(resultExpression != null) AddFilter(resultExpression);
                             }
                         }
                     }
@@ -563,7 +555,6 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
             }
         }
         
-
         // Progress sorting
         if (!string.IsNullOrEmpty(specParams.Sort))
         {

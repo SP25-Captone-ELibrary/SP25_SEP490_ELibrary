@@ -36,8 +36,7 @@ public class BorrowRequestController : ControllerBase
         return Ok(await _borrowReqSvc.GetAllWithSpecAsync(new BorrowRequestSpecification(
             specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
-            pageSize: specParams.PageSize ?? _appSettings.PageSize,
-            callFromManagement: true)));
+            pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
 
     [Authorize]
@@ -65,8 +64,7 @@ public class BorrowRequestController : ControllerBase
             spec: new BorrowRequestSpecification(
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
-                pageSize: specParams.PageSize ?? _appSettings.PageSize,
-                callFromManagement: false)));
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
 
     [HttpGet(APIRoute.BorrowRequest.GetById, Name = nameof(GetBorrowRequestByIdWithEmailAsync))]

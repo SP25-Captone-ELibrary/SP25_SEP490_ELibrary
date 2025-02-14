@@ -872,7 +872,29 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     Shelf = be.Shelf,
                     LibraryItemGroup = be.LibraryItemGroup,
                     LibraryItemInventory = be.LibraryItemInventory,
-                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemInstances = be.LibraryItemInstances.Select(li => new LibraryItemInstance()
+                    {
+                        LibraryItemInstanceId = li.LibraryItemInstanceId,
+                        LibraryItemId = li.LibraryItemId,
+                        Barcode = li.Barcode,
+                        Status = li.Status,
+                        CreatedAt = li.CreatedAt,
+                        UpdatedAt = li.UpdatedAt,
+                        CreatedBy = li.CreatedBy,
+                        UpdatedBy = li.UpdatedBy,
+                        IsDeleted = li.IsDeleted,
+                        LibraryItemConditionHistories = li.LibraryItemConditionHistories.Select(lih => new LibraryItemConditionHistory()
+                        {
+                            ConditionHistoryId = lih.ConditionHistoryId,
+                            LibraryItemInstanceId = lih.LibraryItemInstanceId,
+                            ConditionId = lih.ConditionId,
+                            CreatedAt = lih.CreatedAt,
+                            UpdatedAt = lih.UpdatedAt,
+                            CreatedBy = lih.CreatedBy,
+                            UpdatedBy = lih.UpdatedBy,
+                            Condition = lih.Condition,
+                        }).ToList(),
+                    }).ToList(),
                     LibraryItemReviews = be.LibraryItemReviews,
                     LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
                     {
@@ -912,6 +934,194 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetByBarcodeAsync(string barcode)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItem>(l => 
+                l.LibraryItemInstances.Any(i => Equals(i.Barcode, barcode)));
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemGroup = be.LibraryItemGroup,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList(),
+                    LibraryItemResources = be.LibraryItemResources.Select(lir => new LibraryItemResource()
+                    {
+                        LibraryItemResourceId = lir.LibraryItemResourceId,
+                        LibraryItemId = lir.LibraryItemId,
+                        ResourceId = lir.ResourceId,
+                        LibraryResource = lir.LibraryResource
+                    }).ToList(),
+                });
+
+            if (itemEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
+
+                // Convert to library item detail dto
+                var itemDetailDto = dto.ToLibraryItemDetailDto();
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get library item by barcode");
+        }
+    }
+    
+    public async Task<IServiceResult> GetByIsbnAsync(string isbn)
+    {
+        try
+        {
+            // Build specification
+            var cleanedIsbn = ISBN.CleanIsbn(isbn);
+            var baseSpec = new BaseSpecification<LibraryItem>(l => Equals(l.Isbn, cleanedIsbn));
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemGroup = be.LibraryItemGroup,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList(),
+                    LibraryItemResources = be.LibraryItemResources.Select(lir => new LibraryItemResource()
+                    {
+                        LibraryItemResourceId = lir.LibraryItemResourceId,
+                        LibraryItemId = lir.LibraryItemId,
+                        ResourceId = lir.ResourceId,
+                        LibraryResource = lir.LibraryResource
+                    }).ToList(),
+                });
+
+            if (itemEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
+
+                // Convert to library item detail dto
+                var itemDetailDto = dto.ToLibraryItemDetailDto();
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get library item by barcode");
+        }
+    }
+    
     public async Task<IServiceResult> GetEnumValueAsync()
     {
         try
@@ -1573,67 +1783,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when process get item by instance barcode");
         }
     }
-    
-//
-//     public async Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(LibraryItemDto dto, string fieldName)
-//     {
-//         // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
-//         var relatedEditions = new List<LibraryItemDto>();
-//         if (fieldName.Equals(nameof(Author)))
-//         {
-//             var targetAuthorIds = dto.BookEditionAuthors
-//                 .Select(bea => bea.AuthorId)
-//                 .ToList();
-//             var sameAuthorEditionsQuery = new BaseSpecification<BookEdition>(be =>
-//                 be.LibraryItemId != dto.BookEditionId
-//                 &&
-//                 be.BookEditionAuthors.Any(ba => targetAuthorIds.Contains(ba.AuthorId))
-//             );
-//
-//             sameAuthorEditionsQuery.ApplyInclude(q => q
-//                 .Include(be => be.BookEditionAuthors)
-//                 .ThenInclude(bea => bea.Author)
-//             );
-//             var result =
-//                 (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
-//                     sameAuthorEditionsQuery)).ToList();
-//             relatedEditions = _mapper.Map<List<LibraryItemDto>>(result);
-//         }
-//
-//         if (fieldName.Equals(nameof(Category)))
-//         {
-//             var categorySpec = new BaseSpecification<Category>(c => c.BookCategories
-//                 .Any(bc => bc.BookId == dto.Book.BookId));
-//             categorySpec.ApplyInclude(q => q.Include(c => c.BookCategories));
-//                 var categories = (List<CategoryDto>)(await _cateService.GetAllWithSpecAsync(categorySpec)).Data!; 
-//             var targetCategories = categories
-//                 .Select(c => c.CategoryId)
-//                 .ToList();
-//             var sameCategoryEditionsQuery = new BaseSpecification<BookEdition>(be =>
-//                 be.LibraryItemId != dto.BookEditionId &&
-//                 be.Book.BookCategories
-//                     .Any(bc =>
-//                         targetCategories.Contains(bc.CategoryId)
-//                     )
-//             );
-//             // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
-//             // Apply Includes for Book, BookCategories, Category, and BookEditionAuthors
-//             sameCategoryEditionsQuery.ApplyInclude(q => q
-//                 .Include(be => be.Book)
-//                 .ThenInclude(b => b.BookCategories)
-//                 .ThenInclude(c => c.Category));
-//             // Retrieve the data using the specification
-//             var result =
-//                 (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
-//                     sameCategoryEditionsQuery)).ToList();
-//             relatedEditions = _mapper.Map<List<LibraryItemDto>>(result);
-//         }
-//
-//         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-//             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
-//             , relatedEditions);
-//     }
-//     
+
     public async Task<IServiceResult> UpdateStatusAsync(int id)
     {
         try
@@ -1908,51 +2058,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when process update shelf location for library item");
         }
     }
-
-//     
-//     public async Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode)
-//     {
-//         try
-//         {
-//             // Determine current lang context
-//             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-//                 LanguageContext.CurrentLanguage);
-//             var isEng = lang == SystemLanguage.English;
-//
-//             var baseSpec =
-//                 new BaseSpecification<BookEdition>(x => x.Book.BookCodeForAITraining.Equals(trainingBookCode));
-//             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(baseSpec);
-//
-//             foreach (var entity in bookEditionEntities)
-//             {
-//                 entity.TrainedDay = DateTime.Now;
-//                 entity.IsTrained = true;
-//                 await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(entity);
-//             }
-//
-//             // Save changes to DB
-//             var rowsAffected = await _unitOfWork.SaveChangesAsync();
-//             if (rowsAffected == 0)
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
-//             }
-//
-//             // Mark as update success
-//             return new ServiceResult(ResultCodeConst.SYS_Success0003,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-//         }
-//         catch (UnprocessableEntityException)
-//         {
-//             throw;
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw;
-//         }
-//     }
-//     
+    
     public async Task<IServiceResult> SoftDeleteAsync(int id)
     {
         try

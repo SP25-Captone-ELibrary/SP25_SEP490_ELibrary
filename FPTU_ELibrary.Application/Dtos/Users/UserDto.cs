@@ -36,6 +36,9 @@ namespace FPTU_ELibrary.Application.Dtos
     
         public bool IsDeleted { get; set; }
         
+        // Check whether user is created from employee or not
+        public bool IsEmployeeCreated { get; set; }
+        
         // Creation and modify date
         public DateTime CreateDate { get; set; }
         public DateTime? ModifiedDate { get; set; }

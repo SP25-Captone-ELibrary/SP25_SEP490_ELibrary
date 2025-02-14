@@ -28,17 +28,12 @@ public class BorrowRecordDto
     // Total extension time  
     public int TotalExtension { get; set; }
     
-    // Borrow items condition tracking
-    public string BorrowCondition { get; set; } = null!;
-    public string? ReturnCondition { get; set; }
-    public DateTime? ConditionCheckDate { get; set; }
-    
     // Borrow record processed by which employee
-    public Guid ProcessedBy { get; set; }
+    public Guid? ProcessedBy { get; set; }
 
     // Mapping entities
     public BorrowRequestDto? BorrowRequest { get; set; }
-    public EmployeeDto ProcessedByNavigation { get; set; } = null!;
+    public EmployeeDto? ProcessedByNavigation { get; set; } = null!;
     public LibraryCardDto LibraryCard { get; set; } = null!;
     
     public ICollection<BorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetailDto>();

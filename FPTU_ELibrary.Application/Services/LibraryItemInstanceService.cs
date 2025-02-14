@@ -31,17 +31,17 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     private readonly AppSettings _appSettings;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
-    private readonly ICategoryService<CategoryDto> _cateService;
     private readonly ILibraryItemService<LibraryItemDto> _libItemService;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventoryService;
+    private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionService;
     private readonly ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> _conditionHistoryService;
 
     public LibraryItemInstanceService(
         IBorrowRequestService<BorrowRequestDto> borrowReqService,
         IBorrowRecordService<BorrowRecordDto> borrowRecService,
-        ICategoryService<CategoryDto> cateService,
         ILibraryItemService<LibraryItemDto> libItemService,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventoryService,
+        ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
         ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> conditionHistoryService,
         IOptionsMonitor<AppSettings> monitor,
         ISystemMessageService msgService,
@@ -52,7 +52,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         _appSettings = monitor.CurrentValue;
         _borrowReqService = borrowReqService;
         _borrowRecService = borrowRecService;
-        _cateService = cateService;
+        _conditionService = conditionService;
         _libItemService = libItemService;
         _inventoryService = inventoryService;
         _conditionHistoryService = conditionHistoryService;
@@ -213,7 +213,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "library item copy" : "bản in"));
+                    StringUtils.Format(errMsg, isEng ? "library item copy" : "bản sao"));
             }
 
             // Validate status
@@ -535,17 +535,19 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 {
                     return new ServiceResult(ResultCodeConst.SYS_Fail0001, isEng
                         ? "Not allow to add multiple condition histories"
-                        : "Không được thêm nhiều trạng thái bản in ban đầu");
+                        : "Không được thêm nhiều trạng thái bản sao ban đầu");
                 }
                 else
                 {
-                    if (!Enum.TryParse(typeof(LibraryItemConditionStatus),
-                            conditionHistories[0].Condition, out _)) // Not valid status
+                    // Check exist condition
+                    var isConditionExist = (await _conditionService.AnyAsync(c =>
+                        c.ConditionId == conditionHistories[0].ConditionId)).Data is true;
+                    if (!isConditionExist)
                     {
                         // Add error 
-                        customErrors.Add(
-                            $"libraryItemInstances[{i}].conditionStatus",
-                            [isEng ? "Condition status not value" : "Trạng thái điều kiện không hợp lệ"]);
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                            key: $"libraryItemInstances[{i}].conditionId",
+                            msg: isEng ? "Condition not exist" : "Trạng thái không tồn tại");
                     }
                 }
 
@@ -558,9 +560,9 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     {
                         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0005);
                         // Add error 
-                        customErrors.Add(
-                            $"libraryItemInstances[{i}].barcode",
-                            [StringUtils.Format(errMsg, $"'{itemInstances[i].Barcode}'")]);
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                            key: $"libraryItemInstances[{i}].barcode",
+                            msg: StringUtils.Format(errMsg, $"'{itemInstances[i].Barcode}'"));
                     }
                     
                     // Try to validate with category prefix
@@ -591,13 +593,11 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 else
                 {
                     // Add error 
-                    customErrors.Add(
-                        $"libraryItemInstances[{i}].barcode",
-                        [
-                            isEng
-                                ? $"Barcode '{itemInstances[i].Barcode}' is duplicated"
-                                : $"Số đăng ký cá biệt '{itemInstances[i].Barcode}' đã bị trùng"
-                        ]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                        key: $"libraryItemInstances[{i}].barcode",
+                        msg: isEng
+                            ? $"Barcode '{itemInstances[i].Barcode}' is duplicated"
+                            : $"Số đăng ký cá biệt '{itemInstances[i].Barcode}' đã bị trùng");
                 }
             }
 
@@ -1574,6 +1574,14 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 
                 // Process update
                 await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(instance);
+                
+                // Progress update can borrow status of library item
+                if (inventory != null)
+                {
+                    await _libItemService.UpdateBorrowStatusWithoutSaveChangesAsync(
+                        id: inventory.LibraryItemId,
+                        canBorrow: inventory.AvailableUnits > 0);
+                }
             }
             
             // Updated without save change

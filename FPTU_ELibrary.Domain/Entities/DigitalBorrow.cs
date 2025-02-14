@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Domain.Entities;
@@ -14,6 +15,8 @@ public class DigitalBorrow
     public BorrowDigitalStatus Status { get; set; }
     
     public LibraryResource LibraryResource { get; set; } = null!;
+    
+    [JsonIgnore]
     public User User { get; set; } = null!;
     
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

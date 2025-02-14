@@ -15,5 +15,6 @@ public interface INotificationService<TDto> : IGenericService<Notification, TDto
         bool isMangement,
         bool tracked = true
     );
-
+    Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize);
+    Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize);
 }

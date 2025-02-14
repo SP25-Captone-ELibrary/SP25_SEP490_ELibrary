@@ -12,6 +12,8 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> CreateAsync(TDto dto, int trackingDetailId);
     Task<IServiceResult> GetEnumValueAsync();
     Task<IServiceResult> GetDetailAsync(int id);
+    Task<IServiceResult> GetByBarcodeAsync(string barcode);
+    Task<IServiceResult> GetByIsbnAsync(string isbn);
     Task<IServiceResult> GetRecentReadByIdsAsync(int[] ids, int pageIndex, int pageSize);
     Task<IServiceResult> GetNewArrivalsAsync(int pageIndex, int pageSize);
     Task<IServiceResult> GetTrendingAsync(int pageIndex, int pageSize);
@@ -27,12 +29,11 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
     Task<IServiceResult> UpdateTrainingStatusAsync(List<int> libraryItemIds);
-    // Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(TDto dto, string fieldName);
     Task<IServiceResult> UpdateStatusAsync(int id);
     Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId);
+    Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId);
     Task<IServiceResult> ImportAsync(
         IFormFile? file, List<IFormFile> coverImageFiles, 
         string[]? scanningFields, DuplicateHandle? duplicateHandle = null);
     Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec);
-    Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId);
 }

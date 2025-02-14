@@ -34,5 +34,24 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
             .IsRequired(false)
             .HasColumnName("image_public_ids");
         #endregion
+
+        #region Update at: 12/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.ConditionCheckDate)
+            .HasColumnType("datetime")
+            .HasColumnName("condition_check_date");
+        builder.Property(e => e.ReturnConditionId).HasColumnName("return_condition_id");
+        #endregion
+
+        #region Update at: 13/02/2025
+        // builder.Property(e => e.BorrowCondition)
+        //     .HasMaxLength(50)
+        //     .HasColumnName("borrow_condition");
+            
+        builder.Property(e => e.ConditionId).HasColumnName("condition_id");
+        builder.HasOne(d => d.Condition).WithMany(p => p.BorrowRecordDetails)
+            .HasForeignKey(d => d.ConditionId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_BorrowRecordDetail_ConditionId");
+        #endregion
     }
 }

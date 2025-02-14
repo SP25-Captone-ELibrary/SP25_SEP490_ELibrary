@@ -290,6 +290,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0013 = "Borrow.Warning0013";
 		/// <summary>
+		/// [WARNING] Instance belongs to borrowing item
+		/// </summary>
+		public const string Borrow_Warning0014 = "Borrow.Warning0014";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";
@@ -494,6 +498,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Success0001 = "LibraryCard.Success0001";
 		/// <summary>
+		/// [SUCCESS] Register library card success
+		/// </summary>
+		public const string LibraryCard_Success0002 = "LibraryCard.Success0002";
+		/// <summary>
+		/// [SUCCESS] The library card has been archived and is no longer valid
+		/// </summary>
+		public const string LibraryCard_Success0003 = "LibraryCard.Success0003";
+		/// <summary>
 		/// [WARNING] Your library card is not activated yet. Please make a payment to activate your card
 		/// </summary>
 		public const string LibraryCard_Warning0001 = "LibraryCard.Warning0001";
@@ -513,6 +525,22 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Library card does not match the card registered to borrow
 		/// </summary>
 		public const string LibraryCard_Warning0005 = "LibraryCard.Warning0005";
+		/// <summary>
+		/// [WARNING] Fail to extend library card as {0}
+		/// </summary>
+		public const string LibraryCard_Warning0006 = "LibraryCard.Warning0006";
+		/// <summary>
+		/// [WARNING] The action cannot be performed, as library card need to change status to archived
+		/// </summary>
+		public const string LibraryCard_Warning0007 = "LibraryCard.Warning0007";
+		/// <summary>
+		/// [WARNING] Register library card failed
+		/// </summary>
+		public const string LibraryCard_Fail0001 = "LibraryCard.Fail0001";
+		/// <summary>
+		/// [WARNING] Failed to archive library card
+		/// </summary>
+		public const string LibraryCard_Fail0002 = "LibraryCard.Fail0002";
 		#endregion
 		
 		#region Supplier
