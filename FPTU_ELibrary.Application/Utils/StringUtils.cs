@@ -218,7 +218,7 @@ namespace FPTU_ELibrary.Application.Utils
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
-                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint < matchedPoint))
+                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
                         {
                             // Keep only the result with the highest MatchedPoint
                             titlePoints.Clear();
@@ -241,34 +241,38 @@ namespace FPTU_ELibrary.Application.Utils
                 }
                 else if (field.FieldName.Equals("Authors", StringComparison.OrdinalIgnoreCase))
                 {
-                    int count = 1;
+                    Dictionary<string, (int FuzzinessPoint, int MatchPhrasePoint, int MatchedPoint)>
+                        titlePoints = new();
                     foreach (var value in field.Values)
                     {
                         var normalizedValue = RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim();
 
+                        // Calculate FuzzinessPoint and MatchPhrasePoint
                         int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
                         int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+
+                        // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
+                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
+                        {
+                            // Keep only the result with the highest MatchedPoint
+                            titlePoints.Clear();
+                            titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
+                        }
+                        var bestMatch = titlePoints.First();
+                        totalWeightedScore += bestMatch.Value.MatchedPoint * field.Weight;
                         matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
                         {
-                            Name = $"Author {count}",
-                            Detail = value,
-                            FuzzinessPoint = fuzzinessPoint,
-                            MatchPhrasePoint = matchPhrasePoint,
-                            MatchedPoint = matchedPoint,
+                            Name = "Author",
+                            Detail = bestMatch.Key,
+                            FuzzinessPoint = bestMatch.Value.FuzzinessPoint,
+                            MatchPhrasePoint = bestMatch.Value.MatchPhrasePoint,
+                            MatchedPoint = bestMatch.Value.MatchedPoint,
                             Threshold = minFieldThreshold,
-                            IsPassed = matchedPoint >= minFieldThreshold
+                            IsPassed = bestMatch.Value.MatchedPoint >= minFieldThreshold
                         });
-
-                        count++;
                     }
-
-                    // Calculate average score for authors
-                    double averageAuthorScore = matchResult.FieldPointsWithThreshole
-                        .Where(x => x.Name.Contains("Author"))
-                        .Average(x => x.MatchedPoint);
-                    totalWeightedScore += averageAuthorScore * field.Weight;
                 }
                 else
                 {
@@ -306,9 +310,10 @@ namespace FPTU_ELibrary.Application.Utils
             // Normalize the input (lowercase and split into words)
             var normalizedData = NormalizeText(data);
             var normalizedPhrase = NormalizeText(phrase);
-
+            var joinedNormalizedPhrase = string.Join(" ", normalizedPhrase);
+            var joinedNormalizedData = string.Join(" ", normalizedData);
             // Calculate match score
-            double matchScore = CalculateMatchScoreByMatchPhrase(normalizedPhrase, normalizedData);
+            double matchScore = CalculateDamerauLevenshteinPercentage(joinedNormalizedPhrase, joinedNormalizedData);
 
             // Return match score as an integer percentage
             return (int)Math.Round(matchScore);
@@ -445,7 +450,7 @@ namespace FPTU_ELibrary.Application.Utils
 
         public static string RemoveSpecialCharactersOfVietnamese(string content)
         {
-            string normalizedString = content.Normalize(NormalizationForm.FormD); // Chuẩn hóa chuỗi
+            string normalizedString = string.Join(" ", NormalizeText(content)); // Chuẩn hóa chuỗi
             StringBuilder stringBuilder = new StringBuilder();
 
             foreach (char c in normalizedString)

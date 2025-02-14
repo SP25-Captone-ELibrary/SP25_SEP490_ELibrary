@@ -22,6 +22,8 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> GetReviewsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> GetRelatedItemsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> GetByInstanceBarcodeAsync(string barcode);
+    Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(
+        ISpecification<LibraryItem> specification, bool tracked = true);
     Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow);
     Task<IServiceResult> SoftDeleteAsync(int id);
     Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);

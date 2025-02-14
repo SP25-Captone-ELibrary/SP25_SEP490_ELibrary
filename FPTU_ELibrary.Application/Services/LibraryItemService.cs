@@ -3426,6 +3426,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         return new ServiceResult(ResultCodeConst.SYS_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
     }
+
+    public Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(ISpecification<LibraryItem> specification, bool tracked = true)
+    {
+        return base.GetAllWithSpecAsync(specification, tracked);
+    }
+
     public async Task<IServiceResult> UpdateTrainingStatusAsync(List<int> libraryItemIds)
     {
         foreach (var libraryItemId in libraryItemIds)
