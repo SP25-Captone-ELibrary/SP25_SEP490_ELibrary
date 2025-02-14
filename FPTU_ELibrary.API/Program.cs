@@ -13,12 +13,12 @@ builder.Services
     .AddCors("Cors")
     // Add system health checks
     .AddHealthChecks()
-        // For SQL
-        .AddSqlServerHealthCheck()
-        // For API
-        .AddApiHealthCheck()
-        // For memory cache
-        .AddCacheHealthCheck();
+    // For SQL
+    .AddSqlServerHealthCheck()
+    // For API
+    .AddApiHealthCheck()
+    // For memory cache
+    .AddCacheHealthCheck();
 
 builder.Services
     // Configure background services
@@ -40,13 +40,13 @@ builder.Services
     //Configure OCR
     .ConfigureOCR(builder.Configuration)
     // Configure Azure Speech
-    .ConfigureAzureSpeech(builder.Configuration);
-
+    .ConfigureAzureSpeech(builder.Configuration)    
+    .EstablishApplicationConfiguration(builder.Configuration, builder.Environment);
 builder.Services
-	// Configure for application layer
-	.AddApplication(builder.Configuration)
-	// Configure for infrastructure layer
-	.AddInfrastructure(builder.Configuration);
+    // Configure for application layer
+    .AddApplication(builder.Configuration)
+    // Configure for infrastructure layer
+    .AddInfrastructure(builder.Configuration);
 
 builder.Services
     // Add swagger
@@ -77,9 +77,9 @@ app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
 
 app.WithSwagger();
 app.UseHttpsRedirection();
-app.UseRouting(); 
+app.UseRouting();
 app.UseAuthentication();
-app.UseAuthorization(); 
+app.UseAuthorization();
 
 // Custom Middlewares
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware

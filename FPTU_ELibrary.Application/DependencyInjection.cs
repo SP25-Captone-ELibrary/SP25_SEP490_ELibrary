@@ -21,6 +21,7 @@ using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -81,7 +82,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IUserService<UserDto>, UserService>();
             services.AddScoped<IWarehouseTrackingService<WarehouseTrackingDto>, WarehouseTrackingService>();
             services.AddScoped<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>, WarehouseTrackingDetailService>();
-
+            services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services
                 .ConfigureMapster() // Add mapster
                 .ConfigureCloudinary() // Add cloudinary
