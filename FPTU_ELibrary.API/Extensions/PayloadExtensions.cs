@@ -5,9 +5,9 @@ using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.API.Payloads.Requests.Category;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
+using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
-using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.API.Payloads.Requests.Supplier;
 using FPTU_ELibrary.API.Payloads.Requests.User;
@@ -20,11 +20,11 @@ using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Utils;
-using FPTU_ELibrary.Domain.Common.Enums;
-using FPTU_ELibrary.Domain.Entities;
+using Microsoft.AspNetCore.ResponseCompression;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -34,7 +34,6 @@ namespace FPTU_ELibrary.API.Extensions
 	public static class PayloadExtensions
 	{
 		#region Auth
-
 		// Mapping from typeof(SignInRequest) to typeof(AuthenticateUserDto)
 		public static AuthenticateUserDto ToAuthenticatedUser(this SignInRequest req)
 			=> new AuthenticateUserDto
@@ -70,7 +69,6 @@ namespace FPTU_ELibrary.API.Extensions
 				Password = req.Password,
 				IsEmployee = false
 			};
-
 		#endregion
 
 		#region Author
@@ -121,7 +119,7 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 
-		#region Borrow
+		#region Borrow Request
 		// Mapping from (CreateBorrowRequest) to typeof(BorrowRequestDto)
 		public static BorrowRequestDto ToBorrowRequestDto(this CreateBorrowRequest req)
 			=> new()
@@ -130,6 +128,42 @@ namespace FPTU_ELibrary.API.Extensions
 				BorrowRequestDetails = req.LibraryItemIds.Select(lId => new BorrowRequestDetailDto()
 				{
 					LibraryItemId = lId
+				}).ToList()
+			};
+		#endregion
+
+		#region Borrow Record
+		// Mapping from (ProcessToBorrowRecordRequest) to typeof(BorrowRecordDto)
+		public static BorrowRecordDto ToBorrowRecordDto(this ProcessToBorrowRecordRequest req)
+			=> new()
+			{
+				BorrowRequestId = req.BorrowRequestId,
+				LibraryCardId = req.LibraryCardId,
+				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
+				{
+					LibraryItemInstanceId = brd.LibraryItemInstanceId
+				}).ToList()
+			};
+		
+		// Mapping from (CreateBorrowRecordRequest) to typeof(BorrowRecordDto)
+		public static BorrowRecordDto ToBorrowRecordDto(this CreateBorrowRecordRequest req)
+			=> new()
+			{
+				LibraryCardId = req.LibraryCardId,
+				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
+				{
+					LibraryItemInstanceId = brd.LibraryItemInstanceId
+				}).ToList()
+			};
+		
+		// Mapping from (SelfCheckoutBorrowRequest) to typeof(BorrowRecordDto)
+		public static BorrowRecordDto ToBorrowRecordDto(this SelfCheckoutBorrowRequest req)
+			=> new()
+			{
+				LibraryCardId = req.LibraryCardId,
+				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
+				{
+					LibraryItemInstanceId = brd.LibraryItemInstanceId
 				}).ToList()
 			};
 		#endregion
@@ -211,7 +245,7 @@ namespace FPTU_ELibrary.API.Extensions
 				{
 					new()
 					{
-						Condition = req.ConditionStatus
+						ConditionId = req.ConditionId
 					}
 				}
 			};
@@ -319,13 +353,108 @@ namespace FPTU_ELibrary.API.Extensions
 				{
 					new()
 					{
-						Condition = bec.ConditionStatus
+						ConditionId = bec.ConditionId
 					}
 				}
 			}).ToList();
 
 		#endregion
 
+		#region Library Card
+		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(UserDto)
+		public static UserDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
+			=> new()
+			{
+				LibraryCard = new()
+				{
+					Avatar = req.Avatar,
+					FullName = req.FullName
+				}
+			};
+		
+		// Mapping from typeof(CreateLibraryCardHolderRequest) to typeof(UserDto)
+		public static UserDto ToLibraryCardHolderDto(this CreateLibraryCardHolderRequest req)
+		{
+			return new()
+			{
+				Email = req.Email,
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Phone = req.Phone,
+				Address = req.Address,
+				Gender = req.Gender,
+				Dob = req.Dob,
+				Avatar = req.Avatar,
+				LibraryCard = new LibraryCardDto()
+				{
+					FullName = $"{req.FirstName} {req.LastName}",
+					Avatar = req.Avatar
+				}
+			};
+		}
+		
+		// Mapping from typeof(UpdateLibraryCardHolderRequest) to typeof(UserDto)
+		public static UserDto ToLibraryCardHolderDto(this UpdateLibraryCardHolderRequest req)
+		{
+			return new()
+			{
+				FirstName = req.FirstName,
+				LastName = req.LastName,
+				Phone = req.Phone,
+				Address = req.Address,
+				Gender = req.Gender,
+				Dob = req.Dob
+			};
+		}
+		
+		// Mapping from typeof(UpdateLibraryCardRequest) to typeof(LibraryCardDto)
+		public static LibraryCardDto ToLibraryCardDto(this UpdateLibraryCardRequest req)
+		{
+			return new LibraryCardDto()
+			{
+				FullName = req.FullName,
+				Avatar = req.Avatar,
+				IssuanceMethod = req.IssuanceMethod,
+				IsAllowBorrowMore = req.IsAllowBorrowMore,
+				MaxItemOnceTime = req.MaxItemOnceTime,
+				TotalMissedPickUp = req.TotalMissedPickUp
+			};
+		}
+		#endregion
+		
+		#region Library Card Package
+		// Mapping from (CreateLibraryCardPackageRequest) to typeof(LibraryCardPackageDto)
+		public static LibraryCardPackageDto ToLibraryCardPackageDto(this CreateLibraryCardPackageRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+			return new()
+			{
+				PackageName = req.PackageName,
+				Price = req.Price,
+				DurationInMonths = req.DurationInMonths,
+				Description = req.Description,
+				IsActive = true,
+				CreatedAt = currentLocalDateTime
+			};
+		}
+
+		// Mapping from (UpdateLibraryCardPackageRequest) to typeof(LibraryCardPackageDto)
+		public static LibraryCardPackageDto ToLibraryCardPackageDto(this UpdateLibraryCardPackageRequest req)
+		{
+			return new()
+			{
+				PackageName = req.PackageName,
+				Price = req.Price,
+				DurationInMonths = req.DurationInMonths,
+				Description = req.Description,
+			};
+		}
+		#endregion
+		
 		#region User
 
 		// Mapping from typeof(CreateUserRequest) to typeof(UserDto)
@@ -374,7 +503,6 @@ namespace FPTU_ELibrary.API.Extensions
 				ModifiedDate = currentLocalDateTime
 			};
 		}
-
 		#endregion
 
 		#region Employee
@@ -478,7 +606,8 @@ namespace FPTU_ELibrary.API.Extensions
 				VietnameseName = req.VietnameseName,
 				EnglishName = req.EnglishName,
 				Description = req.Description,
-				IsAllowAITraining = req.IsAllowAITraining
+				IsAllowAITraining = req.IsAllowAITraining,
+				TotalBorrowDays = req.TotalBorrowDays
 			};
 		}
 

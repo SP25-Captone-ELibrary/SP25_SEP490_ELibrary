@@ -398,6 +398,7 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
                      VietnameseName = worksheet.Cells[row, 3].Text,
                      Description = worksheet.Cells[row, 4].Text,
                      IsAllowAITraining = bool.TryParse(worksheet.Cells[row, 5].Text, out var validBool) && validBool,
+                     TotalBorrowDays = int.TryParse(worksheet.Cells[row, 6].Text, out var validInt) ? validInt : 0,
                  };
 
                  if (processedCategories.ContainsKey(categoryRecord.EnglishName))
@@ -440,7 +441,8 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
                          EnglishName = categoryRecord.EnglishName,
                          VietnameseName = categoryRecord.VietnameseName,
                          Description = categoryRecord.Description,
-                         IsAllowAITraining = categoryRecord.IsAllowAITraining
+                         IsAllowAITraining = categoryRecord.IsAllowAITraining,
+                         TotalBorrowDays = categoryRecord.TotalBorrowDays
                      };
 
                      // Add category

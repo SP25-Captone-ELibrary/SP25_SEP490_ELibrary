@@ -30,8 +30,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             #endregion
 
             #region Updated at 23/01/2025 by Le Xuan Phuoc
-            builder.Property(e => e.IsAllowAITraining).HasColumnName("is_allow_ai_training");
-            #endregion            
+            builder.Property(e => e.IsAllowAITraining)
+                .HasDefaultValue(false)
+                .HasColumnName("is_allow_ai_training");
+            #endregion  
+            
+            #region Updated at 06/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.TotalBorrowDays)
+                .HasDefaultValue(0)
+                .HasColumnName("total_borrow_days");
+            #endregion
         }
     }
 }

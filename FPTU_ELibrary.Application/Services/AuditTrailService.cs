@@ -27,24 +27,20 @@ namespace FPTU_ELibrary.Application.Services;
 public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>,
     IAuditTrailService<AuditTrailDto>
 {
-    private readonly ILibraryResourceService<LibraryResourceDto> _resourceService;
-    private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
-    private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGrpService;
-    private readonly ILibraryShelfService<LibraryShelfDto> _libraryShelfService;
-    private readonly IEmployeeService<EmployeeDto> _employeeService;
-    private readonly IUserService<UserDto> _userService;
     private readonly IAuthorService<AuthorDto> _authorService;
     private readonly ICategoryService<CategoryDto> _cateService;
+    private readonly ILibraryShelfService<LibraryShelfDto> _libraryShelfService;
+    private readonly ILibraryResourceService<LibraryResourceDto> _resourceService;
+    private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGrpService;
+    private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionService;
 
     public AuditTrailService(
-        IUserService<UserDto> userService,
         IAuthorService<AuthorDto> authorService,
         ICategoryService<CategoryDto> cateService,
-        IEmployeeService<EmployeeDto> employeeService,
         ILibraryResourceService<LibraryResourceDto> resourceService,
-        ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGrpService,
         ILibraryShelfService<LibraryShelfDto> libraryShelfService,
+        ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
@@ -53,9 +49,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
         _resourceService = resourceService;
         _authorService = authorService;
         _cateService = cateService;
-        _userService = userService;
-        _employeeService = employeeService;
-        _libraryItemService = libraryItemService;
+        _conditionService = conditionService;
         _libraryItemGrpService = libraryItemGrpService;
         _libraryShelfService = libraryShelfService;
     }
@@ -364,28 +358,36 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
 
         if (copyHistoryAudits.Any()) // Exist at least 1 history
         {
-            var test = auditTrailList
+            var libItemConditionHisDtos = auditTrailList
                 .Where(ch => ch.EntityName == nameof(LibraryItemConditionHistory) &&
                              ch.NewValues.Any() &&
                              ch.NewValues.ContainsKey("LibraryItemInstanceId") &&
                              (string.IsNullOrEmpty(libraryItemInstanceId) ||
-                              ch.NewValues["LibraryItemInstanceId"]?.ToString() == libraryItemInstanceId));
-            return await Task.FromResult(
-                auditTrailList
-                    .Where(ch => ch.EntityName == nameof(LibraryItemConditionHistory) &&
-                                 ch.NewValues.Any() &&
-                                 ch.NewValues.ContainsKey("LibraryItemInstanceId") &&
-                                 (string.IsNullOrEmpty(libraryItemInstanceId) || ch.NewValues["LibraryItemInstanceId"]?.ToString() == libraryItemInstanceId))
-                    .Select(ch => new LibraryItemConditionHistoryDto
-                    {
-                        ConditionHistoryId = int.Parse(ch.EntityId ?? "0"),
-                        LibraryItemInstanceId = int.Parse(ch.NewValues["LibraryItemInstanceId"]?.ToString() ?? "0"),
-                        Condition = ch.NewValues["Condition"]?.ToString()!,
-                        CreatedAt = DateTime.TryParse(ch.NewValues["CreatedAt"]?.ToString(), out var validCreatedAt) ? validCreatedAt : DateTime.MinValue,
-                        UpdatedAt = DateTime.TryParse(ch.NewValues["UpdatedAt"]?.ToString(), out var validUpdatedAt) ? validUpdatedAt : DateTime.MinValue,
-                        CreatedBy = ch.NewValues["CreatedBy"]?.ToString() ?? null!,
-                        UpdatedBy = ch.NewValues["UpdatedBy"]?.ToString() ?? null!,
-                    }).ToList());
+                              ch.NewValues["LibraryItemInstanceId"]?.ToString() == libraryItemInstanceId))
+                .Select(ch => new LibraryItemConditionHistoryDto
+                {
+                    ConditionHistoryId = int.Parse(ch.EntityId ?? "0"),
+                    LibraryItemInstanceId = int.Parse(ch.NewValues["LibraryItemInstanceId"]?.ToString() ?? "0"),
+                    ConditionId = int.Parse(ch.NewValues["ConditionId"]?.ToString() ?? "0"),
+                    CreatedAt = DateTime.TryParse(ch.NewValues["CreatedAt"]?.ToString(), out var validCreatedAt)
+                        ? validCreatedAt
+                        : DateTime.MinValue,
+                    UpdatedAt = DateTime.TryParse(ch.NewValues["UpdatedAt"]?.ToString(), out var validUpdatedAt)
+                        ? validUpdatedAt
+                        : DateTime.MinValue,
+                    CreatedBy = ch.NewValues["CreatedBy"]?.ToString() ?? null!,
+                    UpdatedBy = ch.NewValues["UpdatedBy"]?.ToString() ?? null!,
+                }).ToList();
+            
+            // Try to retrieve condition 
+            foreach (var libItemHis in libItemConditionHisDtos)
+            {
+                if ((await _conditionService.GetByIdAsync(
+                        libItemHis.ConditionId)).Data is LibraryItemConditionDto conditionDto)
+                {
+                    libItemHis.Condition = conditionDto;
+                }
+            }
         }
         
         // Return empty collection <- Not found any

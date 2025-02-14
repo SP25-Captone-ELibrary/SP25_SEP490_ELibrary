@@ -31,7 +31,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Email)
                 .HasMaxLength(255)
                 .HasColumnName("email");
-            builder.Property(e => e.EmailConfirmed).HasColumnName("email_confirmed");
+            builder.Property(e => e.EmailConfirmed)
+                .HasDefaultValue(false)
+                .HasColumnName("email_confirmed");
 			builder.Property(e => e.EmailVerificationCode)
 				.HasMaxLength(20)
 				.HasColumnName("email_verification_code");
@@ -63,7 +65,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Phone)
                 .HasMaxLength(15)
                 .HasColumnName("phone");
-            builder.Property(e => e.PhoneNumberConfirmed).HasColumnName("phone_number_confirmed");
+            builder.Property(e => e.PhoneNumberConfirmed)
+                .HasDefaultValue(false)
+                .HasColumnName("phone_number_confirmed");
             builder.Property(e => e.PhoneVerificationCode)
                 .HasMaxLength(20)
                 .HasColumnName("phone_verification_code");
@@ -76,7 +80,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.TwoFactorBackupCodes)
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_backup_codes");
-            builder.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
+            builder.Property(e => e.TwoFactorEnabled)
+                .HasDefaultValue(false)
+                .HasColumnName("two_factor_enabled");
             builder.Property(e => e.TwoFactorSecretKey)
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_secret_key");

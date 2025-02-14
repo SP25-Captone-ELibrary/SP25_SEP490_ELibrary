@@ -14,6 +14,9 @@ public class User : BaseUser
     // Library card information
     public Guid? LibraryCardId { get; set; }
     
+    // Check whether user is created from employee or not
+    public bool IsEmployeeCreated { get; set; }
+    
     // Mapping entities
     public SystemRole Role { get; set; } = null!;
     public LibraryCard? LibraryCard { get; set; } 

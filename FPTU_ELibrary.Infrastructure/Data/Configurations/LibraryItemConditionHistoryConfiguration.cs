@@ -14,10 +14,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.Property(e => e.ConditionHistoryId).HasColumnName("condition_history_id");
             builder.Property(e => e.LibraryItemInstanceId).HasColumnName("library_item_instance_id");
-            builder.Property(e => e.Condition)
-                .HasMaxLength(50)
-                .HasColumnName("condition");
-
+            
             builder.HasOne(d => d.LibraryItemInstance).WithMany(p => p.LibraryItemConditionHistories)
                 .HasForeignKey(d => d.LibraryItemInstanceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -49,6 +46,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(x => x.UpdatedBy)
                 .HasMaxLength(255) // Email address
                 .HasColumnName("updated_by");
+            #endregion
+            
+            #region Update at 13/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.ConditionId).HasColumnName("condition_id");
+            builder.HasOne(e => e.Condition).WithMany(e => e.LibraryItemConditionHistories)
+                .HasForeignKey(e => e.ConditionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ConditionHistory_ConditionId");
             #endregion
         }
     }

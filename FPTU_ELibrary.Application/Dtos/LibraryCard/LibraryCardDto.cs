@@ -18,7 +18,7 @@ public class LibraryCardDto
     // Issue method: in-person | online & request status
     public LibraryCardIssuanceMethod IssuanceMethod { get; set; } 
     
-    // TODO: Background service automatically update from suspended to other status
+    // Library card status
     public LibraryCardStatus Status { get; set; } 
 
     // Extend borrow amount (only employee can update this field, user may send email
@@ -39,12 +39,17 @@ public class LibraryCardDto
     public DateTime? ExpiryDate { get; set; }
     public DateTime? SuspensionEndDate { get; set; }
     
+    // Reissue & archived card
+    public bool IsArchived { get; set; }
+    public string? ArchiveReason { get; set; }
+    public Guid? PreviousUserId { get; set; }
+    
+    // References
+    public UserDto PreviousUser { get; set; } = null!;
+    
     // Mapping entities
     [JsonIgnore]
     public ICollection<UserDto> Users { get; set; } = new List<UserDto>();
-    
-    [JsonIgnore]
-    public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
     
     [JsonIgnore] 
     public ICollection<BorrowRequestDto> BorrowRequests { get; set; } = new List<BorrowRequestDto>();
@@ -54,4 +59,13 @@ public class LibraryCardDto
     
     [JsonIgnore]
     public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
+}
+
+public static class LibraryCardDtoExtensions
+{
+    public static LibraryCardDto AddPreviousUser(this LibraryCardDto libraryCardDto, UserDto? user)
+    {
+        if(user != null) libraryCardDto.PreviousUser = user;
+        return libraryCardDto;
+    }
 }

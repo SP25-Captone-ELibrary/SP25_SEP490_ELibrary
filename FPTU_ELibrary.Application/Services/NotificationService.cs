@@ -3,6 +3,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Hubs;
@@ -264,6 +265,136 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when progress get all data");
+        }
+    }
+
+    public async Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == userId);   
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(db => db.Notification)
+            );
+            
+            // Add default order by
+            baseSpec.AddOrderByDescending(n => n.Notification.CreateDate);
+
+            // Count total borrow request
+            var totalNotiWithSpec = await _unitOfWork.Repository<NotificationRecipient, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalNotiWithSpec / pageSize);
+
+            // Set pagination to specification after count total notification 
+            if (pageIndex > totalPage
+                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            // Apply pagination
+            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+            
+            // Retrieve data with spec
+            var entities = await _unitOfWork.Repository<NotificationRecipient, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                var notiDtos = _mapper.Map<List<NotificationRecipientDto>>(entities);
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderNotificationRecipientDto>(
+                    notiDtos.Select(n => n.ToCardHolderNotiRecipientDto()),
+                    pageIndex, pageSize, totalPage, totalNotiWithSpec);
+
+                // Response with pagination 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<LibraryCardHolderDigitalBorrowDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all notification by user id");
+        }
+    }
+    
+    public async Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Retrieve user information
+            // Build spec
+            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
+            // Apply include
+            userBaseSpec.ApplyInclude(q => q
+                .Include(u => u.LibraryCard)!
+            );
+            var userDto = (await _userService.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            if (userDto == null) // Not found user
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    new List<LibraryCardHolderTransactionDto>());
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == userDto.UserId);   
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(db => db.Notification)
+            );
+            
+            // Add default order by
+            baseSpec.AddOrderByDescending(n => n.Notification.CreateDate);
+
+            // Count total borrow request
+            var totalNotiWithSpec = await _unitOfWork.Repository<NotificationRecipient, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalNotiWithSpec / pageSize);
+
+            // Set pagination to specification after count total notification 
+            if (pageIndex > totalPage
+                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+            // Apply pagination
+            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+            
+            // Retrieve data with spec
+            var entities = await _unitOfWork.Repository<NotificationRecipient, int>()
+                .GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                var notiDtos = _mapper.Map<List<NotificationRecipientDto>>(entities);
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderNotificationRecipientDto>(
+                    notiDtos.Select(n => n.ToCardHolderNotiRecipientDto()),
+                    pageIndex, pageSize, totalPage, totalNotiWithSpec);
+
+                // Response with pagination 
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<LibraryCardHolderDigitalBorrowDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all notification by email");
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FPTU_ELibrary.Application.Dtos.Notifications;
 
 public class NotificationRecipientDto
@@ -13,6 +15,10 @@ public class NotificationRecipientDto
 
     // Mark as user is read or not
     public bool IsRead { get; set; }
-    public NotificationDto NotificationDto { get; set; } = null!;
-    public UserDto RecipientDto { get; set; } = null!;   
+    
+    [JsonIgnore]
+    public NotificationDto Notification { get; set; } = null!;
+    
+    [JsonIgnore]
+    public UserDto Recipient { get; set; } = null!;   
 }

@@ -19,6 +19,9 @@ public class CategoryDto
     // This field really essential as it would allow items to train data into AI storage
     public bool IsAllowAITraining { get; set; }
 
+    // Maximum of days that user can borrow, lengthening until specific date before update borrow record to overdue
+    public int TotalBorrowDays { get; set; }
+
     // Mapping entities
     [JsonIgnore] 
     public ICollection<LibraryItemDto> LibraryItems { get; set; } = new List<LibraryItemDto>();

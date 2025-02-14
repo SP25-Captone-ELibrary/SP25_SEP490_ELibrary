@@ -33,8 +33,12 @@ public class WarehouseTrackingDetailDto
     // For specific item category
     public int CategoryId { get; set; }
     
+    // Condition
+    public int ConditionId { get; set; }
+    
     // Navigation properties
     public LibraryItemDto? LibraryItem { get; set; }
     public WarehouseTrackingDto WarehouseTracking { get; set; } = null!;
     public CategoryDto Category { get; set; } = null!;
+    public LibraryItemConditionDto Condition { get; set; } = null!;
 }

@@ -115,7 +115,7 @@ public class LibraryItemSpecification : BaseSpecification<LibraryItem>
                 // ClassificationNumber
                 if (!string.IsNullOrEmpty(specParams.ClassificationNumber))
                 {
-                    AddFilter(li => li.ClassificationNumber.Contains(specParams.ClassificationNumber));
+                    AddFilter(li => li.ClassificationNumber != null && li.ClassificationNumber.Contains(specParams.ClassificationNumber));
                 }
                 
                 // Genres
@@ -203,9 +203,9 @@ public class LibraryItemSpecification : BaseSpecification<LibraryItem>
                                     
                                     if (includeExpressions.Any())
                                     {
-                                        // li => li.LibraryShelf.ShelfId1
-                                        // li => li.LibraryShelf.ShelfId2
-                                        // li => li.LibraryShelf.ShelfId1 || li.LibraryShelf.ShelfId2
+                                        // li => li.LibraryShelf.ShelfNumber1
+                                        // li => li.LibraryShelf.ShelfNumber2
+                                        // li => li.LibraryShelf.ShelfNumber1 || li.LibraryShelf.ShelfNumber2
                                         var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
                                             (exp1, exp2) =>
                                             {

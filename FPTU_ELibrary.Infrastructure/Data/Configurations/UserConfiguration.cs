@@ -37,7 +37,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Email)
                 .HasMaxLength(255)
                 .HasColumnName("email");
-            builder.Property(e => e.EmailConfirmed).HasColumnName("email_confirmed");
+            builder.Property(e => e.EmailConfirmed)
+                .HasDefaultValue(false)
+                .HasColumnName("email_confirmed");
 			builder.Property(e => e.EmailVerificationCode)
 				.HasMaxLength(20)
 				.HasColumnName("email_verification_code");
@@ -57,7 +59,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.Phone)
                 .HasMaxLength(15)
                 .HasColumnName("phone");
-            builder.Property(e => e.PhoneNumberConfirmed).HasColumnName("phone_number_confirmed");
+            builder.Property(e => e.PhoneNumberConfirmed)
+                .HasDefaultValue(false)
+                .HasColumnName("phone_number_confirmed");
             builder.Property(e => e.PhoneVerificationCode)
                 .HasMaxLength(20)
                 .HasColumnName("phone_verification_code");
@@ -65,7 +69,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("datetime")
                 .HasColumnName("phone_verification_expiry");
             builder.Property(e => e.RoleId).HasColumnName("role_id");
-            builder.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
+            builder.Property(e => e.TwoFactorEnabled)
+                .HasDefaultValue(false)
+                .HasColumnName("two_factor_enabled");
             builder.Property(e => e.TwoFactorBackupCodes)
                 .HasMaxLength(255)
                 .HasColumnName("two_factor_backup_codes");
@@ -84,7 +90,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnName("modified_by");
             #endregion
             
-            #region Update at 12/09/2024 by Le Xuan Phuoc
+            #region Update at 09/12/2024 by Le Xuan Phuoc
             builder.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
@@ -100,6 +106,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.LibraryCardId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_LibraryCard_LibraryCardId");
+            #endregion
+
+            #region Update at 11/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsEmployeeCreated)
+                .HasDefaultValue(false)
+                .HasColumnName("is_employee_created");
             #endregion
         }
     }

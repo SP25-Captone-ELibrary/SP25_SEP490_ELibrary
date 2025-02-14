@@ -51,7 +51,7 @@ public class UserController:ControllerBase
     [HttpPost(APIRoute.User.Create, Name = nameof(CreateUserAsync))]
     public async Task<IActionResult> CreateUserAsync([FromBody] CreateUserRequest req)
     {   
-        return Ok(await _userService.CreateAccountByAdmin(req.ToUser()));
+        return Ok(await _userService.CreateAccountByAdminAsync(req.ToUser()));
     }
     
     [Authorize]
