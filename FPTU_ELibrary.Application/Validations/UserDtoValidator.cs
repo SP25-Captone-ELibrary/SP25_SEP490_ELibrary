@@ -62,6 +62,12 @@ namespace FPTU_ELibrary.Application.Validations
                 .WithMessage(isEng 
                     ? "Phone not valid" 
                     : "SĐT không hợp lệ");
-		}
+            // Gender
+            RuleFor(e => e.Gender)
+                .Must(str => Enum.TryParse(typeof(Gender), str, out _))
+                .WithMessage(isEng
+                    ? "Gender is invalid"
+                    : "Giới tính không hợp lệ");
+        }
 	}
 }

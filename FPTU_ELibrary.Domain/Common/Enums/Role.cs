@@ -13,7 +13,7 @@ namespace FPTU_ELibrary.Domain.Common.Enums
 		Student,
 		[Description("Giảng viên")]
 		Teacher,
-		[Description("Người dùng thông thường")]
+		[Description("Người dùng")]
 		GeneralMember,
 		
 		// RoleType: [EMPLOYEE]

@@ -9,15 +9,7 @@ public class LibraryItemConditionHistoryDtoValidator : AbstractValidator<Library
 {
     public LibraryItemConditionHistoryDtoValidator(string langContext)
     {
-        var langEnum =
-            (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(langContext);
-        var isEng = langEnum == SystemLanguage.English;
-        
         RuleFor(e => e.Condition)
-            .Must(str => !string.IsNullOrEmpty(str) 
-                         && Enum.TryParse(typeof(LibraryItemConditionStatus), str, true, out _))
-            .WithMessage(isEng
-                ? "Condition status is not valid"
-                : "Tình trạng bản in không hợp lệ");
+            .SetValidator(new LibraryItemConditionDtoValidator(langContext));
     }
 }

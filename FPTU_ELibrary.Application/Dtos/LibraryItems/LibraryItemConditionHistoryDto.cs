@@ -11,7 +11,7 @@ public class LibraryItemConditionHistoryDto
     public int LibraryItemInstanceId { get; set; }
 
     // Record management properties
-    public string Condition { get; set; } = null!;
+    public int ConditionId { get; set; } 
 
     // Creation and update datetime
     public DateTime CreatedAt { get; set; }
@@ -22,4 +22,6 @@ public class LibraryItemConditionHistoryDto
     // Mapping entities
     [JsonIgnore]
     public LibraryItemInstanceDto LibraryItemInstance { get; set; } = null!;
+
+    public LibraryItemConditionDto Condition { get; set; } = null!;
 }

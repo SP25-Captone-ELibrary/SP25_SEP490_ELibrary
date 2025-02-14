@@ -5,6 +5,7 @@ using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
@@ -39,6 +40,8 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<LibraryZone, LibraryZoneDto>();
 			config.NewConfig<LibraryFloor, LibraryFloorDto>();
 			config.NewConfig<LibraryPath, LibraryPathDto>();
+			config.NewConfig<LibraryCard, LibraryCardDto>();
+			config.NewConfig<LibraryCardPackage, LibraryCardPackageDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
 			config.NewConfig<RolePermission, RolePermissionDto>();
 			config.NewConfig<ReservationQueue, ReservationQueueDto>();
@@ -74,6 +77,10 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<UserDto, User>()
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
+			config.NewConfig<LibraryCardPackageDto, LibraryCardPackage>()
+				.Ignore(dest => dest.LibraryCardPackageId)
+				.Ignore(dest => dest.CreatedAt)
+				.IgnoreNullValues(true);
 		}
 	}
 }

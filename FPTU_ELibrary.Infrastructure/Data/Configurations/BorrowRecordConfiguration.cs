@@ -13,30 +13,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.ToTable("Borrow_Record");
 
             builder.Property(e => e.BorrowRecordId).HasColumnName("borrow_record_id");
-            builder.Property(e => e.BorrowCondition)
-                .HasMaxLength(50)
-                .HasColumnName("borrow_condition");
             builder.Property(e => e.BorrowDate)
                 .HasColumnType("datetime")
                 .HasColumnName("borrow_date");
-            builder.Property(e => e.ConditionCheckDate)
-                .HasColumnType("datetime")
-                .HasColumnName("condition_check_date");
             builder.Property(e => e.DueDate)
                 .HasColumnType("datetime")
                 .HasColumnName("due_date");
-            builder.Property(e => e.ExtensionLimit).HasColumnName("extension_limit");
-            builder.Property(e => e.ReturnCondition)
-                .HasMaxLength(50)
-                .HasColumnName("return_condition");
+            builder.Property(e => e.TotalExtension).HasColumnName("total_extension");
             builder.Property(e => e.ReturnDate)
                 .HasColumnType("datetime")
                 .HasColumnName("return_date");
 
 			#region Update at: 11-10-2024 by Le Xuan Phuoc
-			builder.Property(e => e.ProcessedDate)
-				.HasColumnType("datetime")
-				.HasColumnName("processed_date");
             builder.Property(e => e.ProcessedBy).HasColumnName("proceesed_by");
             builder.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.BorrowRecords)
                 .HasForeignKey(d => d.ProcessedBy)
@@ -101,6 +89,24 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasConstraintName("FK_BorrowRecord_BorrowRequestId");
 
             builder.HasIndex(br => br.BorrowRequestId).IsUnique(); // Ensure only one BorrowRecord per BorrowRequest
+            #endregion
+
+            #region Update at: 06/02/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.ProcessedDate)
+            //     .HasColumnType("datetime")
+            //     .HasColumnName("processed_date");
+            #endregion
+
+            #region Update at: 12/02/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.BorrowCondition)
+            //     .HasMaxLength(50)
+            //     .HasColumnName("borrow_condition");
+            // builder.Property(e => e.ConditionCheckDate)
+            //     .HasColumnType("datetime")
+            //     .HasColumnName("condition_check_date");
+            // builder.Property(e => e.ReturnCondition)
+            //     .HasMaxLength(50)
+            //     .HasColumnName("return_condition");
             #endregion
         }
 	}

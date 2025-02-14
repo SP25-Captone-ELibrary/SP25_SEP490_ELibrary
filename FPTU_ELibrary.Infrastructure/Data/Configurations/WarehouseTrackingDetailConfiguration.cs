@@ -70,5 +70,13 @@ public class WarehouseTrackingDetailConfiguration :
             .HasMaxLength(13)
             .HasColumnName("isbn");
         #endregion
+
+        #region Update at 13/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.ConditionId).HasColumnName("condition_id");
+        builder.HasOne(e => e.Condition).WithMany(p => p.WarehouseTrackingDetails)
+            .HasForeignKey(e => e.ConditionId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_WarehouseTrackingDetail_ConditionId");
+        #endregion
     }
 }

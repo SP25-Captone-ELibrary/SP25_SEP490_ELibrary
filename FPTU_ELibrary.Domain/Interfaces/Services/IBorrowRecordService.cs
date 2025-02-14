@@ -6,4 +6,9 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IBorrowRecordService<TDto> : IGenericService<BorrowRecord, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize);
+    Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize);
+    Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, TDto dto);
+    Task<IServiceResult> CreateAsync(string processedByEmail, TDto dto);
+    Task<IServiceResult> SelfCheckoutAsync(Guid libraryCardId, TDto dto);
 }

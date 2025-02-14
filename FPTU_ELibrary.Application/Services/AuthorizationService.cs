@@ -82,6 +82,26 @@ public class AuthorizationService : IAuthorizationService
         {
             return SystemFeatureEnum.LibraryItemManagement;
         }
+        // [LibraryCardManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryCardManagement))
+        {
+            return SystemFeatureEnum.LibraryItemManagement;
+        }
+        // [LibraryCardHolderManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryCardHolderManagement))
+        {
+            return SystemFeatureEnum.LibraryItemManagement;
+        }
+        // [LibraryCardPackageManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryCardPackageManagement))
+        {
+            return SystemFeatureEnum.LibraryItemManagement;
+        }
+        // [LibraryItemConditionManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryItemConditionManagement))
+        {
+            return SystemFeatureEnum.LibraryItemManagement;
+        }
         // [AuditTrailManagement]
         if (requestFeature.Equals(SystemFeatureEnum.AuditTrailManagement))
         {

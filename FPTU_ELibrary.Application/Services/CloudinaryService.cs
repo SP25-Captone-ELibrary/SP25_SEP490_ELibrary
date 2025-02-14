@@ -37,7 +37,7 @@ public class CloudinaryService : ICloudinaryService
         _msgService = msgService;
         _logger = logger;
     }
-    
+
     public async Task<IServiceResult> UploadAsync(IFormFile file, FileType fileType, ResourceType resourceType)
     {
         // Get cloudinary directory by resource type
@@ -48,7 +48,7 @@ public class CloudinaryService : ICloudinaryService
 
         // Retrieve current language
         var currentLanguage = LanguageContext.CurrentLanguage;
-        
+
         try
         {
             switch (fileType)
@@ -59,10 +59,10 @@ public class CloudinaryService : ICloudinaryService
                     var imageValidationRes = await new ImageTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!imageValidationRes.IsValid)
                     {
-                        throw new UnprocessableEntityException("Invalid image file type", 
+                        throw new UnprocessableEntityException("Invalid image file type",
                             imageValidationRes.ToProblemDetails().Errors);
                     }
-                    
+
                     // Initializes image upload params
                     var imageUploadParams = new ImageUploadParams()
                     {
@@ -93,10 +93,10 @@ public class CloudinaryService : ICloudinaryService
                     var videoValidationRes = await new VideoTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!videoValidationRes.IsValid)
                     {
-                        throw new UnprocessableEntityException("Invalid video file type", 
+                        throw new UnprocessableEntityException("Invalid video file type",
                             videoValidationRes.ToProblemDetails().Errors);
                     }
-                    
+
                     // Initializes image upload params
                     var videoUploadParams = new VideoUploadParams()
                     {
@@ -143,10 +143,10 @@ public class CloudinaryService : ICloudinaryService
         {
             // Retrieve current language
             var currentLanguage = LanguageContext.CurrentLanguage;
-            
+
             var checkExistResult = await IsExistAsync(publicId, fileType);
             if (checkExistResult.Data is false) return checkExistResult;
-            
+
             switch (fileType)
             {
                 // IMAGE
@@ -155,10 +155,10 @@ public class CloudinaryService : ICloudinaryService
                     var imageValidationRes = await new ImageTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!imageValidationRes.IsValid)
                     {
-                        throw new UnprocessableEntityException("Invalid image file type", 
+                        throw new UnprocessableEntityException("Invalid image file type",
                             imageValidationRes.ToProblemDetails().Errors);
                     }
-                    
+
                     // Image upload params
                     var imageUploadParams = new ImageUploadParams()
                     {
@@ -167,13 +167,13 @@ public class CloudinaryService : ICloudinaryService
                         // Invalidate = true,
                         Overwrite = true
                     };
-                    
+
                     var imageResult = await _cloudinary.UploadAsync(imageUploadParams);
 
                     // Success
                     if (imageResult.StatusCode == HttpStatusCode.OK)
                     {
-                        return new ServiceResult(ResultCodeConst.Cloud_Success0001, 
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0001,
                             await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0001),
                             new CloudinaryResultDto()
                             {
@@ -181,6 +181,7 @@ public class CloudinaryService : ICloudinaryService
                                 PublicId = imageResult.PublicId,
                             });
                     }
+
                     // Error
                     return new ServiceResult(ResultCodeConst.Cloud_Fail0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0001));
@@ -190,10 +191,10 @@ public class CloudinaryService : ICloudinaryService
                     var videoValidationRes = await new VideoTypeValidator(currentLanguage).ValidateAsync(file);
                     if (!videoValidationRes.IsValid)
                     {
-                        throw new UnprocessableEntityException("Invalid video file type", 
+                        throw new UnprocessableEntityException("Invalid video file type",
                             videoValidationRes.ToProblemDetails().Errors);
                     }
-                    
+
                     // Video upload params
                     var videoUploadParams = new VideoUploadParams()
                     {
@@ -207,7 +208,7 @@ public class CloudinaryService : ICloudinaryService
                     // Success
                     if (videoResult.StatusCode == HttpStatusCode.OK)
                     {
-                        return new ServiceResult(ResultCodeConst.Cloud_Success0002, 
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0002,
                             await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002),
                             new CloudinaryResultDto()
                             {
@@ -215,7 +216,7 @@ public class CloudinaryService : ICloudinaryService
                                 PublicId = videoResult.PublicId,
                             });
                     }
-                    
+
                     // Error
                     return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
@@ -246,68 +247,69 @@ public class CloudinaryService : ICloudinaryService
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
-                    // Not found video code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+                        // Not found video code
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
-                    // File type is not valid
+                    FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Warning0002,
+                        // File type is not valid
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002)),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
                 };
             }
-        
+
             var deleteParams = new DeletionParams(publicId)
             {
                 Invalidate = true,
-                ResourceType = fileType.Equals(FileType.Image) 
-                    ? CloudinaryResourceType.Image 
+                ResourceType = fileType.Equals(FileType.Image)
+                    ? CloudinaryResourceType.Image
                     : CloudinaryResourceType.Video
             };
-            
+
             var deleteResult = await _cloudinary.DestroyAsync(deleteParams);
-        
+
             // Not found
             if (deleteResult.Result.Contains("not found"))
             {
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001,
                         // Not found video code
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
+                    FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Warning0002,
                         // File type is not valid
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002)),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
                 };
             }
+
             // Success
             if (deleteResult.StatusCode == HttpStatusCode.OK)
             {
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Success0003, 
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Success0003,
                         // Not found video code
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0003)),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Success0004, 
+                    FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Success0004,
                         // File type is not valid
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0004)),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
                 };
             }
-        
+
             // Error 
             return fileType switch
             {
                 // Not found image code
-                FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Fail0003, 
+                FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Fail0003,
                     // Not found video code
                     await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0003)),
-                FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Fail0004, 
+                FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Fail0004,
                     // File type is not valid
                     await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0004)),
                 _ => new ServiceResult(ResultCodeConst.File_Warning0001,
@@ -327,17 +329,19 @@ public class CloudinaryService : ICloudinaryService
         {
             // Check exist cloud resource by public id
             var existResource = fileType == FileType.Video
-                ? await _cloudinary.GetResourceAsync(new GetResourceParams(publicId) { ResourceType = CloudinaryResourceType.Video })
-                : await _cloudinary.GetResourceAsync(new GetResourceParams(publicId) { ResourceType = CloudinaryResourceType.Image });
+                ? await _cloudinary.GetResourceAsync(new GetResourceParams(publicId)
+                    { ResourceType = CloudinaryResourceType.Video })
+                : await _cloudinary.GetResourceAsync(new GetResourceParams(publicId)
+                    { ResourceType = CloudinaryResourceType.Image });
             if (existResource == null || existResource.Error != null) // Not found
             {
                 return fileType switch
                 {
                     // Not found image code
-                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001, 
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001,
                         // Not found video code
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001), false),
-                    FileType.Video =>  new ServiceResult(ResultCodeConst.Cloud_Warning0002, 
+                    FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Warning0002,
                         // File type is not valid
                         await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002), false),
                     _ => new ServiceResult(ResultCodeConst.File_Warning0001,
@@ -354,15 +358,71 @@ public class CloudinaryService : ICloudinaryService
             throw new Exception("Error invoke when process check exist cloud resource");
         }
     }
-    
-    private string? GetDirectoryFromResourceType(ResourceType resourceType)
+
+    public async Task<IServiceResult> GetMediaUrlAsync(string publicId, FileType fileType)
     {
-        return resourceType switch
+        try
         {
-            ResourceType.Profile => _cloudSettings.ProfileDirectory,
-            ResourceType.BookAudio => _cloudSettings.BookAudioDirectory,
-            ResourceType.BookImage => _cloudSettings.BookImageDirectory,
-            _ => null
-        };
+            // Check exist cloud resource by public id
+            var existResource = fileType == FileType.Video
+                ? await _cloudinary.GetResourceAsync(new GetResourceParams(publicId)
+                    { ResourceType = CloudinaryResourceType.Video })
+                : await _cloudinary.GetResourceAsync(new GetResourceParams(publicId)
+                    { ResourceType = CloudinaryResourceType.Image });
+            if (existResource == null || existResource.Error != null) // Not found
+            {
+                return fileType switch
+                {
+                    // Not found image code
+                    FileType.Image => new ServiceResult(ResultCodeConst.Cloud_Warning0001,
+                        // Not found video code
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)),
+                    FileType.Video => new ServiceResult(ResultCodeConst.Cloud_Warning0002,
+                        // File type is not valid
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0002)),
+                    _ => new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001))
+                };
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                existResource.SecureUrl ?? existResource.Url);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get cloud resource");
+        }
     }
-}
+
+    public async Task<IServiceResult> BuildMediaUrlAsync(string publicId, FileType fileType)
+    {
+        try
+        {
+            // If you only need to generate the URL and don’t need to check if the resource exists:
+            string mediaUrl = fileType == FileType.Video
+                ? _cloudinary.Api.UrlVideoUp.BuildUrl(publicId)
+                : _cloudinary.Api.UrlImgUp.BuildUrl(publicId);
+        
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), mediaUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error generating Cloudinary URL.");
+            throw new Exception("Error occurred while generating Cloudinary URL", ex);
+        }
+    }
+
+    private string? GetDirectoryFromResourceType(ResourceType resourceType)
+        {
+            return resourceType switch
+            {
+                ResourceType.Profile => _cloudSettings.ProfileDirectory,
+                ResourceType.BookAudio => _cloudSettings.BookAudioDirectory,
+                ResourceType.BookImage => _cloudSettings.BookImageDirectory,
+                _ => null
+            };
+        }
+    }

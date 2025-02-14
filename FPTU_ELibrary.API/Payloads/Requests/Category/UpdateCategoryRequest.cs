@@ -7,4 +7,5 @@ public class UpdateCategoryRequest
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
     public bool IsAllowAITraining { get; set; }
+    public int TotalBorrowDays { get; set; }
 }

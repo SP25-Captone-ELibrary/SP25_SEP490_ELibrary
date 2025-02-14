@@ -268,6 +268,18 @@ public class LibraryItemController : ControllerBase
             pageSize: pageSize ?? _appSettings.PageSize));
     }
 
+    [HttpGet(APIRoute.LibraryItem.GetByBarcode, Name = nameof(GetLibraryItemByBarcodeAsync))]
+    public async Task<IActionResult> GetLibraryItemByBarcodeAsync([FromQuery] string barcode)
+    {
+        return Ok(await _libraryItemService.GetByBarcodeAsync(barcode: barcode));
+    }
+    
+    [HttpGet(APIRoute.LibraryItem.GetByIsbn, Name = nameof(GetLibraryItemByIsbnAsync))]
+    public async Task<IActionResult> GetLibraryItemByIsbnAsync([FromQuery] string isbn)
+    {
+        return Ok(await _libraryItemService.GetByIsbnAsync(isbn: isbn));
+    }
+    
     [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemDetailAsync))]
     public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id)
     {

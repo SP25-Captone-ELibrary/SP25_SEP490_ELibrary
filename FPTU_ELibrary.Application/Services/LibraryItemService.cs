@@ -2,6 +2,7 @@ using System.Globalization;
 using CloudinaryDotNet.Core;
 using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
@@ -25,6 +26,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Nest;
 using Org.BouncyCastle.Tls;
 using Serilog;
@@ -47,6 +49,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     private readonly ICloudinaryService _cloudService;
     private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAuthorService<AuthorDto> _authorService;
+    private readonly AppSettings _appSettings;
 
     public LibraryItemService(
         // Lazy service
@@ -55,12 +58,13 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceService,
         Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> itemGroupService,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
+        Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingService,
         // Normal service
         IAuthorService<AuthorDto> authorService,
         ICategoryService<CategoryDto> cateService,
         ICloudinaryService cloudService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
-        Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingService,
+        IOptionsMonitor<AppSettings> monitor,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -77,6 +81,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
         _whTrackingService = whTrackingService;
+        _appSettings = monitor.CurrentValue;
     }
 
     public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
@@ -117,7 +122,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             // Custom error responses
             var customErrors = new Dictionary<string, string[]>();
             // Initialize hash set of string to check unique of barcode
-            var editionCopyCodes = new HashSet<string>();
+            var itemInstanceBarcodes = new HashSet<string>();
 
             // Check exist category 
             var categoryDto = (await _cateService.GetByIdAsync(dto.CategoryId)).Data as CategoryDto;
@@ -142,8 +147,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 if (groupDto == null) // not found
                 {
                     // Add error 
-                    customErrors.Add(StringUtils.ToCamelCase(nameof(LibraryItem.GroupId)),
-                        [isEng ? "Group is not exist" : "Không tìm thấy nhóm"]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(LibraryItem.GroupId)),
+                        msg: isEng ? "Group is not exist" : "Không tìm thấy nhóm");
                 }
                 else // found 
                 {
@@ -152,8 +158,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     if (isEditionNumberExist)
                     {
                         // Add error 
-                        customErrors.Add(StringUtils.ToCamelCase(nameof(LibraryItem.EditionNumber)),
-                            [await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0002)]);
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                            key: StringUtils.ToCamelCase(nameof(LibraryItem.EditionNumber)),
+                            msg: await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0002));
                     }
                 }
             }
@@ -175,8 +182,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 if (!isImageOnCloud || publicId == null) // Not found image or public id
                 {
                     // Add error
-                    customErrors.Add(StringUtils.ToCamelCase(nameof(LibraryItemDto.CoverImage)),
-                        [await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001)]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key:StringUtils.ToCamelCase(nameof(LibraryItemDto.CoverImage)),
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
                 }
             }
 
@@ -186,7 +194,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             {
                 var iInstance = listItemInstance[i];
 
-                if (editionCopyCodes.Add(iInstance.Barcode)) // Add to hash set string to ensure uniqueness
+                if (itemInstanceBarcodes.Add(iInstance.Barcode)) // Add to hash set string to ensure uniqueness
                 {
                     // Check exist edition copy barcode within DB
                     var isCodeExist = await _unitOfWork.Repository<LibraryItemInstance, int>()
@@ -195,8 +203,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0005);
                         // Add errors
-                        customErrors.Add($"libraryItemInstances[{i}].barcode",
-                            [StringUtils.Format(errMsg, $"'{iInstance.Barcode}'")]);
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                            key: $"libraryItemInstances[{i}].barcode",
+                            msg: StringUtils.Format(errMsg, $"'{iInstance.Barcode}'"));
                     }
                     else
                     {
@@ -207,21 +216,34 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         {
                             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0006);
                             // Add errors
-                            customErrors.Add($"libraryItemInstances[{i}].barcode",
-                                [StringUtils.Format(errMsg, $"'{categoryDto.Prefix}'")]);
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                                key: $"libraryItemInstances[{i}].barcode",
+                                msg: StringUtils.Format(errMsg, $"'{categoryDto.Prefix}'"));
+                        }
+                        
+                        // Try to validate barcode length
+                        var barcodeNumLength = iInstance.Barcode.Length - categoryDto.Prefix.Length; 
+                        if (barcodeNumLength != _appSettings.InstanceBarcodeNumLength) // Different from threshold value
+                        {
+                            // Add errors
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                                key: $"libraryItemInstances[{i}].barcode",
+                                msg: isEng 
+                                    ? $"Total barcode number after prefix must equals to {_appSettings.InstanceBarcodeNumLength}"
+                                    : $"Tổng chữ số sau tiền tố phải bằng {_appSettings.InstanceBarcodeNumLength}"
+                            );
                         }
                     }
                 }
                 else // Duplicate found
                 {
                     // Add error 
-                    customErrors.Add(
-                        $"libraryItemInstances[{i}].barcode",
-                        [
-                            isEng
-                                ? $"Barcode '{iInstance.Barcode}' is duplicated"
-                                : $"Số đăng ký cá biệt '{iInstance.Barcode}' đã bị trùng"
-                        ]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: $"libraryItemInstances[{i}].barcode",
+                        msg: isEng
+                            ? $"Barcode '{iInstance.Barcode}' is duplicated"
+                            : $"Số đăng ký cá biệt '{iInstance.Barcode}' đã bị trùng"
+                    );
                 }
 
                 // Default status
@@ -243,8 +265,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 if (checkExistResult.Data is false) // Return when not found resource on cloud
                 {
                     // Add error
-                    customErrors.Add($"libraryResources[{i}].resourceTitle",
-                        [await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003)]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: $"libraryResources[{i}].resourceTitle",
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
                 }
             }
 
@@ -261,10 +284,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0007);
                 // Add error
-                customErrors.Add(
-                    StringUtils.ToCamelCase(nameof(LibraryItem.Isbn)),
+                customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                    key: StringUtils.ToCamelCase(nameof(LibraryItem.Isbn)),
                     // Isbn already exist message
-                    [StringUtils.Format(errMsg, dto.Isbn ?? string.Empty)]);
+                    msg: StringUtils.Format(errMsg, dto.Isbn ?? string.Empty));
             }
             
 
@@ -285,8 +308,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 {
                     // Add error 
                     // ISBN of selected warehouse tracking detail doesn't match
-                    customErrors.Add(StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
-                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0007)]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0007));
                 }
                 
                 // Check whether warehouse tracking detail exist ISBN, but not for cataloging item  
@@ -294,8 +318,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 {
                     // Add error
                     // Selected warehouse tracking detail is incorrect, cataloging item need ISBN to continue
-                    customErrors.Add(StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
-                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0008)]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0008));
                 }
                 
                 // Check whether same category
@@ -303,8 +328,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 {
                     // Add error 
                     // Msg: The action cannot be performed as category of item and warehouse tracking detail is different
-                    customErrors.Add(StringUtils.ToCamelCase(nameof(Category.CategoryId)), 
-                        [await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0011)]);
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(Category.CategoryId)), 
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0011));
                 }
             }
             
@@ -846,7 +872,29 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     Shelf = be.Shelf,
                     LibraryItemGroup = be.LibraryItemGroup,
                     LibraryItemInventory = be.LibraryItemInventory,
-                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemInstances = be.LibraryItemInstances.Select(li => new LibraryItemInstance()
+                    {
+                        LibraryItemInstanceId = li.LibraryItemInstanceId,
+                        LibraryItemId = li.LibraryItemId,
+                        Barcode = li.Barcode,
+                        Status = li.Status,
+                        CreatedAt = li.CreatedAt,
+                        UpdatedAt = li.UpdatedAt,
+                        CreatedBy = li.CreatedBy,
+                        UpdatedBy = li.UpdatedBy,
+                        IsDeleted = li.IsDeleted,
+                        LibraryItemConditionHistories = li.LibraryItemConditionHistories.Select(lih => new LibraryItemConditionHistory()
+                        {
+                            ConditionHistoryId = lih.ConditionHistoryId,
+                            LibraryItemInstanceId = lih.LibraryItemInstanceId,
+                            ConditionId = lih.ConditionId,
+                            CreatedAt = lih.CreatedAt,
+                            UpdatedAt = lih.UpdatedAt,
+                            CreatedBy = lih.CreatedBy,
+                            UpdatedBy = lih.UpdatedBy,
+                            Condition = lih.Condition,
+                        }).ToList(),
+                    }).ToList(),
                     LibraryItemReviews = be.LibraryItemReviews,
                     LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
                     {
@@ -886,6 +934,194 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetByBarcodeAsync(string barcode)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryItem>(l => 
+                l.LibraryItemInstances.Any(i => Equals(i.Barcode, barcode)));
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemGroup = be.LibraryItemGroup,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList(),
+                    LibraryItemResources = be.LibraryItemResources.Select(lir => new LibraryItemResource()
+                    {
+                        LibraryItemResourceId = lir.LibraryItemResourceId,
+                        LibraryItemId = lir.LibraryItemId,
+                        ResourceId = lir.ResourceId,
+                        LibraryResource = lir.LibraryResource
+                    }).ToList(),
+                });
+
+            if (itemEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
+
+                // Convert to library item detail dto
+                var itemDetailDto = dto.ToLibraryItemDetailDto();
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get library item by barcode");
+        }
+    }
+    
+    public async Task<IServiceResult> GetByIsbnAsync(string isbn)
+    {
+        try
+        {
+            // Build specification
+            var cleanedIsbn = ISBN.CleanIsbn(isbn);
+            var baseSpec = new BaseSpecification<LibraryItem>(l => Equals(l.Isbn, cleanedIsbn));
+            var itemEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemGroup = be.LibraryItemGroup,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemInstances = be.LibraryItemInstances,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList(),
+                    LibraryItemResources = be.LibraryItemResources.Select(lir => new LibraryItemResource()
+                    {
+                        LibraryItemResourceId = lir.LibraryItemResourceId,
+                        LibraryItemId = lir.LibraryItemId,
+                        ResourceId = lir.ResourceId,
+                        LibraryResource = lir.LibraryResource
+                    }).ToList(),
+                });
+
+            if (itemEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
+
+                // Convert to library item detail dto
+                var itemDetailDto = dto.ToLibraryItemDetailDto();
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get library item by barcode");
+        }
+    }
+    
     public async Task<IServiceResult> GetEnumValueAsync()
     {
         try
@@ -1514,68 +1750,40 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when progress get related items");
         }
     }
-    
-    
-//
-//     public async Task<IServiceResult> GetRelatedEditionWithMatchFieldAsync(LibraryItemDto dto, string fieldName)
-//     {
-//         // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
-//         var relatedEditions = new List<LibraryItemDto>();
-//         if (fieldName.Equals(nameof(Author)))
-//         {
-//             var targetAuthorIds = dto.BookEditionAuthors
-//                 .Select(bea => bea.AuthorId)
-//                 .ToList();
-//             var sameAuthorEditionsQuery = new BaseSpecification<BookEdition>(be =>
-//                 be.LibraryItemId != dto.BookEditionId
-//                 &&
-//                 be.BookEditionAuthors.Any(ba => targetAuthorIds.Contains(ba.AuthorId))
-//             );
-//
-//             sameAuthorEditionsQuery.ApplyInclude(q => q
-//                 .Include(be => be.BookEditionAuthors)
-//                 .ThenInclude(bea => bea.Author)
-//             );
-//             var result =
-//                 (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
-//                     sameAuthorEditionsQuery)).ToList();
-//             relatedEditions = _mapper.Map<List<LibraryItemDto>>(result);
-//         }
-//
-//         if (fieldName.Equals(nameof(Category)))
-//         {
-//             var categorySpec = new BaseSpecification<Category>(c => c.BookCategories
-//                 .Any(bc => bc.BookId == dto.Book.BookId));
-//             categorySpec.ApplyInclude(q => q.Include(c => c.BookCategories));
-//                 var categories = (List<CategoryDto>)(await _cateService.GetAllWithSpecAsync(categorySpec)).Data!; 
-//             var targetCategories = categories
-//                 .Select(c => c.CategoryId)
-//                 .ToList();
-//             var sameCategoryEditionsQuery = new BaseSpecification<BookEdition>(be =>
-//                 be.LibraryItemId != dto.BookEditionId &&
-//                 be.Book.BookCategories
-//                     .Any(bc =>
-//                         targetCategories.Contains(bc.CategoryId)
-//                     )
-//             );
-//             // loại bỏ các edition có chung book id, chỉ lấy các edition của các đầu sách khác.
-//             // Apply Includes for Book, BookCategories, Category, and BookEditionAuthors
-//             sameCategoryEditionsQuery.ApplyInclude(q => q
-//                 .Include(be => be.Book)
-//                 .ThenInclude(b => b.BookCategories)
-//                 .ThenInclude(c => c.Category));
-//             // Retrieve the data using the specification
-//             var result =
-//                 (await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(
-//                     sameCategoryEditionsQuery)).ToList();
-//             relatedEditions = _mapper.Map<List<LibraryItemDto>>(result);
-//         }
-//
-//         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-//             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
-//             , relatedEditions);
-//     }
-//     
+
+    public async Task<IServiceResult> GetByInstanceBarcodeAsync(string barcode)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemInstances
+                .Any(inst => Equals(inst.Barcode, barcode)));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemInstances)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
+
+            // Read success
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                _mapper.Map<LibraryItemDto>(existingEntity));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get item by instance barcode");
+        }
+    }
+
     public async Task<IServiceResult> UpdateStatusAsync(int id)
     {
         try
@@ -1850,51 +2058,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when process update shelf location for library item");
         }
     }
-
-//     
-//     public async Task<IServiceResult> UpdateTrainingStatusAsync(Guid trainingBookCode)
-//     {
-//         try
-//         {
-//             // Determine current lang context
-//             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-//                 LanguageContext.CurrentLanguage);
-//             var isEng = lang == SystemLanguage.English;
-//
-//             var baseSpec =
-//                 new BaseSpecification<BookEdition>(x => x.Book.BookCodeForAITraining.Equals(trainingBookCode));
-//             var bookEditionEntities = await _unitOfWork.Repository<BookEdition, int>().GetAllWithSpecAsync(baseSpec);
-//
-//             foreach (var entity in bookEditionEntities)
-//             {
-//                 entity.TrainedDay = DateTime.Now;
-//                 entity.IsTrained = true;
-//                 await _unitOfWork.Repository<BookEdition, int>().UpdateAsync(entity);
-//             }
-//
-//             // Save changes to DB
-//             var rowsAffected = await _unitOfWork.SaveChangesAsync();
-//             if (rowsAffected == 0)
-//             {
-//                 return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-//                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
-//             }
-//
-//             // Mark as update success
-//             return new ServiceResult(ResultCodeConst.SYS_Success0003,
-//                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
-//         }
-//         catch (UnprocessableEntityException)
-//         {
-//             throw;
-//         }
-//         catch (Exception ex)
-//         {
-//             _logger.Error(ex.Message);
-//             throw;
-//         }
-//     }
-//     
+    
     public async Task<IServiceResult> SoftDeleteAsync(int id)
     {
         try

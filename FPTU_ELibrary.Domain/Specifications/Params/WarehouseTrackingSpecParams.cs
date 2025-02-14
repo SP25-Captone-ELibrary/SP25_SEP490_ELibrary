@@ -1,3 +1,4 @@
+using System.Globalization;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Domain.Specifications.Params;
@@ -15,4 +16,16 @@ public class WarehouseTrackingSpecParams : BaseSpecParams
     public DateTime?[]? ActualReturnDateRange { get; set; } 
     public DateTime?[]? CreatedAtRange { get; set; } 
     public DateTime?[]? UpdatedAtRange { get; set; }
+    
+    public DateTime? ParsedSearchDate 
+    {
+        get
+        {
+            if (DateTime.TryParse(Search, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+            {
+                return parsedDate;
+            }
+            return null;
+        }
+    }
 }

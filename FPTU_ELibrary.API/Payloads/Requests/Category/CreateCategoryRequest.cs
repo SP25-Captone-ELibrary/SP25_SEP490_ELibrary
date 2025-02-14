@@ -8,7 +8,8 @@ public class CreateCategoryRequest
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
     public string? Description { get; set; }
-    public bool IsAllowAITraining { get; set; } 
+    public bool IsAllowAITraining { get; set; }
+    public int TotalBorrowDays { get; set; }
 }
 
 public static class CreateBookCategoryRequestExtension
@@ -21,7 +22,8 @@ public static class CreateBookCategoryRequestExtension
             Description = req.Description,
             EnglishName = req.EnglishName,
             VietnameseName = req.VietnameseName,
-            IsAllowAITraining = req.IsAllowAITraining
+            IsAllowAITraining = req.IsAllowAITraining,
+            TotalBorrowDays = req.TotalBorrowDays
         };
     }
 }

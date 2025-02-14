@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
@@ -9,6 +10,10 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
 {
     Task<IServiceResult> GetByIdAsync(string email, int id);
     Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec);
+    Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize);
+    Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> CreateAsync(string email, TDto dto);
-    Task<IServiceResult> CancelAsync(string email, int borrowRequestId, string? cancellationReason);
+    Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
+    Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
+    Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);
 }

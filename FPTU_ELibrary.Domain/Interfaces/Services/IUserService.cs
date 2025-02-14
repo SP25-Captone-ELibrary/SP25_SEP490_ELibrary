@@ -14,10 +14,10 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
         Task<IServiceResult> GetByEmailAsync(string email);
         Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile, DuplicateHandle duplicateHandle, bool isSendEmail = false);
-        Task<IServiceResult> CreateAccountByAdmin(TDto user);
-        Task<IServiceResult> UpdateProfileAsync(string email, TDto user);
+        Task<IServiceResult> CreateAccountByAdminAsync(TDto dto);
+        Task<IServiceResult> UpdateProfileAsync(string email, TDto dto);
         Task<IServiceResult> UpdateRoleAsync(Guid userId, int roleId);
-        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto user);
+        Task<IServiceResult> UpdateWithoutValidationAsync(Guid userId, TDto dto);
         Task<IServiceResult> UpdateEmailVerificationCodeAsync(Guid userId, string code);
         Task<IServiceResult> ChangeActiveStatusAsync(Guid userId);
         Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
@@ -28,5 +28,17 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> UndoDeleteRangeAsync(Guid[] userIds);
         Task<IServiceResult> DeleteRangeAsync(Guid[] userIds);
         Task<IServiceResult> ExportAsync(ISpecification<User> spec);
+
+        #region Library card holders
+        Task<IServiceResult> CreateLibraryCardHolderAsync(TDto dto);
+        Task<IServiceResult> UpdateLibraryCardHolderAsync(Guid userId, TDto dto);
+        Task<IServiceResult> GetAllLibraryCardHolderAsync(ISpecification<User> spec);
+        Task<IServiceResult> GetLibraryCardHolderDetailByEmailAsync(string email);
+        Task<IServiceResult> GetLibraryCardHolderByIdAsync(Guid userId);
+        Task<IServiceResult> GetLibraryCardHolderByBarcodeAsync(string barcode);
+        Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(string processedByEmail, Guid userId, TDto userWithCard);
+        Task<IServiceResult> RegisterLibraryCardAsync(string email, TDto userWithCard);
+        Task<IServiceResult> DeleteLibraryCardWithoutSaveChangesAsync(Guid userId);
+        #endregion
     }
 }

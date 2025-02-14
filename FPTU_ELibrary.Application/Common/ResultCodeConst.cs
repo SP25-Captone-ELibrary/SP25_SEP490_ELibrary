@@ -234,6 +234,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0002 = "Borrow.Success0002";
 		/// <summary>
+		/// [SUCCESS] Total {0} item(s) have been added to borrow record successfully
+		/// </summary>
+		public const string Borrow_Success0003 = "Borrow.Success0003";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -266,9 +270,37 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0008 = "Borrow.Warning0008";
 		/// <summary>
+		/// [WARNING] The total number of items entered is not enough compared to the total number registered to borrow
+		/// </summary>
+		public const string Borrow_Warning0009 = "Borrow.Warning0009";
+		/// <summary>
+		/// [WARNING] The total number of items entered exceeds the total number registered for borrowing
+		/// </summary>
+		public const string Borrow_Warning0010 = "Borrow.Warning0010";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been processed
+		/// </summary>
+		public const string Borrow_Warning0011 = "Borrow.Warning0011";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been cancelled
+		/// </summary>
+		public const string Borrow_Warning0012 = "Borrow.Warning0012";
+		/// <summary>
+		/// [WARNING] Cannot create borrow record because borrow request has been expired
+		/// </summary>
+		public const string Borrow_Warning0013 = "Borrow.Warning0013";
+		/// <summary>
+		/// [WARNING] Instance belongs to borrowing item
+		/// </summary>
+		public const string Borrow_Warning0014 = "Borrow.Warning0014";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";
+		/// <summary>
+		/// [FAIL] An error occured, failed to create borrow record
+		/// </summary>
+		public const string Borrow_Fail0002 = "Borrow.Fail0002";
 		#endregion
 		
 		#region Role
@@ -466,6 +498,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Success0001 = "LibraryCard.Success0001";
 		/// <summary>
+		/// [SUCCESS] Register library card success
+		/// </summary>
+		public const string LibraryCard_Success0002 = "LibraryCard.Success0002";
+		/// <summary>
+		/// [SUCCESS] The library card has been archived and is no longer valid
+		/// </summary>
+		public const string LibraryCard_Success0003 = "LibraryCard.Success0003";
+		/// <summary>
 		/// [WARNING] Your library card is not activated yet. Please make a payment to activate your card
 		/// </summary>
 		public const string LibraryCard_Warning0001 = "LibraryCard.Warning0001";
@@ -481,6 +521,26 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] You need a library card to access this service
 		/// </summary>
 		public const string LibraryCard_Warning0004 = "LibraryCard.Warning0004";
+		/// <summary>
+		/// [WARNING] Library card does not match the card registered to borrow
+		/// </summary>
+		public const string LibraryCard_Warning0005 = "LibraryCard.Warning0005";
+		/// <summary>
+		/// [WARNING] Fail to extend library card as {0}
+		/// </summary>
+		public const string LibraryCard_Warning0006 = "LibraryCard.Warning0006";
+		/// <summary>
+		/// [WARNING] The action cannot be performed, as library card need to change status to archived
+		/// </summary>
+		public const string LibraryCard_Warning0007 = "LibraryCard.Warning0007";
+		/// <summary>
+		/// [WARNING] Register library card failed
+		/// </summary>
+		public const string LibraryCard_Fail0001 = "LibraryCard.Fail0001";
+		/// <summary>
+		/// [WARNING] Failed to archive library card
+		/// </summary>
+		public const string LibraryCard_Fail0002 = "LibraryCard.Fail0002";
 		#endregion
 		
 		#region Supplier

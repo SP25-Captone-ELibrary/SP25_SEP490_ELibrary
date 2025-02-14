@@ -11,7 +11,7 @@ public class LibraryItemConditionHistory : IAuditableEntity
     public int LibraryItemInstanceId { get; set; }
 
     // Record management properties
-    public string Condition { get; set; } = null!;
+    public int ConditionId { get; set; }
 
     // Creation and update datetime
     public DateTime CreatedAt { get; set; }
@@ -21,4 +21,5 @@ public class LibraryItemConditionHistory : IAuditableEntity
     
     // Mapping entities
     public LibraryItemInstance LibraryItemInstance { get; set; } = null!;
+    public LibraryItemCondition Condition { get; set; } = null!;
 }

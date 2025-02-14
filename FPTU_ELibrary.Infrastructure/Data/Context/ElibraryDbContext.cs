@@ -40,6 +40,7 @@ public class ElibraryDbContext : DbContext
     public DbSet<LibraryItemInventory> LibraryItemInventories { get; set; }
     public DbSet<LibraryResource> LibraryResources { get; set; }
     public DbSet<LibraryItemReview> LibraryItemReviews { get; set; }
+    public DbSet<LibraryItemCondition> LibraryItemConditions { get; set; }
     public DbSet<LibraryItemConditionHistory> LibraryItemConditionHistories { get; set; }
     public DbSet<LibraryCard> LibraryCards { get; set; }
     public DbSet<LibraryCardPackage> LibraryCardPackages { get; set; }

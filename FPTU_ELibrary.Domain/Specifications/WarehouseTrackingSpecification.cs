@@ -17,7 +17,12 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
             (
                 (!string.IsNullOrEmpty(w.ReceiptNumber) && w.ReceiptNumber.Contains(specParams.Search)) || 
                 (!string.IsNullOrEmpty(w.Description) && w.Description.Contains(specParams.Search)) || 
-                (!string.IsNullOrEmpty(w.TransferLocation) && w.TransferLocation.Contains(specParams.Search)) 
+                (!string.IsNullOrEmpty(w.TransferLocation) && w.TransferLocation.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(w.Description) && w.Description.Contains(specParams.Search)) ||
+                // (w.TrackingType.ToString().Contains(specParams.Search)) ||
+                // (w.Status.ToString().Contains(specParams.Search))
+                
+                (specParams.ParsedSearchDate.HasValue && w.EntryDate.Date == specParams.ParsedSearchDate.Value.Date)
             )
         )
     {

@@ -35,6 +35,11 @@ public class LibraryCard
     public DateTime? ExpiryDate { get; set; } // Indicates if the expiry date has been extended
     public DateTime? SuspensionEndDate { get; set; } // Number of times the borrow period has been extended
     
+    // Reissue & archived card
+    public bool IsArchived { get; set; }
+    public string? ArchiveReason { get; set; }
+    public Guid? PreviousUserId { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
     public ICollection<User> Users { get; set; } = new List<User>();
