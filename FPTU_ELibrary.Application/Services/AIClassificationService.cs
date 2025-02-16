@@ -154,7 +154,7 @@ public class AIClassificationService : IAIClassificationService
             }
 
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 10%", GroupCode=tag}
+                "AIProcessMessage", new{ message = 10, groupCode=tag}
             );
             //Get group and item in group
             var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
@@ -191,12 +191,12 @@ public class AIClassificationService : IAIClassificationService
             // upload images with dynamic field names and filenames
             await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 20%", GroupCode=tag}
+                "AIProcessMessage", new{ message = 20, groupCode=tag}
             );
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 30%", GroupCode=tag}
+                "AIProcessMessage", new{ message = 30, groupCode=tag}
             );
             if (iteration is null)
             {
@@ -206,25 +206,25 @@ public class AIClassificationService : IAIClassificationService
             // Wait until the training is completed before publishing
             await WaitForTrainingCompletionAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 40%", GroupCode=tag}
+                "AIProcessMessage", new{ message = 40, groupCode=tag}
             );
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 50%", GroupCode=tag}
+                "AIProcessMessage", new{ message = 50, groupCode=tag}
             );
             // Publish the new iteration and update appsettings.json
             await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 60%", GroupCode=tag}
+                "AIProcessMessage", new{ message =  60, groupCode=tag}
             );
             await libraryItemService.UpdateTrainingStatusAsync(libraryItemIds);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Processing... 80%", GroupCode=tag}
+                "AIProcessMessage", new{ message =  80, groupCode=tag}
             );
             //Send notification when finish
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ Message = "Train Successfully", GroupCode=tag}
+                "AIProcessMessage", new{ message = 100, groupCode=tag}
             );
         }
         catch (Exception ex)
