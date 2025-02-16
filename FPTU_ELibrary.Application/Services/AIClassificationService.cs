@@ -619,9 +619,19 @@ public class AIClassificationService : IAIClassificationService
     public async Task<IServiceResult> RecommendBook(int currentItemId)
     {
         var currentBookBaseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == currentItemId);
-        currentBookBaseSpec.ApplyInclude(q =>
-            q.Include(x => x.LibraryItemAuthors)
-                .ThenInclude(ea => ea.Author));
+        currentBookBaseSpec.ApplyInclude(q => q
+            // Include category
+            .Include(li => li.Category)
+            // Include shelf (if any)
+            .Include(li => li.Shelf)
+            // Include inventory
+            .Include(li => li.LibraryItemInventory)
+            // Include authors
+            .Include(li => li.LibraryItemAuthors)
+            .ThenInclude(lia => lia.Author)
+            // Include reviews
+            .Include(li => li.LibraryItemReviews)
+        );
         var currenBook = await _libraryItemService.GetWithSpecAsync(currentBookBaseSpec);
         if (currenBook.Data is null)
         {
@@ -634,9 +644,19 @@ public class AIClassificationService : IAIClassificationService
         var recommendBookBaseSpec =
             new BaseSpecification<LibraryItem>(li =>
                 li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
-        recommendBookBaseSpec.ApplyInclude(q =>
-            q.Include(x => x.LibraryItemAuthors)
-                .ThenInclude(ea => ea.Author));
+        recommendBookBaseSpec.ApplyInclude(q => q
+            // Include category
+            .Include(li => li.Category)
+            // Include shelf (if any)
+            .Include(li => li.Shelf)
+            // Include inventory
+            .Include(li => li.LibraryItemInventory)
+            // Include authors
+            .Include(li => li.LibraryItemAuthors)
+            .ThenInclude(lia => lia.Author)
+            // Include reviews
+            .Include(li => li.LibraryItemReviews)
+        );
 
         var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
         if (allItem.Data is null)
