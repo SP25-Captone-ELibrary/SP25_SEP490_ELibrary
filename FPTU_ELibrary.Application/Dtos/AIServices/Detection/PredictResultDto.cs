@@ -34,5 +34,6 @@ public class PredictionResponseDto
 public class ItemPredictedDetailDto
 {
     public MinimisedMatchResultDto OCRResult { get; set; }
+    public int ObjectMatchResult { get; set; }
     public int LibraryItemId { get; set; }
 }

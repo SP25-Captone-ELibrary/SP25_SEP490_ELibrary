@@ -260,19 +260,19 @@ namespace FPTU_ELibrary.Application.Utils
                             titlePoints.Clear();
                             titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
                         }
-                        var bestMatch = titlePoints.First();
-                        totalWeightedScore += bestMatch.Value.MatchedPoint * field.Weight;
-                        matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
-                        {
-                            Name = "Author",
-                            Detail = bestMatch.Key,
-                            FuzzinessPoint = bestMatch.Value.FuzzinessPoint,
-                            MatchPhrasePoint = bestMatch.Value.MatchPhrasePoint,
-                            MatchedPoint = bestMatch.Value.MatchedPoint,
-                            Threshold = minFieldThreshold,
-                            IsPassed = bestMatch.Value.MatchedPoint >= minFieldThreshold
-                        });
                     }
+                    var bestMatch = titlePoints.First();
+                    totalWeightedScore += bestMatch.Value.MatchedPoint * field.Weight;
+                    matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
+                    {
+                        Name = "Author",
+                        Detail = bestMatch.Key,
+                        FuzzinessPoint = bestMatch.Value.FuzzinessPoint,
+                        MatchPhrasePoint = bestMatch.Value.MatchPhrasePoint,
+                        MatchedPoint = bestMatch.Value.MatchedPoint,
+                        Threshold = minFieldThreshold,
+                        IsPassed = bestMatch.Value.MatchedPoint >= minFieldThreshold
+                    });
                 }
                 else
                 {
@@ -313,7 +313,7 @@ namespace FPTU_ELibrary.Application.Utils
             var joinedNormalizedPhrase = string.Join(" ", normalizedPhrase);
             var joinedNormalizedData = string.Join(" ", normalizedData);
             // Calculate match score
-            double matchScore = CalculateDamerauLevenshteinPercentage(joinedNormalizedPhrase, joinedNormalizedData);
+            double matchScore = CalculateDamerauLevenshteinPercentage( joinedNormalizedData,joinedNormalizedPhrase);
 
             // Return match score as an integer percentage
             return (int)Math.Round(matchScore);
@@ -350,7 +350,7 @@ namespace FPTU_ELibrary.Application.Utils
         {            int distance = DamerauLevenshteinDistance(source, target);
             if (distance == -1)
             {
-                return (double)target.Length/source.Length * 100;    
+                return 100;    
             }
 
             int maxLength = Math.Max(source.Length, target.Length);
@@ -450,19 +450,23 @@ namespace FPTU_ELibrary.Application.Utils
 
         public static string RemoveSpecialCharactersOfVietnamese(string content)
         {
-            string normalizedString = string.Join(" ", NormalizeText(content)); // Chuẩn hóa chuỗi
+            if (string.IsNullOrEmpty(content))
+                return content;
+
+            // Chuyển đổi chuỗi thành dạng NFD để tách dấu thanh ra khỏi ký tự gốc
+            string normalizedString = content.Normalize(NormalizationForm.FormD);
             StringBuilder stringBuilder = new StringBuilder();
 
             foreach (char c in normalizedString)
             {
                 UnicodeCategory unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (unicodeCategory != UnicodeCategory.NonSpacingMark) // Loại bỏ các dấu
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark) 
                 {
                     stringBuilder.Append(c);
                 }
             }
 
-            return stringBuilder.ToString().Normalize(NormalizationForm.FormC); // Trả về chuỗi không dấu
+            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
 
         public static string RemoveSpecialCharacter(string content)

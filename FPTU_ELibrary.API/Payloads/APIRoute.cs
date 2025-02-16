@@ -555,7 +555,7 @@
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Predict = Base + "/library-items/ai/predict";
-			public const string Recommendation = Base + "/library-items/ai/recommendation/{id}";
+			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string VoiceSearching = Base + "/library-items/voice";
 			public const string RawDetect = Base + "/library-items/{id}/ai/raw-detect";
 			public const string OCR = Base + "/ocr";

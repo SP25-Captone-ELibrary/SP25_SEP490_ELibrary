@@ -6,6 +6,7 @@ namespace FPTU_ELibrary.Domain.Entities;
 public class Invoice
 {
     public int InvoiceId { get; set; }
+    public string InvoiceCode { get; set; }
     public Guid UserId { get; set; }
     public decimal TotalAmount { get; set; }
     public InvoiceStatus Status { get; set; }

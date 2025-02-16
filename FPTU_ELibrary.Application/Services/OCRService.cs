@@ -151,21 +151,19 @@ public class OCRService : IOCRService
                 }
 
                 // check if GeneralNote is existed
+                compareFields.Add(new FieldMatchInputDto()
+                {
+                    FieldName = "Authors",
+                    Values = dto.Authors,
+                    Weight = _monitor.AuthorNamePercentage
+                });
+                // check if GeneralNote is existed
                 if (dto.GeneralNote is not null)
                 {
                     compareFields.Add(new FieldMatchInputDto()
                     {
                         FieldName = "Authors",
                         Values = new List<string>() { dto.GeneralNote },
-                        Weight = _monitor.AuthorNamePercentage
-                    });
-                }
-                else
-                {
-                    compareFields.Add(new FieldMatchInputDto()
-                    {
-                        FieldName = "Authors",
-                        Values = dto.Authors,
                         Weight = _monitor.AuthorNamePercentage
                     });
                 }
