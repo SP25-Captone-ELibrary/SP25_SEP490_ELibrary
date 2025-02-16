@@ -76,7 +76,7 @@ public class AIClassificationService : IAIClassificationService
         groupBaseSpec.ApplyInclude(q => q.Include(
                 lig => lig.LibraryItems)
             .ThenInclude(li => li.Category));
-        var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec,false);
+        var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec, false);
         if (group.Data is null)
         {
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -239,7 +239,7 @@ public class AIClassificationService : IAIClassificationService
                 if (otherItemIds != null) response.NewLibraryIdsToTrain.AddRange(otherItemIds);
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                    response); 
+                    response);
             }
 
             // Case suitable group is found
@@ -553,7 +553,7 @@ public class AIClassificationService : IAIClassificationService
             var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
             var mainAuthor = libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
                 .Author.FullName;
-            
+
             var groupSpec = new BaseSpecification<LibraryItemGroup>(lig =>
                 lig.CutterNumber == libraryItemValue.CutterNumber &&
                 lig.ClassificationNumber == libraryItemValue.ClassificationNumber &&
@@ -562,7 +562,7 @@ public class AIClassificationService : IAIClassificationService
             var potentialGroups = await _libraryItemGroupService.GetAllWithSpecAsync(groupSpec);
 
             if (potentialGroups.Data is null || !((List<LibraryItemGroupDto>)potentialGroups.Data).Any())
-                return 0; 
+                return 0;
 
             var groupList = (List<LibraryItemGroupDto>)potentialGroups.Data!;
             int bestGroupId = 0;
@@ -598,7 +598,7 @@ public class AIClassificationService : IAIClassificationService
                 {
                     (int)FieldGroupCheckedStatus.GroupSuccess => 100,
                     (int)FieldGroupCheckedStatus.AbleToForceGrouped => 50,
-                    _ => 0 
+                    _ => 0
                 };
                 if (groupScore > bestScore)
                 {
@@ -630,19 +630,21 @@ public class AIClassificationService : IAIClassificationService
         }
 
         var currentBookValue = (LibraryItemDto)currenBook.Data!;
-        
-        var recommendBookBaseSpec = new BaseSpecification<LibraryItem>(li => li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
+
+        var recommendBookBaseSpec =
+            new BaseSpecification<LibraryItem>(li =>
+                li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
         recommendBookBaseSpec.ApplyInclude(q =>
             q.Include(x => x.LibraryItemAuthors)
-            .ThenInclude(ea => ea.Author));
-            
+                .ThenInclude(ea => ea.Author));
+
         var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
         if (allItem.Data is null)
         {
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                 StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
         }
-        
+
         var allItemValue = (List<LibraryItemDto>)allItem.Data!;
         var scoredBooks = allItemValue
             .Select(b => new
@@ -665,10 +667,323 @@ public class AIClassificationService : IAIClassificationService
             await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004),
             recommendedBooks);
     }
+
+    public async Task<IServiceResult> RecommendBook(IFormFile image)
+    {
+        try
+        {
+            var objectDetects = await _aiDetectionService.DetectAllAsync(image);
+            if (!objectDetects.Any())
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
+            }
+
+            var bookBox = objectDetects
+                .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (objectDetects
+                    .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                    .ToList().Count > 1 || objectDetects
+                    .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                    .ToList().Count < 0)
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
+            }
+
+            // response property
+            Dictionary<int, double> itemTotalPoint = new Dictionary<int, double>();
+            Dictionary<int, double> matchObjectPoint = new Dictionary<int, double>();
+            Dictionary<int, MinimisedMatchResultDto>
+                itemOrcMatchResult = new Dictionary<int, MinimisedMatchResultDto>();
+            LibraryItemGroupDto groupValue = new LibraryItemGroupDto();
+            if (bookBox.Any())
+            {
+                var targetBox = bookBox.Select(x => x.Box).FirstOrDefault();
+                // crop image
+                using var imageStream = image.OpenReadStream();
+                using var ms = new MemoryStream();
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var croppedImage = CropImages(imageBytes, bookBox.Select(x => x.Box).ToList()).First();
+                // count object in book
+                var coverObjectCounts = _aiDetectionService.CountObjectsInImage(objectDetects, targetBox);
+                // predict
+                var content = new ByteArrayContent(croppedImage);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                var imageResponse = await _httpClient.PostAsync(_basePredictUrl, content);
+                imageResponse.EnsureSuccessStatusCode();
+                var jsonResponse = await imageResponse.Content.ReadAsStringAsync();
+                var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    });
+                var bestPrediction =
+                    predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+                var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+                    x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+                groupBaseSpec.ApplyInclude(q =>
+                    q.Include(x => x.LibraryItems)
+                        .ThenInclude(be => be.LibraryItemAuthors)
+                        .ThenInclude(ea => ea.Author)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemInstances)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.Category)
+                        // Include shelf (if any)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.Shelf)
+                        // Include inventory
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemInventory)
+                        // Include reviews
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemReviews)
+                );
+                var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+                if (group.ResultCode != ResultCodeConst.SYS_Success0002)
+                {
+                    return group;
+                }
+
+                groupValue = (LibraryItemGroupDto)group.Data!;
+                foreach (var groupValueLibraryItem in groupValue.LibraryItems)
+                {
+                    //count object of item's cover image
+                    var coverImage = _httpClient.GetAsync(groupValueLibraryItem.CoverImage).Result;
+                    var coverImageFile = new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                        coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                        groupValueLibraryItem.Title)
+                    {
+                        Headers = new HeaderDictionary(),
+                        ContentType = "application/octet-stream"
+                    };
+                    // count object in cover image
+                    var itemObjectsDetected = await _aiDetectionService.DetectAllAsync(image);
+                    // check if item's cover image has book object
+                    Dictionary<string, int> itemCountObjects;
+                    if (itemObjectsDetected.Any(r =>
+                            r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var itemBookBox = itemObjectsDetected.Where(r =>
+                                r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                            .Select(r => r.Box)
+                            .FirstOrDefault();
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                    }
+                    else
+                    {
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
+                    }
+
+                    // check how many object in cover image that match with object in book
+                    // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
+                    var matchCount = coverObjectCounts.Count(pair =>
+                        itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
+                    var totalObject = coverObjectCounts.Count;
+                    var matchRate = (double)matchCount / totalObject;
+
+                    // ocr check
+                    List<string> mainAuthor = new List<string>();
+                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
+                            => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                        .Author.FullName);
+
+                    var ocrCheck = new CheckedItemDto()
+                    {
+                        Title = groupValueLibraryItem.Title,
+                        Authors = mainAuthor,
+                        Publisher = groupValueLibraryItem.Publisher ?? " ",
+                        Images = new List<IFormFile>()
+                        {
+                            new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                                coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                                groupValueLibraryItem.Title)
+                            {
+                                Headers = new HeaderDictionary(),
+                                ContentType = "application/octet-stream"
+                            }
+                        }
+                    };
+                    var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+                    var compareResultValue = (MatchResultDto)compareResult.Data!;
+                    var ocrPoint = compareResultValue.TotalPoint;
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 * 100 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId,
+                        compareResultValue.ToMinimisedMatchResultDto());
+                    matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
+                }
+            }
+            else
+            {
+                using var imageStream = image.OpenReadStream();
+                using var ms = new MemoryStream();
+                await imageStream.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var content = new ByteArrayContent(imageBytes);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+                var imageResponse = await _httpClient.PostAsync(_basePredictUrl, content);
+                imageResponse.EnsureSuccessStatusCode();
+                var coverObjectCounts = _aiDetectionService.CountObjectsInImage(objectDetects, null);
+                var jsonResponse = await imageResponse.Content.ReadAsStringAsync();
+                var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                    });
+                var bestPrediction =
+                    predictionResult.Predictions.MaxBy(p => p.Probability);
+                var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+                    x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+                groupBaseSpec.EnableSplitQuery();
+                groupBaseSpec.ApplyInclude(q =>
+                    q.Include(x => x.LibraryItems)
+                        .ThenInclude(be => be.LibraryItemAuthors)
+                        .ThenInclude(ea => ea.Author)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemInstances)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.Category)
+                        // Include shelf (if any)
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.Shelf)
+                        // Include inventory
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemInventory)
+                        // Include reviews
+                        .Include(x => x.LibraryItems)
+                        .ThenInclude(li => li.LibraryItemReviews)
+                );
+                var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+                if (group.ResultCode != ResultCodeConst.SYS_Success0002)
+                {
+                    return group;
+                }
+
+                groupValue = (LibraryItemGroupDto)group.Data!;
+                foreach (var groupValueLibraryItem in groupValue.LibraryItems)
+                {
+                    //count object of item's cover image
+                    var coverImage = _httpClient.GetAsync(groupValueLibraryItem.CoverImage).Result;
+                    var coverImageFile = new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                        coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                        groupValueLibraryItem.Title)
+                    {
+                        Headers = new HeaderDictionary(),
+                        ContentType = "application/octet-stream"
+                    };
+                    // count object in cover image
+                    var itemObjectsDetected = await _aiDetectionService.DetectAllAsync(image);
+                    // check if item's cover image has book object
+                    Dictionary<string, int> itemCountObjects;
+                    if (itemObjectsDetected.Any(r =>
+                            r.Name.Equals("book", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var itemBookBox = itemObjectsDetected.Where(r =>
+                                r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
+                            .Select(r => r.Box)
+                            .FirstOrDefault();
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                    }
+                    else
+                    {
+                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
+                    }
+
+                    // check how many object in cover image that match with object in book
+                    // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
+                    var matchCount = coverObjectCounts.Count(pair =>
+                        itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
+                    var totalObject = coverObjectCounts.Count;
+                    var matchRate = (double)matchCount / totalObject;
+
+                    // ocr check
+                    List<string> mainAuthor = new List<string>();
+                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
+                            => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                        .Author.FullName);
+
+                    var ocrCheck = new CheckedItemDto()
+                    {
+                        Title = groupValueLibraryItem.Title,
+                        Authors = mainAuthor,
+                        Publisher = groupValueLibraryItem.Publisher ?? " ",
+                        Images = new List<IFormFile>()
+                        {
+                            image
+                        }
+                    };
+                    var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+                    var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
+                    var ocrPoint = compareResultValue.First().TotalPoint;
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 * 100 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId,
+                        compareResultValue.First().ToMinimisedMatchResultDto());
+                    matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
+                }
+            }
+            int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
+                var currentBookValue = groupValue.LibraryItems.Where(li => li.LibraryItemId == bestItemId).First();
+                var recommendBookBaseSpec =
+                    new BaseSpecification<LibraryItem>(li =>
+                        li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
+                recommendBookBaseSpec.ApplyInclude(q =>
+                    q.Include(x => x.LibraryItemAuthors)
+                        .ThenInclude(ea => ea.Author));
+
+                var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
+                if (allItem.Data is null)
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
+                }
+
+                var allItemValue = (List<LibraryItemDto>)allItem.Data!;
+                var scoredBooks = allItemValue
+                    .Select(b => new
+                    {
+                        Book = b,
+                        Score = CalculateMatchScore(currentBookValue, b),
+                        MatchedProperties = GetMatchedProperties(currentBookValue, b)
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .Take(5)
+                    .ToList();
+                var recommendedBooks = scoredBooks
+                    .Select(b => new RecommendBookDetails
+                    {
+                        ItemDetailDto = (b.Book).ToLibraryItemDetailDto(),
+                        MatchedProperties = b.MatchedProperties
+                    })
+                    .ToList();
+                return new ServiceResult(ResultCodeConst.AIService_Success0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004),
+                    recommendedBooks);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Recommend Book");
+        }
+    }
+
     private int CalculateMatchScore(LibraryItemDto currentBook, LibraryItemDto otherBook)
     {
         int score = 0;
-
+        //get main Author of otherBook
+        string currentBookMainAuthor = currentBook.LibraryItemAuthors.First(x
+                => x.LibraryItemId == currentBook.LibraryItemId)!
+            .Author.FullName;
+        string otherBookMainAuthor = otherBook.LibraryItemAuthors.First(x
+            => x.LibraryItemId == otherBook.LibraryItemId)!.Author.FullName;
+        //get gernes
+        List<string> currentBookGenres = currentBook.Genres!.Split(",").ToList();
+        List<string> otherBookGenres = otherBook.Genres!.Split(",").ToList();
         if (currentBook.Title == otherBook.Title) score++;
         if (currentBook.SubTitle == otherBook.SubTitle) score++;
         if (currentBook.Language == otherBook.Language) score++;
@@ -677,10 +992,14 @@ public class AIClassificationService : IAIClassificationService
         if (currentBook.Publisher == otherBook.Publisher) score++;
         if (currentBook.ClassificationNumber == otherBook.ClassificationNumber) score++;
         if (currentBook.CutterNumber == otherBook.CutterNumber) score++;
-        
+        if (currentBookMainAuthor.Equals(otherBookMainAuthor)) score++;
+        if (currentBookGenres.Intersect(otherBookGenres).Any())
+            score += currentBookGenres.Intersect(otherBookGenres).Count();
+        if (currentBook.Isbn!.Equals(otherBook.Isbn)) score++;
+        if (currentBook.PublicationYear == otherBook.PublicationYear) score++;
         return score;
     }
-        
+
     private List<MatchedProperties> GetMatchedProperties(LibraryItemDto currentBook, LibraryItemDto otherBook)
     {
         return new List<MatchedProperties>
@@ -688,11 +1007,18 @@ public class AIClassificationService : IAIClassificationService
             new MatchedProperties { Name = "Title", IsMatched = currentBook.Title == otherBook.Title },
             new MatchedProperties { Name = "SubTitle", IsMatched = currentBook.SubTitle == otherBook.SubTitle },
             new MatchedProperties { Name = "Language", IsMatched = currentBook.Language == otherBook.Language },
-            new MatchedProperties { Name = "OriginLanguage", IsMatched = currentBook.OriginLanguage == otherBook.OriginLanguage },
-            new MatchedProperties { Name = "PublicationYear", IsMatched = currentBook.PublicationYear == otherBook.PublicationYear },
+            new MatchedProperties
+                { Name = "OriginLanguage", IsMatched = currentBook.OriginLanguage == otherBook.OriginLanguage },
+            new MatchedProperties
+                { Name = "PublicationYear", IsMatched = currentBook.PublicationYear == otherBook.PublicationYear },
             new MatchedProperties { Name = "Publisher", IsMatched = currentBook.Publisher == otherBook.Publisher },
-            new MatchedProperties { Name = "ClassificationNumber", IsMatched = currentBook.ClassificationNumber == otherBook.ClassificationNumber },
-            new MatchedProperties { Name = "CutterNumber", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber }
+            new MatchedProperties
+            {
+                Name = "ClassificationNumber",
+                IsMatched = currentBook.ClassificationNumber == otherBook.ClassificationNumber
+            },
+            new MatchedProperties
+                { Name = "CutterNumber", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber }
         };
     }
 
@@ -917,7 +1243,7 @@ public class AIClassificationService : IAIClassificationService
                 return new ServiceResult(ResultCodeConst.AIService_Warning0003,
                     await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0003));
             }
-    
+
             var bookBox = objectDetects
                 .Where(od => od.Name.Equals("book", StringComparison.OrdinalIgnoreCase)).ToList();
             if (objectDetects
@@ -929,10 +1255,12 @@ public class AIClassificationService : IAIClassificationService
                 return new ServiceResult(ResultCodeConst.AIService_Warning0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
             }
-    
+
             // response property
             Dictionary<int, double> itemTotalPoint = new Dictionary<int, double>();
-            Dictionary<int, MinimisedMatchResultDto> itemOrcMatchResult = new Dictionary<int, MinimisedMatchResultDto>();
+            Dictionary<int, double> matchObjectPoint = new Dictionary<int, double>();
+            Dictionary<int, MinimisedMatchResultDto>
+                itemOrcMatchResult = new Dictionary<int, MinimisedMatchResultDto>();
             LibraryItemGroupDto groupValue = new LibraryItemGroupDto();
             if (bookBox.Any())
             {
@@ -970,7 +1298,7 @@ public class AIClassificationService : IAIClassificationService
                 {
                     return group;
                 }
-    
+
                 groupValue = (LibraryItemGroupDto)group.Data!;
                 foreach (var groupValueLibraryItem in groupValue.LibraryItems)
                 {
@@ -1000,24 +1328,25 @@ public class AIClassificationService : IAIClassificationService
                     {
                         itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
                     }
-    
+
                     // check how many object in cover image that match with object in book
                     // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
                     var matchCount = coverObjectCounts.Count(pair =>
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
                     var matchRate = (double)matchCount / totalObject;
-    
+
                     // ocr check
-                    var mainAuthor = groupValueLibraryItem.GeneralNote ??
-                                     groupValueLibraryItem.LibraryItemAuthors.First(x
-                                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
-                                         .Author.FullName;
-    
+                    List<string> mainAuthor = new List<string>();
+                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
+                            => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                        .Author.FullName);
+
                     var ocrCheck = new CheckedItemDto()
                     {
                         Title = groupValueLibraryItem.Title,
-                        Authors = new List<string>() { mainAuthor },
+                        Authors = mainAuthor,
                         Publisher = groupValueLibraryItem.Publisher ?? " ",
                         Images = new List<IFormFile>()
                         {
@@ -1033,8 +1362,10 @@ public class AIClassificationService : IAIClassificationService
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
                     var compareResultValue = (MatchResultDto)compareResult.Data!;
                     var ocrPoint = compareResultValue.TotalPoint;
-                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
-                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.ToMinimisedMatchResultDto());
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 * 100 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId,
+                        compareResultValue.ToMinimisedMatchResultDto());
+                    matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
                 }
             }
             else
@@ -1071,7 +1402,7 @@ public class AIClassificationService : IAIClassificationService
                 {
                     return group;
                 }
-    
+
                 groupValue = (LibraryItemGroupDto)group.Data!;
                 foreach (var groupValueLibraryItem in groupValue.LibraryItems)
                 {
@@ -1101,50 +1432,56 @@ public class AIClassificationService : IAIClassificationService
                     {
                         itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, null);
                     }
-    
+
                     // check how many object in cover image that match with object in book
                     // var matchCount = (coverObjectCounts.Keys).Intersect(itemCountObjects.Keys).Count();
                     var matchCount = coverObjectCounts.Count(pair =>
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
                     var matchRate = (double)matchCount / totalObject;
-    
+
                     // ocr check
-                    var mainAuthor = groupValueLibraryItem.GeneralNote ??
-                                     groupValueLibraryItem.LibraryItemAuthors.First(x
-                                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
-                                         .Author.FullName;
-    
+                    List<string> mainAuthor = new List<string>();
+                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
+                            => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
+                        .Author.FullName);
+
                     var ocrCheck = new CheckedItemDto()
                     {
                         Title = groupValueLibraryItem.Title,
-                        Authors = new List<string>() { mainAuthor },
+                        Authors = mainAuthor,
                         Publisher = groupValueLibraryItem.Publisher ?? " ",
                         Images = new List<IFormFile>()
                         {
-                           coverImageFile
+                            image
                         }
                     };
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
                     var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
                     var ocrPoint = compareResultValue.First().TotalPoint;
-                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 + ocrPoint * 0.5);
-                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId, compareResultValue.First().ToMinimisedMatchResultDto());
+                    itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 * 100 + ocrPoint * 0.5);
+                    itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId,
+                        compareResultValue.First().ToMinimisedMatchResultDto());
+                    matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
                 }
             }
+
             var response = new PredictionResponseDto()
             {
                 OtherItems = new List<ItemPredictedDetailDto>()
             };
-            
+
             //choose the best item
             int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
-            itemTotalPoint.Remove(bestItemId);
+
             var bestItemPredictResponse = new ItemPredictedDetailDto
             {
                 OCRResult = itemOrcMatchResult[bestItemId],
                 LibraryItemId = bestItemId,
+                ObjectMatchResult = (int)Math.Floor(matchObjectPoint[bestItemId])
             };
+            itemTotalPoint.Remove(bestItemId);
             response.BestItem = bestItemPredictResponse;
             // add other items detail
             foreach (var groupValueLibraryItemId in itemTotalPoint.Keys)
@@ -1152,10 +1489,12 @@ public class AIClassificationService : IAIClassificationService
                 var itemPredictResponse = new ItemPredictedDetailDto
                 {
                     OCRResult = itemOrcMatchResult[groupValueLibraryItemId],
-                    LibraryItemId = groupValueLibraryItemId
+                    LibraryItemId = groupValueLibraryItemId,
+                    ObjectMatchResult = (int)Math.Floor(matchObjectPoint[groupValueLibraryItemId])
                 };
                 response.OtherItems.Add(itemPredictResponse);
             }
+
             return new ServiceResult(ResultCodeConst.AIService_Success0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004), response);
         }

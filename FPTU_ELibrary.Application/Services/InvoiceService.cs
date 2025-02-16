@@ -163,4 +163,19 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             throw new Exception("Error invoke when process get all invoice by email");
         }
     }
+
+    public async Task<IServiceResult> CreatePayment(List<int> transactionIds, Guid userId)
+    {
+        try
+        {
+            InvoiceDto response = new InvoiceDto();
+            // PayOSPaymentRequest
+            return new ServiceResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process create invoice");
+        }
+    }
 }
