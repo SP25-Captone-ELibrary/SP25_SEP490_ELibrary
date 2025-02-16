@@ -153,6 +153,9 @@ public class AIClassificationService : IAIClassificationService
                 tag = tags.FirstOrDefault(x => x.Name.Equals(trainingCode.ToString()));
             }
 
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 10%", GroupCode=tag}
+            );
             //Get group and item in group
             var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
                 => lig.AiTrainingCode.Equals(trainingCode.ToString()));
@@ -184,12 +187,17 @@ public class AIClassificationService : IAIClassificationService
                 memoryStream.Position = 0;
                 memoryStreams.Add((memoryStream, $"{groupValueLibraryItem.LibraryItemId}_cover.jpg"));
             }
-
+            
             // upload images with dynamic field names and filenames
             await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 20%", GroupCode=tag}
+            );
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
-
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 30%", GroupCode=tag}
+            );
             if (iteration is null)
             {
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
@@ -197,15 +205,27 @@ public class AIClassificationService : IAIClassificationService
 
             // Wait until the training is completed before publishing
             await WaitForTrainingCompletionAsync(baseConfig, iteration.Id);
-
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 40%", GroupCode=tag}
+            );
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
-
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 50%", GroupCode=tag}
+            );
             // Publish the new iteration and update appsettings.json
             await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 60%", GroupCode=tag}
+            );
             await libraryItemService.UpdateTrainingStatusAsync(libraryItemIds);
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Processing... 80%", GroupCode=tag}
+            );
             //Send notification when finish
-            await hubContext.Clients.User(email).SendAsync("Trained Successfully");
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new{ Message = "Train Successfully", GroupCode=tag}
+            );
         }
         catch (Exception ex)
         {
@@ -947,43 +967,44 @@ public class AIClassificationService : IAIClassificationService
                     matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
                 }
             }
+
             int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
-                var currentBookValue = groupValue.LibraryItems.Where(li => li.LibraryItemId == bestItemId).First();
-                var recommendBookBaseSpec =
-                    new BaseSpecification<LibraryItem>(li =>
-                        li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
-                recommendBookBaseSpec.ApplyInclude(q =>
-                    q.Include(x => x.LibraryItemAuthors)
-                        .ThenInclude(ea => ea.Author));
+            var currentBookValue = groupValue.LibraryItems.Where(li => li.LibraryItemId == bestItemId).First();
+            var recommendBookBaseSpec =
+                new BaseSpecification<LibraryItem>(li =>
+                    li.GroupId != currentBookValue.GroupId || li.LibraryItemGroup == null);
+            recommendBookBaseSpec.ApplyInclude(q =>
+                q.Include(x => x.LibraryItemAuthors)
+                    .ThenInclude(ea => ea.Author));
 
-                var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
-                if (allItem.Data is null)
+            var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
+            if (allItem.Data is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
+            }
+
+            var allItemValue = (List<LibraryItemDto>)allItem.Data!;
+            var scoredBooks = allItemValue
+                .Select(b => new
                 {
-                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
-                }
-
-                var allItemValue = (List<LibraryItemDto>)allItem.Data!;
-                var scoredBooks = allItemValue
-                    .Select(b => new
-                    {
-                        Book = b,
-                        Score = CalculateMatchScore(currentBookValue, b),
-                        MatchedProperties = GetMatchedProperties(currentBookValue, b)
-                    })
-                    .OrderByDescending(x => x.Score)
-                    .Take(5)
-                    .ToList();
-                var recommendedBooks = scoredBooks
-                    .Select(b => new RecommendBookDetails
-                    {
-                        ItemDetailDto = (b.Book).ToLibraryItemDetailDto(),
-                        MatchedProperties = b.MatchedProperties
-                    })
-                    .ToList();
-                return new ServiceResult(ResultCodeConst.AIService_Success0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004),
-                    recommendedBooks);
+                    Book = b,
+                    Score = CalculateMatchScore(currentBookValue, b),
+                    MatchedProperties = GetMatchedProperties(currentBookValue, b)
+                })
+                .OrderByDescending(x => x.Score)
+                .Take(5)
+                .ToList();
+            var recommendedBooks = scoredBooks
+                .Select(b => new RecommendBookDetails
+                {
+                    ItemDetailDto = (b.Book).ToLibraryItemDetailDto(),
+                    MatchedProperties = b.MatchedProperties
+                })
+                .ToList();
+            return new ServiceResult(ResultCodeConst.AIService_Success0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004),
+                recommendedBooks);
         }
         catch (Exception ex)
         {

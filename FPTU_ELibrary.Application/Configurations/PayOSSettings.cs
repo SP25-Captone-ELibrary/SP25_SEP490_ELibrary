@@ -12,4 +12,5 @@ public class PayOSSettings
     public string ConfirmWebHookUrl { get; set; } = string.Empty;
     public string GetPaymentLinkInformationUrl { get; set; } = string.Empty;
     public string CancelPaymentUrl { get; set; } = string.Empty;
+    public int PaymentExpireDuration { get; set; } = 0;
 }
