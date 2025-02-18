@@ -28,18 +28,18 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
 {
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
+    private readonly Lazy<IUserService<UserDto>> _userSvc;
 
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
     private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
     private readonly BorrowSettings _borrowSettings;
-    private readonly IUserService<UserDto> _userSvc;
 
     public BorrowRequestService(
         // Lazy services
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
+        Lazy<IUserService<UserDto>> userSvc,
 
-        IUserService<UserDto> userSvc,
         ILibraryCardService<LibraryCardDto> cardSvc,
         ILibraryItemService<LibraryItemDto> libItemSvc,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
@@ -182,7 +182,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null) // Not found user
             {
                 // Data not found or empty
@@ -274,7 +274,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null) // Not found user
             {
                 // Data not found or empty
@@ -344,7 +344,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null || userDto.LibraryCardId == null) // Not found user
             {
                 // Data not found or empty
@@ -402,7 +402,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null || userDto.LibraryCardId == null) // Not found user
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -472,7 +472,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null) throw new ForbiddenException(); // Not found user 
             
             // Try parse card id to Guid type 
@@ -719,7 +719,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null) throw new ForbiddenException(); // Not found user 
             
             // Try parse card id to Guid type 

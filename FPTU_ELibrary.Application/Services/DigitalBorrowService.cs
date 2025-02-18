@@ -20,10 +20,10 @@ namespace FPTU_ELibrary.Application.Services;
 public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowDto, int>,
     IDigitalBorrowService<DigitalBorrowDto>
 {
-    private readonly IUserService<UserDto> _userSvc;
+    private readonly Lazy<IUserService<UserDto>> _userSvc;
 
     public DigitalBorrowService(
-        IUserService<UserDto> userSvc,
+        Lazy<IUserService<UserDto>> userSvc,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
@@ -101,7 +101,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             userBaseSpec.ApplyInclude(q => q
                 .Include(u => u.LibraryCard)!
             );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
             if (userDto == null || userDto.LibraryCardId == null) // Not found user
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
