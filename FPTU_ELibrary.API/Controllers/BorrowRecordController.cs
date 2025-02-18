@@ -70,6 +70,5 @@ public class BorrowRecordController : ControllerBase
         return Ok(await _borrowRecSvc.SelfCheckoutAsync(
             libraryCardId: req.LibraryCardId, dto: req.ToBorrowRecordDto()));
     }
-    
     #endregion
 }

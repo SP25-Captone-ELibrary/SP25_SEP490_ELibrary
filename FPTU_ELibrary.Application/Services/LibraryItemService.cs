@@ -2515,7 +2515,21 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 
 		    // Process read csv file
 		    var readResp =
-			    CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<LibraryItemCsvRecord>(file, csvConfig, null, lang);
+			    CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<LibraryItemCsvRecordDto>(
+                    file: file,
+                    config: csvConfig,
+                    props: new ExcelHeaderProps()
+                    {
+                        // Header start from row 1-1
+                        FromRow = 1,
+                        ToRow = 1,
+                        // Start from col
+                        FromCol = 1,
+                        // Start read data index
+                        StartRowIndex = 2
+                    },
+                    encodingType: null,
+                    systemLang: lang);
 			if(readResp.Errors.Any())
 			{
 				var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
@@ -2631,7 +2645,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 		    var successRecords = readResp.Records
 			    .Where(r => !uploadFailList.Contains(r.CoverImage))
 			    .ToList();
-		    var failRecords = new List<LibraryItemCsvRecord>();
+		    var failRecords = new List<LibraryItemCsvRecordDto>();
 		    if (successRecords.Any())
 		    {
 				// Initialize list items
@@ -2866,12 +2880,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 	    catch (Exception ex)
 	    {
 		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process export book editions");
+		    throw new Exception("Error invoke when process export library items");
 	    }
     }
     
     private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
-	    List<LibraryItemCsvRecord> records,
+	    List<LibraryItemCsvRecordDto> records,
 	    List<string> coverImageNames,
 	    SystemLanguage lang)
 	{
@@ -3310,7 +3324,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     // }
     
     private (Dictionary<int, List<string>> Errors, Dictionary<int, List<int>> Duplicates) DetectDuplicatesInFile(
-        List<LibraryItemCsvRecord> records, 
+        List<LibraryItemCsvRecordDto> records, 
         string[] scanningFields,
         SystemLanguage? lang
     )
@@ -3401,6 +3415,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 
         return (errorMessages, duplicates);
     } 
+    
     public async Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId)
     {
         foreach (var libraryItemId in libraryItemIds)

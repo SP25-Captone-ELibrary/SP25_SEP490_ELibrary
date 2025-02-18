@@ -991,6 +991,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				.Where(u => u.Role.EnglishName == nameof(Role.Administration))
 				.ToListAsync();
 
+			var rnd = new Random();
 			// Add card for each admin
 			foreach (var admin in admins)
 			{
@@ -1005,7 +1006,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					IsReminderSent = false,
 					ExtensionCount = 0,
 					IssueDate = DateTime.Now,
-					ExpiryDate = DateTime.Now.AddYears(2)
+					ExpiryDate = DateTime.Now.AddYears(2),
+					TransactionCode = "CODE" + $"{rnd.Next(100, 200)}"
 				};
 				
 			}

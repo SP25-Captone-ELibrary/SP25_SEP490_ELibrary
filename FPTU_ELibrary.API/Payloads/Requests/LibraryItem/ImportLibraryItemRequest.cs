@@ -2,7 +2,7 @@ using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 
-public class ImportBookEditionRequest
+public class ImportLibraryItemRequest
 {
     public IFormFile? File { get; set; } = null!;
     public List<IFormFile> CoverImageFiles { get; set; } = new();

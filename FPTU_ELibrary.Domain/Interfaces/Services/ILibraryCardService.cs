@@ -6,12 +6,18 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryCardService<TDto> : IGenericService<LibraryCard, TDto, Guid>
     where TDto : class
 {
-    Task<IServiceResult> ConfirmRegisterAsync(Guid libraryCardId, string transactionToken);
-    Task<IServiceResult> ConfirmExtendCardAsync(Guid libraryCardId, string transactionToken);
+    Task<IServiceResult> SendRequireToConfirmCardAsync(string userEmail);
+    Task<IServiceResult> ConfirmCardAsync(Guid libraryCardId);
+    Task<IServiceResult> ExtendCardAsync(Guid libraryCardId, 
+        string? transactionToken, int? libraryCardPackageId, int? paymentMethodId);
+    Task<IServiceResult> RejectCardAsync(Guid libraryCardId, string rejectReason);
     Task<IServiceResult> CheckCardExtensionAsync(Guid libraryCardId);
     Task<IServiceResult> CheckCardValidityAsync(Guid libraryCardId);
     Task<IServiceResult> UpdateBorrowMoreStatusWithoutSaveChangesAsync(Guid libraryCardId);
-    Task<IServiceResult> SuspendCardAsync(Guid libraryCardId, DateTime suspensionEndDate);
+    Task<IServiceResult> ExtendBorrowAmountAsync(Guid libraryCardId, int maxItemOnceTime, string reason);
+    Task<IServiceResult> SuspendCardAsync(Guid libraryCardId, DateTime suspensionEndDate, string reason);
     Task<IServiceResult> UnsuspendCardAsync(Guid libraryCardId);
     Task<IServiceResult> ArchiveCardAsync(Guid userId, Guid libraryCardId, string archiveReason);
+    Task<IServiceResult> DeleteCardWithoutSaveChangesAsync(Guid libraryCardId);
+    Task<IServiceResult> DeleteRangeCardWithoutSaveChangesAsync(Guid[] libraryCardIds);
 }

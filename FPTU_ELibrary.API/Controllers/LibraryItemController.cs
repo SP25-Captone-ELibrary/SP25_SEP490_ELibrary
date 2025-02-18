@@ -193,7 +193,7 @@ public class LibraryItemController : ControllerBase
 
     [Authorize]
     [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
-    public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportBookEditionRequest req)
+    public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportLibraryItemRequest req)
     {
        return Ok(await _libraryItemService.ImportAsync(
            file: req.File,

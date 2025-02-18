@@ -49,7 +49,7 @@ public class ReminderService : BackgroundService
                         if (userInfo != null)
                         {
                             // Email subject 
-                            var subject = $"[REMINDER] Library Borrowing Reminder - Pickup Before {br.ExpirationDate:MMMM dd, yyyy}";
+                            var subject = $"[ELIBRARY] Nhắc nhở lịch đặt mượn sách - Lấy Trước Ngày {br.ExpirationDate:MM//dd//yyyy}";
                             
                             // Progress send confirmation email
                             var emailMessageDto = new EmailMessageDto( // Define email message
@@ -88,7 +88,7 @@ public class ReminderService : BackgroundService
                         if (userInfo != null)
                         {
                             // Email subject 
-                            var subject = $"[REMINDER] Library Card Reminder - Expiry at {libCard.ExpiryDate:MMMM dd, yyyy}";
+                            var subject = $"[ELIBRARY] Thông Báo Thẻ Thư Viện Sắp Hết Hạn - Ngày Hết Hạn {libCard.ExpiryDate:MM//dd//yyyy}";
                             
                             // Progress send confirmation email
                             var emailMessageDto = new EmailMessageDto( // Define email message
@@ -188,7 +188,7 @@ public class ReminderService : BackgroundService
                  <html>
                  <head>
                      <meta charset="UTF-8">
-                     <title>Library Card Expiration Notice</title>
+                     <title>Thông Báo Hết Hạn Thẻ Thư Viện</title>
                      <style>
                          body {
                              font-family: Arial, sans-serif;
@@ -233,27 +233,25 @@ public class ReminderService : BackgroundService
                      </style>
                  </head>
                  <body>
-                     <p class="header">Library Card Expiration Notice</p>
-                     <p>Dear {{libraryCard.FullName}},</p>
-                     <p>We would like to inform you that your library card is set to expire soon on <span class="expiry-date">{{libraryCard.ExpiryDate:MMMM dd, yyyy}}</span>. To continue enjoying our library services without interruption, please extend your card before the expiration date.</p>
+                     <p class="header">Thông Báo Hết Hạn Thẻ Thư Viện</p>
+                     <p>Xin chào {{libraryCard.FullName}},</p>
+                     <p>Chúng tôi xin thông báo rằng thẻ thư viện của bạn sắp hết hạn vào ngày <span class="expiry-date">{{libraryCard.ExpiryDate:dd/MM/yyyy}}</span>. Để tiếp tục sử dụng các dịch vụ của thư viện mà không bị gián đoạn, vui lòng gia hạn thẻ trước ngày hết hạn.</p>
                      
-                     <p><strong>Library Card Details:</strong></p>
+                     <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
                      <div class="details">
                          <ul>
-                             <li><span class="barcode">Library Card Code:</span> {{libraryCard.Barcode}}</li>
-                             <li><span class="expiry-date">Expiry Date:</span> {{libraryCard.ExpiryDate:MMMM dd, yyyy}}</li>
-                             <li><span class="status-label">Current Status:</span> <span class="status-text">{{libraryCard.Status}}</span></li>
+                             <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{libraryCard.Barcode}}</li>
+                             <li><span class="expiry-date">Ngày Hết Hạn:</span> {{libraryCard.ExpiryDate:dd/MM/yyyy}}</li>
+                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{libraryCard.Status}}</span></li>
                          </ul>
                      </div>
                      
-                     <p>To extend your library card, please visit our library or contact us at <strong>{{libContact}}</strong>.</p>
+                     <p>Để gia hạn thẻ thư viện, vui lòng đến trực tiếp thư viện hoặc liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
                      
-                     <p>If you have any questions or require assistance, feel free to reach out to us.</p>
+                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, đừng ngần ngại liên hệ với chúng tôi.</p>
                      
-                     <p>Thank you for being a valued member of our library!</p>
-                     
-                     p><strong>Best regards,</strong></p>
-                    <p>{{libName}}</p>
+                     <p><strong>Trân trọng,</strong></p>
+                     <p>{{libName}}</p>
                  </body>
                  </html>
                  """;
@@ -310,42 +308,42 @@ public class ReminderService : BackgroundService
     private string GetBorrowReminderEmailBody(User user, BorrowRequest borrowReq, string libName, string libLocation, string libContact)
     {
         var itemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail => $"<li>{detail.LibraryItem.Title}</li>"));
-    
+
         return $"""
-                 <!DOCTYPE html>
-                 <html>
-                 <head>
-                     <meta charset="UTF-8">
-                     <title>Library Borrowing Reminder</title>
-                 </head>
-                 <body>
-                     <p><strong>Library Borrowing Reminder</strong></p>
-                     <p>Dear {user.LastName}, {user.FirstName},</p>
-                     <p>This is a friendly reminder that your requested library item(s) must be picked up before the expiry date.</p>
-                     
-                     <p><strong>Borrow Request Details:</strong></p>
-                     <ul>
-                         <li>Request ID: {borrowReq.BorrowRequestId}</li>
-                         <li>Pickup Expiry Date: {borrowReq.ExpirationDate:MMMM dd, yyyy HH:mm}</li>
-                         <li>Pickup Location: {libLocation}</li>
-                     </ul>
-                     
-                     <p><strong>Requested Items:</strong></p>
-                     <ul>
-                         {itemList}
-                     </ul>
-                     
-                     <p>Please ensure you pick up the requested item(s) before the expiry date to avoid automatic cancellation.</p>
-                     
-                     <p>If you have any questions or need further assistance, please contact the library at {libContact}.</p>
-                     
-                     <p>Thank you for using our library services!</p>
-                     
-                     <p><strong>Best regards,</strong></p>
-                     <p>{libName}</p>
-                 </body>
-                 </html>
-                 """;
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Nhắc Nhở Mượn Sách</title>
+                </head>
+                <body>
+                    <p><strong>Nhắc Nhở Mượn Sách</strong></p>
+                    <p>Xin chào {user.LastName} {user.FirstName},</p>
+                    <p>Đây là lời nhắc thân thiện rằng bạn cần đến thư viện để nhận các tài liệu đã yêu cầu trước ngày hết hạn.</p>
+                    
+                    <p><strong>Chi Tiết Yêu Cầu Mượn:</strong></p>
+                    <ul>
+                        <li>Mã Yêu Cầu: {borrowReq.BorrowRequestId}</li>
+                        <li>Ngày Hết Hạn Nhận Sách: {borrowReq.ExpirationDate:dd/MM/yyyy HH:mm}</li>
+                        <li>Địa Điểm Nhận Sách: {libLocation}</li>
+                    </ul>
+                    
+                    <p><strong>Các Tài Liệu Đã Yêu Cầu:</strong></p>
+                    <ul>
+                        {itemList}
+                    </ul>
+                    
+                    <p>Vui lòng đến nhận các tài liệu trước ngày hết hạn để tránh việc yêu cầu bị tự động hủy.</p>
+                    
+                    <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ thư viện qua số {libContact}.</p>
+                    
+                    <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện!</p>
+                    
+                    <p><strong>Trân trọng,</strong></p>
+                    <p>{libName}</p>
+                </body>
+                </html>
+                """;
     }
     #endregion
 }

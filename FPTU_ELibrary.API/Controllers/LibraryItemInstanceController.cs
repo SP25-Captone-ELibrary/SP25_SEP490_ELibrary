@@ -35,6 +35,13 @@ public class LibraryItemInstanceController : ControllerBase
     }
     
     [Authorize]
+    [HttpGet(APIRoute.LibraryItemInstance.CheckExistBarcode, Name = nameof(CheckExistLibraryItemInstanceByBarcodeAsync))]
+    public async Task<IActionResult> CheckExistLibraryItemInstanceByBarcodeAsync([FromQuery] string barcode)
+    {
+        return Ok(await _itemInstanceService.CheckExistBarcodeAsync(barcode: barcode));
+    }
+    
+    [Authorize]
     [HttpPost(APIRoute.LibraryItemInstance.AddRange, Name = nameof(AddRangeCopyToBookEditionAsync))]
     public async Task<IActionResult> AddRangeCopyToBookEditionAsync(
         [FromRoute] int id, 

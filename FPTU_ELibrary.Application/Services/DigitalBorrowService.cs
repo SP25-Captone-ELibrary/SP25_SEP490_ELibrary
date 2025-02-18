@@ -3,6 +3,9 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -29,18 +32,12 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         _userSvc = userSvc;
     }
 
-    public async Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize)
+    public async Task<IServiceResult> GetAllCardHolderDigitalBorrowByUserIdAsync(Guid userId, int pageIndex, int pageSize)
     {
         try
         {
             // Build spec
             var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.UserId == userId);   
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(db => db.LibraryResource)
-                .Include(db => db.Transactions)
-                    .ThenInclude(tr => tr.Invoice)
-            );
             
             // Add default order by
             baseSpec.AddOrderByDescending(br => br.RegisterDate);
@@ -87,74 +84,61 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             throw new Exception("Error invoke when get all digital borrow by user id");
         }
     }
-    
-    public async Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize)
+
+    public async Task<IServiceResult> GetCardHolderDigitalBorrowByIdAsync(Guid userId, int digitalBorrowId)
     {
         try
         {
-            // Try to get user information
-            var userSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-            var userDto = (await _userSvc.GetWithSpecAsync(userSpec)).Data as UserDto;
-            if (userDto == null)
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Retrieve user information
+            // Build spec
+            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
+            // Apply include
+            userBaseSpec.ApplyInclude(q => q
+                .Include(u => u.LibraryCard)!
+            );
+            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            if (userDto == null || userDto.LibraryCardId == null) // Not found user
             {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 // Data not found or empty
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    new List<LibraryCardHolderDigitalBorrowDto>());
+                    StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
             }
             
             // Build spec
-            var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.UserId == userDto.UserId);   
+            var baseSpec = new BaseSpecification<DigitalBorrow>(br => 
+                br.UserId == userDto.UserId && br.DigitalBorrowId == digitalBorrowId);
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(db => db.LibraryResource)
                 .Include(db => db.Transactions)
                     .ThenInclude(tr => tr.Invoice)
             );
-            
-            // Add default order by
-            baseSpec.AddOrderByDescending(br => br.RegisterDate);
-            
-            // Count total borrow request
-            var totalDigitalWithSpec = await _unitOfWork.Repository<DigitalBorrow, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalDigitalWithSpec / pageSize);
-
-            // Set pagination to specification after count total digital borrow
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<DigitalBorrow, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity != null)
             {
-                pageIndex = 1; // Set default to first page
-            }
-            // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
-            
-            // Retrieve data with spec
-            var entities = await _unitOfWork.Repository<DigitalBorrow, int>()
-                .GetAllWithSpecAsync(baseSpec);
-            if (entities.Any())
-            {
-                var digitalDtos = _mapper.Map<List<DigitalBorrowDto>>(entities);
+                // Convert to dto
+                var digitalBorrowDto = _mapper.Map<DigitalBorrowDto>(existingEntity);
                 
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderDigitalBorrowDto>(
-                    digitalDtos.Select(d => d.ToCardHolderDigitalBorrowDto()),
-                    pageIndex, pageSize, totalPage, totalDigitalWithSpec);
-
-                // Response with pagination 
+                // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    digitalBorrowDto.ToCardHolderDigitalBorrowDto());
             }
             
-            // Data not found or empty
+            // Not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderDigitalBorrowDto>());
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
         }
         catch (Exception ex)
         {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when get all digital borrow by email");
+            throw new Exception("Error invoke when process get library card holder's digital borrow by id");
         }
     }
 }

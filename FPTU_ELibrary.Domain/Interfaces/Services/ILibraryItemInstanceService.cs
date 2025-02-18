@@ -8,6 +8,7 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
     where TDto : class
 {
     Task<IServiceResult> GetByBarcodeAsync(string barcode);
+    Task<IServiceResult> CheckExistBarcodeAsync(string barcode);
     Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId, List<TDto> libraryItemInstances);
     Task<IServiceResult> UpdateRangeAsync(int libraryItemId, List<TDto> itemInstanceDtos);
     Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId);

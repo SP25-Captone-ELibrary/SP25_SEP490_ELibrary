@@ -32,10 +32,12 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 {
     private readonly ISupplierService<SupplierDto> _supplierService;
     private readonly ICategoryService<CategoryDto> _cateService;
+    private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionService;
 
     public WarehouseTrackingService(
         ISupplierService<SupplierDto> supplierService,
         ICategoryService<CategoryDto> cateService,
+        ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
@@ -43,6 +45,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
     {
 	    _cateService = cateService;
         _supplierService = supplierService;
+        _conditionService = conditionService;
     }
 
     public override async Task<IServiceResult> GetByIdAsync(int id)
@@ -152,6 +155,15 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 				    StringUtils.Format(msg, isEng ? "warehouse tracking" : "thông tin theo dõi do"));
 		    }
 
+		    if (await _unitOfWork.Repository<WarehouseTracking, int>()
+			        .AnyAsync(w => 
+				        w.WarehouseTrackingDetails.Any(wd => wd.LibraryItemId != null)))
+		    {
+			    // Cannot process update as exist item has been cataloged
+			    return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0012,
+				    await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0012));
+		    }
+		    
 		    // Check whether supplier change
 		    if (!Equals(existingEntity.SupplierId, dto.SupplierId))
 		    {
@@ -351,7 +363,20 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                 // Process read csv file
                 var readResp =
                     CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<WarehouseTrackingDetailCsvRecord>(
-                        trackingDetailsFile, csvConfig, null, lang);
+                        file: trackingDetailsFile, 
+                        config: csvConfig,
+                        props: new ExcelHeaderProps()
+                        {
+	                        // Header start from row 2-3
+	                        FromRow = 2,
+	                        ToRow = 3,
+	                        // Start from col
+	                        FromCol = 1,
+	                        // Start read data index
+	                        StartRowIndex = 4
+                        },
+                        encodingType: null,
+                        systemLang: lang);
                 if(readResp.Errors.Any())
                 {
                     var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
@@ -363,6 +388,9 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                     return new ServiceResult(ResultCodeConst.SYS_Fail0008,
                         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
                 }
+                
+                // Exclude all data without item name
+                readResp.Records = readResp.Records.Where(r => !string.IsNullOrEmpty(r.ItemName)).ToList();
                 
                 // Try to detect wrong data
                 var wrongDataErrs = await DetectWrongDataAsync(readResp.Records, lang);
@@ -426,18 +454,36 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 			                ? "categories to process import"
 			                : "phân loại để tiến hành import"));
                 }
+
+                var conditions = (await _conditionService.GetAllAsync()).Data as List<LibraryItemConditionDto>;
+                if (conditions == null || !conditions.Any())
+                {
+	                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+	                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+		                StringUtils.Format(msg, isEng
+			                ? "conditions to process import"
+			                : "danh sách tình trạng sách để tiến hành import"));
+                }
                 
                 // Progress import warehouse tracking detail
                 foreach (var record in readResp.Records)
                 {
-	                // Assign category id
+	                // Get category
 	                var category = categories.First(c =>
 		                Equals(c.EnglishName.ToLower(), record.Category.ToLower()) ||
 		                Equals(c.VietnameseName.ToLower(), record.Category.ToLower()));
+	                
+	                // Get condition
+	                var condition = conditions.First(c => 
+		                Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) || 
+		                Equals(c.VietnameseName.ToLower(), record.Condition.ToLower()));
+
 	                // Convert to dto detail
 	                var trackingDetailDto = record.ToWarehouseTrackingDetailDto();
 	                // Assign category id
 	                trackingDetailDto.CategoryId = category.CategoryId;
+	                // Assign condition id
+	                trackingDetailDto.ConditionId = condition.ConditionId;
 	                // Add to warehouse tracking
 	                dto.WarehouseTrackingDetails.Add(trackingDetailDto);
                 }                
@@ -637,6 +683,15 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		        )).Data is false)
 		    {
 			    rowErrors.Add(isEng ? "Category name not exist" : "Tên phân loại không tồn tại");
+		    }
+		    
+		    // Check exist condition
+		    if ((await _conditionService.AnyAsync(c =>
+			        Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) ||
+			        Equals(c.VietnameseName.ToLower(), record.Condition.ToLower())
+		        )).Data is false)
+		    {
+			    rowErrors.Add(isEng ? "Condition name not exist" : "Tên tình trạng tài liệu không tồn tại");
 		    }
 
 		    var cleanedIsbn = ISBN.CleanIsbn(record.Isbn ?? string.Empty);

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -100,6 +100,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     is_allow_borrow_more = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     max_item_once_time = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    allow_borrow_more_reason = table.Column<string>(type: "nvarchar(250)", nullable: true),
                     is_reminder_sent = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     total_missed_pick_up = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     is_extended = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
@@ -107,9 +108,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     issue_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     suspension_end_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    suspension_reason = table.Column<string>(type: "nvarchar(250)", nullable: true),
+                    reject_reason = table.Column<string>(type: "nvarchar(250)", nullable: true),
                     is_archived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     archive_reason = table.Column<string>(type: "nvarchar(250)", nullable: true),
-                    previous_user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    previous_user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    transaction_code = table.Column<string>(type: "nvarchar(50)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -352,7 +356,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     cancelled_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true),
-                    is_reminder_sent = table.Column<bool>(type: "bit", nullable: false)
+                    is_reminder_sent = table.Column<bool>(type: "bit", nullable: false),
+                    total_request_item = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {
@@ -607,8 +612,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     due_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    self_service_borrow = table.Column<bool>(type: "bit", nullable: false),
-                    total_extension = table.Column<int>(type: "int", nullable: false),
+                    borrow_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    self_service_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    self_service_return = table.Column<bool>(type: "bit", nullable: true),
+                    total_extension = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    total_record_item = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     proceesed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
@@ -670,7 +678,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     invoice_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     paid_at = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
@@ -882,7 +889,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     fine_id = table.Column<int>(type: "int", nullable: true),
                     digital_borrow_id = table.Column<int>(type: "int", nullable: true),
                     library_card_package_id = table.Column<int>(type: "int", nullable: true),
-                    invoice_id = table.Column<int>(type: "int", nullable: false)
+                    invoice_id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1091,7 +1098,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     tracking_id = table.Column<int>(type: "int", nullable: false),
                     library_item_id = table.Column<int>(type: "int", nullable: true),
                     category_id = table.Column<int>(type: "int", nullable: false),
-                    condition_id = table.Column<int>(type: "int", nullable: false)
+                    condition_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
+                    created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {

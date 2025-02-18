@@ -27,6 +27,9 @@ public class LibraryCardHolderBorrowRequestDto
     // Remind user before expiration (via email or system notification)
     public bool IsReminderSent { get; set; }
     
+    // Count total request item
+    public int TotalRequestItem { get; set; }
+    
     public List<LibraryItemDetailDto> LibraryItems { get; set; } = new ();
 }
 
@@ -45,9 +48,12 @@ public static class LibraryCardBorrowRequestDtoExtensions
             CancelledAt = dto.CancelledAt,
             CancellationReason = dto.CancellationReason,
             IsReminderSent = dto.IsReminderSent,
-            LibraryItems = dto.BorrowRequestDetails
-                .Select(brd => brd.LibraryItem)
-                .Select(li => li.ToLibraryItemDetailDto()).ToList()
+            TotalRequestItem = dto.TotalRequestItem,
+            LibraryItems = dto.BorrowRequestDetails.Any() 
+                ? dto.BorrowRequestDetails
+                    .Select(brd => brd.LibraryItem)
+                    .Select(li => li.ToLibraryItemDetailDto()).ToList()
+                : new()
         };
     }
 }

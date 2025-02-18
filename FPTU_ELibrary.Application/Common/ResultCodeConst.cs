@@ -506,15 +506,23 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Success0003 = "LibraryCard.Success0003";
 		/// <summary>
-		/// [WARNING] Your library card is not activated yet. Please make a payment to activate your card
+		/// [SUCCESS] Send card reconfirmation successfully
+		/// </summary>
+		public const string LibraryCard_Success0004 = "LibraryCard.Success0004";
+		/// <summary>
+		/// [SUCCESS] Extend library card expiration successfully
+		/// </summary>
+		public const string LibraryCard_Success0005 = "LibraryCard.Success0005";
+		/// <summary>
+		/// [WARNING] Library card is not activated yet. Please contact library to activate your card
 		/// </summary>
 		public const string LibraryCard_Warning0001 = "LibraryCard.Warning0001";
 		/// <summary>
-		/// [WARNING] Your library card has expired. Please renew it to continue using library services
+		/// [WARNING] Library card has expired. Please renew it to continue using library services
 		/// </summary>
 		public const string LibraryCard_Warning0002 = "LibraryCard.Warning0002";
 		/// <summary>
-		/// [WARNING] Your library card has been suspended due to a violation or administrative action. Please contact the library for assistance (Activated at {0})
+		/// [WARNING] Library card has been suspended due to a violation or administrative action. Please contact the library for assistance (Activated at {0})
 		/// </summary>
 		public const string LibraryCard_Warning0003 = "LibraryCard.Warning0003";
 		/// <summary>
@@ -534,6 +542,30 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Warning0007 = "LibraryCard.Warning0007";
 		/// <summary>
+		/// [WARNING] Fail to update. Total borrow amount threshold is not smaller than {0}
+		/// </summary>
+		public const string LibraryCard_Warning0008 = "LibraryCard.Warning0008";
+		/// <summary>
+		/// [WARNING] Cannot update library card status to {0} as {1}
+		/// </summary>
+		public const string LibraryCard_Warning0009 = "LibraryCard.Warning0009";
+		/// <summary>
+		/// [WARNING] Cannot process confirm card as not found payment information
+		/// </summary>
+		public const string LibraryCard_Warning0010 = "LibraryCard.Warning0010";
+		/// <summary>
+		/// [WARNING] Fail to confirm card as library card has been confirmed
+		/// </summary>
+		public const string LibraryCard_Warning0011 = "LibraryCard.Warning0011";
+		/// <summary>
+		/// [WARNING] Fail to reject library card as it has been rejected
+		/// </summary>
+		public const string LibraryCard_Warning0012 = "LibraryCard.Warning0012";
+		/// <summary>
+		/// [WARNING] Cannot process send card reconfirmation when card status is not rejected
+		/// </summary>
+		public const string LibraryCard_Warning0013 = "LibraryCard.Warning0013";
+		/// <summary>
 		/// [WARNING] Register library card failed
 		/// </summary>
 		public const string LibraryCard_Fail0001 = "LibraryCard.Fail0001";
@@ -541,6 +573,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Failed to archive library card
 		/// </summary>
 		public const string LibraryCard_Fail0002 = "LibraryCard.Fail0002";
+		/// <summary>
+		/// [WARNING] Failed to send reconfirmation library card
+		/// </summary>
+		public const string LibraryCard_Fail0003 = "LibraryCard.Fail0003";
+		/// <summary>
+		/// [WARNING] Fail to extend library card
+		/// </summary>
+		public const string LibraryCard_Fail0004 = "LibraryCard.Fail0004";
 		#endregion
 		
 		#region Supplier
@@ -552,50 +592,57 @@ namespace FPTU_ELibrary.Application.Common
 		
         #region AIService
         /// <summary>
-        /// Data matched with image
+        /// [SUCCESS] Data matched with image
         /// </summary>
         public static string AIService_Success0001 = "AIService.Success0001";
         /// <summary>
-        /// Train sucessfully
+        /// [SUCCESS] Train sucessfully
         /// </summary>
         public static string AIService_Success0002 = "AIService.Success0002";
         /// <summary>
-        /// Start Training model successfully
+        /// [SUCCESS] Start Training model successfully
         /// </summary>
         public static string AIService_Success0003 = "AIService.Success0003";
         /// <summary>
-        /// Predict Successfully
+        /// [SUCCESS] Predict Successfully
         /// </summary>
         public static string AIService_Success0004 = "AIService.Success0004";
         /// <summary>
-        /// Grouped items successfully
+        /// [SUCCESS] Grouped items successfully
         /// </summary>
         public static string AIService_Success0005 = "AIService.Success0005";
         /// <summary>
-        /// Data did not match with image
+        /// [SUCCESS] Success to detect face image
+        /// </summary>
+        public static string AIService_Success0006 = "AIService.Success0006";
+        /// <summary>
+        /// [WARNING] Data did not match with image
         /// </summary>
         public static string AIService_Warning0001 = "AIService.Warning0001";
         /// <summary>
-        /// There is an iteration that is training
+        /// [WARNING] There is an iteration that is training
         /// </summary>
         public static string AIService_Warning0002 = "AIService.Warning0002";
         /// <summary>
-        /// Can not detect any books in the picture
+        /// [WARNING] Can not detect any books in the picture
         /// </summary>
         public static string AIService_Warning0003 = "AIService.Warning0003";
         /// <summary>
-        /// Recommendation is just for 1 book.
+        /// [WARNING] Recommendation is just for 1 book.
         /// </summary>
         public static string AIService_Warning0004 = "AIService.Warning0004";
         /// <summary>
-        /// Existing items in categories that are not allow to train AI
+        /// [WARNING] Existing items in categories that are not allow to train AI
         /// </summary>
         public static string AIService_Warning0005 = "AIService.Warning0005";
         /// <summary>
-        /// One or more items grouped
+        /// [WARNING] One or more items grouped
         /// </summary>
         public static string AIService_Warning0006 = "AIService.Warning0006";
-
+        /// <summary>
+        /// [WARNING] Fail to detect face image
+        /// </summary>
+        public static string AIService_Warning0007 = "AIService.Warning0007";
         #endregion
 
         #region Warehouse Tracking
@@ -644,6 +691,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] The action cannot be performed as category of item and warehouse tracking detail is different
         /// </summary>
         public const string WarehouseTracking_Warning0011 = "WarehouseTracking.Warning0011";
+        /// <summary>
+        /// [WARNING] Cannot process update as exist item has been cataloged
+        /// </summary>
+        public const string WarehouseTracking_Warning0012 = "WarehouseTracking.Warning0012";
         #endregion
 
         #endregion

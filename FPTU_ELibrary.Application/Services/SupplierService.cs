@@ -216,7 +216,21 @@ public class SupplierService : GenericService<Supplier, SupplierDto, int>,
 
 			// Process read csv file
 			var readResp =
-				CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<SupplierCsvRecord>(file, csvConfig, null, lang);
+				CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<SupplierCsvRecord>(
+					file: file,
+					config: csvConfig,
+					props: new ExcelHeaderProps()
+					{
+						// Header start from row 1-1
+						FromRow = 1,
+						ToRow = 1,
+						// Start from col
+						FromCol = 1,
+						// Start read data index
+						StartRowIndex = 2
+					},
+					encodingType: null,
+					systemLang: lang);
 			if(readResp.Errors.Any())
 			{
 				var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()

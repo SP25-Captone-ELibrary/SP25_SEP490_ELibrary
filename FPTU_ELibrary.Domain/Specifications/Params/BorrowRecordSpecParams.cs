@@ -5,7 +5,9 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 public class BorrowRecordSpecParams : BaseSpecParams
 {
     public BorrowRecordStatus? Status { get; set; }
+    public BorrowType? BorrowType { get; set; }
     public bool? SelfServiceBorrow { get; set; }
+    public bool? SelfServiceReturn { get; set; }
     
     public DateTime?[]? BorrowDateRange { get; set; }
     public DateTime?[]? DueDateRange { get; set; }

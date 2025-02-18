@@ -441,7 +441,7 @@ namespace FPTU_ELibrary.Application.Services
                 }
     
                 // Process delete range
-                await _unitOfWork.Repository<Employee, Guid>().DeleteRangeAsync(employeeIds);
+                await _unitOfWork.Repository<Employee, Guid>().DeleteRangeAsync(employeeList.Select(e => e.EmployeeId).ToArray());
                 // Save to DB
                 if (await _unitOfWork.SaveChangesAsync() > 0)
                 {

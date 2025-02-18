@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.Extensions.Hosting;
 
 namespace FPTU_ELibrary.Infrastructure.Data.Configurations;
 
@@ -80,6 +81,26 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
             .HasColumnName("archive_reason");
         builder.Property(e => e.PreviousUserId)
             .HasColumnName("previous_user_id");
+        #endregion
+
+        #region Update at 14/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.AllowBorrowMoreReason)
+            .HasColumnType("nvarchar(250)")
+            .HasColumnName("allow_borrow_more_reason");
+        
+        builder.Property(e => e.SuspensionReason)
+            .HasColumnType("nvarchar(250)")
+            .HasColumnName("suspension_reason");
+        #endregion
+
+        #region Update at 17/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.TransactionCode)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("transaction_code");
+        builder.Property(e => e.RejectReason)
+            .IsRequired(false)
+            .HasColumnType("nvarchar(250)")
+            .HasColumnName("reject_reason");
         #endregion
     }
 }

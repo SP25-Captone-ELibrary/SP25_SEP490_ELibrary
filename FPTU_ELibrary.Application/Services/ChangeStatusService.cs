@@ -44,6 +44,8 @@ public class ChangeStatusService : BackgroundService
                     await UpdateAllLibraryCardSuspendedStatusAsync(unitOfWork);
                     // Update borrow request expired status
                     await UpdateAllBorrowRequestExpiredStatusAsync(unitOfWork, borrowSettings: monitor.CurrentValue);
+                    // Update borrow record expired status
+                    await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
                 }
             }catch (Exception ex)
             {
@@ -154,6 +156,33 @@ public class ChangeStatusService : BackgroundService
         }
 
         return await unitOfWork.SaveChangesWithTransactionAsync() > 0;
+    }
+
+    private async Task<bool> UpdateAllBorrowRecordExpiredStatusAsync(IUnitOfWork unitOfWork)
+    {
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Build specification
+        var baseSpec = new BaseSpecification<BorrowRecord>(br =>
+            br.ReturnDate != null && // Not include borrow record exist return date
+            br.DueDate < currentLocalDateTime && // Exceed than due date (expected return date)
+            br.Status == BorrowRecordStatus.Borrowing); // Is in borrowing status
+        // Retrieve all with spec
+        var entities = await unitOfWork.Repository<BorrowRecord, int>()
+            .GetAllWithSpecAsync(baseSpec);
+        foreach (var br in entities)
+        {
+            // Change borrow status to expired
+            br.Status = BorrowRecordStatus.Overdue;
+            
+            // Progress update 
+            await unitOfWork.Repository<BorrowRecord, int>().UpdateAsync(br);
+        }
+        
+        return await unitOfWork.SaveChangesAsync() > 0;
     }
     #endregion
 }
