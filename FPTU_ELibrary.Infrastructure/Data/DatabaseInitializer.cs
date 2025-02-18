@@ -1156,7 +1156,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
-			        }
+			        },
+                    LibraryItemAuthors = new List<LibraryItemAuthor>()
+				    {
+					    new()
+					    {
+						    AuthorId = authors.First(a => a.AuthorCode == "AUTH00001").AuthorId
+					    }
+				    }
 			    },
 			    new LibraryItem
 			    {
@@ -1417,6 +1424,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00001").AuthorId
+				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1456,6 +1470,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00002").AuthorId
+				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1495,6 +1516,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00003").AuthorId
+				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1534,6 +1562,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00004").AuthorId
+				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1573,6 +1608,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00005").AuthorId
+				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1612,6 +1654,13 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0
+			        },
+			        LibraryItemAuthors = new List<LibraryItemAuthor>()
+			        {
+				        new()
+				        {
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00005").AuthorId
+				        }
 			        }
 			    }
 			};

@@ -9,6 +9,7 @@ using System.Text;
 using Azure.Identity;
 using CloudinaryDotNet;
 using FluentValidation;
+using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.HealthChecks;
 using FPTU_ELibrary.Application.Services;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -92,7 +93,8 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
 			// Configure FaceDetectionSettings
 			services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
-			
+			// Configure PayOS
+			services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
 			
 			#region Development stage
 
@@ -134,177 +136,212 @@ namespace FPTU_ELibrary.API.Extensions
 				return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
 			});
 
-			return services;
-		}
-		
-		public static IServiceCollection ConfigureRedis(this IServiceCollection services,
-			IConfiguration configuration,
-			IWebHostEnvironment env)
-		{
-			// Define redis configuration
-			var redisConfig = env.IsDevelopment()
-				? $"{configuration["RedisSettings:Host"]}:{configuration["RedisSettings:Port"]},abortConnect=false"
-				: $"{Environment.GetEnvironmentVariable("REDIS_URL")},abortConnect=false";
+            return services;
+        }
 
-			// Add Redis distributed caching services
-			services.AddStackExchangeRedisCache(config => { config.Configuration = redisConfig; });
+        public static IServiceCollection EstablishApplicationConfiguration(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IWebHostEnvironment env)
+        {
+            // Cấu hình PayOS
+            var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
+            if (payOsConfig != null)
+            {
+                var payGate = "https://api-merchant.payos.vn";
+                var returnUrl = env.IsDevelopment()
+                    ? "http://localhost:3000/payment-return"
+                    : "https://prep4ielts.vercel.app/payment-return";
+                var cancelUrl = env.IsDevelopment()
+                    ? "http://localhost:3000/payment-cancel"
+                    : "https://prep4ielts.vercel.app/payment-cancel";
 
-			try
-			{
-				// Register IConnectionMultiplexer (used in CacheHealthCheck and custom Redis operations)
-				services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
-			}
-			catch (RedisConnectionException ex)
-			{
-				Logger.None.Error("Redis connection failed: {msg}", ex.Message);
-			}
+                services.Configure<PayOSSettings>(options =>
+                {
+                    options.ClientId = payOsConfig.ClientId;
+                    options.ApiKey = payOsConfig.ApiKey;
+                    options.ChecksumKey = payOsConfig.ChecksumKey;
+                    options.ReturnUrl = returnUrl;
+                    options.CancelUrl = cancelUrl;
+                    options.PaymentUrl = $"{payGate}/v2/payment-requests";
+                    options.GetPaymentLinkInformationUrl = $"{payGate}/v2/payment-requests/{{0}}";
+                    options.CancelPaymentUrl = $"{payGate}/v2/payment-requests/{{0}}/cancel";
+                    options.ConfirmWebHookUrl = "https://api-merchant.payos.vn/confirm-webhook";
+                });
+            }
+            return services;
+        }
 
-			return services;
-		}
 
-		public static IServiceCollection ConfigureCloudinary(this IServiceCollection services,
-			IConfiguration configuration)
-		{
-			Cloudinary cloudinary = new Cloudinary(configuration["CloudinarySettings:CloudinaryUrl"]!)
-			{
-				Api = { Secure = true }
-			};
+        public static IServiceCollection ConfigureRedis(this IServiceCollection services,
+            IConfiguration configuration,
+            IWebHostEnvironment env)
+        {
+            // Define redis configuration
+            var redisConfig = env.IsDevelopment()
+                ? $"{configuration["RedisSettings:Host"]}:{configuration["RedisSettings:Port"]},abortConnect=false"
+                : $"{Environment.GetEnvironmentVariable("REDIS_URL")},abortConnect=false";
 
-			services.AddSingleton(cloudinary);
+            // Add Redis distributed caching services
+            services.AddStackExchangeRedisCache(config => { config.Configuration = redisConfig; });
 
-			return services;
-		}
+            try
+            {
+                // Register IConnectionMultiplexer (used in CacheHealthCheck and custom Redis operations)
+                services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
+            }
+            catch (RedisConnectionException ex)
+            {
+                Logger.None.Error("Redis connection failed: {msg}", ex.Message);
+            }
 
-		public static IServiceCollection ConfigureOCR(this IServiceCollection services, IConfiguration configuration)
-		{
-			services.AddSingleton<ComputerVisionClient>(sp =>
-			{
-				var aiSettings = configuration.GetSection("AISettings").Get<AISettings>();
-				return new ComputerVisionClient(new ApiKeyServiceClientCredentials(aiSettings.SubscriptionKey))
-				{
-					Endpoint = aiSettings.Endpoint
-				};
-			});
-			
-			return services;
-		}
+            return services;
+        }
 
-		public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
-		{
-			services.AddSignalR();
-			return services;
-		}
+        public static IServiceCollection ConfigureCloudinary(this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            Cloudinary cloudinary = new Cloudinary(configuration["CloudinarySettings:CloudinaryUrl"]!)
+            {
+                Api = { Secure = true }
+            };
 
-		public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services, 
-			IConfiguration configuration)
-		{
-			services.AddSingleton<AggregatedHealthCheckService>();
-			services.AddScoped<DbConnection>(sp => 
-				new SqlConnection(configuration.GetConnectionString("DefaultConnectionStr")));
-			
-			return services;
-		}
+            services.AddSingleton(cloudinary);
 
-		public static IServiceCollection ConfigureBackgroundServices(this IServiceCollection services)
-		{
-			// Register ReminderService inheriting from BackgroundService
-			services.AddHostedService<ReminderService>();
-			services.AddHostedService<ChangeStatusService>();
-			
-			return services;
-		}
-		
-		public static IServiceCollection ConfigureCamelCaseForValidation(this IServiceCollection services)
-		{
-			ValidatorOptions.Global.PropertyNameResolver = CamelCasePropertyNameResolver.ResolvePropertyName;
+            return services;
+        }
 
-			return services;
-		}
-		
-		public static IServiceCollection AddAuthentication(this IServiceCollection services, 
-			IConfiguration configuration)
-		{
-			// Define TokenValidationParameters
-			var tokenValidationParameters = new TokenValidationParameters
-			{
-				ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
-				IssuerSigningKey =
-					new SymmetricSecurityKey(
-						Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
-				ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
-				ValidAudience = configuration["WebTokenSettings:ValidAudience"],
-				ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
-				ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
-				RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
-				ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
-				ClockSkew = TimeSpan.Zero
-			};
-			
-			// Register TokenValidationParameters in the DI container
-			services.AddSingleton(tokenValidationParameters);
-			
-			// Add authentication
-			services.AddAuthentication(options =>
-			{
-				// Define default scheme
-				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
-				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
-				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme; 
-			}).AddJwtBearer(options => // Enables JWT-bearer authentication
-			{
-				// Disable Https required for the metadata address or authority
-				options.RequireHttpsMetadata = false;
-				// Define type and definitions required for validating a token
-				options.TokenValidationParameters = services.BuildServiceProvider()
-					.GetRequiredService<TokenValidationParameters>();
-				options.Events = new JwtBearerEvents
-				{
-					OnMessageReceived = context =>
-					{
-						var accessToken = context.Request.Query["access_token"];
+        public static IServiceCollection ConfigureOCR(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddSingleton<ComputerVisionClient>(sp =>
+            {
+                var aiSettings = configuration.GetSection("AISettings").Get<AISettings>();
+                return new ComputerVisionClient(new ApiKeyServiceClientCredentials(aiSettings.SubscriptionKey))
+                {
+                    Endpoint = aiSettings.Endpoint
+                };
+            });
 
-						// If the request is for our hub...
-						var path = context.HttpContext.Request.Path;
-						if (!string.IsNullOrEmpty(accessToken))
-						{
-							// Read the token out of the query string
-							context.Token = accessToken;
-						}
-						return Task.CompletedTask;
-					}
-				};
-			});
+            return services;
+        }
 
-			return services;
-		}
+        public static IServiceCollection ConfigureSignalR(this IServiceCollection services)
+        {
+            services.AddSignalR();
+            return services;
+        }
 
-		public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
-		{
-			// Configure CORS
-			services.AddCors(p => p.AddPolicy(policyName, policy =>
-			{
-				// allow all with any header, method
-				policy.WithOrigins("*")
-					.AllowAnyHeader()
-					.AllowAnyMethod();
-			}));
+        public static IServiceCollection ConfigureHealthCheckServices(this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            services.AddSingleton<AggregatedHealthCheckService>();
+            services.AddScoped<DbConnection>(sp =>
+                new SqlConnection(configuration.GetConnectionString("DefaultConnectionStr")));
 
-			return services;
-		}
+            return services;
+        }
 
-		public static IServiceCollection AddLazyResolution(this IServiceCollection services)
+        public static IServiceCollection ConfigureBackgroundServices(this IServiceCollection services)
+        {
+            // Register ReminderService inheriting from BackgroundService
+            services.AddHostedService<ReminderService>();
+            services.AddHostedService<ChangeStatusService>();
+
+            return services;
+        }
+
+        public static IServiceCollection ConfigureCamelCaseForValidation(this IServiceCollection services)
+        {
+            ValidatorOptions.Global.PropertyNameResolver = CamelCasePropertyNameResolver.ResolvePropertyName;
+
+            return services;
+        }
+
+        public static IServiceCollection AddAuthentication(this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            // Define TokenValidationParameters
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
+                ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
+                ValidAudience = configuration["WebTokenSettings:ValidAudience"],
+                ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
+                ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
+                RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
+                ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
+                ClockSkew = TimeSpan.Zero
+            };
+
+            // Register TokenValidationParameters in the DI container
+            services.AddSingleton(tokenValidationParameters);
+
+            // Add authentication
+            services.AddAuthentication(options =>
+            {
+                // Define default scheme
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options => // Enables JWT-bearer authentication
+            {
+                // Disable Https required for the metadata address or authority
+                options.RequireHttpsMetadata = false;
+                // Define type and definitions required for validating a token
+                options.TokenValidationParameters = services.BuildServiceProvider()
+                    .GetRequiredService<TokenValidationParameters>();
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+
+                        // If the request is for our hub...
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            // Read the token out of the query string
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+            return services;
+        }
+
+        public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+        {
+            // Configure CORS
+            services.AddCors(p => p.AddPolicy(policyName, policy =>
+            {
+                // allow all with any header, method
+                policy.WithOrigins("*")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }));
+
+            return services;
+        }
+
+        public static IServiceCollection AddLazyResolution(this IServiceCollection services)
         {
             return services.AddTransient(
                 typeof(Lazy<>),
                 typeof(LazilyResolved<>));
         }
-		
+
         private class LazilyResolved<T> : Lazy<T>
         {
-	        public LazilyResolved(IServiceProvider serviceProvider)
-		        : base(serviceProvider.GetRequiredService<T>)
-	        {
-	        }
+            public LazilyResolved(IServiceProvider serviceProvider)
+                : base(serviceProvider.GetRequiredService<T>)
+            {
+            }
         }
     }
 }

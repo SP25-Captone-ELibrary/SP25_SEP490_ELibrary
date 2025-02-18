@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250218094826_Initial Database")]
+    [Migration("20250218151302_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -704,6 +704,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("InvoiceCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("invoice_code");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime")

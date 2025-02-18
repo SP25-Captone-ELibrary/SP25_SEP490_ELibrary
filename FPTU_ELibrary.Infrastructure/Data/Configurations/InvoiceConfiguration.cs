@@ -15,6 +15,9 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         
         builder.Property(e => e.InvoiceId).HasColumnName("invoice_id");
         builder.Property(e => e.UserId).HasColumnName("user_id");
+        builder.Property(e => e.InvoiceCode)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("invoice_code");
         builder.Property(e => e.TotalAmount)
             .HasColumnType("decimal(10,2)")
             .HasColumnName("total_amount");

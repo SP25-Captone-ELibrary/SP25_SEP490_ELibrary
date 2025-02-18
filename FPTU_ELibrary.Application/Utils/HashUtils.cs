@@ -1,4 +1,7 @@
-﻿namespace FPTU_ELibrary.Application.Utils
+﻿using System.Security.Cryptography;
+using System.Text;
+
+namespace FPTU_ELibrary.Application.Utils
 {
     // Summary:
     //		Provide utility procedures to handle any logic related to encrypt/decrypt
@@ -55,6 +58,18 @@
                 }
             }
             return new string(result);
+        }
+        public static string HmacSha256(string text, string key)
+        {
+            ASCIIEncoding encoding = new ASCIIEncoding();
+
+            Byte[] textBytes = encoding.GetBytes(text);
+            Byte[] keyBytes = encoding.GetBytes(key);
+            Byte[] hashBytes;
+            using (HMACSHA256 hash = new HMACSHA256(keyBytes))
+                hashBytes = hash.ComputeHash(textBytes);
+
+            return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
         }
     }
 }

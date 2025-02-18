@@ -90,7 +90,10 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services.AddScoped<IWarehouseTrackingService<WarehouseTrackingDto>, WarehouseTrackingService>();
             services.AddScoped<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>, WarehouseTrackingDetailService>();
-
+            services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
+            services.AddScoped<IInvoiceService<InvoiceDto>, InvoiceService>();
+            services.AddScoped<IFineService<FineDto>,FineService>();
+            
             services
                 .ConfigureMapster() // Add mapster
                 .ConfigureCloudinary() // Add cloudinary

@@ -150,7 +150,6 @@ public class PaymentUtils
 
         return (email, transactionCode, transactionDate);
     }
-    
     public static string GenerateRequestId()
     {
         return $"RE{GenerateRandomDigits(11)}";

@@ -702,6 +702,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("InvoiceCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("invoice_code");
+
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime")
                         .HasColumnName("paid_at");

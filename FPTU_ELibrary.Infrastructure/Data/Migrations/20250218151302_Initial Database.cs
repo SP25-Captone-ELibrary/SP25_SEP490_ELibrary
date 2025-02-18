@@ -675,6 +675,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     invoice_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    invoice_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),

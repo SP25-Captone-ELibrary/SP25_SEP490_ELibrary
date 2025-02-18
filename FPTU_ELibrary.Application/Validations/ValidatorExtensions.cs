@@ -10,6 +10,7 @@ using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using Microsoft.AspNetCore.Http;
 
@@ -45,6 +46,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(WarehouseTrackingDto) => (IValidator<T>)new WarehouseTrackingDtoValidator(language),
 				{ } when typeof(T) == typeof(WarehouseTrackingDetailDto) => (IValidator<T>)new WarehouseTrackingDetailDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryItemGroupDto) => (IValidator<T>)new LibraryItemGroupDtoValidator(language),
+				{ } when typeof(T) == typeof(TransactionDto) => (IValidator<T>)new TransactionDtoValidator(language),
 				_ => null
 			};
 		}
