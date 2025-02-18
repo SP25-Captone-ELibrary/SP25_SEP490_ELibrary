@@ -94,6 +94,17 @@ public class LibraryCardController : ControllerBase
     }
     
     [Authorize]
+    [HttpPatch(APIRoute.LibraryCard.ExtendCard, Name = nameof(ExtendLibraryCardAsync))]
+    public async Task<IActionResult> ExtendLibraryCardAsync([FromRoute] Guid id, [FromBody] ExtendLibraryCardRequest req)
+    {
+        return Ok(await _cardSvc.ExtendCardAsync(
+            libraryCardId: id, 
+            transactionToken: req.TransactionToken,
+            libraryCardPackageId: req.LibraryCardPackageId,
+            paymentMethodId: req.PaymentMethodId));
+    }
+    
+    [Authorize]
     [HttpPatch(APIRoute.LibraryCard.ExtendBorrowAmount, Name = nameof(ExtendLibraryCardBorrowAmountAsync))]
     public async Task<IActionResult> ExtendLibraryCardBorrowAmountAsync([FromRoute] Guid id,
         [FromQuery] int maxItemOnceTime, [FromQuery] string reason)
@@ -169,14 +180,13 @@ public class LibraryCardController : ControllerBase
         return Ok(await _cardSvc.CheckCardExtensionAsync(id));
     }
     
-    // TODO: Remove this function
     [Authorize]
-    [HttpPatch(APIRoute.LibraryCard.ConfirmExtend, Name = nameof(ConfirmExtendLibraryCardAsync))]
-    public async Task<IActionResult> ConfirmExtendLibraryCardAsync([FromBody] ConfirmLibraryCardRequest req)
+    [HttpPatch(APIRoute.LibraryCard.UserExtendCard, Name = nameof(UserExtendLibraryCardAsync))]
+    public async Task<IActionResult> UserExtendLibraryCardAsync([FromBody] UserExtendLibraryCardRequest req)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _cardSvc.ConfirmExtendCardAsync(
-            libraryCardId: req.LibraryCardId, 
-            transactionToken: req.TransactionToken));
+        return Ok(await _userSvc.ExtendLibraryCardAsync(
+            email: email ?? string.Empty, 
+            transactionToken: req.TransactionToken ?? string.Empty));
     }
 }

@@ -8,7 +8,8 @@ public interface ILibraryCardService<TDto> : IGenericService<LibraryCard, TDto, 
 {
     Task<IServiceResult> SendRequireToConfirmCardAsync(string userEmail);
     Task<IServiceResult> ConfirmCardAsync(Guid libraryCardId);
-    Task<IServiceResult> ConfirmExtendCardAsync(Guid libraryCardId, string transactionToken);
+    Task<IServiceResult> ExtendCardAsync(Guid libraryCardId, 
+        string? transactionToken, int? libraryCardPackageId, int? paymentMethodId);
     Task<IServiceResult> RejectCardAsync(Guid libraryCardId, string rejectReason);
     Task<IServiceResult> CheckCardExtensionAsync(Guid libraryCardId);
     Task<IServiceResult> CheckCardValidityAsync(Guid libraryCardId);

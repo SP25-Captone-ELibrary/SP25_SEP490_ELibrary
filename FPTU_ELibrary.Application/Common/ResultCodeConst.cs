@@ -510,6 +510,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Success0004 = "LibraryCard.Success0004";
 		/// <summary>
+		/// [SUCCESS] Extend library card expiration successfully
+		/// </summary>
+		public const string LibraryCard_Success0005 = "LibraryCard.Success0005";
+		/// <summary>
 		/// [WARNING] Library card is not activated yet. Please contact library to activate your card
 		/// </summary>
 		public const string LibraryCard_Warning0001 = "LibraryCard.Warning0001";
@@ -573,6 +577,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Failed to send reconfirmation library card
 		/// </summary>
 		public const string LibraryCard_Fail0003 = "LibraryCard.Fail0003";
+		/// <summary>
+		/// [WARNING] Fail to extend library card
+		/// </summary>
+		public const string LibraryCard_Fail0004 = "LibraryCard.Fail0004";
 		#endregion
 		
 		#region Supplier

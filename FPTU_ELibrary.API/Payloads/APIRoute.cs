@@ -206,6 +206,7 @@
 			public const string Confirm = Base + "/management/library-cards/{id}/confirm";
 			public const string Reject = Base + "/management/library-cards/{id}/reject";
 			public const string ExtendBorrowAmount = Base + "/management/library-cards/{id}/extend-borrow-amount";
+			public const string ExtendCard = Base + "/management/library-cards/{id}/extend";
 			public const string SuspendCard = Base + "/management/library-cards/{id}/suspend";
 			public const string UnsuspendCard = Base + "/management/library-cards/{id}/un-suspend";
 			public const string ArchiveCard = Base + "/management/library-cards/{userId}/archive-card"; 
@@ -217,7 +218,7 @@
 			public const string CheckCardExtension = Base + "/library-cards/{id}/check-extension";
 			// [POST]
 			public const string Register = Base + "/library-cards/register";
-			public const string ConfirmExtend = Base + "/library-cards/confirm-extend";
+			public const string UserExtendCard = Base + "/library-cards/extend";
 			// [PATCH]
 			public const string SendReConfirm = Base + "/library-cards/re-confirm";
 		}
