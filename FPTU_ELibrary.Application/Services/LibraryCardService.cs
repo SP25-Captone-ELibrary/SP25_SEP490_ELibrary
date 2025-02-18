@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Exceptions;
@@ -16,6 +17,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders.Physical;
@@ -32,13 +34,18 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
     private readonly ICloudinaryService _cloudSvc;
     private readonly IUserService<UserDto> _userSvc;
     private readonly ITransactionService<TransactionDto> _tranSvc;
-    private readonly WebTokenSettings _webTokenSettings;
+
+    private readonly BorrowSettings _borrowSettings;
     private readonly TokenValidationParameters _tokenValidationParams;
+    private readonly IEmailService _emailSvc;
+    private readonly AppSettings _appSettings;
 
     public LibraryCardService(
         IUserService<UserDto> userSvc,
         ITransactionService<TransactionDto> tranSvc,
-        IOptionsMonitor<WebTokenSettings> monitor,
+        IOptionsMonitor<AppSettings> monitor,
+        IOptionsMonitor<BorrowSettings> monitor1,
+        IEmailService emailSvc,
         ICloudinaryService cloudSvc,
         TokenValidationParameters tokenValidationParams,
         ISystemMessageService msgService, 
@@ -49,8 +56,10 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         _userSvc = userSvc;
         _tranSvc = tranSvc;
         _cloudSvc = cloudSvc;
-        _webTokenSettings = monitor.CurrentValue;
+        _emailSvc = emailSvc;
         _tokenValidationParams = tokenValidationParams;
+        _appSettings = monitor.CurrentValue;
+        _borrowSettings = monitor1.CurrentValue;
     }
 
     public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<LibraryCard> specification, bool tracked = true)
@@ -185,6 +194,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 		    existingEntity.IsAllowBorrowMore = dto.IsAllowBorrowMore;
 		    existingEntity.MaxItemOnceTime = dto.MaxItemOnceTime;
 		    existingEntity.TotalMissedPickUp = dto.TotalMissedPickUp;
+            existingEntity.AllowBorrowMoreReason = dto.AllowBorrowMoreReason;
 
 		    // Process update entity 
 		    await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
@@ -276,97 +286,180 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
 
-    public async Task<IServiceResult> ConfirmRegisterAsync(Guid libraryCardId, string transactionToken)
+    public async Task<IServiceResult> SendRequireToConfirmCardAsync(string userEmail)
     {
         try
         {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
             // Retrieve user information
             // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.LibraryCardId, libraryCardId));
+            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, userEmail));
+            // Apply include
+            userBaseSpec.ApplyInclude(q => q
+                .Include(u => u.LibraryCard)!
+            );
             var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null || userDto.LibraryCardId == null) // Not found user or their library card
+            if (userDto == null) throw new ForbiddenException(); // Not found user 
+            
+            // Try parse card id to Guid type 
+            Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId);
+            // Check exist library card
+            if (validCardId == Guid.Empty)
             {
-                // Forbid
-                throw new ForbiddenException();
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
             }
             
-            // Initialize payment utils
-            var paymentUtils = new PaymentUtils(logger: _logger);
-            // Validate transaction token
-            var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
-                token: transactionToken,
-                tokenValidationParameters: _tokenValidationParams);
-            if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
+            // Retrieve library card information
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(validCardId);
+            if (existingEntity == null)
+            {
+                // Unknown error
+                return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+            }
             
-            // Extract transaction data from token
-            var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
+            // Check whether card has not been rejected
+            if (existingEntity.Status != LibraryCardStatus.Rejected)
+            {
+                // Msg: Cannot process send card reconfirmation when card status is not rejected
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0013,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0013));
+            }
             
-            // Check whether email match (request and payment user is different)
-            if(!Equals(userDto.Email, tokenExtractedData.Email)) throw new ForbiddenException(); // Forbid as email is not match
+            // Update card status to pending
+            existingEntity.Status = LibraryCardStatus.Pending;
             
-            var transCode = tokenExtractedData.TransactionCode; 
-            var transDate = tokenExtractedData.TransactionDate; 
-            // Retrieve transaction
-            // Build spec
-            var transSpec = new BaseSpecification<Transaction>(t => 
-                t.TransactionDate != null && // with specific date
-                t.UserId == userDto.UserId && // who request
-                t.LibraryCardPackageId != null && // payment for specific card package
-                t.TransactionStatus == TransactionStatus.Paid && // must be paid
-                Equals(t.TransactionCode, transCode));  // transaction code
-            // Apply include
-            transSpec.ApplyInclude(q => q.Include(t => t.LibraryCardPackage!));
-            // Retrieve with spec
-            var transactionDto = (await _tranSvc.GetWithSpecAsync(transSpec)).Data as TransactionDto;
-            if (transactionDto == null) throw new ForbiddenException(); // Not found transaction information  
+            // Process update 
+            await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Send card reconfirmation successfully
+                return new ServiceResult(ResultCodeConst.LibraryCard_Success0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0004));
+            }
             
-            // Validate transaction date
-            if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date)) throw new ForbiddenException();
+            // Msg: Failed to send reconfirmation library card
+            return new ServiceResult(ResultCodeConst.LibraryCard_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process send require to confirm card");
+        }
+    }
+    
+    public async Task<IServiceResult> ConfirmCardAsync(Guid libraryCardId)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
 
+            // Build spec
+            var cardSpec = new BaseSpecification<LibraryCard>(c => Equals(c.LibraryCardId, libraryCardId));
+            // Apply including user
+            cardSpec.ApplyInclude(q => q.Include(c => c.Users));
             // Retrieve library card
-            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(
-                Guid.Parse(userDto.LibraryCardId!.ToString()));
-            if(existingEntity == null) throw new ForbiddenException(); // Not found any card match
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(cardSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+            }
+            
+            // Build transaction spec
+            var tranSpec = new BaseSpecification<Transaction>(t => Equals(t.TransactionCode, existingEntity.TransactionCode));
+            // Apply including for specific registered card package
+            tranSpec.ApplyInclude(q => q
+                .Include(t => t.LibraryCardPackage)
+                .Include(t => t.PaymentMethod)
+            );
+            // Retrieve with spec
+            var transactionDto = (await _tranSvc.GetWithSpecAsync(tranSpec)).Data as TransactionDto;
+            if (transactionDto == null)
+            {
+                // Msg: Cannot process confirm card as not found payment information
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0010,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0010));
+            }
+            
+            // Check whether card has been activated yet
+            if (existingEntity.Status != LibraryCardStatus.Pending &&
+                existingEntity.Status != LibraryCardStatus.Rejected)
+            {
+                // Msg: Fail to confirm card as library card has been confirmed
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0011,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0011));
+            }
             
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
-            // Change card status to Active
+            // Change card status to active while processing confirm
             existingEntity.Status = LibraryCardStatus.Active;
-            // Add expiry date
+            // Set expiry date
             existingEntity.ExpiryDate = currentLocalDateTime.AddMonths(
                 // Months defined in specific library card package 
                 transactionDto.LibraryCardPackage!.DurationInMonths);
             
-            // Process update
+            // Process update 
             await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
             // Save DB
             var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
             if (isSaved)
             {
-                // Update successfully
+                if (existingEntity.Users.Any())
+                {
+                    // Send card has been activated email
+                    var isSent = await SendActivatedEmailAsync(
+                        email: existingEntity.Users.First().Email,
+                        cardDto: _mapper.Map<LibraryCardDto>(existingEntity),
+                        transactionDto: transactionDto,
+                        libName: _appSettings.LibraryName,
+                        libContact: _appSettings.LibraryContact);
+                    if (isSent)
+                    {
+                        var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                        // Msg: Update successfully
+                        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + $". {successMsg}");
+                    }
+                }
+                
+                var failMsg = isEng ? ", but fail to send email" : ", nhưng gửi email thông báo thất bại";
+                // Msg: Update successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + failMsg);
             }
 
-            // Fail to update
+            // Msg: Fail to update
             return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
         }
         catch (ForbiddenException)
         {
             throw;
         }
-        catch (UnauthorizedException)
-        {
-            throw new UnauthorizedException("Invalid token or token has expired");
-        }
         catch (Exception ex)
         {
-            _logger.Error(ex, ex.Message);
-            throw new Exception("Error invoke when process confirm register library card");
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke whe process confirm card");
         }
     }
     
@@ -474,6 +567,93 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             throw new Exception("Error invoke when process confirm register library card");
         }
     }
+
+    public async Task<IServiceResult> RejectCardAsync(Guid libraryCardId, string rejectReason)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var cardSpec = new BaseSpecification<LibraryCard>(c => Equals(c.LibraryCardId, libraryCardId));
+            // Apply including user
+            cardSpec.ApplyInclude(q => q.Include(c => c.Users));
+            // Retrieve library card
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(cardSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+            }
+            
+            // Check whether card has been activated yet
+            if (existingEntity.Status != LibraryCardStatus.Pending)
+            {
+                if (existingEntity.Status == LibraryCardStatus.Rejected)
+                {
+                    // Msg: Fail to reject library card as it has been rejected
+                    return new ServiceResult(ResultCodeConst.LibraryCard_Warning0012,
+                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0012));
+                }
+                                
+                // Msg: Cannot update library card status to <0> as <1>
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0009);
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0009,
+                    StringUtils.Format(errMsg, 
+                    isEng ? "rejected" : "từ chối", 
+                    isEng ? "card has been in used" : "thẻ đang được sử dụng"));
+            }
+            
+            // Change card status to rejected 
+            existingEntity.Status = LibraryCardStatus.Rejected;
+            // Add reason
+            existingEntity.RejectReason = rejectReason;
+            
+            // Process update 
+            await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                if (existingEntity.Users.Any())
+                {
+                    // Send card has been rejected email
+                    var isSent = await SendRejectEmailAsync(
+                        email: existingEntity.Users.First().Email,
+                        cardDto: _mapper.Map<LibraryCardDto>(existingEntity),
+                        rejectReason: rejectReason,
+                        libName: _appSettings.LibraryName,
+                        libContact: _appSettings.LibraryContact);
+                    if (isSent)
+                    {
+                        var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                        // Msg: Update successfully
+                        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + $". {successMsg}");
+                    }
+                }
+                
+                var failMsg = isEng ? ", but fail to send email" : ", nhưng gửi email thông báo thất bại";
+                // Msg: Update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + failMsg);
+            }
+            
+            // Msg: Fail to update
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process reject library card");
+        }
+    }
     
     public async Task<IServiceResult> CheckCardExtensionAsync(Guid libraryCardId)
     {
@@ -520,7 +700,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     case LibraryCardStatus.Expired:
                         // Continue to process extend card
                         break;
-                    case LibraryCardStatus.Pending:
+                    case LibraryCardStatus.Pending or LibraryCardStatus.Rejected:
                         return new ServiceResult(ResultCodeConst.LibraryCard_Warning0006,
                             StringUtils.Format(errMsg, isEng 
                                 ? "library card has not activated yet" 
@@ -579,8 +759,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 case LibraryCardStatus.Active:
                     // Continue to check for other information
                     break;
-                case LibraryCardStatus.Pending:
-                    // Your library card is not activated yet. Please make a payment to activate your card
+                case LibraryCardStatus.Pending or LibraryCardStatus.Rejected:
+                    // Library card is not activated yet. Please contact library to activate your card
                     return new ServiceResult(ResultCodeConst.LibraryCard_Warning0001,
                         await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0001));
                 case LibraryCardStatus.Expired:
@@ -588,7 +768,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     if (existingEntity.ExpiryDate != null &&
                         existingEntity.ExpiryDate < currentLocalDateTime)
                     {
-                        // Your library card has expired. Please renew it to continue using library services
+                        // Library card has expired. Please renew it to continue using library services
                         return new ServiceResult(ResultCodeConst.LibraryCard_Warning0002,
                             await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0002));
                     }
@@ -599,7 +779,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         existingEntity.SuspensionEndDate > currentLocalDateTime)
                     {
                         var msg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0003);
-                        // Your library card has been suspended due to a violation or administrative action. Please contact the library for assistance
+                        // Library card has been suspended due to a violation or administrative action. Please contact the library for assistance
                         return new ServiceResult(ResultCodeConst.LibraryCard_Warning0003,
                             StringUtils.Format(msg, existingEntity.SuspensionEndDate.Value.ToString("MM/dd/yyyy")));
                     }
@@ -648,10 +828,10 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
 
-    public async Task<IServiceResult> SuspendCardAsync(Guid libraryCardId, DateTime suspensionEndDate)
+    public async Task<IServiceResult> ExtendBorrowAmountAsync(Guid libraryCardId, int maxItemOnceTime, string reason)
     {
         try
-        {   
+        {
             // Determine current lang context
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
@@ -665,27 +845,128 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
             }
-            else if (existingEntity.Status == LibraryCardStatus.Pending)
+            
+            // Validate card
+            var checkValidRes = await CheckCardValidityAsync(libraryCardId);
+            if (checkValidRes.ResultCode != ResultCodeConst.LibraryCard_Success0001) return checkValidRes;
+
+            if (maxItemOnceTime < _borrowSettings.BorrowAmountOnceTime)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
-                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                    errMsg + (isEng 
-                        ? ", cannot suspend pending library card" 
-                        : ", không thể chuyển trạng thái sang bị cấm vì thẻ chưa hoạt động"));
-            }
-            else if (existingEntity.Status == LibraryCardStatus.Suspended)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
-                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                    errMsg + (isEng 
-                        ? ", library card has already suspended" 
-                        : ", thẻ ở trạng trái đã bị cấm"));
+                // Fail to update. Total borrow amount threshold is not smaller than {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0008); 
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0008,
+                    StringUtils.Format(errMsg, _borrowSettings.BorrowAmountOnceTime.ToString()));
             }
             
+            // Validate suspension end date
+            var customErrs = new Dictionary<string, string[]>();
+            if (reason.Length > 250)
+            {
+                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    key: StringUtils.ToCamelCase(nameof(LibraryCard.SuspensionReason)),
+                    msg: isEng 
+                        ? "Suspension reason cannot exceed than 250 characters" 
+                        : "Nguyên nhân không được quá 250 ký tự");
+            }
+            
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+            
+            // Update extending total borrow amount
+            existingEntity.IsAllowBorrowMore = true;
+            existingEntity.MaxItemOnceTime = maxItemOnceTime;
+            existingEntity.AllowBorrowMoreReason = reason;
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            
+            // Fail to update
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process extend borrow amount for library card");
+        }
+    }
+    
+    public async Task<IServiceResult> SuspendCardAsync(Guid libraryCardId, DateTime suspensionEndDate, string reason)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+            // Validate suspension end date
+            var customErrs = new Dictionary<string, string[]>();
+            // Validate suspension errs
+            if (suspensionEndDate <= currentLocalDateTime)
+            {
+                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    key: StringUtils.ToCamelCase(nameof(LibraryCard.SuspensionEndDate)),
+                    msg: isEng ? "Suspension end date must be in future" : "Ngày kết thúc lớn hơn hiện tại");
+            }
+            if (reason.Length > 250)
+            {
+                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    key: StringUtils.ToCamelCase(nameof(LibraryCard.SuspensionReason)),
+                    msg: isEng 
+                        ? "Suspension reason cannot exceed than 250 characters" 
+                        : "Nguyên nhân không được quá 250 ký tự");
+            }
+
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+
+            // Check exist library card
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(libraryCardId);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+            }
+            if (existingEntity.Status == LibraryCardStatus.Pending ||
+                existingEntity.Status == LibraryCardStatus.Rejected)
+            {
+                // Cannot update library card status to {0} as {1}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0009);
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0009,
+                    StringUtils.Format(errMsg, isEng ? "suspended" : "bị cấm",
+                        isEng ? "card has not activated yet" : "thẻ thư viện chưa được kích hoạt"));
+            }
+            if (existingEntity.Status == LibraryCardStatus.Suspended)
+            {
+                // Cannot update library card status to {0} as {1}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0009);
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0009,
+                    StringUtils.Format(errMsg, isEng ? "suspended" : "bị cấm",
+                        isEng ? "this card has already suspended" : "thẻ ở trạng trái đã bị cấm"));
+            }
+
             // Update props
             existingEntity.Status = LibraryCardStatus.Suspended;
             existingEntity.SuspensionEndDate = suspensionEndDate;
-            
+            existingEntity.SuspensionReason = reason;
+
             // Process update entity
             await _unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(existingEntity);
             // Save DB
@@ -696,10 +977,14 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 return new ServiceResult(ResultCodeConst.SYS_Success0003,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
             }
-            
+
             // Fail to update
             return new ServiceResult(ResultCodeConst.SYS_Fail0003,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -726,11 +1011,11 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
             }else if (existingEntity.Status != LibraryCardStatus.Suspended)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003);
-                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                    StringUtils.Format(errMsg, isEng 
-                        ? ", library card has not suspended yet" 
-                        : ", thẻ đang không ở trạng trái bị cấm"));
+                // Cannot update library card status to {0} as {1}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0009);
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0009,
+                    StringUtils.Format(errMsg, isEng ? "active" : "hoạt động",
+                        isEng ? "this card has not suspended yet" : "thẻ không ở trạng trái đã bị cấm"));
             }
             
             // Current local datetime
@@ -845,5 +1130,303 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             _logger.Error(ex.Message);
             throw new Exception("Error invoke while process archiving library card");
         }
+    }
+
+    public async Task<IServiceResult> DeleteCardWithoutSaveChangesAsync(Guid libraryCardId)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryCard>(u => u.LibraryCardId == libraryCardId);
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);	
+            }
+				
+            // Do not allow to remove card when status is not as pending or rejected, and cardholder is not created from employee
+            if (existingEntity.Status != LibraryCardStatus.Pending && 
+                existingEntity.Status != LibraryCardStatus.Rejected &&
+                existingEntity.Users.Any(u => !u.IsEmployeeCreated))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);	
+            }   
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryCard, Guid>().DeleteAsync(existingEntity.LibraryCardId);
+				
+            // Mark as delete success
+            return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when delete card without save changes");
+        }
+    }
+    
+    public async Task<IServiceResult> DeleteRangeCardWithoutSaveChangesAsync(Guid[] libraryCardIds)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryCard>(u => libraryCardIds.Contains(u.LibraryCardId));
+            // Retrieve with spec
+            var entities = await _unitOfWork.Repository<LibraryCard, Guid>().GetAllWithSpecAsync(baseSpec);
+            // Convert to list
+            var cardList = entities.ToList();
+
+            foreach (var card in cardList)
+            {
+                // Do not allow to remove card when status is not as pending or rejected, cardholder is not created from employee
+                if (card.Status != LibraryCardStatus.Pending && 
+                    card.Status != LibraryCardStatus.Rejected && 
+                    card.Users.Any(u => !u.IsEmployeeCreated))
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);	
+                }
+            }   
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryCard, Guid>().DeleteRangeAsync(
+                cardList.Select(c => c.LibraryCardId).ToArray());
+				
+            // Mark as delete success
+            return new ServiceResult(ResultCodeConst.SYS_Success0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when delete card without save changes");
+        }
+    }
+
+    private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
+        TransactionDto transactionDto, string libName, string libContact)
+    {
+        try
+        {
+            // Email subject 
+            var subject = "[ELIBRARY] Thẻ Thư Viện Đã Kích Hoạt";
+                            
+            // Progress send confirmation email
+            var emailMessageDto = new EmailMessageDto( // Define email message
+                // Define Recipient
+                to: new List<string>() { email },
+                // Define subject
+                subject: subject,
+                // Add email body content
+                content: GetLibraryCardActivatedEmailBody(
+                    cardDto: cardDto,
+                    transactionDto: transactionDto,
+                    libName: libName,
+                    libContact:libContact)
+            );
+                            
+            // Process send email
+            return await _emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process send library card activated email");
+        }
+    }
+
+    private async Task<bool> SendRejectEmailAsync(string email, LibraryCardDto cardDto,
+        string rejectReason, string libName, string libContact)
+    {
+        try
+        {
+            // Email subject 
+            var subject = "[ELIBRARY] Thẻ Thư Viện Bị Từ Chối";
+                            
+            // Progress send confirmation email
+            var emailMessageDto = new EmailMessageDto( // Define email message
+                // Define Recipient
+                to: new List<string>() { email },
+                // Define subject
+                subject: subject,
+                // Add email body content
+                content: GetLibraryCardRejectEmailBody(
+                    cardDto: cardDto,
+                    rejectReason: rejectReason,
+                    libName: libName,
+                    libContact:libContact)
+            );
+                            
+            // Process send email
+            return await _emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process send library card reject email");
+        }
+    }
+    
+    private string GetLibraryCardActivatedEmailBody(
+        LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
+    {
+        var culture = new System.Globalization.CultureInfo("vi-VN");
+        
+        return $$"""
+                 <!DOCTYPE html>
+                 <html>
+                 <head>
+                     <meta charset="UTF-8">
+                     <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
+                     <style>
+                         body {
+                             font-family: Arial, sans-serif;
+                             line-height: 1.6;
+                             color: #333;
+                         }
+                         .header {
+                             font-size: 18px;
+                             color: #2c3e50;
+                             font-weight: bold;
+                         }
+                         .details {
+                             margin: 15px 0;
+                             padding: 10px;
+                             background-color: #f9f9f9;
+                             border-left: 4px solid #27ae60;
+                         }
+                         .details li {
+                             margin: 5px 0;
+                         }
+                         .barcode {
+                             color: #2980b9;
+                             font-weight: bold;
+                         }
+                         .expiry-date {
+                             color: #27ae60;
+                             font-weight: bold;
+                         }
+                         .status-label {
+                             color: #e74c3c;
+                             font-weight: bold;
+                         }
+                         .status-text {
+                             color: #f39c12;
+                             font-weight: bold;
+                         }
+                         .footer {
+                             margin-top: 20px;
+                             font-size: 14px;
+                             color: #7f8c8d;
+                         }
+                     </style>
+                 </head>
+                 <body>
+                     <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
+                     <p>Xin chào {{cardDto.FullName}},</p>
+                     <p>Thẻ thư viện của bạn đã được kích hoạt thành công. Bạn có thể sử dụng tất cả các dịch vụ của thư viện mà không bị gián đoạn.</p>
+                     
+                     <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
+                     <div class="details">
+                         <ul>
+                             <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+                             <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
+                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+                         </ul>
+                     </div>
+                     
+                     <p><strong>Chi Tiết Giao Dịch:</strong></p>
+                     <div class="details">
+                         <ul>
+                             <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+                             <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
+                             <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+                             <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+                             <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+                         </ul>
+                     </div>
+                     
+                     <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
+                     <div class="details">
+                         <ul>
+                             <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
+                             <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
+                             <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
+                             <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
+                         </ul>
+                     </div>
+                     
+                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+                     
+                     <p><strong>Trân trọng,</strong></p>
+                     <p>{{libName}}</p>
+                 </body>
+                 </html>
+                 """;
+    }
+
+    private string GetLibraryCardRejectEmailBody(
+        LibraryCardDto cardDto, string rejectReason, string libName, string libContact)
+    {
+        return $$"""
+                 <!DOCTYPE html>
+                 <html>
+                 <head>
+                     <meta charset="UTF-8">
+                     <title>Thông Báo Từ Chối Đăng Ký Thẻ Thư Viện</title>
+                     <style>
+                         body {
+                             font-family: Arial, sans-serif;
+                             line-height: 1.6;
+                             color: #333;
+                         }
+                         .header {
+                             font-size: 18px;
+                             color: #c0392b;
+                             font-weight: bold;
+                         }
+                         .details {
+                             margin: 15px 0;
+                             padding: 10px;
+                             background-color: #f9f9f9;
+                             border-left: 4px solid #e74c3c;
+                         }
+                         .details li {
+                             margin: 5px 0;
+                         }
+                         .reason {
+                             color: #e74c3c;
+                             font-weight: bold;
+                         }
+                         .footer {
+                             margin-top: 20px;
+                             font-size: 14px;
+                             color: #7f8c8d;
+                         }
+                     </style>
+                 </head>
+                 <body>
+                     <p class="header">Thông Báo Từ Chối Đăng Ký Thẻ Thư Viện</p>
+                     <p>Xin chào {{cardDto.FullName}},</p>
+                     <p>Chúng tôi rất tiếc thông báo rằng đơn đăng ký thẻ thư viện của bạn không thể được chấp nhận vào thời điểm này.</p>
+                     
+                     <p><strong>Lý Do Từ Chối:</strong></p>
+                     <div class="details">
+                         <p class="reason">{{rejectReason}}</p>
+                     </div>
+                     
+                     <p>Vui lòng sửa chữa thông tin và gửi lại yêu cầu xác thực thẻ và đợi thư viện phản hồi<p>
+                     
+                     <p>Nếu bạn cần thêm thông tin hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+                     
+                     <p><strong>Trân trọng,</strong></p>
+                     <p>{{libName}}</p>
+                 </body>
+                 </html>
+                 """;
     }
 }

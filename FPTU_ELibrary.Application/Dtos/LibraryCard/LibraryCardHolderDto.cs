@@ -28,6 +28,9 @@ public class LibraryCardHolderDto
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }
     
+    // Check whether user is created from employee or not
+    public bool IsEmployeeCreated { get; set; }
+    
     // Creation and modify date
     public DateTime CreateDate { get; set; }
     public DateTime? ModifiedDate { get; set; }
@@ -71,6 +74,7 @@ public static class LibraryCardholderDtoExtensions
             Dob = userDto.Dob,
             IsActive = userDto.IsActive,
             IsDeleted = userDto.IsDeleted,
+            IsEmployeeCreated = userDto.IsEmployeeCreated,
             CreateDate = userDto.CreateDate,
             ModifiedDate = userDto.ModifiedDate,
             ModifiedBy = userDto.ModifiedBy,

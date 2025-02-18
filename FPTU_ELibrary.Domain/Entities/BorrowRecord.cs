@@ -19,11 +19,20 @@ public class BorrowRecord
     public DateTime? ReturnDate { get; set; }
     public BorrowRecordStatus Status { get; set; } 
     
+    // Borrow type
+    public BorrowType BorrowType { get; set; }
+    
     // True if borrowed via kiosk
     public bool SelfServiceBorrow { get; set; } 
 
+    // True if return via kiosk 
+    public bool? SelfServiceReturn { get; set; }
+    
     // Total extension time  
     public int TotalExtension { get; set; }
+    
+    // Total record item
+    public int TotalRecordItem { get; set; }
 
     // Borrow record processed by which employee
     public Guid? ProcessedBy { get; set; }

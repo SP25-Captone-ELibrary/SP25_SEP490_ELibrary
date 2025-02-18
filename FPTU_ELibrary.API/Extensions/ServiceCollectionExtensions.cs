@@ -82,14 +82,17 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
 			// Configure AzureSettings
 			services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-			//Configure OCRSettings
+			// Configure OCRSettings
 			services.Configure<AISettings>(configuration.GetSection("AISettings"));
-			//Configure CustomVisionSettings
+			// Configure CustomVisionSettings
 			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-			//Configure DetectSettings
+			// Configure DetectSettings
 			services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-			//Configure AzureSpeechSettings
+			// Configure AzureSpeechSettings
 			services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
+			// Configure FaceDetectionSettings
+			services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
+			
 			
 			#region Development stage
 

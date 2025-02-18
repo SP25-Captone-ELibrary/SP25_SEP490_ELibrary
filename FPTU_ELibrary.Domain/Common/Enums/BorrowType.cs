@@ -3,12 +3,12 @@ namespace FPTU_ELibrary.Domain.Common.Enums;
 public enum BorrowType
 {
     /// <summary>
-    /// The item is available for borrowing
+    /// Only for reading inside the library
     /// </summary>
-    Available,
+    InLibrary, 
     
     /// <summary>
-    /// The item must be reserved for future borrowing
+    /// Borrowing away from the library 
     /// </summary>
-    Reserved  
+    TakeHome   
 }

@@ -110,7 +110,10 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     ReturnDate = br.ReturnDate,
                     Status = br.Status,
                     SelfServiceBorrow = br.SelfServiceBorrow,
+                    SelfServiceReturn = br.SelfServiceReturn,
+                    BorrowType = br.BorrowType,
                     TotalExtension = br.TotalExtension,
+                    TotalRecordItem = br.TotalRecordItem,
                     ProcessedBy = br.ProcessedBy,
                     ProcessedByNavigation = br.ProcessedByNavigation,
                     LibraryCard = br.LibraryCard,
@@ -126,7 +129,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                             Description = br.BorrowRequest.Description,
                             CancelledAt = br.BorrowRequest.CancelledAt,
                             CancellationReason = br.BorrowRequest.CancellationReason,
-                            IsReminderSent = br.BorrowRequest.IsReminderSent
+                            IsReminderSent = br.BorrowRequest.IsReminderSent,
+                            TotalRequestItem = br.BorrowRequest.TotalRequestItem
                         }
                         : null
 			    });
@@ -219,10 +223,13 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     ReturnDate = br.ReturnDate,
                     Status = br.Status,
                     SelfServiceBorrow = br.SelfServiceBorrow,
+                    SelfServiceReturn = br.SelfServiceReturn,
                     TotalExtension = br.TotalExtension,
+                    TotalRecordItem = br.TotalRecordItem,
                     ProcessedBy = br.ProcessedBy,
                     ProcessedByNavigation = br.ProcessedByNavigation,
                     LibraryCard = br.LibraryCard,
+                    BorrowType = br.BorrowType,
                     Fines = br.Fines,
                     BorrowRequest = br.BorrowRequest != null
                         ? new BorrowRequest()
@@ -235,7 +242,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                             Description = br.BorrowRequest.Description,
                             CancelledAt = br.BorrowRequest.CancelledAt,
                             CancellationReason = br.BorrowRequest.CancellationReason,
-                            IsReminderSent = br.BorrowRequest.IsReminderSent
+                            IsReminderSent = br.BorrowRequest.IsReminderSent,
+                            TotalRequestItem = br.BorrowRequest.TotalRequestItem
                         }
                         : null,
                     BorrowRecordDetails = br.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
@@ -306,7 +314,137 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	    }
     }
 
-    public async Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize)
+    public async Task<IServiceResult> GetCardHolderBorrowRecordByIdAsync(Guid userId, int borrowRecordId)
+    {
+	    try
+	    {
+		    // Determine current system lang
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+            
+		    // Retrieve user information
+		    // Build spec
+		    var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
+		    // Apply include
+		    userBaseSpec.ApplyInclude(q => q
+			    .Include(u => u.LibraryCard)!
+		    );
+		    var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+		    if (userDto == null || userDto.LibraryCardId == null) // Not found user
+		    {
+			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			    // Data not found or empty
+			    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+				    StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+		    }
+		    
+		    // Build spec
+		    var baseSpec = new BaseSpecification<BorrowRecord>(br => 
+			    br.LibraryCardId == userDto.LibraryCardId && br.BorrowRecordId == borrowRecordId);
+		    // Retrieve data with spec
+            var existingEntity = await _unitOfWork.Repository<BorrowRecord, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: br => new BorrowRecord()
+                {
+                    BorrowRecordId = br.BorrowRecordId,
+                    BorrowRequestId = br.BorrowRequestId,
+                    LibraryCardId = br.LibraryCardId,
+                    BorrowDate = br.BorrowDate,
+                    DueDate = br.DueDate,
+                    ReturnDate = br.ReturnDate,
+                    Status = br.Status,
+                    SelfServiceBorrow = br.SelfServiceBorrow,
+                    SelfServiceReturn = br.SelfServiceReturn,
+                    BorrowType = br.BorrowType,
+                    TotalExtension = br.TotalExtension,
+                    TotalRecordItem = br.TotalRecordItem,
+                    ProcessedBy = br.ProcessedBy,
+                    ProcessedByNavigation = br.ProcessedByNavigation,
+                    LibraryCard = br.LibraryCard,
+                    Fines = br.Fines,
+                    BorrowRequest = br.BorrowRequest != null
+                        ? new BorrowRequest()
+                        {
+                            BorrowRequestId = br.BorrowRequest.BorrowRequestId,
+                            LibraryCardId = br.BorrowRequest.LibraryCardId,
+                            RequestDate = br.BorrowRequest.RequestDate,
+                            ExpirationDate = br.BorrowRequest.ExpirationDate,
+                            Status = br.BorrowRequest.Status,
+                            Description = br.BorrowRequest.Description,
+                            CancelledAt = br.BorrowRequest.CancelledAt,
+                            CancellationReason = br.BorrowRequest.CancellationReason,
+                            IsReminderSent = br.BorrowRequest.IsReminderSent,
+                            TotalRequestItem = br.BorrowRequest.TotalRequestItem
+                        }
+                        : null,
+                    BorrowRecordDetails = br.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
+                    {
+                        BorrowRecordDetailId = brd.BorrowRecordDetailId,
+                        BorrowRecordId = brd.BorrowRecordId,
+                        LibraryItemInstanceId = brd.LibraryItemInstanceId,
+                        ImagePublicIds = brd.ImagePublicIds,
+                        ConditionId = brd.ConditionId,
+                        ReturnConditionId = brd.ReturnConditionId,
+                        ConditionCheckDate = brd.ConditionCheckDate,
+                        Condition = brd.Condition,
+                        LibraryItemInstance = new LibraryItemInstance()
+                        {
+                            LibraryItemInstanceId = brd.LibraryItemInstanceId,
+                            LibraryItemId = brd.LibraryItemInstance.LibraryItemId,
+                            Barcode = brd.LibraryItemInstance.Barcode,
+                            Status = brd.LibraryItemInstance.Status,
+                            CreatedAt = brd.LibraryItemInstance.CreatedAt,
+                            UpdatedAt = brd.LibraryItemInstance.UpdatedAt,
+                            CreatedBy = brd.LibraryItemInstance.CreatedBy,
+                            UpdatedBy = brd.LibraryItemInstance.UpdatedBy,
+                            IsDeleted = brd.LibraryItemInstance.IsDeleted,
+                            LibraryItem = brd.LibraryItemInstance.LibraryItem
+                        }
+                    }).ToList()
+                });
+            if (existingEntity != null)
+            {
+	            // Get all conditions 
+	            var conditionDtos = (await _conditionSvc.GetAllAsync()).Data as List<LibraryItemConditionDto>;
+	            // Convert to dto
+	            var borrowRecDto = _mapper.Map<BorrowRecordDto>(existingEntity);
+	            
+	            // Iterate each borrow record
+	            foreach (var borrowDetail in borrowRecDto.BorrowRecordDetails)
+	            {
+		            var imageList = new List<string?>();
+		            var imagePublicIds = borrowDetail.ImagePublicIds?.Split(",").ToList();
+		            if (imagePublicIds != null && imagePublicIds.Any())
+		            {
+			            foreach (var publicId in imagePublicIds)
+			            {
+				            // Try to get complete image URL from public ID
+				            var url = (await _cloudSvc.BuildMediaUrlAsync(publicId, FileType.Image)).Data as string;
+				            imageList.Add(url);
+			            }
+                            
+			            borrowDetail.ImagePublicIds = String.Join(",", imageList);
+		            }
+	            }
+	           
+	            // Get data successfully
+	            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+		            borrowRecDto.ToCardHolderBorrowRecordDto(conditions: conditionDtos));
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+	            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get library card holder's borrow record by id");
+	    }
+    }
+    
+    public async Task<IServiceResult> GetAllCardHolderBorrowRecordByUserIdAsync(Guid userId, int pageIndex, int pageSize)
     {
         try
         {
@@ -359,7 +497,10 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     ReturnDate = br.ReturnDate,
                     Status = br.Status,
                     SelfServiceBorrow = br.SelfServiceBorrow,
+                    SelfServiceReturn = br.SelfServiceReturn,
+                    BorrowType = br.BorrowType,
                     TotalExtension = br.TotalExtension,
+                    TotalRecordItem = br.TotalRecordItem,
                     ProcessedBy = br.ProcessedBy,
                     ProcessedByNavigation = br.ProcessedByNavigation,
                     LibraryCard = br.LibraryCard,
@@ -375,73 +516,19 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                             Description = br.BorrowRequest.Description,
                             CancelledAt = br.BorrowRequest.CancelledAt,
                             CancellationReason = br.BorrowRequest.CancellationReason,
-                            IsReminderSent = br.BorrowRequest.IsReminderSent
+                            IsReminderSent = br.BorrowRequest.IsReminderSent,
+                            TotalRequestItem = br.BorrowRequest.TotalRequestItem
                         }
-                        : null,
-                    BorrowRecordDetails = br.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
-                    {
-                        BorrowRecordDetailId = brd.BorrowRecordDetailId,
-                        BorrowRecordId = brd.BorrowRecordId,
-                        LibraryItemInstanceId = brd.LibraryItemInstanceId,
-                        ImagePublicIds = brd.ImagePublicIds,
-                        ConditionId = brd.ConditionId,
-                        ReturnConditionId = brd.ReturnConditionId,
-                        ConditionCheckDate = brd.ConditionCheckDate,
-                        Condition = brd.Condition,
-                        LibraryItemInstance = new LibraryItemInstance()
-                        {
-                            LibraryItemInstanceId = brd.LibraryItemInstanceId,
-                            LibraryItemId = brd.LibraryItemInstance.LibraryItemId,
-                            Barcode = brd.LibraryItemInstance.Barcode,
-                            Status = brd.LibraryItemInstance.Status,
-                            CreatedAt = brd.LibraryItemInstance.CreatedAt,
-                            UpdatedAt = brd.LibraryItemInstance.UpdatedAt,
-                            CreatedBy = brd.LibraryItemInstance.CreatedBy,
-                            UpdatedBy = brd.LibraryItemInstance.UpdatedBy,
-                            IsDeleted = brd.LibraryItemInstance.IsDeleted,
-                            LibraryItem = brd.LibraryItemInstance.LibraryItem
-                        }
-                    }).ToList()
+                        : null
                 });
             if (entities.Any())
             {
                 // Convert to dto collection
                 var recDtos = _mapper.Map<List<BorrowRecordDto>>(entities);
                 
-                // Get all conditions 
-                var conditionDtos = (await _conditionSvc.GetAllAsync()).Data as List<LibraryItemConditionDto>;
-                
-                // Initialize list of LibraryCardHolderBorrowRecordDto
-                var cardHolderBorrowRecordDto = new List<LibraryCardHolderBorrowRecordDto>();
-                // Iterate each borrow record
-                foreach (var borrowRec in recDtos)
-                {
-                    foreach (var borrowDetail in borrowRec.BorrowRecordDetails)
-                    {
-                        var imageList = new List<string?>();
-                        var imagePublicIds = borrowDetail.ImagePublicIds?.Split(",").ToList();
-                        if (imagePublicIds != null && imagePublicIds.Any())
-                        {
-                            foreach (var publicId in imagePublicIds)
-                            {
-                                // Try to get complete image URL from public ID
-                                var url = (await _cloudSvc.BuildMediaUrlAsync(publicId, FileType.Image)).Data as string;
-                                imageList.Add(url);
-                            }
-                            
-                            borrowDetail.ImagePublicIds = String.Join(",", imageList);
-                        }
-                    }
-                    
-                    
-                    // Add borrow record to cardholder borrow record
-                    cardHolderBorrowRecordDto.Add(borrowRec.ToCardHolderBorrowRecordDto(
-                        conditions: conditionDtos));
-                }
-                
                 // Pagination result 
                 var paginationResultDto = new PaginatedResultDto<LibraryCardHolderBorrowRecordDto>(
-                    cardHolderBorrowRecordDto, pageIndex, pageSize, totalPage, totalRecWithSpec);
+	                recDtos.Select(rec => rec.ToCardHolderBorrowRecordDto(conditions: new())), pageIndex, pageSize, totalPage, totalRecWithSpec);
 
                 // Response with pagination 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
@@ -457,163 +544,6 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke while process get all borrow record by user id");
-        }
-    }
-    
-    public async Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize)
-    {
-        try
-        {
-            // Retrieve user information
-            // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) // Not found user
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    new List<BorrowRecordDto>());
-            }
-            
-            // Build spec
-            var baseSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == userDto.LibraryCardId);  
-            
-            // Add default order by
-            baseSpec.AddOrderByDescending(br => br.BorrowDate);
-            
-            // Count total borrow request
-            var totalRecWithSpec = await _unitOfWork.Repository<BorrowRecord, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalRecWithSpec / pageSize);
-
-            // Set pagination to specification after count total borrow record
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                pageIndex = 1; // Set default to first page
-            }
-
-            // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
-            
-            // Retrieve data with spec
-            var entities = await _unitOfWork.Repository<BorrowRecord, int>()
-                .GetAllWithSpecAndSelectorAsync(baseSpec, selector: br => new BorrowRecord()
-                {
-                    BorrowRecordId = br.BorrowRecordId,
-                    BorrowRequestId = br.BorrowRequestId,
-                    LibraryCardId = br.LibraryCardId,
-                    BorrowDate = br.BorrowDate,
-                    DueDate = br.DueDate,
-                    ReturnDate = br.ReturnDate,
-                    Status = br.Status,
-                    SelfServiceBorrow = br.SelfServiceBorrow,
-                    TotalExtension = br.TotalExtension,
-                    ProcessedBy = br.ProcessedBy,
-                    ProcessedByNavigation = br.ProcessedByNavigation,
-                    LibraryCard = br.LibraryCard,
-                    Fines = br.Fines,
-                    BorrowRequest = br.BorrowRequest != null
-                        ? new BorrowRequest()
-                        {
-                            BorrowRequestId = br.BorrowRequest.BorrowRequestId,
-                            LibraryCardId = br.BorrowRequest.LibraryCardId,
-                            RequestDate = br.BorrowRequest.RequestDate,
-                            ExpirationDate = br.BorrowRequest.ExpirationDate,
-                            Status = br.BorrowRequest.Status,
-                            Description = br.BorrowRequest.Description,
-                            CancelledAt = br.BorrowRequest.CancelledAt,
-                            CancellationReason = br.BorrowRequest.CancellationReason,
-                            IsReminderSent = br.BorrowRequest.IsReminderSent
-                        }
-                        : null,
-                    BorrowRecordDetails = br.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
-                    {
-                        BorrowRecordDetailId = brd.BorrowRecordDetailId,
-                        BorrowRecordId = brd.BorrowRecordId,
-                        LibraryItemInstanceId = brd.LibraryItemInstanceId,
-                        ImagePublicIds = brd.ImagePublicIds,
-                        ConditionId = brd.ConditionId,
-                        ReturnConditionId = brd.ReturnConditionId,
-                        ConditionCheckDate = brd.ConditionCheckDate,
-                        Condition = brd.Condition,
-                        LibraryItemInstance = new LibraryItemInstance()
-                        {
-                            LibraryItemInstanceId = brd.LibraryItemInstance.LibraryItemInstanceId,
-                            LibraryItemId = brd.LibraryItemInstance.LibraryItemId,
-                            Barcode = brd.LibraryItemInstance.Barcode,
-                            Status = brd.LibraryItemInstance.Status,
-                            CreatedAt = brd.LibraryItemInstance.CreatedAt,
-                            UpdatedAt = brd.LibraryItemInstance.UpdatedAt,
-                            CreatedBy = brd.LibraryItemInstance.CreatedBy,
-                            UpdatedBy = brd.LibraryItemInstance.UpdatedBy,
-                            IsDeleted = brd.LibraryItemInstance.IsDeleted,
-                            LibraryItem = brd.LibraryItemInstance.LibraryItem
-                        }
-                    }).ToList()
-                });
-            if (entities.Any())
-            {
-                // Convert to dto collection
-                var recDtos = _mapper.Map<List<BorrowRecordDto>>(entities);
-                
-                // Get all conditions 
-                var conditionDtos = (await _conditionSvc.GetAllAsync()).Data as List<LibraryItemConditionDto>;
-                
-                // Initialize list of LibraryCardHolderBorrowRecordDto
-                var cardHolderBorrowRecordDto = new List<LibraryCardHolderBorrowRecordDto>();
-                // Iterate each borrow record
-                foreach (var borrowRec in recDtos)
-                {
-                    foreach (var borrowDetail in borrowRec.BorrowRecordDetails)
-                    {
-                        var imageList = new List<string?>();
-                        var imagePublicIds = borrowDetail.ImagePublicIds?.Split(",").ToList();
-                        if (imagePublicIds != null && imagePublicIds.Any())
-                        {
-                            foreach (var publicId in imagePublicIds)
-                            {
-                                // Try to get complete image URL from public ID
-                                var url = (await _cloudSvc.BuildMediaUrlAsync(publicId, FileType.Image)).Data as string;
-                                imageList.Add(url);
-                            }
-                            
-                            borrowDetail.ImagePublicIds = String.Join(",", imageList);
-                        }
-                    }
-                    
-                    // Add borrow record to cardholder borrow record
-                    cardHolderBorrowRecordDto.Add(borrowRec.ToCardHolderBorrowRecordDto(
-                        conditions: conditionDtos));
-                }
-                
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderBorrowRecordDto>(
-                    sources: cardHolderBorrowRecordDto,
-                    pageIndex: pageIndex,
-                    pageSize: pageSize,
-                    totalPage: totalPage,
-                    totalActualItem: totalRecWithSpec);
-
-                // Response with pagination 
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-            
-            // Not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderBorrowRecordDto>());
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke while process get all borrow record by email");
         }
     }
     
@@ -913,8 +843,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			dto.DueDate = currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
 			dto.Status = BorrowRecordStatus.Borrowing;
 			dto.SelfServiceBorrow = false;
-			dto.TotalExtension = 0;
 			dto.ProcessedBy = employeeDto.EmployeeId;
+			dto.TotalRecordItem = dto.BorrowRecordDetails.Count;
 			
 			// Process add borrow record
 			await _unitOfWork.Repository<BorrowRecord, int>().AddAsync(_mapper.Map<BorrowRecord>(dto));
@@ -1167,13 +1097,21 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 
 			// Set default values for borrow record
 			dto.BorrowDate = currentLocalDateTime; // Current date
-			dto.DueDate =
-				currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
 			dto.Status = BorrowRecordStatus.Borrowing;
 			dto.SelfServiceBorrow = false;
-			dto.TotalExtension = 0;
 			dto.ProcessedBy = employeeDto.EmployeeId;
-
+			dto.TotalRecordItem = dto.BorrowRecordDetails.Count;
+			
+			// Set due date based on borrow type
+			if (dto.BorrowType == BorrowType.TakeHome)
+			{
+				dto.DueDate =
+					currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
+			}else if (dto.BorrowType == BorrowType.InLibrary)
+			{
+				// Default already set in request body
+			}
+			
 			// Process add borrow record
 			await _unitOfWork.Repository<BorrowRecord, int>().AddAsync(_mapper.Map<BorrowRecord>(dto));
 			// Update range library item status
@@ -1407,11 +1345,19 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			
 			// Set default values for borrow record
 			dto.BorrowDate = currentLocalDateTime; // Current date
-			dto.DueDate =
-				currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
 			dto.Status = BorrowRecordStatus.Borrowing;
 			dto.SelfServiceBorrow = true;
-			dto.TotalExtension = 0;
+			dto.TotalRecordItem = dto.BorrowRecordDetails.Count;
+			
+			// Set due date based on borrow type
+			if (dto.BorrowType == BorrowType.TakeHome)
+			{
+				dto.DueDate =
+					currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
+			}else if (dto.BorrowType == BorrowType.InLibrary)
+			{
+				// Default already set in request body
+			}
 			
 			// Process add borrow record
 			await _unitOfWork.Repository<BorrowRecord, int>().AddAsync(_mapper.Map<BorrowRecord>(dto));

@@ -47,6 +47,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAIClassificationService, AIClassificationService>();
 			services.AddScoped<IAIDetectionService, AIDetectionService>();
 			services.AddScoped<IVoiceService, VoiceService>(); 
+			services.AddScoped<IFaceDetectionService, FaceDetectionService>(); 
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
@@ -84,6 +85,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IUserService<UserDto>, UserService>();
+            services.AddScoped<IPaymentMethodService<PaymentMethodDto>, PaymentMethodService>();
             services.AddScoped<IInvoiceService<InvoiceDto>, InvoiceService>();
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services.AddScoped<IWarehouseTrackingService<WarehouseTrackingDto>, WarehouseTrackingService>();

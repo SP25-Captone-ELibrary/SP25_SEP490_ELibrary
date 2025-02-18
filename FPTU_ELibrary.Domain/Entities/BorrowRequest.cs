@@ -24,6 +24,9 @@ public class BorrowRequest
     
     // Remind user before expiration (via email or system notification)
     public bool IsReminderSent { get; set; }
+
+    // Count total request item
+    public int TotalRequestItem { get; set; }
     
     // Mapping entities
     public LibraryCard LibraryCard { get; set; } = null!;

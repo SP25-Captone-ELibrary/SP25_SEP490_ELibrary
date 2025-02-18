@@ -24,4 +24,7 @@ public class UpdateWarehouseTrackingDetailRequest
     
     // For specific item category
     public int CategoryId { get; set; }
+
+    // Item condition
+    public int ConditionId { get; set; }
 }

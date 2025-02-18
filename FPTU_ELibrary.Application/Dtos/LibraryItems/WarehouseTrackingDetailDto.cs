@@ -36,6 +36,12 @@ public class WarehouseTrackingDetailDto
     // Condition
     public int ConditionId { get; set; }
     
+    // Creation, update datetime 
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
+    
     // Navigation properties
     public LibraryItemDto? LibraryItem { get; set; }
     public WarehouseTrackingDto WarehouseTracking { get; set; } = null!;

@@ -210,6 +210,7 @@ public static class CsvUtils
     public static (List<T> Records, Dictionary<int, string[]> Errors) ReadCsvOrExcelByHeaderIndexWithErrors<T>(
         IFormFile file,
         CsvConfiguration config,
+        ExcelHeaderProps props,
         string? encodingType,
         SystemLanguage? systemLang = SystemLanguage.English)
         where T : class, new()
@@ -283,10 +284,11 @@ public static class CsvUtils
                 var rows = worksheet.Dimension.Rows;
                 var cols = worksheet.Dimension.Columns;
 
-                var headers = worksheet.Cells[1, 1, 1, cols].Select(cell => cell.Text).ToArray();
+                // var headers = worksheet.Cells[1, 1, 1, cols].Select(cell => cell.Text).ToArray();
+                var headers = worksheet.Cells[props.FromRow, props.FromCol, props.ToRow, cols].Select(cell => cell.Text).ToArray();
                 var headerIndexToProperty = MapHeadersToProperties<T>(headers);
 
-                for (int rowIndex = 2; rowIndex <= rows; rowIndex++)
+                for (int rowIndex = props.StartRowIndex; rowIndex <= rows; rowIndex++)
                 {
                     var record = new T();
                     
@@ -554,4 +556,12 @@ public static class CsvUtils
                 : $"Không thể chuyển đổi giá trị '{value}' sang kiểu {property.PropertyType.Name}");
         }
     }
+}
+
+public class ExcelHeaderProps
+{
+    public int FromRow { get; set; }
+    public int FromCol { get; set; }
+    public int ToRow { get; set; }
+    public int StartRowIndex { get; set; }
 }

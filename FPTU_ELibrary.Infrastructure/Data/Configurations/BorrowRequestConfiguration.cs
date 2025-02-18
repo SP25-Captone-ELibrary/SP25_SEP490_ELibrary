@@ -100,6 +100,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("nvarchar(500)")
                 .HasColumnName("cancellation_reason");
             #endregion
+
+            #region Update at: 14/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.TotalRequestItem)
+                .HasDefaultValue(0)
+                .HasColumnName("total_request_item");
+            #endregion
         }
 	}
 }

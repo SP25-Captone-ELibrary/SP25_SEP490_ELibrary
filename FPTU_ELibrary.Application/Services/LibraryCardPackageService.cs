@@ -53,7 +53,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 			{
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
-					StringUtils.Format(errMsg, isEng ? "package" : "gói"));
+					StringUtils.Format(errMsg, isEng ? "package" : "gói thẻ thư viện"));
 			}
 
 			existingEntity.PackageName = dto.PackageName;

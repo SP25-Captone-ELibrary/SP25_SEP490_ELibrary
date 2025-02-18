@@ -1,10 +1,13 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
+using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -29,8 +32,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using OfficeOpenXml.Export.ToCollection.Exceptions;
-using OfficeOpenXml.Style;
+using Microsoft.IdentityModel.Tokens;
 
 namespace FPTU_ELibrary.Application.Services
 {
@@ -43,7 +45,14 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly ICloudinaryService _cloudService;
 		private readonly IServiceProvider _serviceProvider;
 		private readonly IEmployeeService<EmployeeDto> _employeeService;
+		private readonly ITransactionService<TransactionDto> _tranService;
+		private readonly IPaymentMethodService<PaymentMethodDto> _paymentMethodService;
+		private readonly ILibraryCardPackageService<LibraryCardPackageDto> _cardPackageService;
+		
 		private readonly AppSettings _appSettings;
+		private readonly BorrowSettings _borrowSettings;
+		private readonly TokenValidationParameters _tokenValidationParams;
+		private readonly IEmailService _emailService;
 
 		public UserService(
 			// Lazy services
@@ -53,19 +62,31 @@ namespace FPTU_ELibrary.Application.Services
 			ILogger logger,
 			ICloudinaryService cloudService,
 			ISystemMessageService msgService,
+			IEmailService emailService,
 			IEmployeeService<EmployeeDto> employeeService,
 			IOptionsMonitor<AppSettings> monitor,
+			IOptionsMonitor<BorrowSettings> monitor1,
 			ISystemRoleService<SystemRoleDto> roleService,
+			ITransactionService<TransactionDto> tranService,
+			IPaymentMethodService<PaymentMethodDto> paymentMethodService,
+			ILibraryCardPackageService<LibraryCardPackageDto> cardPackageService,
+			TokenValidationParameters tokenValidationParams,
 			IUnitOfWork unitOfWork,
-			IMapper mapper, IServiceProvider serviceProvider) // to get the service and not depend on http lifecycle
+			IMapper mapper, IServiceProvider serviceProvider) 
 			: base(msgService, unitOfWork, mapper, logger)
 		{
 			_roleService = roleService;
 			_cloudService = cloudService;
+			_emailService = emailService;
 			_employeeService = employeeService;
 			_serviceProvider = serviceProvider;
+			_tranService = tranService;
 			_libraryCardService = libraryCardService;
+			_cardPackageService = cardPackageService;
+			_paymentMethodService = paymentMethodService;
 			_appSettings = monitor.CurrentValue;
+			_borrowSettings = monitor1.CurrentValue;
+			_tokenValidationParams = tokenValidationParams;
 		}
 
 		public override async Task<IServiceResult> GetByIdAsync(Guid id)
@@ -1289,15 +1310,11 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			try
 			{
-				// Check whether library card not found 
-				if (dto.LibraryCard == null)
-				{
-					_logger.Error("Fail to create library card due to library card inside user is null");
-					// Unknown error
-					return new ServiceResult(ResultCodeConst.SYS_Warning0006,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
-				}
-
+				// Determine current system language
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+				
 				// Validate user
 				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
 				// Check for valid validations
@@ -1308,16 +1325,60 @@ namespace FPTU_ELibrary.Application.Services
 					throw new UnprocessableEntityException("Invalid Validations", errors);
 				}
 
-				// Validate library card
-				validationResult = await ValidatorExtensions.ValidateAsync(dto.LibraryCard);
-				// Check for valid validations
-				if (validationResult != null && !validationResult.IsValid)
+				// Current local datetime
+	            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+		            // Vietnam timezone
+		            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+	            
+				// Custom errors
+				var customErrs = new Dictionary<string, string[]>();
+				// Check email exist
+				var isEmailExist = await _unitOfWork.Repository<User, Guid>()
+					.AnyAsync(u => Equals(u.Email, dto.Email));
+				if (isEmailExist)
 				{
-					// Convert ValidationResult to ValidationProblemsDetails.Errors
-					var errors = validationResult.ToProblemDetails().Errors;
-					throw new UnprocessableEntityException("Invalid Validations", errors);
+					// Add error
+					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						key: StringUtils.ToCamelCase(nameof(User.Email)),
+						msg: isEng ? "Email has already existed" : "Email đã tồn tại");
 				}
-
+				// Check phone exist
+				var isPhoneExist = await _unitOfWork.Repository<User, Guid>()
+					.AnyAsync(u => !string.IsNullOrEmpty(dto.Phone) && Equals(u.Phone, dto.Phone));
+				if (isPhoneExist)
+				{
+					// Add error
+					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						key: StringUtils.ToCamelCase(nameof(User.Phone)),
+						msg: isEng ? "Phone has already existed" : "SĐT đã tồn tại");
+				}
+				// Check exist avatar in cloud
+				if(!string.IsNullOrEmpty(dto.Avatar))
+				{
+					// Extract public id 
+					var updatePublicId = StringUtils.GetPublicIdFromUrl(dto.Avatar);
+					if (updatePublicId != null)
+					{
+						var isImageOnCloud =
+							(await _cloudService.IsExistAsync(updatePublicId, FileType.Image)).Data is true;
+						if (!isImageOnCloud)
+						{
+							// Mark as fail to create
+							return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+						}
+					}
+					else
+					{
+						// Mark as fail to create
+						return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+					}
+				}
+				
+				// Check whether invoke any validation error
+				if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+				
 				// Assign default role 
 				var roleDto = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
 				if (roleDto == null)
@@ -1328,25 +1389,10 @@ namespace FPTU_ELibrary.Application.Services
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
 				}
 
-				// Current local datetime
-				var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-					// Vietnam timezone
-					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-
 				// Add user necessary properties
 				dto.CreateDate = currentLocalDateTime;
 				dto.RoleId = roleDto.RoleId;
-
-				// Add library card to user
-				dto.LibraryCard = new()
-				{
-					FullName = dto.LibraryCard.FullName,
-					Avatar = dto.LibraryCard.Avatar,
-					Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix),
-					IssuanceMethod = LibraryCardIssuanceMethod.InPerson,
-					Status = LibraryCardStatus.Pending,
-					IssueDate = currentLocalDateTime
-				};
+				dto.IsEmployeeCreated = true;
 
 				// Progress add new user with library card
 				await _unitOfWork.Repository<User, Guid>().AddAsync(_mapper.Map<User>(dto));
@@ -1354,14 +1400,14 @@ namespace FPTU_ELibrary.Application.Services
 				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 				if (isSaved)
 				{
-					// Create successfully
+					// Msg: Create successfully
 					return new ServiceResult(ResultCodeConst.SYS_Success0001,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
 				}
 
 				// Fail to create
 				return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), true);
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
 			}
 			catch (UnprocessableEntityException)
 			{
@@ -1474,43 +1520,6 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
-		public async Task<IServiceResult> GetLibraryCardHolderDetailByEmailAsync(string email)
-		{
-			try
-			{
-				// Determine current system lang
-				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-					LanguageContext.CurrentLanguage);
-				var isEng = lang == SystemLanguage.English;
-
-				// Check exist user 
-				// Build spec
-				var baseSpec = new BaseSpecification<User>(u => Equals(email, u.Email));
-				// Apply include
-				baseSpec.ApplyInclude(q => q
-					.Include(u => u.LibraryCard!)
-				);
-				// Retrieve user with spec
-				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-				if (existingEntity == null)
-				{
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
-				}
-
-				// Get data successfully
-				return new ServiceResult(ResultCodeConst.SYS_Success0002,
-					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-					_mapper.Map<UserDto>(existingEntity).ToLibraryCardHolderDto());
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when process get library card holder detail from public");
-			}
-		}
-		
 		public async Task<IServiceResult> GetLibraryCardHolderByBarcodeAsync(string barcode)
         {
             try
@@ -1552,7 +1561,7 @@ namespace FPTU_ELibrary.Application.Services
                 throw new Exception("Error invoke when process get library card by barcode");
             }
         }
-		
+
 		public async Task<IServiceResult> UpdateLibraryCardHolderAsync(Guid userId, UserDto userDto)
 		{
 			try
@@ -1616,7 +1625,8 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
-		public async Task<IServiceResult> RegisterLibraryCardAsync(string email, UserDto userWithCard)
+		public async Task<IServiceResult> RegisterLibraryCardAsync(
+			string email, UserDto userWithCard, string transactionToken)
 	    {
 		    try
 		    {
@@ -1645,6 +1655,40 @@ namespace FPTU_ELibrary.Application.Services
 				    throw new UnprocessableEntityException("Invalid Validations", errors);
 			    }
 
+			    // Initialize payment utils
+			    var paymentUtils = new PaymentUtils(logger: _logger);
+			    // Validate transaction token
+			    var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
+				    token: transactionToken,
+				    tokenValidationParameters: _tokenValidationParams);
+			    if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
+            
+			    // Extract transaction data from token
+			    var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
+            
+			    // Check whether email match (request and payment user is different)
+			    if(!Equals(email, tokenExtractedData.Email)) throw new ForbiddenException(); // Forbid as email is not match
+				
+			    var transCode = tokenExtractedData.TransactionCode; 
+			    var transDate = tokenExtractedData.TransactionDate; 
+			    // Retrieve transaction
+			    // Build spec
+			    var transSpec = new BaseSpecification<Transaction>(t => 
+				    t.TransactionDate != null && // with specific date
+				    t.UserId == user.UserId && // who request
+				    t.LibraryCardPackageId != null && // payment for specific card package
+				    t.TransactionStatus == TransactionStatus.Paid && // must be paid
+				    t.TransactionType == TransactionType.LibraryCardRegister && // transaction type is lib card register
+				    Equals(t.TransactionCode, transCode));  // transaction code
+			    // Apply include
+			    transSpec.ApplyInclude(q => q.Include(t => t.LibraryCardPackage!));
+			    // Retrieve with spec
+			    var transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
+			    if (transactionDto == null) throw new ForbiddenException(); // Not found transaction information  
+            
+			    // Validate transaction date
+			    if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date)) throw new ForbiddenException();
+			    
 			    // Check exist avatar
 			    if (!string.IsNullOrEmpty(userWithCard.LibraryCard.Avatar))
 			    {
@@ -1698,9 +1742,12 @@ namespace FPTU_ELibrary.Application.Services
 			    // Total missed default 
 			    userWithCard.LibraryCard.TotalMissedPickUp = 0;
 
-			    // Library card has no payment yet
+			    // Library card has not confirmed yet
 			    userWithCard.LibraryCard.Status = LibraryCardStatus.Pending;
-
+			    
+			    // Assign transaction code 
+			    userWithCard.LibraryCard.TransactionCode = transactionDto.TransactionCode;
+			    
 			    // Process update
 			    user.LibraryCard = _mapper.Map<LibraryCard>(userWithCard.LibraryCard);
 			    await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
@@ -1726,6 +1773,10 @@ namespace FPTU_ELibrary.Application.Services
 	        {
 	            throw;
 	        }
+	        catch (UnauthorizedException)
+	        {
+		        throw new UnauthorizedException("Invalid token or token has expired");
+	        }
 	        catch (Exception ex)
 	        {
 	            _logger.Error(ex.Message);
@@ -1734,7 +1785,10 @@ namespace FPTU_ELibrary.Application.Services
 	    }
 		
 		public async Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(
-			string processedByEmail, Guid userId, UserDto userWithCard)
+			string processedByEmail, Guid userId, UserDto userWithCard, 
+			string? transactionToken, // Use when register with online payment
+			int? libraryCardPackageId, // Use when register with cash payment
+			int? paymentMethodId) // Use when register with cash payment
 	    {
 	        try
 	        {
@@ -1772,7 +1826,120 @@ namespace FPTU_ELibrary.Application.Services
 		            throw new UnprocessableEntityException("Invalid Validations", errors);
 	            }
 	            
-	            // Check exist avatar
+	            // Current local datetime
+	            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+		            // Vietnam timezone
+		            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+	            
+	            // Initialize empty transaction dto
+	            TransactionDto? transactionDto = null;
+	            // Initialize empty lib package dto
+	            LibraryCardPackageDto? libPackageDto = null;
+	            // Initialize payment utils
+	            var paymentUtils = new PaymentUtils(_logger);
+	            // Determine payment method
+	            if (transactionToken != null && // Online payment
+	                libraryCardPackageId == null && paymentMethodId == null) // Not include information of cash payment
+				{
+					// Validate transaction token
+					var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
+						token: transactionToken,
+						tokenValidationParameters: _tokenValidationParams);
+					if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
+
+					// Extract transaction data from token
+					var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
+
+					var transCode = tokenExtractedData.TransactionCode;
+					var transDate = tokenExtractedData.TransactionDate;
+					// Retrieve transaction
+					// Build spec
+					var transSpec = new BaseSpecification<Transaction>(t =>
+						t.TransactionDate != null && // with specific date
+						t.UserId == userId && // with specific user
+						t.LibraryCardPackageId != null && // payment for specific card package
+						t.TransactionStatus == TransactionStatus.Paid && // must be paid
+						t.TransactionType == TransactionType.LibraryCardRegister && // transaction type is lib card register
+						Equals(t.TransactionCode, transCode)); // transaction code
+					// Apply include
+					transSpec.ApplyInclude(q => q
+						.Include(t => t.LibraryCardPackage)
+						.Include(t => t.PaymentMethod)
+					);
+					// Retrieve with spec
+					transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
+					if (transactionDto == null || !Equals(transactionDto.TransactionDate?.Date, transDate.Date))
+					{
+						// Register library card failed as payment information is not found
+						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001);
+						return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
+							errMsg + (isEng
+								? "as not found payment information"
+								: "vì không tìm thấy thông tin thanh toán"));
+					}
+					// Assign lib package 
+					libPackageDto = transactionDto.LibraryCardPackage;
+				}
+	            else if (transactionToken == null && // Not include transaction token
+				          paymentMethodId != null && int.TryParse(libraryCardPackageId.ToString(), out var validPackageId)) // Cash payment
+				{
+					// Check exist payment method 
+					var isExistPaymentMethod = (await _paymentMethodService.AnyAsync(p =>
+						p.PaymentMethodId == paymentMethodId)).Data is true;
+					if (!isExistPaymentMethod)
+					{
+						// Not found {0}
+						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+						return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+							StringUtils.Format(errMsg, isEng ? "cash payment method" : "phương thức thanh toán tiền mặt"));
+					}
+					
+					// Retrieve library card package by id 
+					libPackageDto =
+						(await _cardPackageService.GetByIdAsync(validPackageId)).Data as LibraryCardPackageDto;
+					if (libPackageDto == null)
+					{
+						// Not found {0}
+						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+						return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+							StringUtils.Format(errMsg, isEng ? "library card package" : "gói thẻ thư viện"));
+					}
+					
+					// Generate transaction code
+					var transactionCode = PaymentUtils.GenerateRandomOrderCodeDigits(8);
+					// Create transaction with PAID status
+					transactionDto = new TransactionDto()
+					{
+						TransactionCode = transactionCode.ToString(),
+						Amount = libPackageDto.Price,
+						TransactionStatus = TransactionStatus.Paid,
+						TransactionType = TransactionType.LibraryCardRegister,
+						CreatedAt = currentLocalDateTime,
+						TransactionDate = currentLocalDateTime,
+						PaymentMethodId = int.Parse(paymentMethodId.ToString()!),
+						LibraryCardPackageId = libPackageDto.LibraryCardPackageId,
+						UserId = user.UserId,
+						Invoice = new InvoiceDto()
+						{
+							TotalAmount = libPackageDto.Price,
+							CreatedAt = currentLocalDateTime,
+							PaidAt = currentLocalDateTime,
+							UserId = user.UserId,
+						}
+					};
+					
+					// Assign transaction
+					user.Transactions.Add(_mapper.Map<Transaction>(transactionDto));
+				}
+
+				if (transactionDto == null || libPackageDto == null)
+				{
+					// Mark as fail to register
+					return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+				}
+				
+				// Check exist avatar
 	            if (!string.IsNullOrEmpty(userWithCard.LibraryCard.Avatar))
 	            {
 	                // Initialize field
@@ -1805,46 +1972,70 @@ namespace FPTU_ELibrary.Application.Services
 	                        isEng ? "library card" : "thẻ thư viện"));
 	            }
 	            
-	            // Current local datetime
-	            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-	                // Vietnam timezone
-	                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+	            // Add library card to user
+	            user.LibraryCard = new()
+	            {
+		            FullName = userWithCard.LibraryCard.FullName,
+		            Avatar = userWithCard.LibraryCard.Avatar,
+		            Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix),
+		            IssuanceMethod = LibraryCardIssuanceMethod.InPerson,
+		            Status = LibraryCardStatus.Active, // Mark as card has been activated
+		            TransactionCode = transactionDto.TransactionCode,
+		            IssueDate = currentLocalDateTime,
+		            ExpiryDate = currentLocalDateTime.AddMonths(
+			            // Months defined in specific library card package 
+			            libPackageDto.DurationInMonths)
+	            };
 	            
-	            // Add necessary props
-	            userWithCard.LibraryCard.Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix);
-	            userWithCard.LibraryCard.IssuanceMethod = LibraryCardIssuanceMethod.Online;
-	            userWithCard.LibraryCard.IsReminderSent = false;
-	            userWithCard.LibraryCard.IsExtended = false;
-	            userWithCard.LibraryCard.ExtensionCount = 0;
-	            userWithCard.LibraryCard.IssueDate = currentLocalDateTime; 
-	            
-	            // Extend borrow default
-	            userWithCard.LibraryCard.IsAllowBorrowMore = false;
-	            userWithCard.LibraryCard.MaxItemOnceTime = 0;
-	            
-	            // Total missed default 
-	            userWithCard.LibraryCard.TotalMissedPickUp = 0;
-	            
-	            // Library card has no payment yet
-	            userWithCard.LibraryCard.Status = LibraryCardStatus.Pending;
-	            
-	            // Process update
-	            user.LibraryCard = _mapper.Map<LibraryCard>(userWithCard.LibraryCard);
+	            // Process update user
 	            await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
 	            
 	            // Save DB
 	            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 	            if (isSaved)
 	            {
-	                // Msg: Register library card success
-	                return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
-	                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002));
+		            // Assign payment method dto
+		            if (transactionDto.PaymentMethod == null!)
+		            {
+			            transactionDto.PaymentMethod = (await _paymentMethodService.GetByIdAsync(
+				            paymentMethodId ?? transactionDto.PaymentMethodId)).Data as PaymentMethodDto ?? new();
+		            }
+		            
+		            if (transactionDto.LibraryCardPackage == null)
+		            {
+			            transactionDto.LibraryCardPackage = libPackageDto;
+		            }
+		            
+		            // Send card has been activated email
+		            var isSent = await SendActivatedEmailAsync(
+			            email: user.Email,
+			            cardDto: userWithCard.LibraryCard,
+			            transactionDto: transactionDto,
+			            libName: _appSettings.LibraryName,
+			            libContact: _appSettings.LibraryContact);
+		            
+		            if (isSent)
+		            {
+			            var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+			            // Msg: Register library card success
+			            return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
+				            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002) + $". {successMsg}");
+		            }
+		            
+		            var failMsg = isEng ? ", but fail to send email" : ", nhưng gửi email thông báo thất bại";
+		            // Msg: Register library card success
+		            return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
+			            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002) + failMsg);
 	            }
 	            
 	            // Msg: Register library card failed
 	            return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
 	                await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001));
 	        }
+			catch(UnauthorizedException)
+			{
+				throw new Exception("Token has expired");
+			}
 	        catch (ForbiddenException)
 	        {
 	            throw;
@@ -1852,10 +2043,397 @@ namespace FPTU_ELibrary.Application.Services
 	        catch (Exception ex)
 	        {
 	            _logger.Error(ex.Message);
-	            throw new Exception("Error invoke when process register library card");
+	            throw new Exception("Error invoke when process add library card by employee");
 	        }
 	    }
 
+		public async Task<IServiceResult> SoftDeleteLibraryCardHolderAsync(Guid userId)
+		{
+			try
+			{
+				// Determine current lang context
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+				
+				// Build spec
+                var baseSpec = new BaseSpecification<User>(u => u.UserId == userId);
+                // Apply include
+                baseSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+                // Retrieve with spec
+                var existingEntity = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
+                if (existingEntity == null || existingEntity.IsDeleted)
+                {
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+                }
+                
+                // Check constraints
+                var hasConstraints = await _unitOfWork.Repository<User, Guid>()
+	                .AnyAsync(new BaseSpecification<User>(u =>
+		                u.UserId == userId && // with specific user
+		                (
+			                u.IsEmployeeCreated == true && // Only process soft delete when created by employee
+			                ((u.LibraryCardId != Guid.Empty && u.LibraryCard != null &&
+			                 u.LibraryCard.Status != LibraryCardStatus.Pending && 
+			                 u.LibraryCard.Status != LibraryCardStatus.Rejected) || // Already registered library card
+			                u.Invoices.Any() || // exist any invoices
+			                u.Transactions.Any() || // exist any transactions
+			                u.DigitalBorrows.Any() || // exist any transactions
+			                u.RefreshTokens.Any() || // has already signed in
+			                u.LibraryItemReviews.Any() || // exist any reviews
+			                u.UserFavorites.Any())))); // exist any user favourites
+                if (hasConstraints)
+                {
+	                // Msg: Cannot delete because it is bound to other data
+	                return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+		                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007), false);
+                }
+                
+				// Update soft delete prop
+				existingEntity.IsDeleted = true;
+				
+				// Process update
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+				// Save DB
+				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+				if (isSaved)
+				{
+					// Deleted data to trash
+					return new ServiceResult(ResultCodeConst.SYS_Success0007,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0007), true);
+				}
+				
+				// Fail to delete data
+				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process soft delete library card holder");
+			}
+		}
+
+		public async Task<IServiceResult> SoftDeleteRangeLibraryCardHolderAsync(Guid[] userIds)
+		{
+			try
+			{
+				// Build spec
+				var baseSpec = new BaseSpecification<User>(u => userIds.Contains(u.UserId));
+				// Apply include
+				baseSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+				// Retrieve with spec
+				var entities = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(baseSpec);
+				// Convert to list 
+				var cardHolderList = entities.ToList();
+				if (cardHolderList.Any(u => u.IsDeleted))
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+
+				// Initialize err dic
+				var customErrs = new Dictionary<string, string[]>();
+				for (int i = 0; i < cardHolderList.Count; ++i)
+				{
+					var user = cardHolderList[i];
+					
+					// Check constraints
+					var hasConstraints = await _unitOfWork.Repository<User, Guid>()
+						.AnyAsync(new BaseSpecification<User>(u =>
+							u.UserId == user.UserId && // with specific user
+							(
+								u.IsEmployeeCreated == true && // Only process soft delete when created by employee
+								((u.LibraryCardId != Guid.Empty && u.LibraryCard != null &&
+								 u.LibraryCard.Status != LibraryCardStatus.Rejected &&
+								 u.LibraryCard.Status != LibraryCardStatus.Pending) || // Already registered library card
+								u.Invoices.Any() || // exist any invoices
+								u.Transactions.Any() || // exist any transactions
+								u.DigitalBorrows.Any() || // exist any transactions
+								u.RefreshTokens.Any() || // has already signed in
+								u.LibraryItemReviews.Any() || // exist any reviews
+								u.UserFavorites.Any())))); // exist any user favourites
+					if (hasConstraints)
+					{
+						// Add error 
+						customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+							key: $"ids[{i}]",
+							msg: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+					else
+					{
+						// Update soft delete status
+                        user.IsDeleted = true;
+                        // Process soft delete
+                        await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
+					}
+				}
+				
+				if(customErrs.Any()) throw new UnprocessableEntityException("Remove constraints invoked", customErrs);
+				
+				// Save to DB
+				if (await _unitOfWork.SaveChangesAsync() > 0)
+				{
+					var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0008);
+					return new ServiceResult(ResultCodeConst.SYS_Success0008,
+						StringUtils.Format(msg, cardHolderList.Count.ToString()), true);
+				}
+    
+				// Fail to delete
+				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process soft delete range library card holder");
+			}
+		}
+
+		public async Task<IServiceResult> UndoDeleteLibraryCardHolderAsync(Guid userId)
+		{
+			try
+			{
+				// Determine current lang context
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+				
+				// Build spec
+				var baseSpec = new BaseSpecification<User>(u => u.UserId == userId);
+				// Apply include
+				baseSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+				// Retrieve with spec
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
+				if (existingEntity == null || !existingEntity.IsDeleted)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+				}
+				
+				// Update soft delete status
+				existingEntity.IsDeleted = false;
+				
+				// Process update
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+				// Save DB
+				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+				if (isSaved)
+				{
+					// Recovery data successfully
+					return new ServiceResult(ResultCodeConst.SYS_Success0009,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+				}
+				
+				// Fail to delete data
+				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process undo delete library card holder");
+			}
+		}
+
+		public async Task<IServiceResult> UndoDeleteRangeLibraryCardHolderAsync(Guid[] userIds)
+		{
+			try
+			{
+				// Build spec
+				var baseSpec = new BaseSpecification<User>(u => userIds.Contains(u.UserId));
+				// Apply include
+				baseSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+				// Retrieve with spec
+				var entities = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(baseSpec);
+				// Convert to list 
+				var cardHolderList = entities.ToList();
+				if (cardHolderList.Any(u => !u.IsDeleted))
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+				
+				// Update soft delete range
+				foreach (var cardHolder in cardHolderList)
+				{
+					cardHolder.IsDeleted = false;
+					
+					// Process update entity
+					await _unitOfWork.Repository<User, Guid>().UpdateAsync(cardHolder);
+				}
+				
+				// Save to DB
+				if (await _unitOfWork.SaveChangesAsync() > 0)
+				{
+					// Recovery data successfully
+					return new ServiceResult(ResultCodeConst.SYS_Success0009,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0009), true);
+				}
+    
+				// Fail to update
+				return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process undo delete range library card holder");
+			}
+		}
+
+		public async Task<IServiceResult> DeleteLibraryCardHolderAsync(Guid userId)
+		{
+			try
+			{
+				// Determine current lang context
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+					LanguageContext.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+				
+				// Retrieve the entity
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				if (existingEntity == null)
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+				}
+
+				// Check whether cardholder in the trash bin
+				if (!existingEntity.IsDeleted)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+				
+				// Try to remove library card (if any). Only allow when card is in pending status and user is created by employee
+				if (existingEntity.LibraryCardId != Guid.Empty && existingEntity.IsEmployeeCreated)
+				{
+					// Process delete card
+					var deleteConstraintRes = 
+						await _libraryCardService.Value.DeleteCardWithoutSaveChangesAsync(
+							Guid.Parse(existingEntity.LibraryCardId.ToString() ?? string.Empty));
+
+					if (deleteConstraintRes.ResultCode != ResultCodeConst.SYS_Success0004)
+					{
+						// Msg: Cannot delete because it is bound to other data
+						return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007), false);
+					}
+				}
+				
+				// Process delete entity
+				await _unitOfWork.Repository<User, Guid>().DeleteAsync(userId);
+				// Save to DB
+				if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+				{
+					// Delete successfully
+					return new ServiceResult(ResultCodeConst.SYS_Success0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+				}
+				
+				// Fail to delete
+				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process delete library card holder");
+			}
+		}
+
+		public async Task<IServiceResult> DeleteRangeLibraryCardHolderAsync(Guid[] userIds)
+		{
+			try
+			{
+				// Get all matching user
+				// Build spec
+				var baseSpec = new BaseSpecification<User>(e => userIds.Contains(e.UserId));
+				var cardHolderEntities = await _unitOfWork.Repository<User, Guid>()
+					.GetAllWithSpecAsync(baseSpec);
+				// Check if any data already soft delete
+				var cardHolderList = cardHolderEntities.ToList();
+				if (cardHolderList.Any(x => !x.IsDeleted))
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+				}
+			
+				// Select range of library card id to delete
+				var rangeCardIds = cardHolderList
+					.Where(x => x.LibraryCardId != Guid.Empty)
+					.Select(x => Guid.Parse(x.LibraryCardId.ToString() ?? string.Empty))
+					.ToArray();
+				// Process delete library cards
+				var deleteRangeCardRes = await _libraryCardService.Value.DeleteRangeCardWithoutSaveChangesAsync(rangeCardIds);
+				if (deleteRangeCardRes.ResultCode != ResultCodeConst.SYS_Success0004)
+				{
+					// Msg: Cannot delete because it is bound to other data
+					return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007), false);
+				}	
+				
+				// Process delete range entity
+				await _unitOfWork.Repository<User, Guid>().DeleteRangeAsync(
+					ids: cardHolderList.Select(c => c.UserId).ToArray());
+				// Save to DB
+				if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
+				{
+					// Delete successfully
+					return new ServiceResult(ResultCodeConst.SYS_Success0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+				}
+				
+				// Fail to delete
+				return new ServiceResult(ResultCodeConst.SYS_Fail0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+			}
+			catch (DbUpdateException ex)
+			{
+				if (ex.InnerException is SqlException sqlEx)
+				{
+					switch (sqlEx.Number)
+					{
+						case 547: // Foreign key constraint violation
+							return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+					}
+				}
+				
+				// Throw if other issues
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process delete range library card holder");
+			}
+		}
+		
 		public async Task<IServiceResult> DeleteLibraryCardWithoutSaveChangesAsync(Guid userId)
 		{
 			try
@@ -1886,6 +2464,737 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke when delete library card without save");
 			}
 		}
+
+		public async Task<IServiceResult> ImportLibraryCardHolderAsync(IFormFile? file,
+			List<IFormFile>? avatarImageFiles,
+			string[]? scanningFields, 
+			DuplicateHandle? duplicateHandle)
+		{
+			try
+			{
+				// Determine system lang
+				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+					.CurrentLanguage);
+				var isEng = lang == SystemLanguage.English;
+
+				// Check exist file
+				if (file == null || file.Length == 0)
+				{
+					return new ServiceResult(ResultCodeConst.File_Warning0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0002));
+				}
+
+				// Validate import file 
+				var validationResult = await ValidatorExtensions.ValidateAsync(file);
+				if (validationResult != null && !validationResult.IsValid)
+				{
+					// Response the uploaded file is not supported
+					throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+				}
+
+				// Csv config
+				var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+				{
+					HasHeaderRecord = true,
+					HeaderValidated = null,
+					MissingFieldFound = null
+				};
+				
+				// Extract all cover image file name
+				var imageFileNames = avatarImageFiles.Select(f => f.FileName).ToList();
+				// Find duplicate image file names
+				var duplicateFileNames = imageFileNames
+					.GroupBy(name => name)
+					.Where(group => group.Count() > 1) // Filter groups with more than one occurrence
+					.Select(group => group.Key)       // Select the duplicate file names
+					.ToList();
+				if (duplicateFileNames.Any())
+				{
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0004);
+			    
+					// Add single quotes to each file name
+					var formattedFileNames = duplicateFileNames
+						.Select(fileName => $"'{fileName}'"); 
+
+					return new ServiceResult(
+						ResultCodeConst.File_Warning0004,
+						StringUtils.Format(errMsg, String.Join(", ", formattedFileNames))
+					);
+				}
+				
+				// Process read csv file
+				var readResp =
+					CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<LibraryCardHolderCsvRecordDto>(
+						file: file,
+						config: csvConfig,
+						props: new ExcelHeaderProps()
+						{
+							// Header start from row 1-1
+							FromRow = 1,
+							ToRow = 1,
+							// Start from col
+							FromCol = 1,
+							// Start read data index
+							StartRowIndex = 2
+						},
+						encodingType: null,
+						systemLang: lang);
+				if(readResp.Errors.Any())
+				{
+					var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
+					{	
+						RowNumber = x.Key,
+						Errors = x.Value.ToList()
+					});
+			    
+					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
+				}
+				
+				// Validate collection of records
+				readResp.Errors = await ValidateLibraryCardHolderCsvRecordsAsync(
+					records: readResp.Records,
+					startRowIndex: 2,
+					imageFileNames: imageFileNames,
+					lang: lang);
+				if(readResp.Errors.Any())
+				{
+					var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
+					{	
+						RowNumber = x.Key,
+						Errors = x.Value.ToList()
+					});
+			    
+					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
+				}
+
+				// Retrieve default role 
+                var roleDto = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
+                if (roleDto == null)
+                {
+                	// Not found {0}
+                	var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                	return new ServiceResult(ResultCodeConst.SYS_Fail0002, 
+                		StringUtils.Format(errMsg, isEng ? "default role to process import" : "role mặc định để thực hiện import"));
+                }
+				
+				// Additional message
+				var additionalMsg = string.Empty;
+				// Detect duplicates
+				var detectDuplicateResult = DetectDuplicatesInFile(readResp.Records, scanningFields ?? [], lang);
+				if (detectDuplicateResult.Errors.Count != 0 && duplicateHandle == null) // Has not selected any handle options yet
+				{
+					var errorResp = detectDuplicateResult.Errors.Select(x => new ImportErrorResultDto()
+					{	
+						RowNumber = x.Key,
+						Errors = x.Value
+					});
+                
+					// Response error messages for data confirmation and select handle options 
+					return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResp);
+				}
+				if (detectDuplicateResult.Errors.Count != 0 && duplicateHandle != null) // Selected any handle options
+				{
+					// Handle duplicates
+					var handleResult = CsvUtils.HandleDuplicates(
+						readResp.Records, detectDuplicateResult.Duplicates, (DuplicateHandle) duplicateHandle, lang);
+					// Update records
+					readResp.Records = handleResult.handledRecords;
+					// Update msg 
+					additionalMsg = handleResult.msg;
+				}
+				
+				// Handle upload images (Image name | URL)
+				var uploadFailList = new List<string>();
+				var imageUrlDic = new Dictionary<string, string>();
+				foreach (var avatarImage in avatarImageFiles)
+				{
+					// Try to validate file
+					var validateResult = await 
+						new ImageTypeValidator(lang.ToString() ?? SystemLanguage.English.ToString()).ValidateAsync(avatarImage);
+					if (!validateResult.IsValid)
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Warning0001, isEng 
+							? $"File '{avatarImage.FileName}' is not a image file " +
+							  $"Valid format such as (.jpeg, .png, .gif, etc.)" 
+							: $"File '{avatarImage.FileName}' không phải là file hình ảnh. " +
+							  $"Các loại hình ảnh được phép là: (.jpeg, .png, .gif, v.v.)");
+					}
+			    
+					// Upload image to cloudinary
+					var uploadResult = (await _cloudService.UploadAsync(avatarImage, FileType.Image, ResourceType.BookImage))
+						.Data as CloudinaryResultDto;
+					if (uploadResult == null)
+					{
+						// Add image that fail to upload
+						uploadFailList.Add(avatarImage.FileName);
+					}
+					else
+					{
+						// Add to dic
+						imageUrlDic.Add(avatarImage.FileName, uploadResult.SecureUrl);
+					}
+				}
+				
+				var totalImported = 0;
+				var totalFailed = 0;
+				// Process import book editions
+				var successRecords = readResp.Records
+					.Where(r => r.LibraryCardAvatar != null &&
+					            !uploadFailList.Contains(r.LibraryCardAvatar))
+					.ToList();
+				var failRecords = new List<LibraryCardHolderCsvRecordDto>();
+				if (successRecords.Any())
+				{
+					// Initialize list library cardholders
+					var cardHolderList = successRecords.Select(r =>
+					{
+						var imageUrl = string.Empty;
+						if (r.LibraryCardAvatar != null)
+						{
+							imageUrl = imageUrlDic.TryGetValue(r.LibraryCardAvatar, out var avatarImageUrl)
+								? avatarImageUrl
+								: null;
+						}
+						return r.ToUserDto(roleId: roleDto.RoleId, borrowSettings: _borrowSettings, libraryCardAvatar: imageUrl);
+					}).ToList();
+
+					if (cardHolderList.Any())
+					{
+						// Add new cardholder
+						await _unitOfWork.Repository<User, Guid>().AddRangeAsync(_mapper.Map<List<User>>(cardHolderList));
+					
+						// Save change to DB
+						if(await _unitOfWork.SaveChangesAsync() > 0) totalImported = cardHolderList.Count;
+						else failRecords.AddRange(successRecords);
+					}
+				}
+				
+				// Aggregate all book editions fail to upload & fail to save DB (if any)
+				failRecords.AddRange(readResp.Records
+					.Where(r => r.LibraryCardAvatar != null && 
+					            uploadFailList.Contains(r.LibraryCardAvatar))
+					.ToList());
+				if (failRecords.Any()) totalFailed = failRecords.Count;
+				
+				string message;
+			    byte[]? fileBytes;
+				// Generate a message based on the import and failure counts
+			    if (totalImported > 0 && totalFailed == 0)
+			    {
+				    // All records imported successfully
+				    message = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005), totalImported.ToString());
+	                // Additional message (if any)
+	                message = !string.IsNullOrEmpty(additionalMsg) ? $"{message}, {additionalMsg}" : message;
+	                // Generate excel file for imported data
+	                fileBytes = CsvUtils.ExportToExcel(successRecords, sheetName: "ImportedReaders");
+				    return new ServiceResult(ResultCodeConst.SYS_Success0005, message, Convert.ToBase64String(fileBytes));
+			    }
+
+			    if (totalImported > 0 && totalFailed > 0)
+			    {
+				    // Partial success with some failures
+				    fileBytes = CsvUtils.ExportToExcel(failRecords, sheetName: "FailImageUploadReaders");
+
+				    var baseMessage = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0005);
+	                var failMessage = lang == SystemLanguage.English
+					    ? $", {totalFailed} failed to import"
+					    : $", {totalFailed} thêm mới thất bại";
+	                
+				    message = StringUtils.Format(baseMessage, totalImported.ToString());
+	                // Additional message (if any)
+	                message = !string.IsNullOrEmpty(additionalMsg) ? $"{message}, {additionalMsg} {failMessage}" : message + failMessage;
+				    return new ServiceResult(ResultCodeConst.SYS_Success0005, message, Convert.ToBase64String(fileBytes));
+			    }
+
+			    if (totalImported == 0 && totalFailed > 0)
+			    {
+				    // Complete failure
+				    fileBytes = CsvUtils.ExportToExcel(failRecords, sheetName: "FailImageUploadReaders");
+				    message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008);
+				    return new ServiceResult(ResultCodeConst.SYS_Fail0008, message, Convert.ToBase64String(fileBytes));
+			    }
+
+				// Default case: No records imported or failed
+			    message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008);
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0008, message);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process import library card holder");
+			}
+		}
+		
+		public async Task<IServiceResult> ExportLibraryCardHolderAsync(ISpecification<User> spec)
+		{
+			try
+			{
+				// Try to parse specification to LibraryCardHolderSpecification
+				var baseSpec = spec as LibraryCardHolderSpecification;
+				// Check if specification is null
+				if (baseSpec == null)
+				{
+					return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+				}				
+			
+				// Apply include
+				baseSpec.ApplyInclude(q => q
+					.Include(be => be.LibraryCard!)
+				);
+				// Get all with spec
+				var entities = await _unitOfWork.Repository<User, Guid>()
+					.GetAllWithSpecAsync(baseSpec, tracked: false);
+				if (entities.Any()) // Exist data
+				{
+					// Map entities to dtos 
+					var userDtos = _mapper.Map<List<UserDto>>(entities);
+					// Process export data to file
+					var fileBytes = CsvUtils.ExportToExcelWithNameAttribute(
+						userDtos.Select(u => u.ToCardHolderCsvRecordDto()).ToList());
+
+					return new ServiceResult(ResultCodeConst.SYS_Success0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+						fileBytes);
+				}
+			
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+			}
+			catch (UnprocessableEntityException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process export library card holders");
+			}
+		}
+		
+		private async Task<Dictionary<int, string[]>> ValidateLibraryCardHolderCsvRecordsAsync(
+	        List<LibraryCardHolderCsvRecordDto> records, 
+	        int startRowIndex,
+	        List<string>? imageFileNames,
+	        SystemLanguage? lang = SystemLanguage.English)
+	    {
+	        // Check current system lang
+	        var isEng = lang == SystemLanguage.English;
+	        
+	        // Initialize error dic
+	        var errDic = new Dictionary<int, string[]>();
+	        // Assign current row index
+	        var currRow = startRowIndex;
+	        
+	        // Iterate each record to validate data
+	        for (int i = 0; i < records.Count; i++)
+	        {
+	            // Initialize list errors
+	            var errors = new List<string>();
+
+	            // Email
+	            var email = records[i].Email;
+	            if (string.IsNullOrEmpty(email) ||
+	                !Regex.Match(email, @"^((?!\.)[\w\-_.]*[^.])(@\w+)(\.\w+(\.\w+)?[^.\W])$").Success)
+	            {
+	                errors.Add(isEng ? "Not valid email address" : "Email không hợp lệ");
+	            }
+	            else
+	            {
+	                // Check whether email already exist
+	                var isEmailExist = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Email == email);
+	                if (isEmailExist)
+	                {
+	                    errors.Add(isEng ? "Email has already existed" : "Email đã tồn tại");
+	                }
+	            }
+	            
+	            // Firstname
+	            var firstName = records[i].FirstName;
+	            if (string.IsNullOrEmpty(firstName))
+	            {
+	                errors.Add(isEng ? "First name cannot be empty" : "Vui lòng nhập đầy đủ họ và tên");
+	            }else if (!Regex.Match(firstName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$").Success)
+	            {
+	                errors.Add(isEng 
+	                    ? "First name should start with an uppercase letter for each word" 
+	                    : "Họ phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
+	            }else if (firstName.Length > 100 || firstName.Length < 1)
+	            {
+	                errors.Add(isEng 
+	                    ? "First name must be between 1 and 100 characters long" 
+	                    : "Họ phải có độ dài từ 1 đến 100 ký tự");
+	            }
+	            
+	            // Lastname
+	            var lastName = records[i].LastName;
+	            if (string.IsNullOrEmpty(lastName))
+	            {
+	                errors.Add(isEng ? "Last name cannot be empty" : "Vui lòng nhập đầy đủ họ và tên");
+	            }else if (!Regex.Match(lastName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$").Success)
+	            {
+	                errors.Add(isEng 
+	                    ? "Last name should start with an uppercase letter for each word" 
+	                    : "Tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
+	            }else if (lastName.Length > 100 || lastName.Length < 1)
+	            {
+	                errors.Add(isEng 
+	                    ? "Last name must be between 1 and 100 characters long" 
+	                    : "Tên phải có độ dài từ 1 đến 100 ký tự");
+	            }
+	            
+	            // Dob 
+	            var dob = records[i].Dob;
+	            if (dob != null) // Only process validate dob when exist
+	            {
+	                if (dob != DateTime.MinValue && 
+	                    dob.Value.Date >= DateTime.UtcNow.Date)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Invalid date of birth"
+	                        : "Ngày sinh không hợp lệ");
+	                }
+	            }
+	            
+	            // Phone
+	            var phoneNumber = records[i].Phone;
+	            if (phoneNumber != null)
+	            {
+	                if (phoneNumber.Length < 10)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Phone must not be less than 10 characters" 
+	                        : "SĐT không được ít hơn 10 ký tự");
+	                }else if (phoneNumber.Length > 12)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Phone must not exceed 12 characters" 
+	                        : "SĐT không được vượt quá 12 ký tự");
+	                }else if (!Regex.Match(phoneNumber, @"^0\d{9,10}$").Success)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Phone not valid" 
+	                        : "SĐT không hợp lệ");
+	                }
+	                else
+	                {
+	                    // Check whether phone already exist
+	                    var isPhoneExist = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => u.Phone == phoneNumber);
+	                    if (isPhoneExist)
+	                    {
+	                        errors.Add(isEng ? "Phone number has already existed" : "SĐT đã tồn tại");
+	                    }
+	                }
+	            }
+	            
+	            // Address 
+	            var address = records[i].Address;
+	            if (!string.IsNullOrEmpty(address) && address.Length > 255)
+	            {
+	                errors.Add(isEng ? "Address cannot exceed 255 characters" : "Địa chỉ không vượt quá 255 ký tự");
+	            }
+	            
+	            // Gender
+	            var gender = records[i].Gender;
+	            if (!string.IsNullOrEmpty(gender) && !Enum.TryParse(gender, true, out Gender genderEnum))
+	            {
+	                if(gender.ToLower() == Gender.Male.GetDescription().ToLower())
+	                {
+	                    records[i].Gender = Gender.Male.ToString();
+	                }else if (gender.ToLower() == Gender.Female.GetDescription().ToLower())
+	                {
+	                    records[i].Gender = Gender.Female.ToString();
+	                }else if (gender.ToLower() == Gender.Other.GetDescription().ToLower())
+	                {
+	                    records[i].Gender = Gender.Other.ToString();
+	                }
+	                else
+	                {
+	                    errors.Add(isEng ? "Gender is invalid" : "Giới tính không hợp lệ");
+	                }
+	            }
+	            
+	            // Validate library card information (if any)
+	            if (records[i].IsCreateLibraryCard)
+	            {
+	                // Library card full name
+	                var libCardFullName = records[i].LibraryCardFullName;
+	                if (string.IsNullOrEmpty(libCardFullName))
+	                {
+	                    errors.Add(isEng 
+	                        ? "Library card full name cannot be empty when create library card" 
+	                        : "Tên thẻ thư viện không được rỗng khi đánh dấu tạo thẻ đi kèm");
+	                }else if (!Regex.Match(libCardFullName, @"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$").Success)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Library card full name should start with an uppercase letter for each word" 
+	                        : "Tên thẻ thư viện phải bắt đầu bằng chữ cái viết hoa cho mỗi từ");
+	                }else if (lastName.Length > 200 || lastName.Length < 1)
+	                {
+	                    errors.Add(isEng 
+	                        ? "Library card full name must be between 1 and 200 characters long" 
+	                        : "Tên thẻ thư viện phải có độ dài từ 1 đến 200 ký tự");
+	                }
+	                
+	                // Library card avatar
+	                var libCardAvatar = records[i].LibraryCardAvatar;
+	                if (!string.IsNullOrEmpty(libCardAvatar) &&
+	                    imageFileNames != null && !imageFileNames.Contains(libCardAvatar))
+	                {
+	                    errors.Add(isEng 
+	                        ? "Library card avatar is not exist in collection of input images" 
+	                        : "Không tìm thấy ảnh thẻ trong danh sách ảnh đầu vào");
+	                }
+	                
+	                // Library card barcode
+	                var barcode = records[i].Barcode;
+	                if (string.IsNullOrEmpty(barcode))
+	                {
+	                    errors.Add(isEng ? "Barcode is required when create library card" : "Yêu cầu nhập mã thẻ khi đánh dấu tạo thẻ đi kèm");
+	                }else if (!barcode.StartsWith(_appSettings.LibraryCardBarcodePrefix))
+	                {
+	                    errors.Add(isEng 
+	                        ? $"Barcode is invalid. Must start with '{_appSettings.LibraryCardBarcodePrefix}'" 
+	                        : $"Mã thẻ phải bắt đầu bằng '{_appSettings.LibraryCardBarcodePrefix}'");
+	                }
+	                else
+	                {
+	                    // Check barcode exist
+	                    var isBarcodeExist = await _unitOfWork.Repository<User, Guid>().AnyAsync(u => 
+	                        u.LibraryCard != null && u.LibraryCard.Barcode == barcode);
+	                    if (isBarcodeExist)
+	                    {
+	                        errors.Add(isEng ? "Barcode has already existed" : "Mã thẻ đã tồn tại");
+	                    }
+	                }
+	                
+	                // Issuance method
+	                var issuanceMethod = records[i].IssuanceMethod;
+	                if (string.IsNullOrEmpty(issuanceMethod))
+	                {
+	                    errors.Add(isEng ? "Issuance method is required" : "Hình thức đăng ký thẻ không được rỗng");
+	                }else if (!Enum.TryParse(issuanceMethod, true, out LibraryCardIssuanceMethod issuanceMethodEnum))
+	                {
+	                    if(issuanceMethod.ToLower() == LibraryCardIssuanceMethod.Online.GetDescription().ToLower())
+	                    {
+	                        records[i].IssuanceMethod = LibraryCardIssuanceMethod.Online.ToString();
+	                    }else if (issuanceMethod.ToLower() == LibraryCardIssuanceMethod.InPerson.GetDescription().ToLower())
+	                    {
+	                        records[i].IssuanceMethod = LibraryCardIssuanceMethod.InPerson.ToString();
+	                    }
+	                    else
+	                    {
+	                        errors.Add(isEng ? "Issuance method is invalid" : "Hình thức đăng ký thẻ không hợp lệ");
+	                    }
+	                }
+	                
+	                // Library card status
+	                var cardStatus = records[i].LibraryCardStatus;
+	                if (string.IsNullOrEmpty(cardStatus))
+	                {
+	                    errors.Add(isEng ? "Library card status is required" : "Trạng thái thẻ không được rỗng");
+	                }else if (!Enum.TryParse(cardStatus, true, out LibraryCardStatus validCardStatus))
+	                {
+	                    if(cardStatus.ToLower() == LibraryCardStatus.Active.GetDescription().ToLower())
+	                    {
+	                        records[i].LibraryCardStatus = LibraryCardStatus.Active.ToString();
+	                    }else if (cardStatus.ToLower() == LibraryCardStatus.Expired.GetDescription().ToLower())
+	                    {
+	                        records[i].LibraryCardStatus = LibraryCardStatus.Expired.ToString();
+	                    }else if (cardStatus.ToLower() == LibraryCardStatus.Pending.GetDescription().ToLower())
+	                    {
+	                        records[i].LibraryCardStatus = LibraryCardStatus.Pending.ToString();
+	                    }
+	                    else if (cardStatus.ToLower() == LibraryCardStatus.Rejected.GetDescription().ToLower())
+	                    {
+		                    records[i].LibraryCardStatus = LibraryCardStatus.Rejected.ToString();
+	                    }
+	                    else
+	                    {
+	                        errors.Add(isEng ? "Library card status is invalid" : "Trạng thái thẻ không hợp lệ");
+	                    }
+	                    
+	                }else
+	                {
+	                    switch (validCardStatus)
+	                    {
+	                        case LibraryCardStatus.Pending:
+	                            // Required issue date
+	                            if (!records[i].IssueDate.HasValue)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Issue date must be assigned when card status is Pending" 
+	                                    : "Ngày tạo thẻ không được rỗng khi thẻ đang ở trạng thái 'Đang chờ duyệt'");
+	                            }
+	                            // Check for exist expiry date when card mark as pending
+	                            if (records[i].ExpiryDate.HasValue)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Expiry date must not assigned when card status is Pending" 
+	                                    : "Không điền ngày hết hạn khi thẻ đang ở trạng thái 'Đang chờ duyệt'");
+	                            }
+	                            break;
+	                        case LibraryCardStatus.Rejected:
+		                        // Required issue date
+		                        if (!records[i].IssueDate.HasValue)
+		                        {
+			                        errors.Add(isEng 
+				                        ? "Issue date must be assigned when card status is Rejected" 
+				                        : "Ngày tạo thẻ không được rỗng khi thẻ đang ở trạng thái 'Bị từ chối'");
+		                        }
+		                        // Check for exist expiry date when card mark as pending
+		                        if (records[i].ExpiryDate.HasValue)
+		                        {
+			                        errors.Add(isEng 
+				                        ? "Expiry date must not assigned when card status is Rejected" 
+				                        : "Không điền ngày hết hạn khi thẻ đang ở trạng thái 'Bị từ chối'");
+		                        }
+		                        break;
+	                        case LibraryCardStatus.Active:
+	                            // Check for exist issue and expiry date when card mark as active
+	                            if (!records[i].IssueDate.HasValue || !records[i].ExpiryDate.HasValue)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Issue & expiry date must assigned when card status is Active" 
+	                                    : "Ngày tạo thẻ và ngày hết hạn không được rỗng khi thẻ đang ở trạng thái 'Đang hoạt động'");
+	                            }
+	                            if (records[i].IssueDate != null && 
+	                                     records[i].ExpiryDate != null && 
+	                                     records[i].IssueDate > records[i].ExpiryDate)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Issue date must smaller than expiry date when card status is Active" 
+	                                    : "Ngày tạo thẻ phải nhỏ hơn ngày hết hạn khi thẻ đang ở trạng thái 'Đang hoạt động'");
+	                            }
+	                            break;
+	                        case LibraryCardStatus.Expired:
+	                            // Check for exist issue and expiry date when card mark as active
+	                            if (!records[i].IssueDate.HasValue || !records[i].ExpiryDate.HasValue)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Issue & expiry date must assigned when card status is Expired" 
+	                                    : "Ngày tạo thẻ và ngày hết hạn không được rỗng khi thẻ đang ở trạng thái 'Hết hạn'");
+	                            }
+	                            if (records[i].IssueDate != null && 
+	                                      records[i].ExpiryDate != null && 
+	                                      records[i].IssueDate < records[i].ExpiryDate)
+	                            {
+	                                errors.Add(isEng 
+	                                    ? "Issue date must exceed than expiry date when card status is Expired" 
+	                                    : "Ngày tạo thẻ phải lớn hơn ngày hết hạn khi thẻ đang ở trạng thái 'Hết hạn'");
+	                            }
+	                            break;
+	                    }
+	                }
+	            }
+	                
+	            if (errors.Any()) // Invoke any error
+	            {
+	                // Add collection of error messages with specific row index
+	                errDic.Add(currRow, errors.ToArray());
+	            }
+	            // Increase curr row index
+	            currRow++;
+	        }
+
+	        return errDic;
+	    }
+		
+		private (Dictionary<int, List<string>> Errors, Dictionary<int, List<int>> Duplicates) DetectDuplicatesInFile(
+	        List<LibraryCardHolderCsvRecordDto> records, 
+	        string[] scanningFields,
+	        SystemLanguage? lang
+	    )
+	    {
+	        // Check whether exist any scanning fields
+	        if (scanningFields.Length == 0)
+	            return (new(), new());
+
+	        // Determine current system language
+	        var isEng = lang == SystemLanguage.English;
+	        
+	        // Initialize error messages (for display purpose)
+	        var errorMessages = new Dictionary<int, List<string>>();
+	        
+	        // Initialize key pair dictionary (for handle purpose)
+	        // Key: root element
+	        // Value: duplicate elements with root
+	        var duplicates = new Dictionary<int, List<int>>();
+	        
+	        // Initialize a map to track seen keys for each field
+	        var fieldToSeenKeys = new Dictionary<string, Dictionary<string, int>>();
+	        foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
+	        {
+	            fieldToSeenKeys[field] = new Dictionary<string, int>();
+	        }
+
+	        // Default row index set to second row, as first row is header
+	        var currDataRow = 2;
+	        for (int i = 0; i < records.Count; i++)
+	        {
+	            var record = records[i];
+	            
+	            // Initialize row errors
+	            var rowErrors = new List<string>();
+	            
+	            // Check duplicates for each scanning field
+	            foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
+	            {
+	                string? fieldValue = field switch
+	                {
+	                    var title when title == nameof(LibraryCard.FullName).ToUpperInvariant() => record.LibraryCardFullName?.Trim()
+	                        .ToUpperInvariant(),
+	                    var avatarImage when avatarImage == nameof(User.Address).ToUpperInvariant() => record.Address
+	                        ?.Trim().ToUpperInvariant(),
+	                    _ => null
+	                };
+
+	                // Skip if the field value is null or empty
+	                if (string.IsNullOrEmpty(fieldValue))
+	                    continue;
+
+	                // Check if the key has already seen
+	                var seenKeys = fieldToSeenKeys[field];
+	                if (seenKeys.ContainsKey(fieldValue))
+	                {
+	                    // Retrieve the first index where the duplicate was seen
+	                    var firstItemIndex = seenKeys[fieldValue];
+
+	                    // Add the current index to the duplicates list
+	                    if (!duplicates.ContainsKey(firstItemIndex))
+	                    {
+	                        duplicates[firstItemIndex] = new List<int>();
+	                    }
+
+	                    duplicates[firstItemIndex].Add(i);
+
+	                    // Add duplicate error message
+	                    rowErrors.Add(isEng
+	                        ? $"Duplicate data for field '{field}': '{fieldValue}'"
+	                        : $"Dữ liệu bị trùng cho trường '{field}': '{fieldValue}'");
+	                }
+	                else
+	                {
+	                    // Mark this field value as seen at the current index
+	                    seenKeys[fieldValue] = i;
+	                }
+	            }
+	            
+	            // If errors exist for specific row, add to the dictionary
+	            if (rowErrors.Any())
+	            {
+	                errorMessages.Add(currDataRow, rowErrors);
+	            }
+	            
+	            // Increment the row counter
+	            currDataRow++;
+	        }
+
+	        return (errorMessages, duplicates);
+	    } 
 		#endregion
 		
 		
@@ -1947,5 +3256,143 @@ namespace FPTU_ELibrary.Application.Services
 
 	            return errMsgs;
 	        }
+		
+		private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
+			TransactionDto transactionDto, string libName, string libContact)
+		{
+			try
+			{
+				// Email subject 
+				var subject = "[ELIBRARY] Tài Khoản Thư Viện Đã Kích Hoạt";
+	                            
+				// Progress send confirmation email
+				var emailMessageDto = new EmailMessageDto( // Define email message
+					// Define Recipient
+					to: new List<string>() { email },
+					// Define subject
+					subject: subject,
+					// Add email body content
+					content: GetLibraryCardActivatedEmailBody(
+						signInEmail: email,
+						cardDto: cardDto,
+						transactionDto: transactionDto,
+						libName: libName,
+						libContact:libContact)
+				);
+	                            
+				// Process send email
+				return await _emailService.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process send library card activated email");
+			}
+		}
+		private string GetLibraryCardActivatedEmailBody(
+			string signInEmail, LibraryCardDto cardDto,
+			TransactionDto transactionDto, string libName, string libContact)
+	    {
+	        var culture = new CultureInfo("vi-VN");
+	        
+	        return $$"""
+	                 <!DOCTYPE html>
+	                 <html>
+	                 <head>
+	                     <meta charset="UTF-8">
+	                     <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
+	                     <style>
+	                         body {
+	                             font-family: Arial, sans-serif;
+	                             line-height: 1.6;
+	                             color: #333;
+	                         }
+	                         .header {
+	                             font-size: 18px;
+	                             color: #2c3e50;
+	                             font-weight: bold;
+	                         }
+	                         .details {
+	                             margin: 15px 0;
+	                             padding: 10px;
+	                             background-color: #f9f9f9;
+	                             border-left: 4px solid #27ae60;
+	                         }
+	                         .details li {
+	                             margin: 5px 0;
+	                         }
+	                         .barcode {
+	                             color: #2980b9;
+	                             font-weight: bold;
+	                         }
+	                         .expiry-date {
+	                             color: #27ae60;
+	                             font-weight: bold;
+	                         }
+	                         .status-label {
+	                             color: #e74c3c;
+	                             font-weight: bold;
+	                         }
+	                         .status-text {
+	                             color: #f39c12;
+	                             font-weight: bold;
+	                         }
+	                         .footer {
+	                             margin-top: 20px;
+	                             font-size: 14px;
+	                             color: #7f8c8d;
+	                         }
+	                     </style>
+	                 </head>
+	                 <body>
+	                     <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
+	                     <p>Xin chào {{cardDto.FullName}},</p>
+	                     <p>Thẻ thư viện của bạn đã được tạo thành công. Bạn có thể sử dụng tất cả các dịch vụ của thư viện mà không bị gián đoạn.</p>
+	                     
+	                     <p><strong>Thông tin tài khoản đăng nhập:</strong></p>
+	                     <div class="details">
+	                 		<ul>
+	                 			<li><strong>Email:</strong> {{signInEmail}}</li>
+	                 		</ul>
+	                     </div>
+	                     
+	                     <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
+	                     <div class="details">
+	                         <ul>
+	                             <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+	                             <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
+	                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+	                         </ul>
+	                     </div>
+	                     
+	                     <p><strong>Chi Tiết Giao Dịch:</strong></p>
+	                     <div class="details">
+	                         <ul>
+	                             <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+	                             <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
+	                             <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+	                             <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+	                             <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+	                         </ul>
+	                     </div>
+	                     
+	                     <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
+	                     <div class="details">
+	                         <ul>
+	                             <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
+	                             <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
+	                             <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
+	                             <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
+	                         </ul>
+	                     </div>
+	                     
+	                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+	                     
+	                     <p><strong>Trân trọng,</strong></p>
+	                     <p>{{libName}}</p>
+	                 </body>
+	                 </html>
+	                 """;
 	    }
+	}
 }

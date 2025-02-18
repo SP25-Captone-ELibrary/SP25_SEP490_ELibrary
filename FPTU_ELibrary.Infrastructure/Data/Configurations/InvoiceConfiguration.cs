@@ -18,10 +18,6 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(e => e.TotalAmount)
             .HasColumnType("decimal(10,2)")
             .HasColumnName("total_amount");
-        builder.Property(e => e.Status)
-            .HasConversion<string>()
-            .HasColumnType("nvarchar(50)")
-            .HasColumnName("status");
         builder.Property(e => e.CreatedAt)
             .HasColumnType("datetime")
             .HasColumnName("created_at");
@@ -33,6 +29,13 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Invoice_UserId");
+        #endregion
+
+        #region Update at 17/02/2025
+        // builder.Property(e => e.Status)
+        //     .HasConversion<string>()
+        //     .HasColumnType("nvarchar(50)")
+        //     .HasColumnName("status");
         #endregion
     }
 }

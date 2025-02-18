@@ -124,7 +124,7 @@ namespace FPTU_ELibrary.Application.Services
 
 		public async Task<bool> SendEmailAsync(EmailMessageDto message, bool isBodyHtml = false)
 		{
-			// Construect email message
+			// Construct email message
 			var emailMSg = await ConstructEmailMessageAsync(message, isBodyHtml);
 			// Progress send email
 			return await SendAsync(emailMSg);

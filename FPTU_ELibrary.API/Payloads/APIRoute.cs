@@ -174,6 +174,7 @@
 			// [GET]
 			public const string GetById = Base + "/management/library-items/instances/{id}";
 			public const string GetByBarcode = Base + "/management/library-items/instances/code";
+			public const string CheckExistBarcode = Base + "/management/library-items/instances/check-exist-barcode";
 			// [POST]
 			public const string AddRange = Base + "/management/library-items/{id}/instances";
 			// [PUT] / [PATCH]
@@ -194,32 +195,17 @@
 		/// </summary>
 		public static class LibraryCard
 		{
-			#region Library Card Holder Management
-			// [POST]
-			public const string Create = Base + "/management/library-card-holders";
-			// [GET]
-			public const string GetAllCardHolders = Base + "/management/library-card-holders";
-			public const string GetCardHolderById = Base + "/management/library-card-holders/{userId}";
-			public const string GetAllCardHolderBorrowRequest = Base + "/management/library-card-holders/{userId}/borrows/requests";
-			public const string GetAllCardHolderBorrowRecord = Base + "/management/library-card-holders/{userId}/borrows/records";
-			public const string GetAllCardHolderDigitalBorrow = Base + "/management/library-card-holders/{userId}/borrows/digital";
-			public const string GetAllCardHolderReservation = Base + "/management/library-card-holders/{userId}/reservations";
-			public const string GetAllCardHolderInvoice = Base + "/management/library-card-holders/{userId}/invoices";
-			public const string GetAllCardHolderTransaction = Base + "/management/library-card-holders/{userId}/transactions";
-			public const string GetAllCardHolderNotification = Base + "/management/library-card-holders/{userId}/notifications";
-			// [PUT]
-			public const string UpdateHolder = Base + "/management/library-card-holders/{userId}";
-			#endregion
 
 			#region Library Card Management
 			// [GET]
 			public const string GetAllCard = Base + "/management/library-cards";
 			public const string GetCardById = Base + "/management/library-cards/{id}";
-			// [POST]
-			public const string AddCard = Base + "/management/library-cards";
 			// [PUT]
 			public const string UpdateCard = Base + "/management/library-cards/{id}";
 			// [PATCH]
+			public const string Confirm = Base + "/management/library-cards/{id}/confirm";
+			public const string Reject = Base + "/management/library-cards/{id}/reject";
+			public const string ExtendBorrowAmount = Base + "/management/library-cards/{id}/extend-borrow-amount";
 			public const string SuspendCard = Base + "/management/library-cards/{id}/suspend";
 			public const string UnsuspendCard = Base + "/management/library-cards/{id}/un-suspend";
 			public const string ArchiveCard = Base + "/management/library-cards/{userId}/archive-card"; 
@@ -229,19 +215,54 @@
 			
 			// [GET]
 			public const string CheckCardExtension = Base + "/library-cards/{id}/check-extension";
-			public const string GetByBarcode = Base + "/library-card-holders/get-by-barcode";
-			public const string GetCardHolderDetailByEmail = Base + "/library-card-holders/detail";
-			public const string GetAllCardHolderBorrowRequestByEmail = Base + "/library-card-holders/borrows/requests";
-			public const string GetAllCardHolderBorrowRecordByEmail = Base + "/library-card-holders/borrows/records";
-			public const string GetAllCardHolderDigitalBorrowByEmail = Base + "/library-card-holders/borrows/digital";
-			public const string GetAllCardHolderReservationByEmail = Base + "/library-card-holders/reservations";
-			public const string GetAllCardHolderInvoiceByEmail = Base + "/library-card-holders/invoices";
-			public const string GetAllCardHolderTransactionByEmail = Base + "/library-card-holders/transactions";
-			public const string GetAllCardHolderNotificationByEmail = Base + "/library-card-holders/notifications";
 			// [POST]
 			public const string Register = Base + "/library-cards/register";
-			public const string ConfirmRegister = Base + "/library-cards/confirm-register";
 			public const string ConfirmExtend = Base + "/library-cards/confirm-extend";
+			// [PATCH]
+			public const string SendReConfirm = Base + "/library-cards/re-confirm";
+		}
+		
+		/// <summary>
+		/// Library cardholder endpoints
+		/// </summary>
+		public static class LibraryCardHolder
+		{
+			#region Management
+			// [POST]
+			public const string Create = Base + "/management/library-card-holders";
+			public const string AddCard = Base + "/management/library-card-holders/add-card";
+			public const string Import = Base + "/management/library-card-holders/import";
+			// [GET]
+			public const string Export = Base + "/management/library-card-holders/export";
+			public const string GetCardHolderById = Base + "/management/library-card-holders/{userId}";
+			public const string GetCardHolderBorrowRequestById = Base + "/management/library-card-holders/{userId}/borrows/requests/{requestId}";
+			public const string GetCardHolderBorrowRecordById = Base + "/management/library-card-holders/{userId}/borrows/records/{borrowRecordId}";
+			public const string GetCardHolderDigitalBorrowById = Base + "/management/library-card-holders/{userId}/borrows/digital/{digitalBorrowId}";
+			public const string GetCardHolderInvoiceById = Base + "/management/library-card-holders/{userId}/borrows/invoices/{invoiceId}";
+			public const string GetCardHolderTransactionById = Base + "/management/library-card-holders/{userId}/borrows/transactions/{transactionId}";
+			public const string GetAllCardHolders = Base + "/management/library-card-holders";
+			public const string GetAllCardHolderBorrowRequest = Base + "/management/library-card-holders/{userId}/borrows/requests";
+			public const string GetAllCardHolderBorrowRecord = Base + "/management/library-card-holders/{userId}/borrows/records";
+			public const string GetAllCardHolderDigitalBorrow = Base + "/management/library-card-holders/{userId}/borrows/digital";
+			public const string GetAllCardHolderReservation = Base + "/management/library-card-holders/{userId}/reservations";
+			public const string GetAllCardHolderInvoice = Base + "/management/library-card-holders/{userId}/invoices";
+			public const string GetAllCardHolderTransaction = Base + "/management/library-card-holders/{userId}/transactions";
+			public const string GetAllCardHolderNotification = Base + "/management/library-card-holders/{userId}/notifications";
+			// [PUT] OR [PATCH]
+			public const string UpdateCardHolder = Base + "/management/library-card-holders/{userId}";
+			public const string SoftDeleteCardHolder = Base + "/management/library-card-holders/{userId}/soft-delete";
+			public const string SoftDeleteRangeCardHolder = Base + "/management/library-card-holders/soft-delete-range";
+			public const string UndoDeleteCardHolder = Base + "/management/library-card-holders/{userId}/undo-delete";
+			public const string UndoDeleteRangeCardHolder = Base + "/management/library-card-holders/undo-delete-range";
+			// [DELETE]
+			public const string DeleteCardHolder = Base + "/management/library-card-holders/{userId}";
+			public const string DeleteRangeCardHolder = Base + "/management/library-card-holders";
+			
+
+			#endregion
+			
+			// [GET]
+			public const string GetByBarcode = Base + "/library-card-holders/get-by-barcode";
 		}
 		
 		/// <summary>
@@ -399,6 +420,17 @@
 			// [DELETE]
 			public const string DeleteImage = Base + "/management/resources/images";
 			public const string DeleteVideo = Base + "/management/resources/videos";
+		}
+
+		/// <summary>
+		/// Return endpoints
+		/// </summary>
+		public static class Return
+		{
+			#region Management
+			public const string InLibraryReturn = Base + "/management/returns/in-library";
+			public const string SelfCheckoutReturn = Base + "/managmenet/returns/self-checkout";
+			#endregion
 		}
 		
 		/// <summary>
@@ -564,6 +596,11 @@
 			//[DELETE]
 		}
 
+		public static class FaceDetection
+		{
+			public const string Detect = Base + "/face-detection/detect";
+		}
+		
 		/// <summary>
 		/// Warehouse tracking endpoints
 		/// </summary>

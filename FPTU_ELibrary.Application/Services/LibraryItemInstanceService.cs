@@ -495,6 +495,30 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             throw new Exception("Error invoke when process get library item instance by barcode");
         }
     }
+
+    public async Task<IServiceResult> CheckExistBarcodeAsync(string barcode)
+    {
+        try
+        {
+            var isExistBarcode = await _unitOfWork.Repository<LibraryItemInstance, int>()
+                .AnyAsync(li => Equals(li.Barcode.ToLower(), barcode.ToLower()));
+            if (isExistBarcode)
+            {
+                // Msg: Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+            }
+            
+            // Msg: Fail to get data
+            return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process check exist barcode");
+        }
+    }
     
     public async Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId,
         List<LibraryItemInstanceDto> itemInstances)

@@ -8,7 +8,6 @@ public class InvoiceDto
     public int InvoiceId { get; set; }
     public Guid UserId { get; set; }
     public decimal TotalAmount { get; set; }
-    public InvoiceStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
 

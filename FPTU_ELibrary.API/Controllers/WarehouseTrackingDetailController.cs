@@ -1,10 +1,14 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -12,10 +16,13 @@ namespace FPTU_ELibrary.API.Controllers;
 public class WarehouseTrackingDetailController : ControllerBase
 {
     private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _trackingDetailService;
+    private readonly AppSettings _appSettings;
 
-    public WarehouseTrackingDetailController(IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>
-        trackingDetailService)
+    public WarehouseTrackingDetailController(
+        IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> trackingDetailService,
+        IOptionsMonitor<AppSettings> monitor)
     {
+        _appSettings = monitor.CurrentValue;
         _trackingDetailService = trackingDetailService;
     }
     
@@ -80,15 +87,25 @@ public class WarehouseTrackingDetailController : ControllerBase
     
     [Authorize]
     [HttpGet(APIRoute.WarehouseTrackingDetail.GetAllByTrackingId, Name = nameof(GetAllDetailByTrackingIdAsync))]
-    public async Task<IActionResult> GetAllDetailByTrackingIdAsync([FromRoute] int trackingId)
+    public async Task<IActionResult> GetAllDetailByTrackingIdAsync([FromRoute] int trackingId,
+        [FromQuery] WarehouseTrackingDetailSpecParams specParams)
     {
-        return Ok(await _trackingDetailService.GetAllByTrackingIdAsync(trackingId: trackingId));
+        return Ok(await _trackingDetailService.GetAllByTrackingIdAsync(trackingId: trackingId,
+            new WarehouseTrackingDetailSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
     
     [Authorize]
     [HttpGet(APIRoute.WarehouseTrackingDetail.GetAllNotExistItemByTrackingId, Name = nameof(GetAllNotExistItemDetailByTrackingIdAsync))]
-    public async Task<IActionResult> GetAllNotExistItemDetailByTrackingIdAsync([FromRoute] int trackingId)
+    public async Task<IActionResult> GetAllNotExistItemDetailByTrackingIdAsync([FromRoute] int trackingId,
+        [FromQuery] WarehouseTrackingDetailSpecParams specParams)
     {
-        return Ok(await _trackingDetailService.GetAllNotExistItemByTrackingIdAsync(trackingId: trackingId));
+        return Ok(await _trackingDetailService.GetAllNotExistItemByTrackingIdAsync(trackingId: trackingId,
+            new WarehouseTrackingDetailSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
 }

@@ -21,6 +21,7 @@ public class LibraryCard
     // or contact directly to library to describe for reason)
     public bool IsAllowBorrowMore { get; set; } // This field will automatically change to false when first create borrow request after employee updated (already handled in Borrow feature)  
     public int MaxItemOnceTime { get; set; } // Employee will update total item can be borrowed once time for user
+    public string? AllowBorrowMoreReason { get; set; } // Reason why increase the total borrow amount
     
     // Remind user before expiration (via email or system notification)
     public bool IsReminderSent { get; set; }
@@ -34,11 +35,18 @@ public class LibraryCard
     public DateTime IssueDate { get; set; }
     public DateTime? ExpiryDate { get; set; } // Indicates if the expiry date has been extended
     public DateTime? SuspensionEndDate { get; set; } // Number of times the borrow period has been extended
+    public string? SuspensionReason { get; set; } // Suspension reason
+    
+    // Reject reason
+    public string? RejectReason { get; set; }
     
     // Reissue & archived card
     public bool IsArchived { get; set; }
     public string? ArchiveReason { get; set; }
     public Guid? PreviousUserId { get; set; }
+    
+    // Payment information
+    public string TransactionCode { get; set; } = null!;
     
     // Mapping entities
     [JsonIgnore]

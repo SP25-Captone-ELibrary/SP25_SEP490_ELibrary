@@ -15,13 +15,11 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
-using FPTU_ELibrary.Domain.Specifications.Params;
-using Google.Apis.Services;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Nest;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -30,13 +28,15 @@ public class WarehouseTrackingDetailService :
     GenericService<WarehouseTrackingDetail, WarehouseTrackingDetailDto, int>,
     IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>
 {
-    private readonly IWarehouseTrackingService<WarehouseTrackingDto> _trackingSvc;
     private readonly ICategoryService<CategoryDto> _cateSvc;
     private readonly ILibraryItemService<LibraryItemDto> _itemSvc;
+    private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
+    private readonly IWarehouseTrackingService<WarehouseTrackingDto> _trackingSvc;
 
     public WarehouseTrackingDetailService(
-	    ILibraryItemService<LibraryItemDto> itemSvc,
 	    ICategoryService<CategoryDto> cateSvc,
+	    ILibraryItemService<LibraryItemDto> itemSvc,
+	    ILibraryItemConditionService<LibraryItemConditionDto> conditionSvc,
 	    IWarehouseTrackingService<WarehouseTrackingDto> trackingSvc,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
@@ -46,6 +46,7 @@ public class WarehouseTrackingDetailService :
 	    _cateSvc = cateSvc;
 	    _itemSvc = itemSvc;
         _trackingSvc = trackingSvc;
+        _conditionSvc = conditionSvc;
     }
 
     public override async Task<IServiceResult> GetByIdAsync(int id)
@@ -59,23 +60,122 @@ public class WarehouseTrackingDetailService :
 			
 			// Build specification
 			var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(x => x.TrackingDetailId == id);
-			// Apply include
-			baseSpec.ApplyInclude(q => q
-				.Include(w => w.LibraryItem)
-				.Include(w => w.Category)
-			);
 			// Retrieve entity with spec
 			var existingEntity =
-				await _unitOfWork.Repository<WarehouseTrackingDetail, int>().GetWithSpecAsync(baseSpec);
+				await _unitOfWork.Repository<WarehouseTrackingDetail, int>().GetWithSpecAndSelectorAsync(baseSpec,
+					selector: w => new WarehouseTrackingDetail()
+					{
+						TrackingDetailId = w.TrackingDetailId,
+						ItemName = w.ItemName,
+						ItemTotal = w.ItemTotal,
+						Isbn = w.Isbn,
+						UnitPrice = w.UnitPrice,
+						TotalAmount = w.TotalAmount,
+						Reason = w.Reason,
+						TrackingId = w.TrackingId,
+						LibraryItemId = w.LibraryItemId,
+						CategoryId = w.CategoryId,
+						ConditionId = w.ConditionId,
+						CreatedAt = w.CreatedAt,
+						UpdatedAt = w.UpdatedAt,
+						CreatedBy = w.CreatedBy,
+						UpdatedBy = w.UpdatedBy,
+						LibraryItem = w.LibraryItem != null 
+							? new LibraryItem()
+							{
+								LibraryItemId = w.LibraryItem.LibraryItemId,
+			                    Title = w.LibraryItem.Title,
+			                    SubTitle = w.LibraryItem.SubTitle,
+			                    Responsibility = w.LibraryItem.Responsibility,
+			                    Edition = w.LibraryItem.Edition,
+			                    EditionNumber = w.LibraryItem.EditionNumber,
+			                    Language = w.LibraryItem.Language,
+			                    OriginLanguage = w.LibraryItem.OriginLanguage,
+			                    Summary = w.LibraryItem.Summary,
+			                    CoverImage = w.LibraryItem.CoverImage,
+			                    PublicationYear = w.LibraryItem.PublicationYear,
+			                    Publisher = w.LibraryItem.Publisher,
+			                    PublicationPlace = w.LibraryItem.PublicationPlace,
+			                    ClassificationNumber = w.LibraryItem.ClassificationNumber,
+			                    CutterNumber = w.LibraryItem.CutterNumber,
+			                    Isbn = w.LibraryItem.Isbn,
+			                    Ean = w.LibraryItem.Ean,
+			                    EstimatedPrice = w.LibraryItem.EstimatedPrice,
+			                    PageCount = w.LibraryItem.PageCount,
+			                    PhysicalDetails = w.LibraryItem.PhysicalDetails,
+			                    Dimensions = w.LibraryItem.Dimensions,
+			                    AccompanyingMaterial = w.LibraryItem.AccompanyingMaterial,
+			                    Genres = w.LibraryItem.Genres,
+			                    GeneralNote = w.LibraryItem.GeneralNote,
+			                    BibliographicalNote = w.LibraryItem.BibliographicalNote,
+			                    TopicalTerms = w.LibraryItem.TopicalTerms,
+			                    AdditionalAuthors = w.LibraryItem.AdditionalAuthors,
+			                    CategoryId = w.LibraryItem.CategoryId,
+			                    ShelfId = w.LibraryItem.ShelfId,
+			                    GroupId = w.LibraryItem.GroupId,
+			                    Status = w.LibraryItem.Status,
+			                    IsDeleted = w.LibraryItem.IsDeleted,
+			                    IsTrained = w.LibraryItem.IsTrained,
+			                    CanBorrow = w.LibraryItem.CanBorrow,
+			                    TrainedAt = w.LibraryItem.TrainedAt,
+			                    CreatedAt = w.LibraryItem.CreatedAt,
+			                    UpdatedAt = w.LibraryItem.UpdatedAt,
+			                    UpdatedBy = w.LibraryItem.UpdatedBy,
+			                    CreatedBy = w.LibraryItem.CreatedBy,
+			                    // References
+			                    Category = w.LibraryItem.Category,
+			                    Shelf = w.LibraryItem.Shelf,
+			                    LibraryItemGroup = w.LibraryItem.LibraryItemGroup,
+			                    LibraryItemInventory = w.LibraryItem.LibraryItemInventory,
+			                    LibraryItemInstances = w.LibraryItem.LibraryItemInstances.Select(li => new LibraryItemInstance()
+			                    {
+				                    LibraryItemInstanceId = li.LibraryItemInstanceId,
+				                    LibraryItemId = li.LibraryItemId,
+				                    Barcode = li.Barcode,
+				                    Status = li.Status,
+				                    CreatedAt = li.CreatedAt,
+				                    UpdatedAt = li.UpdatedAt,
+				                    UpdatedBy = li.UpdatedBy,
+				                    CreatedBy = li.CreatedBy,
+				                    IsDeleted = li.IsDeleted,
+				                    LibraryItemConditionHistories = li.LibraryItemConditionHistories
+			                    }).ToList(),
+			                    LibraryItemReviews = w.LibraryItem.LibraryItemReviews,
+			                    LibraryItemAuthors = w.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+			                    {
+			                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+			                        LibraryItemId = ba.LibraryItemId,
+			                        AuthorId = ba.AuthorId,
+			                        Author = ba.Author
+			                    }).ToList()
+							}
+							: null,
+						WarehouseTracking = w.WarehouseTracking,
+						Category = w.Category,
+						Condition = w.Condition
+					});
 			if (existingEntity == null)
 			{
+				// Not found {0}
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 					StringUtils.Format(errMsg, isEng ? "warehouse tracking detail" : "chi tiết dữ liệu nhập kho"));
 			}
 			
+			// Map to dto
+			var detailDto = _mapper.Map<WarehouseTrackingDetailDto>(existingEntity);
+			// Convert to library item detail
+			var libItemDetail = detailDto.LibraryItem?.ToLibraryItemDetailDto();
+			// Assign detail's item to null
+			detailDto.LibraryItem = null;
+			
+			// Read success
 			return new ServiceResult(ResultCodeConst.SYS_Success0002,
-				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), _mapper.Map<WarehouseTrackingDetailDto>(existingEntity));
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new
+				{
+					WarehouseTrackingDetail = detailDto,
+					LibraryItem = libItemDetail
+				});
 	    }
 	    catch (Exception ex)
 	    {
@@ -120,6 +220,14 @@ public class WarehouseTrackingDetailService :
 		    }
 		    else
 		    {
+			    // Check exist any cataloged item
+			    if (existingEntity.LibraryItemId != null)
+			    {
+				    // Cannot process update as exist item has been cataloged
+				    return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0012,
+					    await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0012));
+			    }
+			    
 			    // Check for updating detail of completed or cancelled warehouse tracking 
                 if (existingEntity.WarehouseTracking.Status == WarehouseTrackingStatus.Completed ||
                     existingEntity.WarehouseTracking.Status == WarehouseTrackingStatus.Cancelled)
@@ -662,7 +770,7 @@ public class WarehouseTrackingDetailService :
 	    }
     }
     
-    public async Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId)
+    public async Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec)
     {
 	    try
 	    {
@@ -670,7 +778,7 @@ public class WarehouseTrackingDetailService :
 		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
 			    LanguageContext.CurrentLanguage);
 		    var isEng = lang == SystemLanguage.English;
-            
+			   
 		    // Check existing tracking id 
 		    var isTrackingExist = (await _trackingSvc.AnyAsync(x => x.TrackingId == trackingId)).Data is true;
 		    if (!isTrackingExist)
@@ -680,27 +788,79 @@ public class WarehouseTrackingDetailService :
 				    StringUtils.Format(errMsg, isEng ? "warehouse tracking" : "thông tin theo dõi kho"));
 		    }
 			
-		    // Build warehouse tracking detail specification
-		    var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(w => w.TrackingId == trackingId);
+		    // Try to parse specification to WarehouseTrackingDetailSpecification
+		    var detailSpec = spec as WarehouseTrackingDetailSpecification;
+		    // Check if specification is null
+		    if (detailSpec == null)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		    }
+		    
 		    // Apply include
-		    baseSpec.ApplyInclude(q => q
-			    .Include(w => w.LibraryItem!) 
+		    detailSpec.ApplyInclude(q => q
+			    .Include(w => w.LibraryItem)
+			    .ThenInclude(li => li!.LibraryItemInventory)
+			    .Include(w => w.Category)
 		    );
+		    
+		    // Add tracking filtering 
+		    detailSpec.AddFilter(w => w.TrackingId == trackingId);
+		    
+		    // Count total library items
+		    var totalDetailWithSpec = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().CountAsync(detailSpec);
+		    // Count total page
+		    var totalPage = (int)Math.Ceiling((double)totalDetailWithSpec / detailSpec.PageSize);
+
+		    // Set pagination to specification after count total warehouse tracking detail
+		    if (detailSpec.PageIndex > totalPage
+		        || detailSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+		    {
+			    detailSpec.PageIndex = 1; // Set default to first page
+		    }
+
+		    // Apply pagination
+		    detailSpec.ApplyPaging(
+			    skip: detailSpec.PageSize * (detailSpec.PageIndex - 1),
+			    take: detailSpec.PageSize);
+		    
 		    // Try to retrieve all data by spec
 		    var entities = await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
-			    .GetAllWithSpecAsync(baseSpec);
+			    .GetAllWithSpecAsync(detailSpec);
 		    if (entities.Any())
 		    {
+			    // Convert to dto
+			    var detailDtos = _mapper.Map<List<WarehouseTrackingDetailDto>>(entities);
+			    
+			    // Get all categories
+			    var categoryDtos = (await _cateSvc.GetAllAsync()).Data as List<CategoryDto>;
+			    if (categoryDtos == null || !categoryDtos.Any())
+			    {
+				    // Not found {0}
+				    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					    StringUtils.Format(errMsg, isEng 
+						    ? "categories to get all warehouse tracking detail" 
+						    : "phân loại để lấy thông tin nhập kho"));
+			    }
+			    
+			    // Convert to combined dto 
+			    var combinedDto = detailDtos.ToDetailCombinedDto(
+				    categories: categoryDtos,
+				    pageIndex: detailSpec.PageIndex,
+				    pageSize: detailSpec.PageSize,
+				    totalPage: totalPage,
+				    totalActualItem: totalDetailWithSpec);
+			    
 			    // Get data successfully
 			    return new ServiceResult(ResultCodeConst.SYS_Success0002,
-				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-				    _mapper.Map<List<WarehouseTrackingDetailDto>>(entities));
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), combinedDto);
 		    }
 
 		    // Not found data or empty
 		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
 			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-			    _mapper.Map<List<WarehouseTrackingDetailDto>>(entities));
+			    _mapper.Map<List<WarehouseTrackingDetailCombinedDto>>(entities));
 	    }
 	    catch (Exception ex)
 	    {
@@ -709,7 +869,7 @@ public class WarehouseTrackingDetailService :
 	    }
     }
 
-    public async Task<IServiceResult> GetAllNotExistItemByTrackingIdAsync(int trackingId)
+    public async Task<IServiceResult> GetAllNotExistItemByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec)
     {
 	    try
 	    {
@@ -727,20 +887,50 @@ public class WarehouseTrackingDetailService :
 				    StringUtils.Format(errMsg, isEng ? "warehouse tracking" : "thông tin theo dõi kho"));
 		    }
 		    
-		    // Build warehouse tracking detail specification
-            var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(w => 
-	            w.TrackingId == trackingId &&
-	            w.LibraryItemId == null); // Exclude all detail containing library item
-			
+		    // Try to parse specification to WarehouseTrackingDetailSpecification
+		    var detailSpec = spec as WarehouseTrackingDetailSpecification;
+		    // Check if specification is null
+		    if (detailSpec == null)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		    }
+		    
+            // Add tracking filtering 
+            detailSpec.AddFilter(w => w.TrackingId == trackingId && w.LibraryItemId == null);
+		    
+            // Count total library items
+            var totalDetailWithSpec = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().CountAsync(detailSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalDetailWithSpec / detailSpec.PageSize);
+
+            // Set pagination to specification after count total warehouse tracking detail
+            if (detailSpec.PageIndex > totalPage
+                || detailSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+	            detailSpec.PageIndex = 1; // Set default to first page
+            }
+
+            // Apply pagination
+            detailSpec.ApplyPaging(
+	            skip: detailSpec.PageSize * (detailSpec.PageIndex - 1),
+	            take: detailSpec.PageSize);
+            
             // Try to retrieve all data by spec
             var entities = await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
-                .GetAllWithSpecAsync(baseSpec);
+                .GetAllWithSpecAsync(detailSpec);
             if (entities.Any())
             {
-                // Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-            	    _mapper.Map<List<WarehouseTrackingDetailDto>>(entities));
+	            // Convert to dto collection
+	            var detailDtos = _mapper.Map<List<WarehouseTrackingDetailDto>>(entities);
+
+	            // Pagination result 
+	            var paginationResultDto = new PaginatedResultDto<WarehouseTrackingDetailDto>(detailDtos,
+		            detailSpec.PageIndex, detailSpec.PageSize, totalPage, totalDetailWithSpec);
+
+	            // Response with pagination 
+	            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
             }
 
             // Not found data or empty
@@ -811,8 +1001,22 @@ public class WarehouseTrackingDetailService :
             
             // Process read csv file
             var readResp =
-                CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<WarehouseTrackingDetailCsvRecord>(
-                    file, csvConfig, null, lang);
+	            CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<WarehouseTrackingDetailCsvRecord>(
+		            file: file, 
+		            config: csvConfig,
+		            props: new ExcelHeaderProps()
+		            {
+			            // Header start from row 2-3
+			            FromRow = 2,
+			            ToRow = 3,
+			            // Start from col
+			            FromCol = 1,
+			            // Start read data index
+			            StartRowIndex = 4
+		            },
+		            encodingType: null,
+		            systemLang: lang);
+            
             if(readResp.Errors.Any())
             {
                 var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
@@ -824,6 +1028,9 @@ public class WarehouseTrackingDetailService :
                 return new ServiceResult(ResultCodeConst.SYS_Fail0008,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008), errorResps);
             }
+            
+            // Exclude all data without item name
+            readResp.Records = readResp.Records.Where(r => !string.IsNullOrEmpty(r.ItemName)).ToList();
             
             // Try to detect wrong data
             var wrongDataErrs = await DetectWrongDataAsync(readResp.Records, lang);
@@ -890,21 +1097,37 @@ public class WarehouseTrackingDetailService :
 		                : "phân loại để tiến hành import"));
             }
             
+            var conditions = (await _conditionSvc.GetAllAsync()).Data as List<LibraryItemConditionDto>;
+            if (conditions == null || !conditions.Any())
+            {
+	            var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+	            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+		            StringUtils.Format(msg, isEng
+			            ? "conditions to process import"
+			            : "danh sách tình trạng sách để tiến hành import"));
+            }
+            
             // Initialize list of warehouse tracking detail
             var warehouseTrackingDetails = new List<WarehouseTrackingDetailDto>();
             // Progress import warehouse tracking detail
             foreach (var record in readResp.Records)
             {
-                // Assign category id
-                var category = categories.First(c =>
-	                Equals(c.EnglishName.ToLower(), record.Category.ToLower()) ||
-	                Equals(c.VietnameseName.ToLower(), record.Category.ToLower()));
-                // Convert to dto detail
-                var trackingDetailDto = record.ToWarehouseTrackingDetailDto();
-                // Assign category id
-                trackingDetailDto.CategoryId = category.CategoryId;
-                // Assign tracking id 
-                trackingDetailDto.TrackingId = trackingId;
+	            // Get category
+	            var category = categories.First(c =>
+		            Equals(c.EnglishName.ToLower(), record.Category.ToLower()) ||
+		            Equals(c.VietnameseName.ToLower(), record.Category.ToLower()));
+	                
+	            // Get condition
+	            var condition = conditions.First(c => 
+		            Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) || 
+		            Equals(c.VietnameseName.ToLower(), record.Condition.ToLower()));
+
+	            // Convert to dto detail
+	            var trackingDetailDto = record.ToWarehouseTrackingDetailDto();
+	            // Assign category id
+	            trackingDetailDto.CategoryId = category.CategoryId;
+	            // Assign condition id
+	            trackingDetailDto.ConditionId = condition.ConditionId;
                 // Add to warehouse tracking
                 warehouseTrackingDetails.Add(trackingDetailDto);
             }
@@ -965,6 +1188,15 @@ public class WarehouseTrackingDetailService :
     		    {
     			    rowErrors.Add(isEng ? "Category name not exist" : "Tên phân loại không tồn tại");
     		    }
+		        
+		        // Check exist condition
+		        if ((await _conditionSvc.AnyAsync(c =>
+			            Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) ||
+			            Equals(c.VietnameseName.ToLower(), record.Condition.ToLower())
+		            )).Data is false)
+		        {
+			        rowErrors.Add(isEng ? "Condition name not exist" : "Tên tình trạng tài liệu không tồn tại");
+		        }
     		    
 		        var cleanedIsbn = ISBN.CleanIsbn(record.Isbn ?? string.Empty);
 		        if (!string.IsNullOrEmpty(cleanedIsbn)) // Check empty ISBN

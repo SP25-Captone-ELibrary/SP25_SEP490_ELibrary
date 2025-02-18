@@ -1107,7 +1107,7 @@ public class AIClassificationService : IAIClassificationService
                     var matchCount = coverObjectCounts.Count(pair =>
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
-                    var matchRate = (double)matchCount / totalObject;
+                    var matchRate = (double)matchCount / totalObject * 100;
     
                     // ocr check
                     var mainAuthor = groupValueLibraryItem.GeneralNote ??

@@ -52,9 +52,17 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
         {
             AddFilter(br => br.Status == specParams.Status);
         }
+        if (specParams.BorrowType != null) // Borrow type
+        {
+            AddFilter(br => br.BorrowType == specParams.BorrowType);
+        }
         if (specParams.SelfServiceBorrow != null) // Is self-service borrow
         {
             AddFilter(br => br.SelfServiceBorrow == specParams.SelfServiceBorrow);
+        }
+        if (specParams.SelfServiceReturn != null) // Is self-service return
+        {
+            AddFilter(br => br.SelfServiceReturn == specParams.SelfServiceReturn);
         }
         if (specParams.BorrowDateRange != null
             && specParams.BorrowDateRange.Length > 1) // With range of borrow date
