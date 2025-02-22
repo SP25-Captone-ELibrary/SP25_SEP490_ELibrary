@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250215025847_Initial Database")]
+    [Migration("20250217130719_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -688,11 +688,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime")
                         .HasColumnName("paid_at");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(10,2)")
@@ -2246,7 +2241,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("fine_id");
 
-                    b.Property<int>("InvoiceId")
+                    b.Property<int?>("InvoiceId")
                         .HasColumnType("int")
                         .HasColumnName("invoice_id");
 
@@ -3078,7 +3073,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Invoice", "Invoice")
                         .WithMany("Transactions")
                         .HasForeignKey("InvoiceId")
-                        .IsRequired()
                         .HasConstraintName("FK_Transaction_InvoiceId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCardPackage", "LibraryCardPackage")

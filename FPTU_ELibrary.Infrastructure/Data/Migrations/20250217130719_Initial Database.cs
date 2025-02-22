@@ -670,7 +670,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     invoice_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     paid_at = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
@@ -882,7 +881,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     fine_id = table.Column<int>(type: "int", nullable: true),
                     digital_borrow_id = table.Column<int>(type: "int", nullable: true),
                     library_card_package_id = table.Column<int>(type: "int", nullable: true),
-                    invoice_id = table.Column<int>(type: "int", nullable: false)
+                    invoice_id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {

@@ -686,11 +686,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("paid_at");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status");
-
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(10,2)")
                         .HasColumnName("total_amount");
@@ -2243,7 +2238,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("fine_id");
 
-                    b.Property<int>("InvoiceId")
+                    b.Property<int?>("InvoiceId")
                         .HasColumnType("int")
                         .HasColumnName("invoice_id");
 
@@ -3075,7 +3070,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Invoice", "Invoice")
                         .WithMany("Transactions")
                         .HasForeignKey("InvoiceId")
-                        .IsRequired()
                         .HasConstraintName("FK_Transaction_InvoiceId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCardPackage", "LibraryCardPackage")

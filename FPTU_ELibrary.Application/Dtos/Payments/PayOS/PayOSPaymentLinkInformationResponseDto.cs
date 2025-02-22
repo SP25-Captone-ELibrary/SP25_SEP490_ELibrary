@@ -6,4 +6,5 @@ public class PayOSPaymentLinkInformationResponseDto
     public string Desc { get; set; } = string.Empty;
     public PayOSPaymentLinkInformationDataDto Data { get; set; } = null!;
     public string Signature { get; set; } = string.Empty;
+    public bool Success { get; set; }
 }

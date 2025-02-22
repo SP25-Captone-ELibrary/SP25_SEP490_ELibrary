@@ -16,7 +16,7 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(e => e.TransactionId).HasColumnName("transaction_id");
         builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.FineId).HasColumnName("fine_id");
-        builder.Property(e => e.InvoiceId).HasColumnName("invoice_id");
+        builder.Property(e => e.InvoiceId).HasColumnName("invoice_id"); ;
         builder.Property(e => e.DigitalBorrowId).HasColumnName("digital_borrow_id");
         builder.Property(e => e.LibraryCardPackageId).HasColumnName("library_card_package_id");
         builder.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
@@ -64,7 +64,7 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasForeignKey(e => e.InvoiceId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_InvoiceId");
-        
+            
         builder.HasOne(e => e.DigitalBorrow).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.DigitalBorrowId)
             .OnDelete(DeleteBehavior.ClientSetNull)
@@ -80,5 +80,6 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_PaymentMethodId");
         #endregion
+        
     }
 }

@@ -5,7 +5,7 @@ namespace FPTU_ELibrary.Domain.Entities;
 public class Transaction
 {
     public int TransactionId { get; set; }
-    public string TransactionCode { get; set; } = null!;
+    public string? TransactionCode { get; set; } = null!;
     public Guid UserId { get; set; }
     public decimal Amount { get; set; }
     public string? Description { get; set; } = null!;
@@ -21,7 +21,7 @@ public class Transaction
     public int? DigitalBorrowId { get; set; }
     public int? LibraryCardPackageId { get; set; }
 
-    public int InvoiceId { get; set; }
+    public int? InvoiceId { get; set; }
     
     // Mapping entities
     public User User { get; set; } = null!;
@@ -29,5 +29,5 @@ public class Transaction
     public Fine? Fine { get; set; }
     public DigitalBorrow? DigitalBorrow { get; set; }
     public LibraryCardPackage? LibraryCardPackage { get; set; }
-    public Invoice Invoice { get; set; } = null!;
+    public Invoice? Invoice { get; set; } = null!;
 }

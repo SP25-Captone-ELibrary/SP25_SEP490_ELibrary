@@ -205,7 +205,10 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             {
                 var fineBaseSpec = new BaseSpecification<Fine>(f => f.FineId == dto.FineId);
                 fineBaseSpec.EnableSplitQuery();
-                fineBaseSpec.ApplyInclude(q => q.Include(f => f.FinePolicy));
+                fineBaseSpec.ApplyInclude(q => q.Include(f => f.FinePolicy)
+                    .Include(f=> f.BorrowRecord)
+                    .ThenInclude(br => br.LibraryCard)
+                    .ThenInclude(li => li.Users));
                 var fine = await _fineService.GetWithSpecAsync(fineBaseSpec);
                 if (fine.Data is null)
                 {
@@ -217,6 +220,9 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 response.TransactionCode = Guid.NewGuid().ToString();
                 response.Amount = fineValue.FinePolicy.FixedFineAmount ?? 0;
                 response.TransactionType = TransactionType.Fine;
+                response.UserId = fineValue.BorrowRecord.LibraryCard.Users.First().UserId;
+                response.TransactionStatus = TransactionStatus.Pending;
+
             }
 
             // case2: Create transaction for card
@@ -235,6 +241,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 response.TransactionCode = Guid.NewGuid().ToString();
                 response.Amount = cardPackageValue.Price;
                 response.TransactionType = TransactionType.LibraryCardRegister;
+                response.TransactionStatus = TransactionStatus.Pending;
             }
             // case 3: Create transaction for digital borrow 
             if (dto.DigitalBorrowId != null)
@@ -254,6 +261,14 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 response.TransactionCode = Guid.NewGuid().ToString();
                 response.Amount = digitalBorrowValue.LibraryResource.BorrowPrice;
                 response.TransactionType = TransactionType.DigitalBorrow;
+                response.TransactionStatus = TransactionStatus.Pending;
+            }
+            var transactionEntity = _mapper.Map<Transaction>(response);
+            await _unitOfWork.Repository<Transaction, int>().AddAsync(transactionEntity);
+            if (await _unitOfWork.SaveChangesAsync() <= 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
             }
             return new ServiceResult(ResultCodeConst.SYS_Success0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001),response);

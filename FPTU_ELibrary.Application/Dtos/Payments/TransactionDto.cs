@@ -8,7 +8,7 @@ namespace FPTU_ELibrary.Application.Dtos.Payments;
 public class TransactionDto
 {
     public int TransactionId { get; set; }
-    public string TransactionCode { get; set; } = null!;
+    public string? TransactionCode { get; set; } = null!;
     public Guid UserId { get; set; }
     public decimal Amount { get; set; }
     public string? Description { get; set; }
@@ -24,7 +24,7 @@ public class TransactionDto
     public int? DigitalBorrowId { get; set; }
     public int? LibraryCardPackageId { get; set; }
 
-    public int InvoiceId { get; set; }
+    public int? InvoiceId { get; set; }
     
     // Mapping entities
     public UserDto User { get; set; } = null!;
@@ -32,5 +32,5 @@ public class TransactionDto
     public FineDto? Fine { get; set; }
     public DigitalBorrowDto? DigitalBorrow { get; set; }
     public LibraryCardPackageDto? LibraryCardPackage { get; set; }
-    public InvoiceDto Invoice { get; set; } = null!;
+    public InvoiceDto? Invoice { get; set; } = null!;
 }

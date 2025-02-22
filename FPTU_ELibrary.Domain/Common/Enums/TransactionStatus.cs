@@ -4,5 +4,6 @@ public enum TransactionStatus
 {
     Pending,
     Paid,
-    Cancelled
+    Cancelled,
+    Expired
 }

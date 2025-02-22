@@ -21,10 +21,6 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(e => e.TotalAmount)
             .HasColumnType("decimal(10,2)")
             .HasColumnName("total_amount");
-        builder.Property(e => e.Status)
-            .HasConversion<string>()
-            .HasColumnType("nvarchar(50)")
-            .HasColumnName("status");
         builder.Property(e => e.CreatedAt)
             .HasColumnType("datetime")
             .HasColumnName("created_at");

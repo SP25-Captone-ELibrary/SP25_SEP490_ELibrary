@@ -24,7 +24,7 @@ public class LibraryCardHolderTransactionDto
     public int? DigitalBorrowId { get; set; }
     public int? LibraryCardPackageId { get; set; }
 
-    public int InvoiceId { get; set; }
+    public int? InvoiceId { get; set; }
     
     // Mapping entities
     public UserDto User { get; set; } = null!;
@@ -32,7 +32,7 @@ public class LibraryCardHolderTransactionDto
     public FineDto? Fine { get; set; }
     public DigitalBorrowDto? DigitalBorrow { get; set; }
     public LibraryCardPackageDto? LibraryCardPackage { get; set; }
-    public InvoiceDto Invoice { get; set; } = null!;
+    public InvoiceDto? Invoice { get; set; } = null!;
 }
 
 public static class LibraryCardHolderTransactionExtensions

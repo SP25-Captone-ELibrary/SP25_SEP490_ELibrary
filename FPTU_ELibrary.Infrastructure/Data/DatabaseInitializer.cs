@@ -140,6 +140,16 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [LibraryCards]
 				if (!await _context.LibraryCards.AnyAsync()) await SeedLibraryCardAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryCard");
+            	// [FinePolicy]
+				if (!await _context.FinePolicies.AnyAsync()) await SeedFinePoliciesAsync();
+				else _logger.Information("Already seed data for table {0}", "FinePolicies");
+				// [Fine]
+				// if (!await _context.Fines.AnyAsync()) await SeedFinesAsync();
+				// else _logger.Information("Already seed data for table {0}", "Fines");
+            
+				//[PaymentMethod]
+				if (!await _context.PaymentMethods.AnyAsync()) await SeedPaymentMethodsAsync();
+				else _logger.Information("Already seed data for table {0}", "PaymentMethods");
             }
             catch (Exception ex)
             {
@@ -376,7 +386,69 @@ namespace FPTU_ELibrary.Infrastructure.Data
 
 			if (saveSucc) _logger.Information("Seed system permission successfully.");
 		}
-		
+
+		private async Task SeedFinePoliciesAsync()
+		{
+			List<FinePolicy> finePolicies = new()
+			{
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Hư sách nặng nề",
+					FineAmountPerDay = 0,
+					FinePolicyTitle = "Hư bìa sách 1"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Hư sách một phần",
+					FineAmountPerDay = 0,
+					FinePolicyTitle = "Hư bìa sách 2"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Lost,
+					Description = "Mất sách",
+					FineAmountPerDay = 0,
+					FinePolicyTitle = "Mất sách"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.OverDue,
+					Description = "Trả quá hạn",
+					FineAmountPerDay = 5,
+					FinePolicyTitle = "Trả quá hạn"
+				},
+			};
+			
+			await _context.FinePolicies.AddRangeAsync(finePolicies);	
+			
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed fine policies successfully.");
+		}
+
+		private async Task SeedPaymentMethodsAsync()
+		{
+			List<PaymentMethod> paymentMethods = new()
+			{
+				new()
+				{
+					MethodName = PaymentType.PayOS.ToString()
+				},
+				
+				new()
+				{
+					MethodName = PaymentType.Cash.ToString()
+				},
+			};
+			await _context.PaymentMethods.AddRangeAsync(paymentMethods);	
+			
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+
+			if (saveSucc) _logger.Information("Seed fine paymentmethods successfully.");
+		}
+
 		//	Summary:
 		//		Seeding System Feature
 		private async Task SeedSystemFeatureAsync()

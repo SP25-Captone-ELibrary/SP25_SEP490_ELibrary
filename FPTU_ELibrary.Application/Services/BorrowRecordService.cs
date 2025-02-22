@@ -1131,8 +1131,9 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 					var hasAlreadyBorrowedItem = await _unitOfWork.Repository<BorrowRecord, int>()
 						.AnyAsync(new BaseSpecification<BorrowRecord>(
 							br => br.BorrowRecordDetails.Any(brd =>
-									  brd.LibraryItemInstance.LibraryItemId == itemInstanceDto.LibraryItemId) && // belongs to specific item
-								  br.Status == BorrowRecordStatus.Borrowing // is borrowing 
+								      brd.LibraryItemInstance.LibraryItemId == itemInstanceDto.LibraryItemId) && // belongs to specific item
+							      br.LibraryCardId == libCard.LibraryCardId && // With specific library card
+							      br.Status == BorrowRecordStatus.Borrowing // is borrowing 
 						));
 					if (hasAlreadyBorrowedItem)
 					{
