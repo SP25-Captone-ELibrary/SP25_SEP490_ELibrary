@@ -33,5 +33,12 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Invoice_UserId");
         #endregion
+
+        #region Update at 17/02/2025
+        // builder.Property(e => e.Status)
+        //     .HasConversion<string>()
+        //     .HasColumnType("nvarchar(50)")
+        //     .HasColumnName("status");
+        #endregion
     }
 }

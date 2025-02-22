@@ -8,11 +8,11 @@ namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 public class WarehouseTrackingDetailCsvRecord
 {
     // Item Name
-    [Name("ItemName")]
+    [Name("Tên sách")]
     public string ItemName { get; set; } = null!;
     
     // Number of items
-    [Name("ItemTotal")]
+    [Name("Số lượng")]
     public int ItemTotal { get; set; }
 
     // ISBN
@@ -20,20 +20,24 @@ public class WarehouseTrackingDetailCsvRecord
     public string? Isbn { get; set; }
     
     // Unit price of the item
-    [Name("UnitPrice")]
+    [Name("Giá tiền")]
     public decimal UnitPrice { get; set; }
     
     // Total amount for the detail line
-    [Name("TotalAmount")]
+    [Name("Thành tiền")]
     public decimal TotalAmount { get; set; }
     
     // Reason for stock-out or adjustment
-    [Name("Reason")]
+    [Name("Nguyên nhân")]
     public string? Reason { get; set; }
 
     // For specific item category
-    [Name("Category")] 
+    [Name("Phân loại")] 
     public string Category { get; set; } = null!;
+    
+    // Item condition
+    [Name("Tình trạng")] 
+    public string Condition { get; set; } = null!;
 }
 
 public static class WarehouseTrackingDetailCsvRecordExtensions

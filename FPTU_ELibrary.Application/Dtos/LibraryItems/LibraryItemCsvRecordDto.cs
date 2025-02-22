@@ -2,7 +2,7 @@ using CsvHelper.Configuration.Attributes;
 
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
 
-public class LibraryItemCsvRecord
+public class LibraryItemCsvRecordDto
 {
     [Name("Bìa Sách")]
     public string CoverImage { get; set; } = null!;
@@ -91,16 +91,16 @@ public class LibraryItemCsvRecord
 
 public static class BookEditionCsvRecordExtensions
 {
-    public static List<LibraryItemCsvRecord> ToLibraryItemCsvRecords(this List<LibraryItemDto> items)
-        => items.Select(be => new LibraryItemCsvRecord()
+    public static List<LibraryItemCsvRecordDto> ToLibraryItemCsvRecords(this List<LibraryItemDto> items)
+        => items.Select(be => new LibraryItemCsvRecordDto()
         {
             CoverImage = be.CoverImage ?? null!,
             EditionNumber = be.EditionNumber,
             Edition = be.Edition,
             Title = be.Title,
             SubTitle = be.SubTitle,
-            ClassificationNumber = be.ClassificationNumber,
-            CutterNumber = be.CutterNumber,
+            ClassificationNumber = be.ClassificationNumber ?? string.Empty,
+            CutterNumber = be.CutterNumber ?? string.Empty,
             Publisher = be.Publisher ?? null!,
             Summary = be.Summary,
             Genres = be.Genres,

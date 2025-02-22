@@ -347,7 +347,8 @@ namespace FPTU_ELibrary.Application.Utils
         /// Damerau-Levenshtein Distance Percentage Calculation
         /// </summary>
         private static double CalculateDamerauLevenshteinPercentage(string source, string target)
-        {            int distance = DamerauLevenshteinDistance(source, target);
+        {            
+            int distance = DamerauLevenshteinDistance(source, target);
             if (distance == -1)
             {
                 return 100;    

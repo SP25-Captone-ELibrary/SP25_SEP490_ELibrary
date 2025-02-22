@@ -24,113 +24,117 @@ using StackExchange.Redis;
 
 namespace FPTU_ELibrary.API.Extensions
 {
-    //  Summary:
-    //      This class is to configure services for presentation layer 
-    public static class ServiceCollectionExtensions
-    {
-        public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
-        {
-            // Add controllers
-            services.AddControllers();
-            // Configures ApiExplorer
-            services.AddEndpointsApiExplorer();
-            // Add swagger
-            services.AddSwaggerGen();
-            // Add HttpContextAccessor
-            services.AddHttpContextAccessor();
-            // Add HttpClient
-            services.AddHttpClient();
+	//  Summary:
+	//      This class is to configure services for presentation layer 
+	public static class ServiceCollectionExtensions
+	{
+		public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
+		{
+			// Add controllers
+			services.AddControllers();
+			// Configures ApiExplorer
+			services.AddEndpointsApiExplorer();
+			// Add swagger
+			services.AddSwaggerGen();
+			// Add HttpContextAccessor
+			services.AddHttpContextAccessor();
+			// Add HttpClient
+			services.AddHttpClient();
+			
+			return services;
+		}
 
-            return services;
-        }
+		public static IServiceCollection ConfigureSerilog(this IServiceCollection services,
+			WebApplicationBuilder builder)
+		{
+			Log.Logger = new LoggerConfiguration()
+				.Enrich.FromLogContext()
+				.WriteTo.Debug()
+				.WriteTo.Console()
+				.Enrich.WithProperty("Environment", builder.Environment)
+				.ReadFrom.Configuration(builder.Configuration)
+				.CreateLogger();
 
-        public static IServiceCollection ConfigureSerilog(this IServiceCollection services,
-            WebApplicationBuilder builder)
-        {
-            Log.Logger = new LoggerConfiguration()
-                .Enrich.FromLogContext()
-                .WriteTo.Debug()
-                .WriteTo.Console()
-                .Enrich.WithProperty("Environment", builder.Environment)
-                .ReadFrom.Configuration(builder.Configuration)
-                .CreateLogger();
+			builder.Host.UseSerilog();
 
-            builder.Host.UseSerilog();
+			// Register the Serilog logger
+			services.AddSingleton(Log.Logger);
 
-            // Register the Serilog logger
-            services.AddSingleton(Log.Logger);
+			return services;
+		}
 
-            return services;
-        }
+		public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+			IConfiguration configuration,
+			IWebHostEnvironment env)
+		{
+			// Configure AppSettings
+			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+			// Configure BorrowSettings
+			services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
+			// Configure ElasticSettings
+			services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
+			// Configure WebTokenSettings
+			services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
+			// Configure GoogleAuthSettings
+			services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
+			// Configure FacebookAuthSettings
+			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
+			// Configure CloudinarySettings
+			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
+			// Configure AzureSettings
+			services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
+			// Configure OCRSettings
+			services.Configure<AISettings>(configuration.GetSection("AISettings"));
+			// Configure CustomVisionSettings
+			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
+			// Configure DetectSettings
+			services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
+			// Configure AzureSpeechSettings
+			services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
+			// Configure FaceDetectionSettings
+			services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
+			// Configure PayOS
+			services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
+			
+			#region Development stage
 
-        public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-            IConfiguration configuration,
-            IWebHostEnvironment env)
-        {
-            // Configure AppSettings
-            services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
-            // Configure BorrowSettings
-            services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
-            // Configure ElasticSettings
-            services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
-            // Configure WebTokenSettings
-            services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
-            // Configure GoogleAuthSettings
-            services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-            // Configure FacebookAuthSettings
-            services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-            // Configure CloudinarySettings
-            services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-            // Configure AzureSettings
-            services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-            //Configure OCRSettings
-            services.Configure<AISettings>(configuration.GetSection("AISettings"));
-            //Configure CustomVisionSettings
-            services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-            //Configure DetectSettings
-            services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-            //Configure AzureSpeechSettings
-            services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
-            //Configure PayOS
-            services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
+			if (env.IsDevelopment()) // Is Development env
+			{
 
+			}
 
-            #region Development stage
+			#endregion
 
-            if (env.IsDevelopment()) // Is Development env
-            {
-            }
+			#region Production stage
 
-            #endregion
+			else if (env.IsProduction()) // Is Production env
+			{
 
-            #region Production stage
+			}
 
-            else if (env.IsProduction()) // Is Production env
-            {
-            }
+			#endregion
 
-            #endregion
+			#region Staging
 
-            #region Staging
+			else if (env.IsStaging()) // Is Staging env
+			{
 
-            else if (env.IsStaging()) // Is Staging env
-            {
-            }
+			}
 
-            #endregion
+			#endregion
 
-            return services;
-        }
-
-        public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
-            IConfiguration configuration)
-        {
-            services.AddScoped(provider =>
-            {
-                var subscriptionKey = configuration["AzureSpeechSettings:SubscriptionKey"];
-                var serviceRegion = configuration["AzureSpeechSettings:Region"];
-                return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
-            });
+			return services;
+		}
+		
+		public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
+			IConfiguration configuration)
+		{
+			services.AddScoped(provider =>
+			{
+				var subscriptionKey = configuration["AzureSpeechSettings:SubscriptionKey"];
+				var serviceRegion = configuration["AzureSpeechSettings:Region"];
+				return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
+			});
 
             return services;
         }

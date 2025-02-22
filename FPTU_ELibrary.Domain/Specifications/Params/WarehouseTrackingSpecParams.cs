@@ -21,7 +21,14 @@ public class WarehouseTrackingSpecParams : BaseSpecParams
     {
         get
         {
-            if (DateTime.TryParse(Search, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+            string[] formats = 
+            {
+                "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", 
+                "yyyy/MM/dd", "dd-MM-yyyy", "MM-dd-yyyy",
+                "yyyyMMdd", "ddMMyyyy", "MMddyyyy"
+            };
+
+            if (DateTime.TryParseExact(Search, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
             {
                 return parsedDate;
             }

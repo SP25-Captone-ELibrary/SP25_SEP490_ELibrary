@@ -25,7 +25,8 @@ public class LibraryCardDto
     // or contact directly to library to describe for reason)
     public bool IsAllowBorrowMore { get; set; } // This field will automatically change to false when first create borrow request after employee updated (already handled in Borrow feature)  
     public int MaxItemOnceTime { get; set; } // Employee will update total item can be borrowed once time for user
-
+    public string? AllowBorrowMoreReason { get; set; } // Reason why increase the total borrow amount
+    
     // Total missed pick up (not pick up after create request)
     public int TotalMissedPickUp { get; set; }
     
@@ -38,11 +39,18 @@ public class LibraryCardDto
     public DateTime IssueDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
     public DateTime? SuspensionEndDate { get; set; }
+    public string? SuspensionReason { get; set; } 
+    
+    // Reject reason
+    public string? RejectReason { get; set; }
     
     // Reissue & archived card
     public bool IsArchived { get; set; }
     public string? ArchiveReason { get; set; }
     public Guid? PreviousUserId { get; set; }
+    
+    // Payment information
+    public string TransactionCode { get; set; } = null!;
     
     // References
     public UserDto PreviousUser { get; set; } = null!;

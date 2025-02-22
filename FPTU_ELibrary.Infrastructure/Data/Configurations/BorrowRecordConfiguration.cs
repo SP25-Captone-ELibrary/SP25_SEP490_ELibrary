@@ -19,7 +19,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.DueDate)
                 .HasColumnType("datetime")
                 .HasColumnName("due_date");
-            builder.Property(e => e.TotalExtension).HasColumnName("total_extension");
+            builder.Property(e => e.TotalExtension)
+                .HasDefaultValue(0)
+                .HasColumnName("total_extension");
             builder.Property(e => e.ReturnDate)
                 .HasColumnType("datetime")
                 .HasColumnName("return_date");
@@ -72,7 +74,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("nvarchar(50)")
                 .HasColumnName("status");
             
-            builder.Property(e => e.SelfServiceBorrow).HasColumnName("self_service_borrow");
+            builder.Property(e => e.SelfServiceBorrow)
+                .HasDefaultValue(false)
+                .HasColumnName("self_service_borrow");
             
             builder.Property(e => e.LibraryCardId).HasColumnName("library_card_id");
             builder.HasOne(d => d.LibraryCard).WithMany(p => p.BorrowRecords)
@@ -107,6 +111,23 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             // builder.Property(e => e.ReturnCondition)
             //     .HasMaxLength(50)
             //     .HasColumnName("return_condition");
+            #endregion
+
+            #region Update at: 14/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.BorrowType)
+                .HasConversion<string>()
+                .HasColumnType("nvarchar(50)")
+                .HasColumnName("borrow_type");
+            
+            builder.Property(e => e.TotalRecordItem)
+                .HasDefaultValue(0)
+                .HasColumnName("total_record_item");
+            #endregion
+
+            #region Update at: 16/02/2025 by Le Xuan Phuoc
+            builder.Property(e => e.SelfServiceReturn)
+                .IsRequired(false)
+                .HasColumnName("self_service_return");
             #endregion
         }
 	}

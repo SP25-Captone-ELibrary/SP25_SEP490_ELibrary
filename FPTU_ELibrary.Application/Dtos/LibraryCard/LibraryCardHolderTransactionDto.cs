@@ -11,7 +11,7 @@ public class LibraryCardHolderTransactionDto
     public string TransactionCode { get; set; } = null!;
     public Guid UserId { get; set; }
     public decimal Amount { get; set; }
-    public string? Description { get; set; } = null!;
+    public string? Description { get; set; }
     public TransactionStatus TransactionStatus { get; set; }
     public TransactionType TransactionType { get; set; }
     public DateTime? TransactionDate { get; set; }
@@ -32,7 +32,7 @@ public class LibraryCardHolderTransactionDto
     public FineDto? Fine { get; set; }
     public DigitalBorrowDto? DigitalBorrow { get; set; }
     public LibraryCardPackageDto? LibraryCardPackage { get; set; }
-    public InvoiceDto? Invoice { get; set; } = null!;
+    public InvoiceDto? Invoice { get; set; } 
 }
 
 public static class LibraryCardHolderTransactionExtensions

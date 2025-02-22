@@ -1,8 +1,9 @@
 using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Interfaces;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class WarehouseTrackingDetail
+public class WarehouseTrackingDetail : IAuditableEntity
 {
     public int TrackingDetailId { get; set; }
 
@@ -36,6 +37,12 @@ public class WarehouseTrackingDetail
     // Condition
     public int ConditionId { get; set; }
     
+    // Creation, update datetime 
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
+        
     // Navigation properties
     public LibraryItem? LibraryItem { get; set; }
     public WarehouseTracking WarehouseTracking { get; set; } = null!;

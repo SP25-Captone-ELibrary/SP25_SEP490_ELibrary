@@ -78,5 +78,22 @@ public class WarehouseTrackingDetailConfiguration :
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_WarehouseTrackingDetail_ConditionId");
         #endregion
+
+        #region Update at 18/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.CreatedAt)
+            .HasColumnType("datetime")
+            .HasColumnName("created_at")
+            .IsRequired();
+        builder.Property(e => e.CreatedBy)
+            .HasColumnName("created_by")
+            .HasMaxLength(255)
+            .IsRequired();
+        builder.Property(e => e.UpdatedAt)
+            .HasColumnType("datetime")
+            .HasColumnName("updated_at");
+        builder.Property(e => e.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasMaxLength(255);
+        #endregion
     }
 }

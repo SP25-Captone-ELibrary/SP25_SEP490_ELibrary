@@ -1,9 +1,13 @@
+using System.ComponentModel;
+
 namespace FPTU_ELibrary.Domain.Common.Enums;
 
 public enum TransactionStatus
 {
+    [Description("Chưa thanh toán")]
     Pending,
+    [Description("Đã thanh toán")]
     Paid,
-    Cancelled,
-    Expired
+    [Description("Đã hủy")]
+    Cancelled
 }

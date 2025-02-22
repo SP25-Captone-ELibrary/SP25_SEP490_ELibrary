@@ -22,29 +22,30 @@ public static class LibraryCardHolderInvoiceDtoExtensions
             InvoiceId = dto.InvoiceId,   
             UserId = dto.UserId,   
             TotalAmount = dto.TotalAmount,   
-            // Status = dto.Status,   
             CreatedAt = dto.CreatedAt,   
             PaidAt = dto.PaidAt,
-            Transactions = dto.Transactions.Select(trans => new TransactionDto()
-            {
-                TransactionId = trans.TransactionId,
-                TransactionCode = trans.TransactionCode,
-                UserId = trans.UserId,
-                Amount = trans.Amount,
-                Description = trans.Description,
-                TransactionStatus = trans.TransactionStatus,
-                TransactionType = trans.TransactionType,
-                TransactionDate = trans.TransactionDate,
-                CreatedAt = trans.CreatedAt,
-                CancelledAt = trans.CancelledAt,
-                CancellationReason = trans.CancellationReason,
-                PaymentMethodId = trans.PaymentMethodId,
-                FineId = trans.FineId,
-                DigitalBorrowId = trans.DigitalBorrowId,
-                LibraryCardPackageId = trans.LibraryCardPackageId,
-                InvoiceId = trans.InvoiceId,
-                PaymentMethod = trans.PaymentMethod
-            }).ToList()
+            Transactions = dto.Transactions.Any()
+                ? dto.Transactions.Select(trans => new TransactionDto()
+                {
+                    TransactionId = trans.TransactionId,
+                    TransactionCode = trans.TransactionCode,
+                    UserId = trans.UserId,
+                    Amount = trans.Amount,
+                    Description = trans.Description,
+                    TransactionStatus = trans.TransactionStatus,
+                    TransactionType = trans.TransactionType,
+                    TransactionDate = trans.TransactionDate,
+                    CreatedAt = trans.CreatedAt,
+                    CancelledAt = trans.CancelledAt,
+                    CancellationReason = trans.CancellationReason,
+                    PaymentMethodId = trans.PaymentMethodId,
+                    FineId = trans.FineId,
+                    DigitalBorrowId = trans.DigitalBorrowId,
+                    LibraryCardPackageId = trans.LibraryCardPackageId,
+                    InvoiceId = trans.InvoiceId,
+                    PaymentMethod = trans.PaymentMethod
+                }).ToList()
+                : new()
         };
     }
 }

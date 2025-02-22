@@ -24,6 +24,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using Microsoft.AspNetCore.ResponseCompression;
 
 namespace FPTU_ELibrary.API.Extensions
@@ -139,6 +140,7 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				BorrowRequestId = req.BorrowRequestId,
 				LibraryCardId = req.LibraryCardId,
+				BorrowType = BorrowType.TakeHome, // Default online process is take home
 				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
 				{
 					LibraryItemInstanceId = brd.LibraryItemInstanceId
@@ -150,6 +152,7 @@ namespace FPTU_ELibrary.API.Extensions
 			=> new()
 			{
 				LibraryCardId = req.LibraryCardId,
+				BorrowType = req.BorrowType,
 				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
 				{
 					LibraryItemInstanceId = brd.LibraryItemInstanceId
@@ -161,6 +164,7 @@ namespace FPTU_ELibrary.API.Extensions
 			=> new()
 			{
 				LibraryCardId = req.LibraryCardId,
+				BorrowType = req.BorrowType,
 				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
 				{
 					LibraryItemInstanceId = brd.LibraryItemInstanceId
@@ -384,12 +388,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender,
 				Dob = req.Dob,
-				Avatar = req.Avatar,
-				LibraryCard = new LibraryCardDto()
-				{
-					FullName = $"{req.FirstName} {req.LastName}",
-					Avatar = req.Avatar
-				}
+				Avatar = req.Avatar
 			};
 		}
 		
@@ -416,6 +415,7 @@ namespace FPTU_ELibrary.API.Extensions
 				Avatar = req.Avatar,
 				IssuanceMethod = req.IssuanceMethod,
 				IsAllowBorrowMore = req.IsAllowBorrowMore,
+				AllowBorrowMoreReason = req.AllowBorrowMoreReason,
 				MaxItemOnceTime = req.MaxItemOnceTime,
 				TotalMissedPickUp = req.TotalMissedPickUp
 			};
@@ -742,7 +742,8 @@ namespace FPTU_ELibrary.API.Extensions
 				UnitPrice = req.UnitPrice,
 				TotalAmount = req.TotalAmount,
 				Reason = req.Reason,
-				CategoryId = req.CategoryId
+				CategoryId = req.CategoryId,
+				ConditionId = req.ConditionId
 			};
 		}
 		
@@ -758,7 +759,8 @@ namespace FPTU_ELibrary.API.Extensions
 				UnitPrice = req.UnitPrice,
 				TotalAmount = req.TotalAmount,
 				Reason = req.Reason,
-				CategoryId = req.CategoryId
+				CategoryId = req.CategoryId,
+				ConditionId = req.ConditionId
 			};
 		}
 		#endregion

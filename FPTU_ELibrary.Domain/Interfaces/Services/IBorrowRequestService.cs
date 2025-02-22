@@ -9,9 +9,9 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     where TDto : class
 {
     Task<IServiceResult> GetByIdAsync(string email, int id);
+    Task<IServiceResult> GetCardHolderBorrowRequestByIdAsync(Guid userId, int id);
     Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec);
-    Task<IServiceResult> GetAllByEmailAsync(string email, int pageIndex, int pageSize);
-    Task<IServiceResult> GetAllByUserIdAsync(Guid userId, int pageIndex, int pageSize);
+    Task<IServiceResult> GetAllCardHolderBorrowRequestByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> CreateAsync(string email, TDto dto);
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);

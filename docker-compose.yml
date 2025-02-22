@@ -24,54 +24,60 @@ services:
       - elasticsearch
   # SQL Server
   sqlserver:
-      container_name: sqlserver
-      image: mcr.microsoft.com/mssql/server:2022-latest
-      environment:
-        - ACCEPT_EULA=Y
-        - MSSQL_SA_PASSWORD=@ELibrary123
-      ports:
-        - 1433:1433
-      volumes:
-        - sqlserver-data:/var/opt/mssql
-      networks:
-        - app-net
+    container_name: sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=@ELibrary123
+    ports:
+      - 1433:1433
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - app-net
   # ElasticSearch
   elasticsearch:
     container_name: elasticsearch
     image: elasticsearch:7.17.0
     environment:
-     - xpack.security.enabled=false
-     - discovery.type=single-node
-     - "ES_JAVA_OPTS=-Xms1g -Xmx1g"  # Limit heap size to 1GB
-     - bootstrap.memory_lock=true  # Prevent Elasticsearch from being swapped
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - bootstrap.memory_lock=true
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - http.cors.allow-methods=OPTIONS,HEAD,GET,POST,PUT,DELETE
+      - http.cors.allow-headers=X-Requested-With,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+      - network.host=0.0.0.0
     ports:
-     - 9200:9200
+      - 9200:9200
     volumes:
-     - elasticsearch-data:/usr/share/elasticsearch/data
+      - elasticsearch-data:/usr/share/elasticsearch/data
     networks:
-     - app-net 
+      - app-net
     ulimits:
       memlock:
         soft: -1
         hard: -1
     deploy:
-        resources:
-           limits:
-               memory: 2g  # Limit container memory to 2GB
-           reservations:
-               memory: 1g  # Reserve 1GB of memory
+      resources:
+        limits:
+          memory: 2g # Limit container memory to 2GB
+        reservations:
+          memory: 1g # Reserve 1GB of memory
   # Kibana
   kibana:
-     container_name: kibana
-     image: kibana:7.17.0
-     environment:
-         - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-     depends_on:
-         - elasticsearch
-     ports:
-         - 5601:5601   
-     networks:
-         - app-net
+    container_name: kibana
+    image: kibana:7.17.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+    networks:
+      - app-net
 volumes:
   elasticsearch-data:
   sqlserver-data:

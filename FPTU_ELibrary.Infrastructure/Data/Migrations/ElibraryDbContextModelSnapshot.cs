@@ -160,6 +160,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("borrow_request_id");
 
+                    b.Property<string>("BorrowType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("borrow_type");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime")
                         .HasColumnName("due_date");
@@ -177,8 +182,14 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("return_date");
 
                     b.Property<bool>("SelfServiceBorrow")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("self_service_borrow");
+
+                    b.Property<bool?>("SelfServiceReturn")
+                        .HasColumnType("bit")
+                        .HasColumnName("self_service_return");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -186,8 +197,16 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("status");
 
                     b.Property<int>("TotalExtension")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("total_extension");
+
+                    b.Property<int>("TotalRecordItem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_record_item");
 
                     b.HasKey("BorrowRecordId")
                         .HasName("PK_BorrowRecord_BorrowRecordId");
@@ -290,6 +309,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("status");
+
+                    b.Property<int>("TotalRequestItem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_request_item");
 
                     b.HasKey("BorrowRequestId")
                         .HasName("PK_BorrowRequest_BorrowRequestId");
@@ -710,6 +735,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("library_card_id")
                         .HasDefaultValueSql("(newsequentialid())");
 
+                    b.Property<string>("AllowBorrowMoreReason")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("allow_borrow_more_reason");
+
                     b.Property<string>("ArchiveReason")
                         .HasColumnType("nvarchar(250)")
                         .HasColumnName("archive_reason");
@@ -784,6 +813,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("previous_user_id");
 
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("reject_reason");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")
@@ -793,11 +826,20 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("suspension_end_date");
 
+                    b.Property<string>("SuspensionReason")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("suspension_reason");
+
                     b.Property<int>("TotalMissedPickUp")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0)
                         .HasColumnName("total_missed_pick_up");
+
+                    b.Property<string>("TransactionCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("transaction_code");
 
                     b.HasKey("LibraryCardId")
                         .HasName("PK_LibraryCard_LibraryCardId");
@@ -2251,7 +2293,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("payment_method_id");
 
                     b.Property<string>("TransactionCode")
-                        .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("transaction_code");
 
@@ -2570,6 +2611,16 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("Isbn")
                         .HasMaxLength(13)
                         .HasColumnType("nvarchar(13)")
@@ -2610,6 +2661,15 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("decimal(10, 2)")
                         .HasDefaultValue(0.0m)
                         .HasColumnName("unit_price");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("updated_by");
 
                     b.HasKey("TrackingDetailId")
                         .HasName("PK_WarehouseTrackingDetail_TrackingDetailId");

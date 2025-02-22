@@ -34,6 +34,7 @@ public static class LibraryCardHolderDigitalBorrowExtensions
             ExtensionCount = dto.ExtensionCount,
             Status = dto.Status,
             LibraryResource = dto.LibraryResource,
+            // LibraryResource = dto.LibraryResource != null! ? dto.LibraryResource : null!,
             Transactions = dto.Transactions.ToList()
         };
     }

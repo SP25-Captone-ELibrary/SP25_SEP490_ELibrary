@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services;
@@ -12,8 +13,8 @@ public interface IWarehouseTrackingDetailService<TDto> : IGenericService<Warehou
     Task<IServiceResult> DeleteItemAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> UpdateItemFromExternalAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> UpdateItemFromInternalAsync(int trackingDetailId, int libraryItemId);
-    Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId);
-    Task<IServiceResult> GetAllNotExistItemByTrackingIdAsync(int trackingId);
+    Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec);
+    Task<IServiceResult> GetAllNotExistItemByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec);
     Task<IServiceResult> ImportAsync(int trackingId, 
         IFormFile file, string[]? scanningFields, DuplicateHandle? duplicateHandle);
 }

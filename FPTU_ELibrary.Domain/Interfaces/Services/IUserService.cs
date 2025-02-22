@@ -33,12 +33,24 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> CreateLibraryCardHolderAsync(TDto dto);
         Task<IServiceResult> UpdateLibraryCardHolderAsync(Guid userId, TDto dto);
         Task<IServiceResult> GetAllLibraryCardHolderAsync(ISpecification<User> spec);
-        Task<IServiceResult> GetLibraryCardHolderDetailByEmailAsync(string email);
         Task<IServiceResult> GetLibraryCardHolderByIdAsync(Guid userId);
         Task<IServiceResult> GetLibraryCardHolderByBarcodeAsync(string barcode);
-        Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(string processedByEmail, Guid userId, TDto userWithCard);
-        Task<IServiceResult> RegisterLibraryCardAsync(string email, TDto userWithCard);
+        Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(string processedByEmail, Guid userId,
+            TDto userWithCard, string? transactionToken, int? libraryCardPackageId, int? paymentMethodId);
+        Task<IServiceResult> RegisterLibraryCardAsync(string email, TDto userWithCard, string transactionToken);
+        Task<IServiceResult> ExtendLibraryCardAsync(string email, string transactionToken);
+        Task<IServiceResult> SoftDeleteLibraryCardHolderAsync(Guid userId);
+        Task<IServiceResult> SoftDeleteRangeLibraryCardHolderAsync(Guid[] userIds);
+        Task<IServiceResult> UndoDeleteLibraryCardHolderAsync(Guid userId);
+        Task<IServiceResult> UndoDeleteRangeLibraryCardHolderAsync(Guid[] userIds);
+        Task<IServiceResult> DeleteLibraryCardHolderAsync(Guid userId);
+        Task<IServiceResult> DeleteRangeLibraryCardHolderAsync(Guid[] userIds);
         Task<IServiceResult> DeleteLibraryCardWithoutSaveChangesAsync(Guid userId);
+        Task<IServiceResult> ImportLibraryCardHolderAsync(IFormFile? file,
+            List<IFormFile>? avatarImageFiles,
+            string[]? scanningFields, 
+            DuplicateHandle? duplicateHandle = null);
+        Task<IServiceResult> ExportLibraryCardHolderAsync(ISpecification<User> spec);
         #endregion
     }
 }
