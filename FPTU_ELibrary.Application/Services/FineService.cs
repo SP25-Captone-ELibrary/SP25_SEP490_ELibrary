@@ -4,8 +4,11 @@ using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -22,19 +25,26 @@ namespace FPTU_ELibrary.Application.Services;
 
 public class FineService : GenericService<Fine, FineDto, int>, IFineService<FineDto>
 {
-    private readonly IUserService<UserDto> _userSvc;
-    private readonly IEmployeeService<EmployeeDto> _employeeService;
+    // Lazy services
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordService;
+    
+    // Normal services
+    private readonly IEmployeeService<EmployeeDto> _employeeService;
+    private readonly ITransactionService<TransactionDto> _transactionService;
 
-    public FineService(ISystemMessageService msgService,
-        IUnitOfWork unitOfWork,
-        IMapper mapper,IUserService<UserDto>userSvc,
-        IEmployeeService<EmployeeDto>employeeService,
+    public FineService(
+        // Lazy services
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordService,
+        
+        ISystemMessageService msgService,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        IEmployeeService<EmployeeDto>employeeService,
+        ITransactionService<TransactionDto>transactionService,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
-        _userSvc = userSvc;
         _employeeService = employeeService;
+        _transactionService = transactionService;
         _borrowRecordService = borrowRecordService;
     }
 
@@ -42,13 +52,17 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
     {
         try
         {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
             var employeeBaseSpec = new BaseSpecification<Employee>(u => u.Email.Equals(email));
             //get user
             var employee = await _employeeService.GetWithSpecAsync(employeeBaseSpec);
             if (employee.Data is null)
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(ResultCodeConst.SYS_Warning0002, "user"))
-                    ;
+                        StringUtils.Format(ResultCodeConst.SYS_Warning0002, isEng ? "employee" : "nhân viên"));
             var employeeValue = (EmployeeDto)employee.Data!;
             FineDto dto = new FineDto()
             {
@@ -83,7 +97,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
             if (borrow.Data is null)
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),
-                        "borrow-record"));
+                        isEng ? "borrow record" : "lịch sử mượn trả"));
             var borrowValue = (BorrowRecordDto)borrow.Data!;
             TransactionDto response = new TransactionDto();
             response.TransactionCode = Guid.NewGuid().ToString();
@@ -95,14 +109,10 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
             response.TransactionStatus = TransactionStatus.Pending;
             response.FineId = entity.FineId;
             response.CreatedAt = DateTime.Now;
-            response.PaymentMethodId = 1;
+            // response.PaymentMethodId = 1;
             var transactionEntity = _mapper.Map<Transaction>(response);
-                await _unitOfWork.Repository<Transaction, int>().AddAsync(transactionEntity);
-            if (await _unitOfWork.SaveChangesAsync() <= 0)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
-            }
+            var result = await _transactionService.CreateAsync(transactionEntity);
+            if(result.Data is null) return result;
 
             return new ServiceResult(ResultCodeConst.SYS_Success0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));

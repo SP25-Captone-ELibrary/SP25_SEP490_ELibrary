@@ -8,6 +8,7 @@ public class Invoice
     public int InvoiceId { get; set; }
     public string InvoiceCode { get; set; }
     public Guid UserId { get; set; }
+    public int PaymentMethodId { get; set; }
     public decimal TotalAmount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
@@ -16,4 +17,5 @@ public class Invoice
     
     [JsonIgnore]
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public PaymentMethod PaymentMethod { get; set; } = null!;
 }

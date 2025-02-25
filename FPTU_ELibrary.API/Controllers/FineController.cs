@@ -12,13 +12,11 @@ namespace FPTU_ELibrary.API.Controllers;
 
 public class FineController: ControllerBase
 {
-    private readonly ITransactionService<TransactionDto> _transactionService;
     private readonly IFineService<FineDto> _fineService;
 
     public FineController(ITransactionService<TransactionDto>transactionService,
         IFineService<FineDto>fineService)
     {
-        _transactionService = transactionService;
         _fineService = fineService;
     }
 

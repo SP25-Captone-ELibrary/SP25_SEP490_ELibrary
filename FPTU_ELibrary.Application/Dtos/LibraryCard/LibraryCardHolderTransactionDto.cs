@@ -34,7 +34,7 @@ public class LibraryCardHolderTransactionDto
     public LibraryCardPackageDto? LibraryCardPackage { get; set; }
     public InvoiceDto? Invoice { get; set; } 
 }
-
+//Todo: Update Dto with new invoice logic
 public static class LibraryCardHolderTransactionExtensions
 {
     public static LibraryCardHolderTransactionDto ToCardHolderTransactionDto(this TransactionDto dto)
@@ -52,12 +52,12 @@ public static class LibraryCardHolderTransactionExtensions
             CreatedAt = dto.CreatedAt,
             CancelledAt = dto.CancelledAt,
             CancellationReason = dto.CancellationReason,
-            PaymentMethodId = dto.PaymentMethodId,
+            // PaymentMethodId = dto.PaymentMethodId,
             FineId = dto.FineId,
             DigitalBorrowId = dto.DigitalBorrowId,
             LibraryCardPackageId = dto.LibraryCardPackageId,
             InvoiceId = dto.InvoiceId,
-            PaymentMethod = dto.PaymentMethod,
+            // PaymentMethod = dto.PaymentMethod,
             Fine = dto.Fine,
             DigitalBorrow = dto.DigitalBorrow,
             LibraryCardPackage = dto.LibraryCardPackage,

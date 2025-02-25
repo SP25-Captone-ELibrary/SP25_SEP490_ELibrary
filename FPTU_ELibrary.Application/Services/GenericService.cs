@@ -104,7 +104,7 @@ namespace FPTU_ELibrary.Application.Services
 
 				// Process add update entity
 				// Map properties from dto to existingEntity
-				_mapper.Map(dto, existingEntity);
+				_mapper.Map(dto, existingEntity); 
 
 				// Check if there are any differences between the original and the updated entity
 				if (!_unitOfWork.Repository<TEntity, TKey>().HasChanges(existingEntity))

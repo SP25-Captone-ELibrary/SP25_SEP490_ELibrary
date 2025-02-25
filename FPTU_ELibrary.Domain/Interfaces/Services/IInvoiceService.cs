@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 
@@ -11,4 +12,5 @@ public interface IInvoiceService<TDto> : IGenericService<Invoice, TDto, int>
     Task<IServiceResult> CancelPayOsPaymentAsync(string paymentLinkId,string cancellationReason);
     Task<IServiceResult> GetAllCardHolderInvoiceByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> GetCardHolderInvoiceByIdAsync(Guid userId, int invoiceId);
+    Task<IServiceResult> VerifyPaymentWebhookDataAsync(PayOSPaymentLinkInformationResponse req);
 }

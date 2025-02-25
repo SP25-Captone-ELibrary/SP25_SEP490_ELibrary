@@ -730,6 +730,13 @@ namespace FPTU_ELibrary.Application.Common
         public const string Payment_Success0003 = "Payment.Success0003";
         #endregion
 
+        #region Fine
+        /// <summary>
+        /// [WARNING] Cannot process adding fine when not defined what instance has error
+        /// </summary>
+        public const string Fine_Warning0001 = "Fine.Warning0001";
+        #endregion
+
         #endregion
     }
 }

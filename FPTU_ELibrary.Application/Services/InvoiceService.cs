@@ -71,7 +71,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
         try
         {
             // Build spec
-            var baseSpec = new BaseSpecification<Invoice>(br => br.UserId == userId);   
+            var baseSpec = new BaseSpecification<Invoice>(br => br.UserId == userId);
 
             // Add default order by
             baseSpec.AddOrderByDescending(i => i.CreatedAt);
@@ -129,7 +129,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Retrieve user information
             // Build spec
             var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
@@ -145,14 +145,14 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                     StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
             }
-            
+
             // Build spec
-            var baseSpec = new BaseSpecification<Invoice>(br => 
+            var baseSpec = new BaseSpecification<Invoice>(br =>
                 br.UserId == userDto.UserId && br.InvoiceId == invoiceId);
             // Apply include 
             baseSpec.ApplyInclude(q => q
                 .Include(i => i.Transactions)
-                    .ThenInclude(t => t.PaymentMethod)
+                // .ThenInclude(t => t.PaymentMethod)
             );
             // Retrieve data with spec
             var existingEntity = await _unitOfWork.Repository<Invoice, int>().GetWithSpecAsync(baseSpec);
@@ -160,12 +160,13 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             {
                 // Convert to dto
                 var invoiceDto = _mapper.Map<InvoiceDto>(existingEntity);
-                
+
                 // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), invoiceDto.ToCardHolderInvoiceDto());
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    invoiceDto.ToCardHolderInvoiceDto());
             }
-            
+
             // Data empty or not found 
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
@@ -186,12 +187,12 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             //get user
             var user = await _userSvc.GetWithSpecAsync(userBaseSpec);
             if (user.Data is null)
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(ResultCodeConst.SYS_Warning0002, 
+                        StringUtils.Format(ResultCodeConst.SYS_Warning0002,
                             isEng ? "user" : "người dùng"))
                     ;
             var userValue = (UserDto)user.Data!;
@@ -242,7 +243,8 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 if (transaction.Data is null)
                 {
                     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(ResultCodeConst.SYS_Warning0002, isEng ? "transaction" : "lịch sử thanh toán"));
+                        StringUtils.Format(ResultCodeConst.SYS_Warning0002,
+                            isEng ? "transaction" : "lịch sử thanh toán"));
                 }
 
                 var transactionValue = (TransactionDto)transaction.Data!;
@@ -433,8 +435,9 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             await _msgService.GetMessageAsync(ResultCodeConst.Payment_Warning0003));
     }
 
-    public async Task<IServiceResult> VerifyPaymentWebhookDataAsync(PayOSPaymentLinkInformationResponseDto req)
+    public async Task<IServiceResult> VerifyPaymentWebhookDataAsync(PayOSPaymentLinkInformationResponse req)
     {
+        var paymentResponse = _mapper.Map<PayOSPaymentLinkInformationResponseDto>(req);
         //System lang
         // Determine current system language
         var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
@@ -459,7 +462,13 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
         var transactionBaseSpec = new BaseSpecification<Transaction>(t =>
             t.TransactionCode!.Equals(req.Data.OrderCode));
         transactionBaseSpec.EnableSplitQuery();
-        transactionBaseSpec.ApplyInclude(q => q.Include(t => t.User));
+        transactionBaseSpec.ApplyInclude(q => q
+            .Include(t => t.User)
+            .Include(t => t.Fine)
+            .Include(t => t.DigitalBorrow)
+            .Include(t => t.LibraryCardPackage)
+            .Include(t => t.Invoice)!
+        );
         var transactions = await _transactionService.GetAllWithSpecAsync(transactionBaseSpec);
         if (transactions.Data is null)
         {
@@ -474,22 +483,22 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
 
         var transactionsValue = (List<TransactionDto>)transactions.Data!;
 
-        switch (req.Data.Status)
+        switch (req.Data.Status.ToLower())
         {
-            case nameof(TransactionStatus.Pending):
+            case "pending":
                 status = TransactionStatus.Pending;
                 break;
-            case nameof(TransactionStatus.Cancelled):
+            case "cancelled":
                 status = TransactionStatus.Cancelled;
                 cancellationReason = req.Data.CancellationReason;
                 cancelledAt = !string.IsNullOrEmpty(req.Data.CanceledAt) ? DateTime.Parse(req.Data.CanceledAt) : null;
                 break;
-            case nameof(TransactionStatus.Paid):
+            case "paid":
                 try
                 {
                     // Get signature
                     string signature =
-                        await GenerateWebhookSignatureAsync(req, req.Data.Id, _monitor.ChecksumKey);
+                        await GenerateWebhookSignatureAsync(paymentResponse, req.Data.Id, _monitor.ChecksumKey);
 
                     // Initiate Webhook type
                     WebhookType webhookType = new(
@@ -557,50 +566,50 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             }
         }
 
-        if (status.Equals(TransactionStatus.Paid))
+        var userSpec =
+            new BaseSpecification<User>(u => u.UserId.ToString().Equals(transactionsValue[0].UserId.ToString()));
+        var user = await _userSvc.GetWithSpecAsync(userSpec);
+        if (user.Data is null)
         {
-            
-            var user = await _userSvc.GetByIdAsync(transactionsValue[0].UserId);
-            if(user.Data is null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg,
-                        isEng
-                            ? "There is no user match with given data"
-                            : "Không có người dùng nào trùng hợp với dữ liệu đã đưa"
-                    ));
-            }
-
-            var userValue = (UserDto)user.Data!;
-        
-            paymentToken =await new PaymentUtils(_logger)
-                .GenerateTransactionTokenAsync(email: userValue.Email,
-                    transactionCode: transactionsValue[0].TransactionCode!,
-                    transactionDate: transactionsValue[0].TransactionDate!.Value,
-                    webTokenSettings: _webMonitor);
-            
-            var invoice = new InvoiceDto()
-            {
-                UserId = userValue.UserId,
-                InvoiceCode = "OD" + req.Data.OrderCode,
-                TotalAmount = transactionsValue.Sum(t => t.Amount),
-                CreatedAt = DateTime.Now,
-                PaidAt = DateTime.Now,
-            };
-            invoice.Transactions = transactionsValue;
-            var invoiceEntity = _mapper.Map<Invoice>(invoice);
-            await _unitOfWork.Repository<Invoice, int>().AddAsync(invoiceEntity);
-            if (await _unitOfWork.SaveChangesAsync() <= 0)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
-            }
-
-            return new ServiceResult(ResultCodeConst.Payment_Success0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.Payment_Success0003), paymentToken);
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg,
+                    isEng
+                        ? "There is no user match with given data"
+                        : "Không có người dùng nào trùng hợp với dữ liệu đã đưa"
+                ));
         }
 
+        var userValue = (UserDto)user.Data!;
+
+        paymentToken = await new PaymentUtils(_logger)
+            .GenerateTransactionTokenAsync(email: userValue.Email,
+                transactionCode: transactionsValue[0].TransactionCode!,
+                transactionDate: transactionsValue[0].TransactionDate!.Value,
+                webTokenSettings: _webMonitor);
+
+        var invoice = new InvoiceDto()
+        {
+            UserId = userValue.UserId,
+            InvoiceCode = "OD" + req.Data.OrderCode,
+            TotalAmount = transactionsValue.Sum(t => t.Amount),
+            CreatedAt = DateTime.Now,
+            PaidAt = DateTime.Now,
+        };
+        var invoiceEntity = _mapper.Map<Invoice>(invoice);
+        await _unitOfWork.Repository<Invoice, int>().AddAsync(invoiceEntity);
+        if (await _unitOfWork.SaveChangesAsync() <= 0)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+        }
+        foreach (var transactionDto in transactionsValue)
+        {
+            transactionDto.InvoiceId = invoiceEntity.InvoiceId;
+            var updateTransaction =
+                await _transactionService.UpdateAsync(transactionDto.TransactionId, transactionDto);
+            if (updateTransaction.ResultCode != ResultCodeConst.SYS_Success0003) return updateTransaction;
+        }
         return new ServiceResult(ResultCodeConst.Payment_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.Payment_Success0003), paymentToken);
     }

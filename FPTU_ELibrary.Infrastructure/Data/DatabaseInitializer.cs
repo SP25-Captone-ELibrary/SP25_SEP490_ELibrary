@@ -394,15 +394,15 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Hư sách nặng nề",
-					FineAmountPerDay = 0,
+					Description = "Hư hoặc rách sách giấy",
+					FineAmountPerDay = 10000,
 					FinePolicyTitle = "Hư bìa sách 1"
 				},
 				new()
 				{
 					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Hư sách một phần",
-					FineAmountPerDay = 0,
+					Description = "Hư hoặc rách sách bìa cứng",
+					FineAmountPerDay = 15000,
 					FinePolicyTitle = "Hư bìa sách 2"
 				},
 				new()
@@ -416,7 +416,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					ConditionType = FinePolicyConditionType.OverDue,
 					Description = "Trả quá hạn",
-					FineAmountPerDay = 5,
+					FineAmountPerDay = 5000,
 					FinePolicyTitle = "Trả quá hạn"
 				},
 			};

@@ -9,6 +9,7 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     public void Configure(EntityTypeBuilder<Transaction> builder)
     {
         #region Added at 16/01/2025 by Le Xuan Phuoc
+
         builder.HasKey(e => e.TransactionId).HasName("PK_Transaction_TransactionId");
 
         builder.ToTable("Transaction");
@@ -16,10 +17,10 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(e => e.TransactionId).HasColumnName("transaction_id");
         builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.FineId).HasColumnName("fine_id");
-        builder.Property(e => e.InvoiceId).HasColumnName("invoice_id"); ;
+        builder.Property(e => e.InvoiceId).HasColumnName("invoice_id");
+        ;
         builder.Property(e => e.DigitalBorrowId).HasColumnName("digital_borrow_id");
         builder.Property(e => e.LibraryCardPackageId).HasColumnName("library_card_package_id");
-        builder.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
         builder.Property(e => e.TransactionCode)
             .HasColumnType("nvarchar(50)")
             .HasColumnName("transaction_code");
@@ -49,37 +50,40 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(e => e.CancellationReason)
             .HasColumnType("nvarchar(50)")
             .HasColumnName("cancellation_reason");
-        
+
         builder.HasOne(e => e.User).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_UserId");
-        
+
         builder.HasOne(e => e.Fine).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.FineId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_FineId");
-        
+
         builder.HasOne(e => e.Invoice).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.InvoiceId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_InvoiceId");
-            
+
         builder.HasOne(e => e.DigitalBorrow).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.DigitalBorrowId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_DigitalBorrowId");
-        
+
         builder.HasOne(e => e.LibraryCardPackage).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.LibraryCardPackageId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_LibraryCardPackageId");
-        
-        builder.HasOne(e => e.PaymentMethod).WithMany(p => p.Transactions)
-            .HasForeignKey(e => e.PaymentMethodId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("FK_Transaction_PaymentMethodId");
+
         #endregion
-        
+
+        #region Update at 24/2/2025
+        // builder.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
+        // builder.HasOne(e => e.PaymentMethod).WithMany(p => p.Transactions)
+        //     .HasForeignKey(e => e.PaymentMethodId)
+        //     .OnDelete(DeleteBehavior.ClientSetNull)
+        //     .HasConstraintName("FK_Transaction_PaymentMethodId");
+        #endregion
     }
 }
