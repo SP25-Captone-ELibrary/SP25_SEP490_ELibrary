@@ -38,22 +38,24 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
     IInvoiceService<InvoiceDto>
 {
     private readonly IUserService<UserDto> _userSvc;
-    private readonly ITransactionService<TransactionDto> _transactionService;
+    private readonly Lazy<ITransactionService<TransactionDto>> _transactionService;
     private readonly IFineService<FineDto> _fineService;
     private readonly WebTokenSettings _webMonitor;
     private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowService;
     private readonly ILibraryCardPackageService<LibraryCardPackageDto> _libraryCardPackageService;
+    private readonly IPaymentMethodService<PaymentMethodDto> _paymentMethodService;
     private readonly PayOSSettings _monitor;
 
     public InvoiceService(
         IUserService<UserDto> userSvc,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
-        ITransactionService<TransactionDto> transactionService,
+        Lazy<ITransactionService<TransactionDto>> transactionService,
         IFineService<FineDto> fineService,
         IOptionsMonitor<WebTokenSettings> webMonitor,
         IDigitalBorrowService<DigitalBorrowDto> digitalBorrowService,
         ILibraryCardPackageService<LibraryCardPackageDto> libraryCardPackageService,
+        IPaymentMethodService<PaymentMethodDto>paymentMethodService,
         IMapper mapper, IOptionsMonitor<PayOSSettings> monitor,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
@@ -63,6 +65,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
         _webMonitor = webMonitor.CurrentValue;
         _digitalBorrowService = digitalBorrowService;
         _libraryCardPackageService = libraryCardPackageService;
+        _paymentMethodService = paymentMethodService;
         _monitor = monitor.CurrentValue;
     }
 
@@ -151,7 +154,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 br.UserId == userDto.UserId && br.InvoiceId == invoiceId);
             // Apply include 
             baseSpec.ApplyInclude(q => q
-                .Include(i => i.Transactions)
+                    .Include(i => i.Transactions)
                 // .ThenInclude(t => t.PaymentMethod)
             );
             // Retrieve data with spec
@@ -239,7 +242,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             int cardPackagePrice = 0;
             foreach (var transactionId in transactionIds)
             {
-                var transaction = await _transactionService.GetByIdAsync(transactionId);
+                var transaction = await _transactionService.Value.GetByIdAsync(transactionId);
                 if (transaction.Data is null)
                 {
                     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -354,7 +357,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 {
                     transactionDto.TransactionCode = orderCode.ToString();
                     var updateTransaction =
-                        await _transactionService.UpdateAsync(transactionDto.TransactionId, transactionDto);
+                        await _transactionService.Value.UpdateAsync(transactionDto.TransactionId, transactionDto);
                     if (updateTransaction.ResultCode != ResultCodeConst.SYS_Success0003) return updateTransaction;
                 }
             }
@@ -383,7 +386,8 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), response.Item2);
     }
 
-    public async Task<IServiceResult> CancelPayOsPaymentAsync(string paymentLinkId, string cancellationReason)
+    public async Task<IServiceResult> CancelPayOsPaymentAsync(string paymentLinkId, string cancellationReason
+        , string transactionCode)
     {
         // Initiate HttpClient
         using HttpClient httpClient = new();
@@ -424,6 +428,37 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
 
         if (cancelPaymentUrlRes.IsSuccessStatusCode)
         {
+            var transactionBaseSpec = new BaseSpecification<Transaction>(t =>
+                t.TransactionCode!.Equals(transactionCode));
+            var transaction = await _transactionService.Value.GetAllWithSpecAsync(transactionBaseSpec);
+            if (transaction.Data is null)
+            {
+                //System lang
+                // Determine current system language
+                var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                    LanguageContext.CurrentLanguage);
+                var isEng = lang == SystemLanguage.English;
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg,
+                        isEng
+                            ? "There is no transaction match with given data"
+                            : "Không có đơn thanh toán nào trùng hợp với dữ liệu đã đưa"
+                    ));
+            }
+
+            var transactions = (List<TransactionDto>)transaction.Data!;
+            foreach (var dto in transactions)
+            {
+                dto.CancellationReason = cancellationReason;
+                dto.TransactionStatus = TransactionStatus.Cancelled;
+                var updatedTransaction = await _transactionService.Value.UpdateAsync(dto.TransactionId, dto);
+                if (updatedTransaction.ResultCode.Equals(ResultCodeConst.SYS_Fail0003))
+                {
+                    return updatedTransaction;
+                }
+            }
+
             return new ServiceResult(ResultCodeConst.Payment_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.Payment_Success0002), responseData);
         }
@@ -469,7 +504,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             .Include(t => t.LibraryCardPackage)
             .Include(t => t.Invoice)!
         );
-        var transactions = await _transactionService.GetAllWithSpecAsync(transactionBaseSpec);
+        var transactions = await _transactionService.Value.GetAllWithSpecAsync(transactionBaseSpec);
         if (transactions.Data is null)
         {
             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -559,7 +594,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 dto.TransactionStatus = status;
             }
 
-            var updatedTransaction = await _transactionService.UpdateAsync(dto.TransactionId, dto);
+            var updatedTransaction = await _transactionService.Value.UpdateAsync(dto.TransactionId, dto);
             if (updatedTransaction.ResultCode.Equals(ResultCodeConst.SYS_Fail0003))
             {
                 return updatedTransaction;
@@ -588,6 +623,17 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
                 transactionDate: transactionsValue[0].TransactionDate!.Value,
                 webTokenSettings: _webMonitor);
 
+        var paymentMethodSpec = new BaseSpecification<PaymentMethod>(p =>
+            p.MethodName.Equals(nameof(PaymentType.PayOS)));
+        var paymentMethod = await _paymentMethodService.GetWithSpecAsync(paymentMethodSpec);
+        if (paymentMethod.Data is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg,
+                    isEng ? "payment method" : "phương thức thanh toán"));
+        }
+        var paymentMethodValue = (PaymentMethodDto)paymentMethod.Data!;
         var invoice = new InvoiceDto()
         {
             UserId = userValue.UserId,
@@ -595,6 +641,7 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             TotalAmount = transactionsValue.Sum(t => t.Amount),
             CreatedAt = DateTime.Now,
             PaidAt = DateTime.Now,
+            PaymentMethodId = paymentMethodValue.PaymentMethodId
         };
         var invoiceEntity = _mapper.Map<Invoice>(invoice);
         await _unitOfWork.Repository<Invoice, int>().AddAsync(invoiceEntity);
@@ -603,15 +650,55 @@ public class InvoiceService : GenericService<Invoice, InvoiceDto, int>,
             return new ServiceResult(ResultCodeConst.SYS_Fail0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
         }
+
         foreach (var transactionDto in transactionsValue)
         {
             transactionDto.InvoiceId = invoiceEntity.InvoiceId;
             var updateTransaction =
-                await _transactionService.UpdateAsync(transactionDto.TransactionId, transactionDto);
+                await _transactionService.Value.UpdateAsync(transactionDto.TransactionId, transactionDto);
             if (updateTransaction.ResultCode != ResultCodeConst.SYS_Success0003) return updateTransaction;
         }
+
         return new ServiceResult(ResultCodeConst.Payment_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.Payment_Success0003), paymentToken);
+    }
+
+    public async Task<IServiceResult> UpdateCashPaymentStatusAsync(int id)
+    {
+        //System lang
+        // Determine current system language
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+
+        var invoiceSpec = new BaseSpecification<Invoice>(t => t.InvoiceId == id);
+        var invoice = await _unitOfWork.Repository<Invoice, int>().GetWithSpecAsync(invoiceSpec);
+        if (invoice is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg,
+                    isEng? "transaction" : "lịch sử thanh toán"));
+        }
+        var paymentMethodSpec = new BaseSpecification<PaymentMethod>(p => p.MethodName.Equals(nameof(PaymentType.Cash)));
+        var paymentMethod = await _paymentMethodService.GetWithSpecAsync(paymentMethodSpec);
+        if (paymentMethod.Data is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg,
+                    isEng? "payment method" : "phương thức thanh toán"));
+        }
+        invoice.PaymentMethodId = ((PaymentMethodDto)paymentMethod.Data!).PaymentMethodId;
+        var entity = _mapper.Map<Invoice>(invoice);
+        await _unitOfWork.Repository<Invoice, int>().UpdateAsync(entity);
+        if (await _unitOfWork.SaveChangesAsync() <= 0)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+        }
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
     }
 
     private async Task<string> GenerateWebhookSignatureAsync(PayOSPaymentLinkInformationResponseDto resp,

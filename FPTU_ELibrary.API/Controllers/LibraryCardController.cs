@@ -31,16 +31,19 @@ public class LibraryCardController : ControllerBase
     
     private readonly IUserService<UserDto> _userSvc;
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
+    private readonly ILibraryCardPackageService<LibraryCardPackageDto> _cardPackageService;
 
     public LibraryCardController(
         IUserService<UserDto> userSvc,
         ILogger logger,
         ILibraryCardService<LibraryCardDto> cardSvc,
+        ILibraryCardPackageService<LibraryCardPackageDto> cardPackageService,
         IOptionsMonitor<WebTokenSettings> monitor,
         IOptionsMonitor<AppSettings> monitor1)
     {
         _logger = logger;
         _cardSvc = cardSvc;
+        _cardPackageService = cardPackageService;
         _userSvc = userSvc;
         _webTokenSettings = monitor.CurrentValue;
         _appSettings = monitor1.CurrentValue;
@@ -189,4 +192,18 @@ public class LibraryCardController : ControllerBase
             email: email ?? string.Empty, 
             transactionToken: req.TransactionToken ?? string.Empty));
     }
+    [HttpGet(APIRoute.LibraryCard.GetAllCardPackage, Name = nameof(GetAllCardPackage))]
+    public async Task<IActionResult> GetAllCardPackage()
+    {
+        return Ok(await _cardPackageService.GetAllAsync());
+    }
+    
+    [Authorize]
+    [HttpPost(APIRoute.LibraryCard.CreateCardPackagePaymentDetail, Name = nameof(CreateCardPackagePaymentDetail))]
+    public async Task<IActionResult> CreateCardPackagePaymentDetail([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _cardPackageService.CreateTransactionForLibraryCardPackage(email!,id));
+    }
+
 }

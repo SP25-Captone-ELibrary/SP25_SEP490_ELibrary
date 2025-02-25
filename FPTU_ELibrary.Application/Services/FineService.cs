@@ -30,7 +30,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
     
     // Normal services
     private readonly IEmployeeService<EmployeeDto> _employeeService;
-    private readonly ITransactionService<TransactionDto> _transactionService;
+    private readonly Lazy<ITransactionService<TransactionDto>> _transactionService;
 
     public FineService(
         // Lazy services
@@ -40,7 +40,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IEmployeeService<EmployeeDto>employeeService,
-        ITransactionService<TransactionDto>transactionService,
+        Lazy<ITransactionService<TransactionDto>>transactionService,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _employeeService = employeeService;
@@ -111,7 +111,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
             response.CreatedAt = DateTime.Now;
             // response.PaymentMethodId = 1;
             var transactionEntity = _mapper.Map<Transaction>(response);
-            var result = await _transactionService.CreateAsync(transactionEntity);
+            var result = await _transactionService.Value.CreateAsync(transactionEntity);
             if(result.Data is null) return result;
 
             return new ServiceResult(ResultCodeConst.SYS_Success0001,
