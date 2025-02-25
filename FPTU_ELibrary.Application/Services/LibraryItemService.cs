@@ -1,5 +1,4 @@
 using System.Globalization;
-using CloudinaryDotNet.Core;
 using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;

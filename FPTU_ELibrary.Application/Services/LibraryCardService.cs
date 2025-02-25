@@ -393,7 +393,6 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             // Apply including for specific registered card package
             tranSpec.ApplyInclude(q => q
                 .Include(t => t.LibraryCardPackage)
-                .Include(t => t.PaymentMethod)
             );
             // Retrieve with spec
             var transactionDto = (await _tranSvc.GetWithSpecAsync(tranSpec)).Data as TransactionDto;
@@ -627,8 +626,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     Equals(t.TransactionCode, transCode)); // transaction code
                 // Apply include
                 transSpec.ApplyInclude(q => q
-                    .Include(t => t.LibraryCardPackage)
-                    .Include(t => t.PaymentMethod)
+                    .Include(t => t.LibraryCardPackage!)
                 );
                 // Retrieve with spec
                 transactionDto = (await _tranSvc.GetWithSpecAsync(transSpec)).Data as TransactionDto;
@@ -682,7 +680,6 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     TransactionType = TransactionType.LibraryCardExtension,
                     CreatedAt = currentLocalDateTime,
                     TransactionDate = currentLocalDateTime,
-                    PaymentMethodId = int.Parse(paymentMethodId.ToString()!),
                     LibraryCardPackageId = libPackageDto.LibraryCardPackageId,
                     UserId = user.UserId,
                     Invoice = new InvoiceDto()
@@ -722,13 +719,6 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
             if (isSaved)
             {
-                // Assign payment method dto
-                if (transactionDto.PaymentMethod == null!)
-                {
-                    transactionDto.PaymentMethod = (await _paymentMethodSvc.GetByIdAsync(
-                        paymentMethodId ?? transactionDto.PaymentMethodId)).Data as PaymentMethodDto ?? new();
-                }
-		            
                 if (transactionDto.LibraryCardPackage == null)
                 {
                     transactionDto.LibraryCardPackage = libPackageDto;
@@ -1341,11 +1331,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 // Define subject
                 subject: subject,
                 // Add email body content
-                content: GetLibraryCardActivatedEmailBody(
-                    cardDto: cardDto,
-                    transactionDto: transactionDto,
-                    libName: libName,
-                    libContact:libContact)
+                // content: GetLibraryCardActivatedEmailBody(
+                //     cardDto: cardDto,
+                //     transactionDto: transactionDto,
+                //     libName: libName,
+                //     libContact:libContact)
+                content: "ABC"
             );
                             
             // Process send email
@@ -1390,103 +1381,103 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
     
-    private string GetLibraryCardActivatedEmailBody(
-        LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
-    {
-        var culture = new System.Globalization.CultureInfo("vi-VN");
-        
-        return $$"""
-                 <!DOCTYPE html>
-                 <html>
-                 <head>
-                     <meta charset="UTF-8">
-                     <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
-                     <style>
-                         body {
-                             font-family: Arial, sans-serif;
-                             line-height: 1.6;
-                             color: #333;
-                         }
-                         .header {
-                             font-size: 18px;
-                             color: #2c3e50;
-                             font-weight: bold;
-                         }
-                         .details {
-                             margin: 15px 0;
-                             padding: 10px;
-                             background-color: #f9f9f9;
-                             border-left: 4px solid #27ae60;
-                         }
-                         .details li {
-                             margin: 5px 0;
-                         }
-                         .barcode {
-                             color: #2980b9;
-                             font-weight: bold;
-                         }
-                         .expiry-date {
-                             color: #27ae60;
-                             font-weight: bold;
-                         }
-                         .status-label {
-                             color: #e74c3c;
-                             font-weight: bold;
-                         }
-                         .status-text {
-                             color: #f39c12;
-                             font-weight: bold;
-                         }
-                         .footer {
-                             margin-top: 20px;
-                             font-size: 14px;
-                             color: #7f8c8d;
-                         }
-                     </style>
-                 </head>
-                 <body>
-                     <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
-                     <p>Xin chào {{cardDto.FullName}},</p>
-                     <p>Thẻ thư viện của bạn đã được kích hoạt thành công. Bạn có thể sử dụng tất cả các dịch vụ của thư viện mà không bị gián đoạn.</p>
-                     
-                     <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
-                     <div class="details">
-                         <ul>
-                             <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
-                             <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
-                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
-                         </ul>
-                     </div>
-                     
-                     <p><strong>Chi Tiết Giao Dịch:</strong></p>
-                     <div class="details">
-                         <ul>
-                             <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
-                             <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
-                             <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-                             <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
-                             <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
-                         </ul>
-                     </div>
-                     
-                     <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
-                     <div class="details">
-                         <ul>
-                             <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
-                             <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
-                             <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
-                             <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
-                         </ul>
-                     </div>
-                     
-                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
-                     
-                     <p><strong>Trân trọng,</strong></p>
-                     <p>{{libName}}</p>
-                 </body>
-                 </html>
-                 """;
-    }
+//     private string GetLibraryCardActivatedEmailBody(
+//         LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
+//     {
+//         var culture = new System.Globalization.CultureInfo("vi-VN");
+//         
+//         return $$"""
+//                  <!DOCTYPE html>
+//                  <html>
+//                  <head>
+//                      <meta charset="UTF-8">
+//                      <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
+//                      <style>
+//                          body {
+//                              font-family: Arial, sans-serif;
+//                              line-height: 1.6;
+//                              color: #333;
+//                          }
+//                          .header {
+//                              font-size: 18px;
+//                              color: #2c3e50;
+//                              font-weight: bold;
+//                          }
+//                          .details {
+//                              margin: 15px 0;
+//                              padding: 10px;
+//                              background-color: #f9f9f9;
+//                              border-left: 4px solid #27ae60;
+//                          }
+//                          .details li {
+//                              margin: 5px 0;
+//                          }
+//                          .barcode {
+//                              color: #2980b9;
+//                              font-weight: bold;
+//                          }
+//                          .expiry-date {
+//                              color: #27ae60;
+//                              font-weight: bold;
+//                          }
+//                          .status-label {
+//                              color: #e74c3c;
+//                              font-weight: bold;
+//                          }
+//                          .status-text {
+//                              color: #f39c12;
+//                              font-weight: bold;
+//                          }
+//                          .footer {
+//                              margin-top: 20px;
+//                              font-size: 14px;
+//                              color: #7f8c8d;
+//                          }
+//                      </style>
+//                  </head>
+//                  <body>
+//                      <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
+//                      <p>Xin chào {{cardDto.FullName}},</p>
+//                      <p>Thẻ thư viện của bạn đã được kích hoạt thành công. Bạn có thể sử dụng tất cả các dịch vụ của thư viện mà không bị gián đoạn.</p>
+//                      
+//                      <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
+//                      <div class="details">
+//                          <ul>
+//                              <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+//                              <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
+//                              <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+//                          </ul>
+//                      </div>
+//                      
+//                      <p><strong>Chi Tiết Giao Dịch:</strong></p>
+//                      <div class="details">
+//                          <ul>
+//                              <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+//                              <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
+//                              <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+//                              <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+//                              <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+//                          </ul>
+//                      </div>
+//                      
+//                      <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
+//                      <div class="details">
+//                          <ul>
+//                              <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
+//                              <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
+//                              <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
+//                              <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
+//                          </ul>
+//                      </div>
+//                      
+//                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+//                      
+//                      <p><strong>Trân trọng,</strong></p>
+//                      <p>{{libName}}</p>
+//                  </body>
+//                  </html>
+//                  """;
+//     }
 
     private string GetLibraryCardRejectEmailBody(
         LibraryCardDto cardDto, string rejectReason, string libName, string libContact)
@@ -1549,6 +1540,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                  """;
     }
     
+    // TODO: Reimplement this function with logic of invoice
     private async Task<bool> SendCardExtensionSuccessEmailAsync(string email, LibraryCardDto cardDto,
 			TransactionDto transactionDto, string libName, string libContact)
 	{
@@ -1564,11 +1556,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 				// Define subject
 				subject: subject,
 				// Add email body content
-				content: GetLibraryCardExtensionEmailBody(
-					cardDto: cardDto,
-					transactionDto: transactionDto,
-					libName: libName,
-					libContact:libContact)
+				// content: GetLibraryCardExtensionEmailBody(
+				// 	cardDto: cardDto,
+				// 	transactionDto: transactionDto,
+				// 	libName: libName,
+				// 	libContact:libContact)
+                content: "ABC"
 			);
 	                        
 			// Process send email
@@ -1581,90 +1574,90 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 		}
 	}
 		
-	private string GetLibraryCardExtensionEmailBody(LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
-	{
-		var culture = new CultureInfo("vi-VN");
-
-		return $$"""
-		         <!DOCTYPE html>
-		         <html>
-		         <head>
-		             <meta charset="UTF-8">
-		             <title>Thông Báo Gia Hạn Thẻ Thư Viện</title>
-		             <style>
-		                 body {
-		                     font-family: Arial, sans-serif;
-		                     line-height: 1.6;
-		                     color: #333;
-		                 }
-		                 .header {
-		                     font-size: 18px;
-		                     color: #2c3e50;
-		                     font-weight: bold;
-		                 }
-		                 .details {
-		                     margin: 15px 0;
-		                     padding: 10px;
-		                     background-color: #f9f9f9;
-		                     border-left: 4px solid #27ae60;
-		                 }
-		                 .details li {
-		                     margin: 5px 0;
-		                 }
-		                 .barcode {
-		                     color: #2980b9;
-		                     font-weight: bold;
-		                 }
-		                 .expiry-date {
-		                     color: #27ae60;
-		                     font-weight: bold;
-		                 }
-		                 .status-label {
-		                     color: #e74c3c;
-		                     font-weight: bold;
-		                 }
-		                 .status-text {
-		                     color: #f39c12;
-		                     font-weight: bold;
-		                 }
-		                 .footer {
-		                     margin-top: 20px;
-		                     font-size: 14px;
-		                     color: #7f8c8d;
-		                 }
-		             </style>
-		         </head>
-		         <body>
-		             <p class="header">Thông Báo Gia Hạn Thẻ Thư Viện</p>
-		             <p>Xin chào {{cardDto.FullName}},</p>
-		             <p>Chúc mừng! Thẻ thư viện của bạn đã được gia hạn thành công. Bạn có thể tiếp tục sử dụng tất cả các dịch vụ của thư viện.</p>
-		             
-		             <p><strong>Thông Tin Thẻ Thư Viện:</strong></p>
-		             <div class="details">
-		                 <ul>
-		                     <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
-		                     <li><span class="expiry-date">Ngày Hết Hạn Mới:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
-		                     <li><span class="status-label">Trạng Thái:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
-		                 </ul>
-		             </div>
-		             
-		             <p><strong>Chi Tiết Giao Dịch Gia Hạn:</strong></p>
-		             <div class="details">
-		                 <ul>
-		                     <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
-		                     <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
-		                     <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-		                     <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
-		                     <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
-		                 </ul>
-		             </div>
-		             
-		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
-		             
-		             <p><strong>Trân trọng,</strong></p>
-		             <p>{{libName}}</p>
-		         </body>
-		         </html>
-		         """;
-	}
+// 	private string GetLibraryCardExtensionEmailBody(LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
+// 	{
+// 		var culture = new CultureInfo("vi-VN");
+//
+// 		return $$"""
+// 		         <!DOCTYPE html>
+// 		         <html>
+// 		         <head>
+// 		             <meta charset="UTF-8">
+// 		             <title>Thông Báo Gia Hạn Thẻ Thư Viện</title>
+// 		             <style>
+// 		                 body {
+// 		                     font-family: Arial, sans-serif;
+// 		                     line-height: 1.6;
+// 		                     color: #333;
+// 		                 }
+// 		                 .header {
+// 		                     font-size: 18px;
+// 		                     color: #2c3e50;
+// 		                     font-weight: bold;
+// 		                 }
+// 		                 .details {
+// 		                     margin: 15px 0;
+// 		                     padding: 10px;
+// 		                     background-color: #f9f9f9;
+// 		                     border-left: 4px solid #27ae60;
+// 		                 }
+// 		                 .details li {
+// 		                     margin: 5px 0;
+// 		                 }
+// 		                 .barcode {
+// 		                     color: #2980b9;
+// 		                     font-weight: bold;
+// 		                 }
+// 		                 .expiry-date {
+// 		                     color: #27ae60;
+// 		                     font-weight: bold;
+// 		                 }
+// 		                 .status-label {
+// 		                     color: #e74c3c;
+// 		                     font-weight: bold;
+// 		                 }
+// 		                 .status-text {
+// 		                     color: #f39c12;
+// 		                     font-weight: bold;
+// 		                 }
+// 		                 .footer {
+// 		                     margin-top: 20px;
+// 		                     font-size: 14px;
+// 		                     color: #7f8c8d;
+// 		                 }
+// 		             </style>
+// 		         </head>
+// 		         <body>
+// 		             <p class="header">Thông Báo Gia Hạn Thẻ Thư Viện</p>
+// 		             <p>Xin chào {{cardDto.FullName}},</p>
+// 		             <p>Chúc mừng! Thẻ thư viện của bạn đã được gia hạn thành công. Bạn có thể tiếp tục sử dụng tất cả các dịch vụ của thư viện.</p>
+// 		             
+// 		             <p><strong>Thông Tin Thẻ Thư Viện:</strong></p>
+// 		             <div class="details">
+// 		                 <ul>
+// 		                     <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+// 		                     <li><span class="expiry-date">Ngày Hết Hạn Mới:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
+// 		                     <li><span class="status-label">Trạng Thái:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+// 		                 </ul>
+// 		             </div>
+// 		             
+// 		             <p><strong>Chi Tiết Giao Dịch Gia Hạn:</strong></p>
+// 		             <div class="details">
+// 		                 <ul>
+// 		                     <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+// 		                     <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
+// 		                     <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+// 		                     <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+// 		                     <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+// 		                 </ul>
+// 		             </div>
+// 		             
+// 		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+// 		             
+// 		             <p><strong>Trân trọng,</strong></p>
+// 		             <p>{{libName}}</p>
+// 		         </body>
+// 		         </html>
+// 		         """;
+// 	}
 }

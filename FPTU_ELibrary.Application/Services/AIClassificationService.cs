@@ -1496,7 +1496,9 @@ public class AIClassificationService : IAIClassificationService
                         Images = new List<IFormFile>()
                         {
                             image
-                        }
+                        },
+                        SubTitle = groupValueLibraryItem.SubTitle,
+                        GeneralNote = groupValueLibraryItem.GeneralNote
                     };
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
                     var compareResultValue = (List<MatchResultDto>)compareResult.Data!;

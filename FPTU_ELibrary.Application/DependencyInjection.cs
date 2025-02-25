@@ -24,6 +24,7 @@ using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Hubs;
+using FPTU_ELibrary.Domain.Entities;
 using Microsoft.AspNetCore.SignalR;
 using OfficeOpenXml;
 
@@ -93,7 +94,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services.AddScoped<IInvoiceService<InvoiceDto>, InvoiceService>();
             services.AddScoped<IFineService<FineDto>,FineService>();
-            
+            services.AddScoped<IUserFavoriteService<UserFavoriteDto>,UserFavoriteService>();
             services
                 .ConfigureMapster() // Add mapster
                 .ConfigureCloudinary() // Add cloudinary

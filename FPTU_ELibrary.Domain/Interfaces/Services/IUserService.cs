@@ -36,7 +36,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> GetLibraryCardHolderByIdAsync(Guid userId);
         Task<IServiceResult> GetLibraryCardHolderByBarcodeAsync(string barcode);
         Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(string processedByEmail, Guid userId,
-            TDto userWithCard, string? transactionToken, int? libraryCardPackageId, int? paymentMethodId);
+            TDto userWithCard, string? transactionToken, int? libraryCardPackageId);
         Task<IServiceResult> RegisterLibraryCardAsync(string email, TDto userWithCard, string transactionToken);
         Task<IServiceResult> ExtendLibraryCardAsync(string email, string transactionToken);
         Task<IServiceResult> SoftDeleteLibraryCardHolderAsync(Guid userId);

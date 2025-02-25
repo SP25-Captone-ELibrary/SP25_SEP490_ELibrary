@@ -1,5 +1,7 @@
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
@@ -9,24 +11,32 @@ using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
 
 public class LibraryCardPackageService : GenericService<LibraryCardPackage, LibraryCardPackageDto, int>,
-    ILibraryCardPackageService<LibraryCardPackageDto>
+	ILibraryCardPackageService<LibraryCardPackageDto>
 {
-    public LibraryCardPackageService(
-        ISystemMessageService msgService, 
-        IUnitOfWork unitOfWork, 
-        IMapper mapper, 
-        ILogger logger) : base(msgService, unitOfWork, mapper, logger)
-    {
-    }
+	private readonly IUserService<UserDto> _userService;
+	private readonly ITransactionService<TransactionDto> _transactionService;
 
-    public override async Task<IServiceResult> UpdateAsync(int id, LibraryCardPackageDto dto)
-    {
+	public LibraryCardPackageService(
+		ISystemMessageService msgService,
+		IUserService<UserDto> userService,
+		IUnitOfWork unitOfWork,
+		ITransactionService<TransactionDto> transactionService,
+		IMapper mapper,
+		ILogger logger) : base(msgService, unitOfWork, mapper, logger)
+	{
+		_userService = userService;
+		_transactionService = transactionService;
+	}
+
+	public override async Task<IServiceResult> UpdateAsync(int id, LibraryCardPackageDto dto)
+	{
 		// Initiate service result
 		var serviceResult = new ServiceResult();
 
@@ -36,7 +46,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
 				LanguageContext.CurrentLanguage);
 			var isEng = lang == SystemLanguage.English;
-			
+
 			// Validate inputs using the generic validator
 			var validationResult = await ValidatorExtensions.ValidateAsync(dto);
 			// Check for valid validations
@@ -52,7 +62,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 			if (existingEntity == null)
 			{
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-				return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
 					StringUtils.Format(errMsg, isEng ? "package" : "gói thẻ thư viện"));
 			}
 
@@ -99,4 +109,49 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 
 		return serviceResult;
 	}
+
+	public async Task<IServiceResult> CreateTransactionForLibraryCardPackage(string email, int id)
+	{
+		// Determine current system lang
+		var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			LanguageContext.CurrentLanguage);
+		var isEng = lang == SystemLanguage.English;
+		
+		// Get User By email
+		var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
+		var user = await _userService.GetWithSpecAsync(userBaseSpec);
+		if (user.Data is null)
+		{
+			var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+		}
+		
+		//get package by id
+		var package = await _unitOfWork.Repository<LibraryCardPackage, int>().GetByIdAsync(id);
+		if (package is null)
+		{
+			var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				StringUtils.Format(errMsg, isEng ? "package" : "gói thẻ thư viện"));
+		}
+		
+		TransactionDto response = new TransactionDto();
+		response.TransactionCode = Guid.NewGuid().ToString();
+		// fine caused by damaged or lost would base on the amount of item
+		response.Amount = package.Price;
+		response.UserId = (user.Data as UserDto)!.UserId;
+		response.TransactionStatus = TransactionStatus.Pending;
+		response.LibraryCardPackageId = package.LibraryCardPackageId;
+		response.CreatedAt = DateTime.Now;
+		// response.PaymentMethodId = 1;
+		var transactionEntity = _mapper.Map<Transaction>(response);
+		var result = await _transactionService.CreateAsync(transactionEntity);
+		if(result.Data is null) return result;
+
+		return new ServiceResult(ResultCodeConst.SYS_Success0001,
+			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+
+	}
+
 }

@@ -663,5 +663,31 @@
 			// [DELETE]
 			public const string Delete = Base + "/management/suppliers/{id}";
 		}
+
+		public static class Payment
+		{
+			//[Get]
+			public const string GetPayOsPaymentLinkInformation = Base + "/payment/create-payment/{paymentLinkId}";
+			//[Post]
+			public const string CreatePayment = Base + "/payment/create-payment";
+			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
+			public const string VerifyPayment = Base + "/payment/verify";
+			public const string CreateTransactionDetails = Base + "/payment/create-transaction-details";
+		}
+
+		public static class Fine
+		{
+			public const string Create = Base + "/fine/create";
+		}
+		
+		public static class UserFavorite
+		{
+			// [POST]
+			public const string AddFavorite = Base + "/user-favorite/add/{id}";
+			// [DELETE]
+			public const string RemoveFavorite = Base + "/user-favorite/remove/{id}";
+			// [GET]
+			public const string GetAll = Base + "/user-favorite";
+		}
 	}
 }
