@@ -8,5 +8,5 @@ public class PaymentMethod
     public string MethodName { get; set; } = null!;
 
     [JsonIgnore]
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 }

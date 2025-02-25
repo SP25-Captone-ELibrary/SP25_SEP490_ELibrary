@@ -9,6 +9,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -61,6 +62,9 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<UserFavorite, UserFavoriteDto>();
 			config.NewConfig<WarehouseTracking, WarehouseTrackingDto>();
 			config.NewConfig<WarehouseTrackingDetail, WarehouseTrackingDetailDto>();
+			config.NewConfig<PayOSPaymentLinkInformationResponse, PayOSPaymentLinkInformationResponseDto>();
+			config.NewConfig<PayOSPaymentLinkInformationData, PayOSPaymentLinkInformationDataDto>();
+			config.NewConfig<PayOSTransaction,PayOSTransactionDto>();
 			
 			// From [Dto] to [Entity]
 			config.NewConfig<AuthorDto, Author>()
@@ -82,6 +86,8 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<LibraryCardPackageDto, LibraryCardPackage>()
 				.Ignore(dest => dest.LibraryCardPackageId)
 				.Ignore(dest => dest.CreatedAt)
+				.IgnoreNullValues(true);
+			config.NewConfig<TransactionDto, Transaction>()
 				.IgnoreNullValues(true);
 		}
 	}

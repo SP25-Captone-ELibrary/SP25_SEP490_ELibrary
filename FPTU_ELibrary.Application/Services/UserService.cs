@@ -1795,8 +1795,7 @@ namespace FPTU_ELibrary.Application.Services
 		public async Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(
 			string processedByEmail, Guid userId, UserDto userWithCard, 
 			string? transactionToken, // Use when register with online payment
-			int? libraryCardPackageId, // Use when register with cash payment
-			int? paymentMethodId) // Use when register with cash payment
+			int? libraryCardPackageId) // Use when register with cash payment
 	    {
 	        try
 	        {
@@ -1847,7 +1846,7 @@ namespace FPTU_ELibrary.Application.Services
 	            var paymentUtils = new PaymentUtils(_logger);
 	            // Determine payment method
 	            if (transactionToken != null && // Online payment
-	                libraryCardPackageId == null && paymentMethodId == null) // Not include information of cash payment
+	                libraryCardPackageId == null) // Not include information of cash payment
 				{
 					// Validate transaction token
 					var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
@@ -1871,8 +1870,7 @@ namespace FPTU_ELibrary.Application.Services
 						Equals(t.TransactionCode, transCode)); // transaction code
 					// Apply include
 					transSpec.ApplyInclude(q => q
-						.Include(t => t.LibraryCardPackage)
-						.Include(t => t.PaymentMethod)
+						.Include(t => t.LibraryCardPackage!)
 					);
 					// Retrieve with spec
 					transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
@@ -1889,19 +1887,8 @@ namespace FPTU_ELibrary.Application.Services
 					libPackageDto = transactionDto.LibraryCardPackage;
 				}
 	            else if (transactionToken == null && // Not include transaction token
-				          paymentMethodId != null && int.TryParse(libraryCardPackageId.ToString(), out var validPackageId)) // Cash payment
+				          int.TryParse(libraryCardPackageId.ToString(), out var validPackageId)) // Cash payment
 				{
-					// Check exist payment method 
-					var isExistPaymentMethod = (await _paymentMethodService.AnyAsync(p =>
-						p.PaymentMethodId == paymentMethodId)).Data is true;
-					if (!isExistPaymentMethod)
-					{
-						// Not found {0}
-						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-						return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-							StringUtils.Format(errMsg, isEng ? "cash payment method" : "phương thức thanh toán tiền mặt"));
-					}
-					
 					// Retrieve library card package by id 
 					libPackageDto =
 						(await _cardPackageService.GetByIdAsync(validPackageId)).Data as LibraryCardPackageDto;
@@ -1924,7 +1911,6 @@ namespace FPTU_ELibrary.Application.Services
 						TransactionType = TransactionType.LibraryCardRegister,
 						CreatedAt = currentLocalDateTime,
 						TransactionDate = currentLocalDateTime,
-						PaymentMethodId = int.Parse(paymentMethodId.ToString()!),
 						LibraryCardPackageId = libPackageDto.LibraryCardPackageId,
 						UserId = user.UserId,
 						Invoice = new InvoiceDto()
@@ -1988,7 +1974,7 @@ namespace FPTU_ELibrary.Application.Services
 		            Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix),
 		            IssuanceMethod = LibraryCardIssuanceMethod.InPerson,
 		            Status = LibraryCardStatus.Active, // Mark as card has been activated
-		            TransactionCode = transactionDto.TransactionCode,
+		            TransactionCode = transactionDto.TransactionCode ?? string.Empty,
 		            IssueDate = currentLocalDateTime,
 		            ExpiryDate = currentLocalDateTime.AddMonths(
 			            // Months defined in specific library card package 
@@ -2002,13 +1988,6 @@ namespace FPTU_ELibrary.Application.Services
 	            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 	            if (isSaved)
 	            {
-		            // Assign payment method dto
-		            if (transactionDto.PaymentMethod == null!)
-		            {
-			            transactionDto.PaymentMethod = (await _paymentMethodService.GetByIdAsync(
-				            paymentMethodId ?? transactionDto.PaymentMethodId)).Data as PaymentMethodDto ?? new();
-		            }
-		            
 		            if (transactionDto.LibraryCardPackage == null)
 		            {
 			            transactionDto.LibraryCardPackage = libPackageDto;
@@ -2109,8 +2088,7 @@ namespace FPTU_ELibrary.Application.Services
 					Equals(t.TransactionCode, transCode));  // transaction code
 				// Apply include
 				transSpec.ApplyInclude(q => q
-					.Include(t => t.LibraryCardPackage)
-					.Include(t => t.PaymentMethod)
+					.Include(t => t.LibraryCardPackage!)
 				);
 				// Retrieve with spec
 				var transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
@@ -3499,7 +3477,7 @@ namespace FPTU_ELibrary.Application.Services
 	                             <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
 	                             <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
 	                             <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-	                             <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+	                             <li><strong>Phương Thức Thanh Toán:</strong> {transactionDto.PaymentMethod.MethodName}</li>
 	                             <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
 	                         </ul>
 	                     </div>
@@ -3628,7 +3606,7 @@ namespace FPTU_ELibrary.Application.Services
 		                         <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
 		                         <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
 		                         <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-		                         <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod.MethodName}}</li>
+		                         <li><strong>Phương Thức Thanh Toán:</strong> {transactionDto.PaymentMethod.MethodName}</li>
 		                         <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
 		                     </ul>
 		                 </div>

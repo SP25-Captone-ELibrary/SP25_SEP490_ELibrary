@@ -717,6 +717,46 @@ namespace FPTU_ELibrary.Application.Common
         public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
         #endregion
 
+        #region Payment
+
+        /// <summary>
+        /// [WARNING] Existed Code
+        /// </summary>
+        public const string Payment_Warning0001 = "Payment.Warning0001";
+
+        /// <summary>
+        /// [WARNING] PayOS Warning
+        /// </summary>
+        public const string Payment_Warning0002 = "Payment.Warning0002";
+        /// <summary>
+        /// [WARNING] Request to server failed. Not found any response data
+        /// </summary>
+        public const string Payment_Warning0003 = "Payment.Warning0003";
+        /// <summary>
+        /// [WARNING] PayOS Cancel
+        /// </summary>
+        public const string Payment_Fail0001 = "Payment.Fail0001";
+        /// <summary>
+        /// [SUCCESS] PayOS create payment successfully
+        /// </summary>
+        public const string Payment_Success0001 = "Payment.Success0001";
+        /// <summary>
+        /// [SUCCESS] PayOS cancel successfully
+        /// </summary>
+        public const string Payment_Success0002 = "Payment.Success0002";
+        /// <summary>
+        /// [SUCCESS] PayOS payment verify Successfully
+        /// </summary>
+        public const string Payment_Success0003 = "Payment.Success0003";
+        #endregion
+
+        #region Fine
+        /// <summary>
+        /// [WARNING] Cannot process adding fine when not defined what instance has error
+        /// </summary>
+        public const string Fine_Warning0001 = "Fine.Warning0001";
+        #endregion
+
         #endregion
     }
 }

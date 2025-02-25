@@ -12,7 +12,7 @@ public class LibraryCardHolderInvoiceDto
     public DateTime? PaidAt { get; set; }
     public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
 }
-
+//Todo: Update Dto with new invoice logic
 public static class LibraryCardHolderInvoiceDtoExtensions
 {
     public static LibraryCardHolderInvoiceDto ToCardHolderInvoiceDto(this InvoiceDto dto)
@@ -38,12 +38,12 @@ public static class LibraryCardHolderInvoiceDtoExtensions
                     CreatedAt = trans.CreatedAt,
                     CancelledAt = trans.CancelledAt,
                     CancellationReason = trans.CancellationReason,
-                    PaymentMethodId = trans.PaymentMethodId,
+                    // PaymentMethodId = trans.PaymentMethodId,
                     FineId = trans.FineId,
                     DigitalBorrowId = trans.DigitalBorrowId,
                     LibraryCardPackageId = trans.LibraryCardPackageId,
                     InvoiceId = trans.InvoiceId,
-                    PaymentMethod = trans.PaymentMethod
+                    // PaymentMethod = trans.PaymentMethod
                 }).ToList()
                 : new()
         };
