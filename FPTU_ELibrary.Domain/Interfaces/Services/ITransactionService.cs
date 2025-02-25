@@ -11,4 +11,5 @@ public interface ITransactionService<TDto> : IGenericService<Transaction, TDto, 
     Task<IServiceResult> GetCardHolderTransactionByIdAsync(Guid userId, int transactionId);
     Task<IServiceResult> CreateAsync(Transaction entity);
     Task<IServiceResult> GetAvailableTransactionType(string email);
+    Task<IServiceResult> GetTransactionById(int transactionId);
 }

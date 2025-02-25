@@ -216,9 +216,12 @@
 			
 			// [GET]
 			public const string CheckCardExtension = Base + "/library-cards/{id}/check-extension";
+			public const string GetAllCardPackage = Base+ "library-cards/packages";
 			// [POST]
 			public const string Register = Base + "/library-cards/register";
 			public const string UserExtendCard = Base + "/library-cards/extend";
+
+			public const string CreateCardPackagePaymentDetail = Base + "lirbary-cards/packages/{id}";
 			// [PATCH]
 			public const string SendReConfirm = Base + "/library-cards/re-confirm";
 		}
@@ -668,11 +671,16 @@
 		{
 			//[Get]
 			public const string GetPayOsPaymentLinkInformation = Base + "/payment/create-payment/{paymentLinkId}";
+			public const string GetAllTransaction = Base + "/mamnagement/payment/transactions";
+			public const string GetOwnTransaction = Base + "/payment/transactions";
+			
 			//[Post]
 			public const string CreatePayment = Base + "/payment/create-payment";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
 			public const string CreateTransactionDetails = Base + "/payment/create-transaction-details";
+			//[PATCH]
+			public const string UpdateCashPaymentStatus = Base + "/payment/{id}";
 		}
 
 		public static class Fine

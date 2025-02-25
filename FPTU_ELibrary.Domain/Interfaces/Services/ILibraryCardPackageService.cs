@@ -6,4 +6,5 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryCardPackageService<TDto> : IGenericService<LibraryCardPackage, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> CreateTransactionForLibraryCardPackage(string email, int id);
 }

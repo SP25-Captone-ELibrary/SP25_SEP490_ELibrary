@@ -401,4 +401,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         return new ServiceResult(ResultCodeConst.SYS_Warning0002,
             StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
     }
+    
+
+    public Task<IServiceResult> GetTransactionById(int transactionId)
+    {
+        throw new NotImplementedException();
+    }
+    
 }

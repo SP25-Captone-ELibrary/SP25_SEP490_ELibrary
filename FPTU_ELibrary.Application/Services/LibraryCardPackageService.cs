@@ -20,14 +20,14 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryCardPackageService : GenericService<LibraryCardPackage, LibraryCardPackageDto, int>,
 	ILibraryCardPackageService<LibraryCardPackageDto>
 {
-	private readonly IUserService<UserDto> _userService;
-	private readonly ITransactionService<TransactionDto> _transactionService;
+	private readonly Lazy<IUserService<UserDto>> _userService;
+	private readonly Lazy<ITransactionService<TransactionDto>> _transactionService;
 
 	public LibraryCardPackageService(
 		ISystemMessageService msgService,
-		IUserService<UserDto> userService,
+		Lazy<IUserService<UserDto>> userService,
 		IUnitOfWork unitOfWork,
-		ITransactionService<TransactionDto> transactionService,
+		Lazy<ITransactionService<TransactionDto>> transactionService,
 		IMapper mapper,
 		ILogger logger) : base(msgService, unitOfWork, mapper, logger)
 	{
@@ -119,7 +119,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 		
 		// Get User By email
 		var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
-		var user = await _userService.GetWithSpecAsync(userBaseSpec);
+		var user = await _userService.Value.GetWithSpecAsync(userBaseSpec);
 		if (user.Data is null)
 		{
 			var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -146,7 +146,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 		response.CreatedAt = DateTime.Now;
 		// response.PaymentMethodId = 1;
 		var transactionEntity = _mapper.Map<Transaction>(response);
-		var result = await _transactionService.CreateAsync(transactionEntity);
+		var result = await _transactionService.Value.CreateAsync(transactionEntity);
 		if(result.Data is null) return result;
 
 		return new ServiceResult(ResultCodeConst.SYS_Success0001,

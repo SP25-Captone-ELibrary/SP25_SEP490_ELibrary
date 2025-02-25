@@ -9,8 +9,9 @@ public interface IInvoiceService<TDto> : IGenericService<Invoice, TDto, int>
 {
     Task<IServiceResult> CreatePayment(List<int> transactionIds, string email);
     Task<IServiceResult> GetLinkInformationAsync(string paymentLinkId);
-    Task<IServiceResult> CancelPayOsPaymentAsync(string paymentLinkId,string cancellationReason);
+    Task<IServiceResult> CancelPayOsPaymentAsync(string paymentLinkId,string cancellationReason, string transactionCode);
     Task<IServiceResult> GetAllCardHolderInvoiceByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> GetCardHolderInvoiceByIdAsync(Guid userId, int invoiceId);
     Task<IServiceResult> VerifyPaymentWebhookDataAsync(PayOSPaymentLinkInformationResponse req);
+    Task<IServiceResult> UpdateCashPaymentStatusAsync(int id);
 }

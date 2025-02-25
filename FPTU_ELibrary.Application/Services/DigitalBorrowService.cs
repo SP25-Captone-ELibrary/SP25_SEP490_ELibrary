@@ -2,6 +2,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
@@ -21,15 +22,18 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     IDigitalBorrowService<DigitalBorrowDto>
 {
     private readonly Lazy<IUserService<UserDto>> _userSvc;
+    private readonly Lazy<ITransactionService<TransactionDto>>  _transactionService;
 
     public DigitalBorrowService(
         Lazy<IUserService<UserDto>> userSvc,
+        Lazy<ITransactionService<TransactionDto>> transactionService,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _userSvc = userSvc;
+        _transactionService = transactionService;
     }
 
     public async Task<IServiceResult> GetAllCardHolderDigitalBorrowByUserIdAsync(Guid userId, int pageIndex, int pageSize)
@@ -141,4 +145,56 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             throw new Exception("Error invoke when process get library card holder's digital borrow by id");
         }
     }
+
+    public async Task<IServiceResult> CreateTransactionForDigitalBorrow(string email, int resourceId)
+    {
+        // Determine current system lang
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+		
+        // Get User By email
+        var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
+        var user = await _userSvc.Value.GetWithSpecAsync(userBaseSpec);
+        if (user.Data is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+        }
+
+        var userValue = (UserDto)user.Data!;
+        //Create Borrow Record
+        DigitalBorrowDto newRecord = new DigitalBorrowDto()
+        {
+            UserId = userValue.UserId,
+            ExtensionCount = 0,
+            ResourceId = resourceId,
+            Status = BorrowDigitalStatus.Active,
+            RegisterDate = DateTime.Now,
+            IsExtended = false,
+            ExpiryDate = DateTime.Now.AddMonths(1)
+        };
+        var entity = _mapper.Map<DigitalBorrow>(newRecord);
+        await _unitOfWork.Repository<DigitalBorrow, int>().AddAsync(entity);
+        var addStatus = await _unitOfWork.SaveChangesAsync();
+        if (await _unitOfWork.SaveChangesAsync() <= 0)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+        }
+
+        TransactionDto transaction = new TransactionDto();
+        transaction.TransactionCode = Guid.NewGuid().ToString();
+        transaction.TransactionType = TransactionType.DigitalBorrow;
+        transaction.UserId = userValue.UserId;
+        transaction.DigitalBorrowId = entity.DigitalBorrowId;
+        var transactionEntity = _mapper.Map<Transaction>(transaction);
+        var result = await _transactionService.Value.CreateAsync(transactionEntity);
+        if(result.Data is null) return result;
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0001,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+    }
+    
 }
