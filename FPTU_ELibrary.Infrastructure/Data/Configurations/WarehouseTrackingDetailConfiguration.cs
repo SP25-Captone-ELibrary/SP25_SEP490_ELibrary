@@ -42,10 +42,6 @@ public class WarehouseTrackingDetailConfiguration :
             .HasColumnType("decimal(18, 2)")
             .IsRequired()
             .HasDefaultValue(0.0m);
-        builder.Property(e => e.Reason)
-            .HasConversion<string>()
-            .HasColumnType("nvarchar(50)")
-            .HasColumnName("reason");
         
         builder.HasOne(e => e.LibraryItem)
             .WithMany(p => p.WarehouseTrackingDetails)
@@ -94,6 +90,43 @@ public class WarehouseTrackingDetailConfiguration :
         builder.Property(e => e.UpdatedBy)
             .HasColumnName("updated_by")
             .HasMaxLength(255);
+        #endregion
+
+        #region Update at 19/02/2025 by Le Xuan Phuoc
+        // builder.Property(e => e.Reason)
+        //     .HasConversion<string>()
+        //     .HasColumnType("nvarchar(50)")
+        //     .HasColumnName("reason");
+        
+        // builder.Property(e => e.ReasonId)
+        //     .HasColumnName("reason_id")
+        //     .IsRequired(false);
+        // builder.HasOne(e => e.Reason).WithMany(p => p.WarehouseTrackingDetails)
+        //     .HasForeignKey(e => e.ReasonId)
+        //     .OnDelete(DeleteBehavior.ClientSetNull)
+        //     .HasConstraintName("FK_WarehouseTrackingDetail_ReasonId");
+        #endregion
+
+        #region Update at 20/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.BarcodeRangeFrom)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("barcode_range_from");
+        builder.Property(e => e.BarcodeRangeTo)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("barcode_range_to");
+        #endregion
+
+        #region Update at 21/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.StockTransactionType)
+            .HasConversion<string>()
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("stock_transaction_type");
+        #endregion
+
+        #region Update at 24/02/2025 by Le Xuan Phuoc
+        builder.Property(e => e.HasGlueBarcode)
+            .HasDefaultValue(false)
+            .HasColumnName("has_glue_barcode");
         #endregion
     }
 }

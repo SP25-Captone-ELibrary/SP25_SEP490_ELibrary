@@ -1,5 +1,6 @@
 using FluentValidation;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -25,10 +26,10 @@ public class WarehouseTrackingDtoValidator : AbstractValidator<WarehouseTracking
                 : "Số biên lai không được quá 50 ký tự");
         // Total item
         RuleFor(e => e.TotalItem)
-            .Must(i => i > 0)
-            .WithMessage(isEng
-                ? "Required at least 1 item to create warehouse tracking"
-                : "Cần ít nhất 1 tài liệu để tạo theo dõi kho")
+            // .Must(i => i > 0)
+            // .WithMessage(isEng
+            //     ? "Required at least 1 item to create warehouse tracking"
+            //     : "Cần ít nhất 1 tài liệu để tạo theo dõi kho")
             .Must(i => i < int.MaxValue)
             .WithMessage(isEng
                 ? "Total item is not valid"
@@ -76,9 +77,17 @@ public class WarehouseTrackingDtoValidator : AbstractValidator<WarehouseTracking
                 : "Ngày thực hiện không được phép rỗng");
         // Expected return date
         RuleFor(e => e.ExpectedReturnDate)
-            .Must((w, d) => !d.HasValue  || d.Value.Date < w.EntryDate.Date)
+            .Must((w, d) => !d.HasValue  || d.Value.Date > w.EntryDate.Date)
             .WithMessage(isEng
                 ? "Expected return date must exceed than entry date"
                 : "Ngày trả dự kiến phải lớn hơn ngày thực hiện");
+        // Warehouse tracking details
+        RuleFor(e => e.WarehouseTrackingDetails)
+            // Iterate each tracking details
+            .ForEach(wtd =>
+            {   
+                // Process validator if exist any 
+                if (wtd != null) wtd.SetValidator(new WarehouseTrackingDetailDtoValidator(langContext));
+            });
     }   
 }

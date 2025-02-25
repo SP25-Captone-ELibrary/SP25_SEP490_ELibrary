@@ -18,17 +18,19 @@ public static class WarehouseTrackingCategorySummaryDtoExtensions
         this List<WarehouseTrackingDetailDto> groupedDetail,
         CategoryDto category)
     {
-        // Total item 
+        // Total item <- Number of warehouse tracking details  
         var totalItem = groupedDetail.Count;
-        // Total cataloged item 
-        var totalCatalogedItem = groupedDetail.Count(g => g.LibraryItemId != null);
-        // Total instance item 
-        var totalInstanceItem = groupedDetail.Select(g => g.ItemTotal).Sum();
-        // Total actual instance item 
-        var totalActualInstanceItem = groupedDetail
-            .Where(g => g.LibraryItem != null && g.LibraryItem.LibraryItemInventory != null)
-            .Select(g => g.LibraryItem?.LibraryItemInventory?.TotalUnits)
-            .Sum();
+        // Total instance item <- Sum of each warehouse tracking detail's item total
+        var totalInstanceItem = groupedDetail.Count != 0
+            ? groupedDetail.Select(wtd => wtd.ItemTotal).Sum() 
+            : 0;
+        // Total cataloged item <- Any tracking detail request along with libraryItemId > 0 or libraryItemId != null
+        var totalCatalogedItem = groupedDetail.Count(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId > 0);
+        // Total instance of cataloged item  
+        var totalCatalogedInstanceItem = groupedDetail
+            .Where(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId > 0)
+            .Select(wtd => wtd.ItemTotal).Sum();
+        
         // Total price
         var totalPrice = groupedDetail.Select(g => g.TotalAmount).Sum();
             
@@ -36,9 +38,9 @@ public static class WarehouseTrackingCategorySummaryDtoExtensions
         {
             Category = category,
             TotalItem = totalItem,
-            TotalCatalogedItem = totalCatalogedItem,
-            TotalInstanceItem = totalInstanceItem,
-            TotalCatalogedInstanceItem = totalActualInstanceItem ?? 0,
+            TotalCatalogedItem = totalInstanceItem,
+            TotalInstanceItem = totalCatalogedItem,
+            TotalCatalogedInstanceItem = totalCatalogedInstanceItem,
             TotalPrice = totalPrice
         };
     }

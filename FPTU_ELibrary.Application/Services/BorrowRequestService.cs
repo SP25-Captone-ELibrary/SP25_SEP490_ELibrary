@@ -558,6 +558,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                         .AnyAsync(br =>
                                 br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
                                 br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                                br.LibraryCardId == libCard.LibraryCardId && // With specific library card 
                                 br.BorrowRequestDetails.Any(brd =>
                                     brd.LibraryItemId == detail.LibraryItemId) // With specific item
                         );

@@ -12,16 +12,13 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
        builder.HasKey(e => e.TrackingId).HasName("PK_WarehouseTracking_TrackingId");
        
        builder.ToTable("Warehouse_Tracking");
-
+       
        builder.Property(e => e.TrackingId)
               .HasColumnName("tracking_id")
               .IsRequired();
        builder.Property(e => e.EntryDate)
               .HasColumnType("datetime")
               .HasColumnName("entry_date")
-              .IsRequired();
-       builder.Property(e => e.SupplierId)
-              .HasColumnName("supplier_id")
               .IsRequired();
        builder.Property(e => e.TotalItem)
               .HasColumnName("total_item")
@@ -54,6 +51,13 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
        builder.Property(e => e.ActualReturnDate)
               .HasColumnType("datetime")
               .HasColumnName("actual_return_date");
+       builder.Property(e => e.SupplierId)
+              .HasColumnName("supplier_id")
+              .IsRequired();
+       builder.HasOne(e => e.Supplier).WithMany(p => p.WarehouseTrackings)
+              .HasForeignKey(e => e.SupplierId)
+              .OnDelete(DeleteBehavior.ClientSetNull)
+              .HasConstraintName("FK_WarehouseTracking_SupplierId");
        builder.Property(e => e.CreatedAt)
               .HasColumnType("datetime")
               .HasColumnName("created_at")
@@ -68,11 +72,6 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
        builder.Property(e => e.UpdatedBy)
               .HasColumnName("updated_by")
               .HasMaxLength(255);
-
-       builder.HasOne(e => e.Supplier).WithMany(p => p.WarehouseTrackings)
-              .HasForeignKey(e => e.SupplierId)
-              .OnDelete(DeleteBehavior.ClientSetNull)
-              .HasConstraintName("FK_WarehouseTracking_SupplierId");
        #endregion
     }
 }

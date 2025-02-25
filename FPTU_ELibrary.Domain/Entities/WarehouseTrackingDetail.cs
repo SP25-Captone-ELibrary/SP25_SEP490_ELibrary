@@ -1,3 +1,4 @@
+using System.Reflection.Metadata.Ecma335;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces;
 
@@ -6,7 +7,7 @@ namespace FPTU_ELibrary.Domain.Entities;
 public class WarehouseTrackingDetail : IAuditableEntity
 {
     public int TrackingDetailId { get; set; }
-
+    
     // Item Name
     public string ItemName { get; set; } = null!;
     
@@ -22,9 +23,6 @@ public class WarehouseTrackingDetail : IAuditableEntity
     // Total amount for the detail line
     public decimal TotalAmount { get; set; }
     
-    // Reason for stock-out or adjustment
-    public TrackingDetailReason? Reason { get; set; }
-
     // With specific warehouse tracking 
     public int TrackingId { get; set; }
     
@@ -37,11 +35,21 @@ public class WarehouseTrackingDetail : IAuditableEntity
     // Condition
     public int ConditionId { get; set; }
     
+    // Stock transaction type
+    public StockTransactionType StockTransactionType { get; set; }
+    
     // Creation, update datetime 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
+    
+    // Barcode range 
+    public string? BarcodeRangeFrom { get; set; }
+    public string? BarcodeRangeTo { get; set; }
+
+    // Mark as is glue barcode 
+    public bool HasGlueBarcode { get; set; }
         
     // Navigation properties
     public LibraryItem? LibraryItem { get; set; }

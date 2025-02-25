@@ -5,9 +5,9 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 
 public class WarehouseTrackingSpecParams : BaseSpecParams
 {
-    public int? SupplierId { get; set; }
     public TrackingType? TrackingType { get; set; }
     public WarehouseTrackingStatus? Status { get; set; }
+    public int? SupplierId { get; set; }
 
     public int?[]? TotalItemRange { get; set; }
     public decimal?[]? TotalAmountRange { get; set; }

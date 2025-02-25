@@ -367,7 +367,8 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
          if (validationResult != null && !validationResult.IsValid)
          {
              // Response the uploaded file is not supported
-             throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+             return new ServiceResult(ResultCodeConst.File_Warning0001,
+                 await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
          }
 
          using var memoryStream = new MemoryStream();

@@ -15,6 +15,7 @@ public class CreateWarehouseTrackingRequest
     
     // Combine with importing warehouse tracking details while create new (if any)
     public IFormFile? File { get; set; }
+    public List<IFormFile> CoverImageFiles { get; set; } = new();
     public string[]? ScanningFields { get; set; }
     public DuplicateHandle? DuplicateHandle { get; set; }
 }

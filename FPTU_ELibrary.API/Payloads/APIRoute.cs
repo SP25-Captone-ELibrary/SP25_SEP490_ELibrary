@@ -175,6 +175,7 @@
 			public const string GetById = Base + "/management/library-items/instances/{id}";
 			public const string GetByBarcode = Base + "/management/library-items/instances/code";
 			public const string CheckExistBarcode = Base + "/management/library-items/instances/check-exist-barcode";
+			public const string GenerateBarcodeRange = Base + "/management/library-items/instances/generate-barcode-range";
 			// [POST]
 			public const string AddRange = Base + "/management/library-items/{id}/instances";
 			// [PUT] / [PATCH]
@@ -614,6 +615,7 @@
             public const string GetById = Base + "/management/warehouse-trackings/{id}";
             // [POST]
             public const string Create = Base + "/management/warehouse-trackings";
+            public const string StockIn = Base + "/management/warehouse-trackings/stock-in";
             // [PUT]
             public const string Update = Base + "/management/warehouse-trackings/{id}";
             // [DELETE]

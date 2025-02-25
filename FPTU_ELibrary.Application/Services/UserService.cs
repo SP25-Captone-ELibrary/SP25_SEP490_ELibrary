@@ -2616,7 +2616,8 @@ namespace FPTU_ELibrary.Application.Services
 				if (validationResult != null && !validationResult.IsValid)
 				{
 					// Response the uploaded file is not supported
-					throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+					return new ServiceResult(ResultCodeConst.File_Warning0001,
+						await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
 				}
 
 				// Csv config
@@ -2654,7 +2655,7 @@ namespace FPTU_ELibrary.Application.Services
 					CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<LibraryCardHolderCsvRecordDto>(
 						file: file,
 						config: csvConfig,
-						props: new ExcelHeaderProps()
+						props: new ExcelProps()
 						{
 							// Header start from row 1-1
 							FromRow = 1,

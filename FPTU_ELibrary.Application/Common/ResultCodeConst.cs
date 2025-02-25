@@ -481,6 +481,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Required all item instance to have the same prefix of new category
 		/// </summary>
 		public const string LibraryItem_Warning0014 = "LibraryItem.Warning0014";
+		/// <summary>
+		/// [WARNING] The number of instance item is exceed than default config threshold. Please modify system configuration to continue
+		/// </summary>
+		public const string LibraryItem_Warning0015 = "LibraryItem.Warning0015";
 
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
@@ -695,6 +699,22 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Cannot process update as exist item has been cataloged
         /// </summary>
         public const string WarehouseTracking_Warning0012 = "WarehouseTracking.Warning0012";
+        /// <summary>
+        /// [WARNING] Warehouse tracking detail has already been in other item
+        /// </summary>
+        public const string WarehouseTracking_Warning0013 = "WarehouseTracking.Warning0013";
+        /// <summary>
+        /// [WARNING] Cannot change data as existing item has been cataloged
+        /// </summary>
+        public const string WarehouseTracking_Warning0014 = "WarehouseTracking.Warning0014";
+        /// <summary>
+        /// [WARNING] Warehouse tracking file type is invalid
+        /// </summary>
+        public const string WarehouseTracking_Warning0015 = "WarehouseTracking.Warning0015";
+        /// <summary>
+        /// [WARNING] Cannot change item when tracking type is stock out or transfer
+        /// </summary>
+        public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
         #endregion
 
         #endregion

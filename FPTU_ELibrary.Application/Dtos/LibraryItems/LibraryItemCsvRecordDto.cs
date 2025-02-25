@@ -1,4 +1,8 @@
 using CsvHelper.Configuration.Attributes;
+using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
 
@@ -62,7 +66,7 @@ public class LibraryItemCsvRecordDto
     public string PublicationPlace { get; set; } = null!;
     
     [Name("Mô Tả Vật Lý")] 
-    public string? PhysicalDetails { get; set; } = null!;
+    public string? PhysicalDetails { get; set; }
     
     [Name("Khổ")] 
     public string Dimensions { get; set; } = null!;
@@ -79,9 +83,6 @@ public class LibraryItemCsvRecordDto
     [Name("Số Kệ")] 
     public string? ShelfNumber { get; set; } 
     
-    [Name("ĐCKB Bản Sao")] 
-    public string? ItemInstanceBarcodes { get; set; }
-    
     [Name("Mã Tác Giả")] 
     public string? AuthorCode { get; set; }
 
@@ -89,7 +90,7 @@ public class LibraryItemCsvRecordDto
     public string Category { get; set; } = null!;
 }
 
-public static class BookEditionCsvRecordExtensions
+public static class LibraryItemCsvRecordExtensions
 {
     public static List<LibraryItemCsvRecordDto> ToLibraryItemCsvRecords(this List<LibraryItemDto> items)
         => items.Select(be => new LibraryItemCsvRecordDto()
@@ -120,7 +121,96 @@ public static class BookEditionCsvRecordExtensions
             Isbn = be.Isbn,
             ShelfNumber = be.Shelf?.ShelfNumber ?? null!,
             Category = be.Category.VietnameseName,
-            AuthorCode = String.Join(", ", be.LibraryItemAuthors.Select(bea => bea.Author).Select(a => a.AuthorCode).ToList()),
-            ItemInstanceBarcodes = String.Join(", ", be.LibraryItemInstances.Select(bec => bec.Barcode).ToList())
+            AuthorCode = String.Join(", ", be.LibraryItemAuthors.Select(bea => bea.Author).Select(a => a.AuthorCode).ToList())
         }).ToList();
+
+    public static LibraryItemDto ToLibraryItemDto(
+        this LibraryItemCsvRecordDto record,
+        Dictionary<string, string> imageUrlDic,
+        List<CategoryDto> categories,
+        List<LibraryShelfDto>? shelves,
+        List<AuthorDto>? authors)
+    {
+        // Try to get library shelf
+        var shelf = shelves?.FirstOrDefault(s => Equals(s.ShelfNumber, record.ShelfNumber));
+        // Try to get category
+        var category = categories.FirstOrDefault(c =>
+            Equals(c.EnglishName.ToLower(), record.Category.ToLower()) || 
+            Equals(c.VietnameseName.ToLower(), record.Category.ToLower()));
+        
+        // Try to initialize authors (if any)
+        var authorCodes = record.AuthorCode?.Split(",").Select(str => str.Trim()).ToArray();
+        var libItemAuthors = authorCodes != null && authorCodes.Any() && authors != null && authors.Any()
+            ? authorCodes.Select(ac =>
+            {
+                var author = authors.FirstOrDefault(a => Equals(a.AuthorCode, ac));
+                if (author != null)
+                {
+                    return new LibraryItemAuthorDto()
+                    {
+                        AuthorId = author.AuthorId
+                    };
+                }
+
+                return null;
+            }).ToList()
+            : new List<LibraryItemAuthorDto?>();
+        
+        // Initialize and mapping library item dto 
+        var libRes = new LibraryItemDto()
+        {
+            // Cover image
+            CoverImage = imageUrlDic.TryGetValue(record.CoverImage, out var coverImageUrl)
+                ? coverImageUrl
+                : null,
+            EditionNumber = record.EditionNumber,
+            Edition = record.Edition,
+            Title = record.Title,
+            SubTitle = record.SubTitle,
+            ClassificationNumber = record.ClassificationNumber,
+            CutterNumber = record.CutterNumber,
+            Publisher = record.Publisher,
+            Summary = record.Summary,
+            Genres = record.Genres,
+            TopicalTerms = record.TopicalTerms,
+            Responsibility = record.Responsibility,
+            AdditionalAuthors = record.AdditionalAuthors,
+            PublicationYear = record.PublicationYear,
+            PageCount = record.PageCount,
+            Language = record.Language,
+            OriginLanguage = record.OriginLanguage,
+            PublicationPlace = record.PublicationPlace,
+            PhysicalDetails = record.PhysicalDetails,
+            Dimensions = record.Dimensions,
+            GeneralNote = record.GeneralNote,
+            BibliographicalNote = record.BibliographicalNote,
+            EstimatedPrice = record.EstimatedPrice,
+            Isbn = record.Isbn != null ? ISBN.CleanIsbn(record.Isbn) : null,
+            // Default values
+            IsTrained = false,
+            IsDeleted = false,
+            CanBorrow = false,
+            Status = LibraryItemStatus.Draft,
+            // Shelf
+            ShelfId = shelf?.ShelfId,
+            // Inventory
+            LibraryItemInventory = new()
+            {
+                TotalUnits = 0,
+                AvailableUnits = 0,
+                RequestUnits = 0,
+                ReservedUnits = 0,
+                BorrowedUnits = 0
+            },
+            // Authors
+            LibraryItemAuthors = libItemAuthors.Any(a => a != null) 
+                ? libItemAuthors.Where(a => a != null).ToList()!
+                : new List<LibraryItemAuthorDto>()
+        }; 
+        
+        // Only assign category when exist
+        if(category != null) libRes.CategoryId = category.CategoryId;
+
+        return libRes;
+    }
 }

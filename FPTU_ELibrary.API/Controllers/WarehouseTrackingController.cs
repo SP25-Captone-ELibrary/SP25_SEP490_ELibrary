@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -34,9 +35,17 @@ public class WarehouseTrackingController : ControllerBase
         return Ok(await _warehouseTrackSvc.CreateAndImportDetailsAsync(
             dto: req.ToWarehouseTrackingDto(),
             trackingDetailsFile: req.File,
+            coverImageFiles: req.CoverImageFiles,
             scanningFields: req.ScanningFields,
             duplicateHandle: req.DuplicateHandle
         ));
+    }
+    
+    [Authorize]
+    [HttpPost(APIRoute.WarehouseTracking.StockIn, Name = nameof(CreateStockInWarehouseTrackingAsync))]
+    public async Task<IActionResult> CreateStockInWarehouseTrackingAsync([FromBody] CreateStockInRequest req)
+    {
+        return Ok(await _warehouseTrackSvc.CreateStockInWithDetailsAsync(req.ToWarehouseTrackingDto()));
     }
 
     [Authorize]

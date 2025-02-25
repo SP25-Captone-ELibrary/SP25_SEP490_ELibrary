@@ -69,9 +69,11 @@ public class SupplierService : GenericService<Supplier, SupplierDto, int>,
 			}
 			
 			// Check constraints whether existing tracking mark as [Completed] or [Cancelled]
-			if (existingEntity.WarehouseTrackings.Any(wt => 
+			if (existingEntity.WarehouseTrackings
+			    .Any(wt => 
 				    wt.Status == WarehouseTrackingStatus.Completed ||
-				    wt.Status == WarehouseTrackingStatus.Cancelled))
+				    wt.Status == WarehouseTrackingStatus.Cancelled)
+			    )
 			{
 				// Do not allow to update
 				return new ServiceResult(ResultCodeConst.Supplier_Warning0001,
@@ -203,7 +205,8 @@ public class SupplierService : GenericService<Supplier, SupplierDto, int>,
 			if (validationResult != null && !validationResult.IsValid)
 			{
 				// Response the uploaded file is not supported
-				throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+				return new ServiceResult(ResultCodeConst.File_Warning0001,
+					await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
 			}
 
 			// Csv config
@@ -219,7 +222,7 @@ public class SupplierService : GenericService<Supplier, SupplierDto, int>,
 				CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<SupplierCsvRecord>(
 					file: file,
 					config: csvConfig,
-					props: new ExcelHeaderProps()
+					props: new ExcelProps()
 					{
 						// Header start from row 1-1
 						FromRow = 1,
