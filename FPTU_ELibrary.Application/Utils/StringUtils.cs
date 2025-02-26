@@ -307,6 +307,11 @@ namespace FPTU_ELibrary.Application.Utils
 
             matchResult.TotalPoint = totalWeightedScore;
             matchResult.ConfidenceThreshold = confidenceThreshold;
+            // if matchResult include 2 with same name, remove the one
+            matchResult.FieldPointsWithThreshole = matchResult.FieldPointsWithThreshole
+                .GroupBy(x => x.Name)
+                .Select(x => x.OrderByDescending(y => y.MatchedPoint).First())
+                .ToList();
             return matchResult;
         }
 
