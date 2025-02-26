@@ -116,8 +116,6 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(db => db.LibraryResource)
-                .Include(db => db.Transactions)
-                    .ThenInclude(tr => tr.Invoice)
             );
             // Retrieve with spec
             var existingEntity = await _unitOfWork.Repository<DigitalBorrow, int>().GetWithSpecAsync(baseSpec);

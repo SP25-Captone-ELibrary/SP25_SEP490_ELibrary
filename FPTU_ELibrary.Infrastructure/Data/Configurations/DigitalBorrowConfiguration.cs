@@ -8,7 +8,7 @@ public class DigitalBorrowConfiguration : IEntityTypeConfiguration<DigitalBorrow
 {
     public void Configure(EntityTypeBuilder<DigitalBorrow> builder)
     {
-        #region Added at 16/01/2025
+        #region Added at 16/01/2025 by Le Xuan Phuoc
         builder.HasKey(e => e.DigitalBorrowId).HasName("PK_DigitalBorrow_DigitalBorrowId");
 
         builder.ToTable("Digital_Borrow");

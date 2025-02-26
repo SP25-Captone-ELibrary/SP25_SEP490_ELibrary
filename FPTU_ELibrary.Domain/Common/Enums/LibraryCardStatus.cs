@@ -4,6 +4,8 @@ namespace FPTU_ELibrary.Domain.Common.Enums;
 
 public enum LibraryCardStatus
 {
+    [Description("Chưa thanh toán")]
+    UnPaid, // Register but not yet paid
     [Description("Đang chờ duyệt")]
     Pending, // Register but not yet confirmed
     [Description("Đang hoạt động")]

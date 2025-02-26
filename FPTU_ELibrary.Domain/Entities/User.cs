@@ -24,9 +24,6 @@ public class User : BaseUser
     public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 
     [JsonIgnore]
-    public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
-    
-    [JsonIgnore]
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     
     [JsonIgnore]

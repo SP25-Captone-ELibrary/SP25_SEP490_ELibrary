@@ -1,4 +1,4 @@
-namespace FPTU_ELibrary.API.Payloads.Fine;
+namespace FPTU_ELibrary.API.Payloads.Requests.Fine;
 
 public class CreateFineRequest
 {

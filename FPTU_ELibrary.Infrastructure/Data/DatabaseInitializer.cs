@@ -153,7 +153,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// if (!await _context.Fines.AnyAsync()) await SeedFinesAsync();
 				// else _logger.Information("Already seed data for table {0}", "Fines");
             
-				//[PaymentMethods]
+				// [PaymentMethods]
 				if (!await _context.PaymentMethods.AnyAsync()) await SeedPaymentMethodsAsync();
 				else _logger.Information("Already seed data for table {0}", "PaymentMethods");
             }
@@ -441,12 +441,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					MethodName = PaymentType.PayOS.ToString()
-				},
-				
-				new()
-				{
-					MethodName = PaymentType.Cash.ToString()
-				},
+				}
 			};
 			await _context.PaymentMethods.AddRangeAsync(paymentMethods);	
 			
@@ -1076,7 +1071,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				admin.LibraryCard = new()
 				{
 					FullName = $"{admin.FirstName} {admin.LastName}",
-					Avatar = admin.Avatar ?? string.Empty,
+					Avatar = "https://img.freepik.com/free-photo/serious-young-african-man-standing-isolated_171337-9633.jpg",
 					Barcode = DatabaseInitializerExtensions.GenerateBarcode("EC"),
 					IssuanceMethod = LibraryCardIssuanceMethod.Online,
 					Status = LibraryCardStatus.Active,

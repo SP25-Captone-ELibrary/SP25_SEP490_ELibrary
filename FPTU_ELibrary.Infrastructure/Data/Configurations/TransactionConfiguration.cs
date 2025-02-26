@@ -17,9 +17,6 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(e => e.TransactionId).HasColumnName("transaction_id");
         builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.FineId).HasColumnName("fine_id");
-        builder.Property(e => e.InvoiceId).HasColumnName("invoice_id");
-        ;
-        builder.Property(e => e.DigitalBorrowId).HasColumnName("digital_borrow_id");
         builder.Property(e => e.LibraryCardPackageId).HasColumnName("library_card_package_id");
         builder.Property(e => e.TransactionCode)
             .HasColumnType("nvarchar(50)")
@@ -61,16 +58,6 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_Transaction_FineId");
 
-        builder.HasOne(e => e.Invoice).WithMany(p => p.Transactions)
-            .HasForeignKey(e => e.InvoiceId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("FK_Transaction_InvoiceId");
-
-        builder.HasOne(e => e.DigitalBorrow).WithMany(p => p.Transactions)
-            .HasForeignKey(e => e.DigitalBorrowId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("FK_Transaction_DigitalBorrowId");
-
         builder.HasOne(e => e.LibraryCardPackage).WithMany(p => p.Transactions)
             .HasForeignKey(e => e.LibraryCardPackageId)
             .OnDelete(DeleteBehavior.ClientSetNull)
@@ -78,12 +65,51 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
 
         #endregion
 
-        #region Update at 24/2/2025
-        // builder.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
-        // builder.HasOne(e => e.PaymentMethod).WithMany(p => p.Transactions)
-        //     .HasForeignKey(e => e.PaymentMethodId)
+        #region Update at 25/02/2025 by Le Xuan Phuoc
+        // builder.Property(e => e.DigitalBorrowId).HasColumnName("digital_borrow_id");
+        // builder.HasOne(e => e.DigitalBorrow).WithMany(p => p.Transactions)
+        //     .HasForeignKey(e => e.DigitalBorrowId)
         //     .OnDelete(DeleteBehavior.ClientSetNull)
-        //     .HasConstraintName("FK_Transaction_PaymentMethodId");
+        //     .HasConstraintName("FK_Transaction_DigitalBorrowId");
+        
+        builder.Property(e => e.ResourceId).HasColumnName("resource_id");
+        builder.HasOne(e => e.LibraryResource).WithMany(p => p.Transactions)
+            .HasForeignKey(e => e.ResourceId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_Transaction_ResourceId");
+        
+        builder.Property(e => e.PaymentMethodId).HasColumnName("payment_method_id");
+        builder.HasOne(e => e.PaymentMethod).WithMany(p => p.Transactions)
+            .HasForeignKey(e => e.PaymentMethodId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_Transaction_PaymentMethodId");
+        
+        builder.Property(e => e.TransactionMethod)
+            .IsRequired(false)
+            .HasConversion<string>()
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("transaction_method");
+        
+        builder.Property(e => e.ExpiredAt)
+            .HasColumnType("datetime")
+            .HasColumnName("expired_at");
+        
+        builder.Property(e => e.CreatedBy)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("created_by");
+        
+        builder.Property(e => e.PaymentUrl)
+            .HasColumnType("nvarchar(255)")
+            .HasColumnName("payment_url");
+        #endregion
+
+        #region Update at 26/02/2025 by Le Xuan Phuoc
+        // builder.Property(e => e.InvoiceId).HasColumnName("invoice_id");
+        // builder.HasOne(e => e.Invoice).WithMany(p => p.Transactions)
+        //     .HasForeignKey(e => e.InvoiceId)
+        //     .OnDelete(DeleteBehavior.ClientSetNull)
+        //     .HasConstraintName("FK_Transaction_InvoiceId");
+
         #endregion
     }
 }

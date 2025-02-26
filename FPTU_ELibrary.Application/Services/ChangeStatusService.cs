@@ -37,15 +37,23 @@ public class ChangeStatusService : BackgroundService
                 {
                     var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                     var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<BorrowSettings>>();
-                                        
+                                     
+                    // Track if there are any changes
+                    bool hasChanges = false;
+                    
+                    // Update transaction expired status
+                    hasChanges |= await UpdateAllTransactionExpiredStatusAsync(unitOfWork);
                     // Update library card expired status
-                    await UpdateAllLibraryCardExpiredStatusAsync(unitOfWork);
+                    hasChanges |= await UpdateAllLibraryCardExpiredStatusAsync(unitOfWork);
                     // Update library card suspended status
-                    await UpdateAllLibraryCardSuspendedStatusAsync(unitOfWork);
+                    hasChanges |= await UpdateAllLibraryCardSuspendedStatusAsync(unitOfWork);
                     // Update borrow request expired status
-                    await UpdateAllBorrowRequestExpiredStatusAsync(unitOfWork, borrowSettings: monitor.CurrentValue);
+                    hasChanges |= await UpdateAllBorrowRequestExpiredStatusAsync(unitOfWork, borrowSettings: monitor.CurrentValue);
                     // Update borrow record expired status
-                    await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
+                    hasChanges |= await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
+                    
+                    // Save changes only if at least one update was made
+                    if (hasChanges) await unitOfWork.SaveChangesAsync();
                 }
             }catch (Exception ex)
             {
@@ -62,6 +70,9 @@ public class ChangeStatusService : BackgroundService
     #region Library Card Tasks
     private async Task<bool> UpdateAllLibraryCardExpiredStatusAsync(IUnitOfWork unitOfWork)
     {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
@@ -78,13 +89,19 @@ public class ChangeStatusService : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
+            
+            // Mark as changed
+            hasChanges = true;
         }
 
-        return await unitOfWork.SaveChangesAsync() > 0;
+        return hasChanges;
     }
     
     private async Task<bool> UpdateAllLibraryCardSuspendedStatusAsync(IUnitOfWork unitOfWork)
     {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
@@ -110,15 +127,21 @@ public class ChangeStatusService : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
+            
+            // Mark as changed
+            hasChanges = true;
         }
 
-        return await unitOfWork.SaveChangesAsync() > 0;
+        return hasChanges;
     }
     #endregion
     
     #region Borrow Tasks
     private async Task<bool> UpdateAllBorrowRequestExpiredStatusAsync(IUnitOfWork unitOfWork, BorrowSettings borrowSettings)
     {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
@@ -153,13 +176,19 @@ public class ChangeStatusService : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(borrowReq);
+            
+            // Mark as changed
+            hasChanges = true;
         }
 
-        return await unitOfWork.SaveChangesWithTransactionAsync() > 0;
+        return hasChanges;
     }
 
     private async Task<bool> UpdateAllBorrowRecordExpiredStatusAsync(IUnitOfWork unitOfWork)
     {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
@@ -180,9 +209,45 @@ public class ChangeStatusService : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<BorrowRecord, int>().UpdateAsync(br);
+            
+            // Mark as changed
+            hasChanges = true;
         }
         
-        return await unitOfWork.SaveChangesAsync() > 0;
+        return hasChanges;
+    }
+    #endregion
+
+    #region Transaction
+    private async Task<bool> UpdateAllTransactionExpiredStatusAsync(IUnitOfWork unitOfWork)
+    {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(
+            // Subtract 5 minutes compared to the actual expiration time to avoid paid in third party but failed to save in system
+            DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)),
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Build specification
+        var baseSpec = new BaseSpecification<Transaction>(t => t.ExpiredAt <= currentLocalDateTime && 
+                                                               t.TransactionStatus == TransactionStatus.Pending);
+        var entities = await unitOfWork.Repository<Transaction, int>()
+            .GetAllWithSpecAsync(baseSpec);
+        foreach (var transaction in entities)
+        {
+            transaction.TransactionStatus = TransactionStatus.Expired;
+            
+            // Progress update 
+            await unitOfWork.Repository<Transaction, int>().UpdateAsync(transaction);
+            
+            // Mark as changed
+            hasChanges = true;
+        }
+        
+        return hasChanges;
     }
     #endregion
 }

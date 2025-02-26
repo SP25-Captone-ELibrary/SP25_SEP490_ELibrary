@@ -570,6 +570,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Warning0013 = "LibraryCard.Warning0013";
 		/// <summary>
+		/// [WARNING] Library card has not paid yet
+		/// </summary>
+		public const string LibraryCard_Warning0014 = "LibraryCard.Warning0014";
+		/// <summary>
 		/// [WARNING] Register library card failed
 		/// </summary>
 		public const string LibraryCard_Fail0001 = "LibraryCard.Fail0001";
@@ -585,6 +589,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Fail to extend library card
 		/// </summary>
 		public const string LibraryCard_Fail0004 = "LibraryCard.Fail0004";
+		/// <summary>
+		/// [WARNING] Register library card failed as {0}
+		/// </summary>
+		public const string LibraryCard_Fail0005 = "LibraryCard.Fail0005";
+		/// <summary>
+		/// [WARNING] Fail to extend library card as {0}
+		/// </summary>
+		public const string LibraryCard_Fail0006 = "LibraryCard.Fail0006";
 		#endregion
 		
 		#region Supplier
@@ -717,46 +729,67 @@ namespace FPTU_ELibrary.Application.Common
         public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
         #endregion
 
-        #region Payment
-
+        #region Transaction
         /// <summary>
-        /// [WARNING] Existed Code
+        /// [SUCCESS] Create payment link successfully
         /// </summary>
-        public const string Payment_Warning0001 = "Payment.Warning0001";
-
+        public const string Transaction_Success0001 = "Transaction.Success0001";
         /// <summary>
-        /// [WARNING] PayOS Warning
+        /// [SUCCESS] Verify payment transaction successfully
         /// </summary>
-        public const string Payment_Warning0002 = "Payment.Warning0002";
+        public const string Transaction_Success0002 = "Transaction.Success0002";
         /// <summary>
-        /// [WARNING] Request to server failed. Not found any response data
+        /// [SUCCESS] Cancel payment transaction successfully
         /// </summary>
-        public const string Payment_Warning0003 = "Payment.Warning0003";
+        public const string Transaction_Success0003 = "Transaction.Success0003";
         /// <summary>
-        /// [WARNING] PayOS Cancel
+        /// [WARNING] Not found library card to process extend expiration date
         /// </summary>
-        public const string Payment_Fail0001 = "Payment.Fail0001";
+        public const string Transaction_Warning0001 = "Transaction.Warning0001";
         /// <summary>
-        /// [SUCCESS] PayOS create payment successfully
+        /// [WARNING] Cannot process create payment for library card register as not found card information
         /// </summary>
-        public const string Payment_Success0001 = "Payment.Success0001";
+        public const string Transaction_Warning0002 = "Transaction.Warning0002";
         /// <summary>
-        /// [SUCCESS] PayOS cancel successfully
+        /// [WARNING] Failed to create payment transaction as existing transaction with pending status
         /// </summary>
-        public const string Payment_Success0002 = "Payment.Success0002";
+        public const string Transaction_Warning0003 = "Transaction.Warning0003";
         /// <summary>
-        /// [SUCCESS] PayOS payment verify Successfully
+        /// [FAIL] Failed to create payment transaction. Please try again
         /// </summary>
-        public const string Payment_Success0003 = "Payment.Success0003";
+        public const string Transaction_Fail0001 = "Transaction.Fail0001";
+        /// <summary>
+        /// [FAIL] Payment object does not exist. Please try again
+        /// </summary>
+        public const string Transaction_Fail0002 = "Transaction.Fail0002";
+        /// <summary>
+        /// [FAIL] You are not allowed to create this type of transaction
+        /// </summary>
+        public const string Transaction_Fail0003 = "Transaction.Fail0003";
+        /// <summary>
+        /// [FAIL] Error has been occurred. Failed to create payment link
+        /// </summary>
+        public const string Transaction_Fail0004 = "Transaction.Fail0004";
+        /// <summary>
+        /// [FAIL] Not found any transaction match to verify
+        /// </summary>
+        public const string Transaction_Fail0005 = "Transaction.Fail0005";
+        /// <summary>
+        /// [FAIL] Failed to verify payment transaction
+        /// </summary>
+        public const string Transaction_Fail0006 = "Transaction.Fail0006";
+        /// <summary>
+        /// [FAIL] Failed to cancel payment transaction
+        /// </summary>
+        public const string Transaction_Fail0007 = "Transaction.Fail0007";
         #endregion
-
+        
         #region Fine
         /// <summary>
         /// [WARNING] Cannot process adding fine when not defined what instance has error
         /// </summary>
         public const string Fine_Warning0001 = "Fine.Warning0001";
         #endregion
-
         #endregion
     }
 }

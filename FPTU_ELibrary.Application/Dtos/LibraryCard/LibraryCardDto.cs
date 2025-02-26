@@ -50,7 +50,7 @@ public class LibraryCardDto
     public Guid? PreviousUserId { get; set; }
     
     // Payment information
-    public string TransactionCode { get; set; } = null!;
+    public string? TransactionCode { get; set; }
     
     // References
     public UserDto PreviousUser { get; set; } = null!;

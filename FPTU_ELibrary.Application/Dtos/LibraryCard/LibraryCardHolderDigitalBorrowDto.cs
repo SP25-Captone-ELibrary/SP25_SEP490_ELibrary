@@ -21,6 +21,7 @@ public class LibraryCardHolderDigitalBorrowDto
 
 public static class LibraryCardHolderDigitalBorrowExtensions
 {
+    // TODO: Add payment history for digital borrow
     public static LibraryCardHolderDigitalBorrowDto ToCardHolderDigitalBorrowDto(this DigitalBorrowDto dto)
     {
         return new()
@@ -33,9 +34,7 @@ public static class LibraryCardHolderDigitalBorrowExtensions
             IsExtended = dto.IsExtended,
             ExtensionCount = dto.ExtensionCount,
             Status = dto.Status,
-            LibraryResource = dto.LibraryResource,
-            // LibraryResource = dto.LibraryResource != null! ? dto.LibraryResource : null!,
-            Transactions = dto.Transactions.ToList()
+            LibraryResource = dto.LibraryResource
         };
     }
 }

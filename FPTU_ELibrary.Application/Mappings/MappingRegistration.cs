@@ -57,14 +57,10 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<NotificationRecipient, NotificationRecipientDto>();
 			config.NewConfig<Transaction, TransactionDto>();
 			config.NewConfig<PaymentMethod, PaymentMethodDto>();
-			config.NewConfig<Invoice, InvoiceDto>();
 			config.NewConfig<User, UserDto>();
 			config.NewConfig<UserFavorite, UserFavoriteDto>();
 			config.NewConfig<WarehouseTracking, WarehouseTrackingDto>();
 			config.NewConfig<WarehouseTrackingDetail, WarehouseTrackingDetailDto>();
-			config.NewConfig<PayOSPaymentLinkInformationResponse, PayOSPaymentLinkInformationResponseDto>();
-			config.NewConfig<PayOSPaymentLinkInformationData, PayOSPaymentLinkInformationDataDto>();
-			config.NewConfig<PayOSTransaction,PayOSTransactionDto>();
 			
 			// From [Dto] to [Entity]
 			config.NewConfig<AuthorDto, Author>()
@@ -83,10 +79,6 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<UserDto, User>()
 				.Ignore(dest => dest.Role)
 				.IgnoreNullValues(false);
-			config.NewConfig<LibraryCardPackageDto, LibraryCardPackage>()
-				.Ignore(dest => dest.LibraryCardPackageId)
-				.Ignore(dest => dest.CreatedAt)
-				.IgnoreNullValues(true);
 			config.NewConfig<TransactionDto, Transaction>()
 				.IgnoreNullValues(true);
 		}

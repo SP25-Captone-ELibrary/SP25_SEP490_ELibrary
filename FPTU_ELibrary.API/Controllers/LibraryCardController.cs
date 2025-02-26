@@ -149,10 +149,9 @@ public class LibraryCardController : ControllerBase
     public async Task<IActionResult> RegisterLibraryCardOnlineAsync([FromBody] RegisterLibraryCardOnlineRequest req)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _userSvc.RegisterLibraryCardAsync(
+        return Ok(await _cardSvc.RegisterCardAsync(
             email: email ?? string.Empty, 
-            userWithCard: req.ToUserWithLibraryCardDto(),
-            transactionToken: req.TransactionToken ?? string.Empty));
+            dto: req.ToUserWithLibraryCardDto()));
     }
     
     [Authorize]
@@ -178,15 +177,5 @@ public class LibraryCardController : ControllerBase
     public async Task<IActionResult> CheckCardExtensionAsync([FromRoute] Guid id)
     {
         return Ok(await _cardSvc.CheckCardExtensionAsync(id));
-    }
-    
-    [Authorize]
-    [HttpPatch(APIRoute.LibraryCard.UserExtendCard, Name = nameof(UserExtendLibraryCardAsync))]
-    public async Task<IActionResult> UserExtendLibraryCardAsync([FromBody] UserExtendLibraryCardRequest req)
-    {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _userSvc.ExtendLibraryCardAsync(
-            email: email ?? string.Empty, 
-            transactionToken: req.TransactionToken ?? string.Empty));
     }
 }

@@ -40,23 +40,26 @@ namespace FPTU_ELibrary.Application.Services
 	{
 		// Lazy services
 		private readonly Lazy<ILibraryCardService<LibraryCardDto>> _libraryCardService;
+		private readonly Lazy<ITransactionService<TransactionDto>> _tranService;
+		private readonly Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> _cardPackageService;
 		
+		private readonly IEmailService _emailService;
 		private readonly ISystemRoleService<SystemRoleDto> _roleService;
 		private readonly ICloudinaryService _cloudService;
 		private readonly IServiceProvider _serviceProvider;
 		private readonly IEmployeeService<EmployeeDto> _employeeService;
-		private readonly ITransactionService<TransactionDto> _tranService;
 		private readonly IPaymentMethodService<PaymentMethodDto> _paymentMethodService;
-		private readonly ILibraryCardPackageService<LibraryCardPackageDto> _cardPackageService;
 		
 		private readonly AppSettings _appSettings;
 		private readonly BorrowSettings _borrowSettings;
+		private readonly PaymentSettings _paymentSettings;
 		private readonly TokenValidationParameters _tokenValidationParams;
-		private readonly IEmailService _emailService;
 
 		public UserService(
 			// Lazy services
 			Lazy<ILibraryCardService<LibraryCardDto>> libraryCardService,
+			Lazy<ITransactionService<TransactionDto>> tranService,
+			Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> cardPackageService,
 			
 			// Normal services
 			ILogger logger,
@@ -66,10 +69,9 @@ namespace FPTU_ELibrary.Application.Services
 			IEmployeeService<EmployeeDto> employeeService,
 			IOptionsMonitor<AppSettings> monitor,
 			IOptionsMonitor<BorrowSettings> monitor1,
+			IOptionsMonitor<PaymentSettings> monitor2,
 			ISystemRoleService<SystemRoleDto> roleService,
-			ITransactionService<TransactionDto> tranService,
 			IPaymentMethodService<PaymentMethodDto> paymentMethodService,
-			ILibraryCardPackageService<LibraryCardPackageDto> cardPackageService,
 			TokenValidationParameters tokenValidationParams,
 			IUnitOfWork unitOfWork,
 			IMapper mapper, IServiceProvider serviceProvider) 
@@ -86,20 +88,21 @@ namespace FPTU_ELibrary.Application.Services
 			_paymentMethodService = paymentMethodService;
 			_appSettings = monitor.CurrentValue;
 			_borrowSettings = monitor1.CurrentValue;
+			_paymentSettings = monitor2.CurrentValue;
 			_tokenValidationParams = tokenValidationParams;
 		}
 
 		public override async Task<IServiceResult> GetByIdAsync(Guid id)
 		{
-			//query specification
+			// Build spec
 			var baseSpec = new BaseSpecification<User>(u => u.UserId.Equals(id));
-			// Include job role
+			// Apply include
 			baseSpec.ApplyInclude(u => u.Include(u => u.Role));
 			// Get user by query specification
 			var existedUser = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(baseSpec);
-
 			if (existedUser is null)
 			{
+				// Data not found or empty
 				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
 			}
@@ -117,6 +120,7 @@ namespace FPTU_ELibrary.Application.Services
 				.Ignore(dest => dest.PhoneVerificationCode!)
 				.Ignore(dest => dest.EmailVerificationCode!)
 				.Ignore(dest => dest.PhoneVerificationExpiry!)
+				.Ignore(dest => dest.Transactions)
 				.Map(dto => dto.Role, src => src.Role)
 				.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
 
@@ -1332,16 +1336,27 @@ namespace FPTU_ELibrary.Application.Services
 	            
 				// Custom errors
 				var customErrs = new Dictionary<string, string[]>();
-				// Check email exist
-				var isEmailExist = await _unitOfWork.Repository<User, Guid>()
+				// Check email exist in user
+				var isEmailExistInUser = await _unitOfWork.Repository<User, Guid>()
 					.AnyAsync(u => Equals(u.Email, dto.Email));
-				if (isEmailExist)
+				if (isEmailExistInUser)
 				{
 					// Add error
 					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
 						key: StringUtils.ToCamelCase(nameof(User.Email)),
 						msg: isEng ? "Email has already existed" : "Email đã tồn tại");
 				}
+				// Check email exist in employee
+				var isEmailExistInEmployee = (await _employeeService.AnyAsync(e => 
+					Equals(e.Email, dto.Email))).Data is true;
+				if (isEmailExistInEmployee)
+                {
+                	// Add error
+                	customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                		key: StringUtils.ToCamelCase(nameof(User.Email)),
+                		msg: isEng ? "Email has already existed" : "Email đã tồn tại");
+                }
+				
 				// Check phone exist
 				var isPhoneExist = await _unitOfWork.Repository<User, Guid>()
 					.AnyAsync(u => !string.IsNullOrEmpty(dto.Phone) && Equals(u.Phone, dto.Phone));
@@ -1449,7 +1464,6 @@ namespace FPTU_ELibrary.Application.Services
 				cardHolderSpecification.ApplyPaging(
 					skip: cardHolderSpecification.PageSize * (cardHolderSpecification.PageIndex - 1),
 					take: cardHolderSpecification.PageSize);
-				
 				
 				// Retrieve all with spec
 				var entities = await _unitOfWork.Repository<User, Guid>().GetAllWithSpecAsync(cardHolderSpecification);
@@ -1625,533 +1639,6 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
-		public async Task<IServiceResult> RegisterLibraryCardAsync(
-			string email, UserDto userWithCard, string transactionToken)
-	    {
-		    try
-		    {
-			    // Determine current lang context
-			    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-				    LanguageContext.CurrentLanguage);
-			    var isEng = lang == SystemLanguage.English;
-
-			    // Retrieve user information
-			    // Build spec
-			    var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-			    var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userBaseSpec);
-			    if (user == null || userWithCard.LibraryCard == null) // Not found user or request without card inside
-			    {
-				    // Forbid
-				    throw new ForbiddenException();
-			    }
-
-			    // Validate inputs using the generic validator
-			    var validationResult = await ValidatorExtensions.ValidateAsync(userWithCard.LibraryCard);
-			    // Check for valid validations
-			    if (validationResult != null && !validationResult.IsValid)
-			    {
-				    // Convert ValidationResult to ValidationProblemsDetails.Errors
-				    var errors = validationResult.ToProblemDetails().Errors;
-				    throw new UnprocessableEntityException("Invalid Validations", errors);
-			    }
-
-			    // Initialize payment utils
-			    var paymentUtils = new PaymentUtils(logger: _logger);
-			    // Validate transaction token
-			    var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
-				    token: transactionToken,
-				    tokenValidationParameters: _tokenValidationParams);
-			    if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
-            
-			    // Extract transaction data from token
-			    var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
-            
-			    // Check whether email match (request and payment user is different)
-			    if(!Equals(email, tokenExtractedData.Email)) throw new ForbiddenException(); // Forbid as email is not match
-				
-			    var transCode = tokenExtractedData.TransactionCode; 
-			    var transDate = tokenExtractedData.TransactionDate; 
-			    // Retrieve transaction
-			    // Build spec
-			    var transSpec = new BaseSpecification<Transaction>(t => 
-				    t.TransactionDate != null && // with specific date
-				    t.UserId == user.UserId && // who request
-				    t.LibraryCardPackageId != null && // payment for specific card package
-				    t.TransactionStatus == TransactionStatus.Paid && // must be paid
-				    t.TransactionType == TransactionType.LibraryCardRegister && // transaction type is lib card register
-				    Equals(t.TransactionCode, transCode));  // transaction code
-			    // Apply include
-			    transSpec.ApplyInclude(q => q.Include(t => t.LibraryCardPackage!));
-			    // Retrieve with spec
-			    var transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
-			    if (transactionDto == null) throw new ForbiddenException(); // Not found transaction information  
-            
-			    // Validate transaction date
-			    if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date)) throw new ForbiddenException();
-			    
-			    // Check exist avatar
-			    if (!string.IsNullOrEmpty(userWithCard.LibraryCard.Avatar))
-			    {
-				    // Initialize field
-				    var isImageOnCloud = true;
-
-				    // Extract provider public id
-				    var publicId = StringUtils.GetPublicIdFromUrl(userWithCard.LibraryCard.Avatar);
-				    if (publicId != null) // Found
-				    {
-					    // Process check exist on cloud			
-					    isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
-				    }
-
-				    if (!isImageOnCloud || publicId == null) // Not found image or public id
-				    {
-					    // Not found image resource
-					    return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
-						    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
-				    }
-			    }
-
-			    // Check whether user has already registered library card
-			    if (user.LibraryCardId != null) // Card found 
-			    {
-				    // Cannot progress {0} as {1} already exist
-				    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
-				    return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-					    StringUtils.Format(msg,
-						    isEng ? "register" : "đăng ký",
-						    isEng ? "library card" : "thẻ thư viện"));
-			    }
-
-			    // Current local datetime
-			    var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-				    // Vietnam timezone
-				    TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-
-			    // Add necessary props
-			    userWithCard.LibraryCard.Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix);
-			    userWithCard.LibraryCard.IssuanceMethod = LibraryCardIssuanceMethod.Online;
-			    userWithCard.LibraryCard.IsReminderSent = false;
-			    userWithCard.LibraryCard.IsExtended = false;
-			    userWithCard.LibraryCard.ExtensionCount = 0;
-			    userWithCard.LibraryCard.IssueDate = currentLocalDateTime;
-
-			    // Extend borrow default
-			    userWithCard.LibraryCard.IsAllowBorrowMore = false;
-			    userWithCard.LibraryCard.MaxItemOnceTime = 0;
-
-			    // Total missed default 
-			    userWithCard.LibraryCard.TotalMissedPickUp = 0;
-
-			    // Library card has not confirmed yet
-			    userWithCard.LibraryCard.Status = LibraryCardStatus.Pending;
-			    
-			    // Assign transaction code 
-			    userWithCard.LibraryCard.TransactionCode = transactionDto.TransactionCode;
-			    
-			    // Process update
-			    user.LibraryCard = _mapper.Map<LibraryCard>(userWithCard.LibraryCard);
-			    await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
-
-			    // Save DB
-			    var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
-			    if (isSaved)
-			    {
-				    // Send card has been activated email
-				    await SendActivatedEmailAsync(
-					    email: user.Email,
-					    cardDto: _mapper.Map<LibraryCardDto>(user.LibraryCard),
-					    transactionDto: transactionDto,
-					    libName: _appSettings.LibraryName,
-					    libContact: _appSettings.LibraryContact);
-				    
-				    // Msg: Register library card success
-				    return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
-					    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002));
-			    }
-
-			    // Msg: Register library card failed
-			    return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
-				    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001));
-		    }
-		    catch (UnprocessableEntityException)
-		    {
-			    throw;
-		    }
-	        catch (ForbiddenException)
-	        {
-	            throw;
-	        }
-	        catch (UnauthorizedException)
-	        {
-		        throw new UnauthorizedException("Invalid token or token has expired");
-	        }
-	        catch (Exception ex)
-	        {
-	            _logger.Error(ex.Message);
-	            throw new Exception("Error invoke when process register library card");
-	        }
-	    }
-		
-		public async Task<IServiceResult> RegisterLibraryCardByEmployeeAsync(
-			string processedByEmail, Guid userId, UserDto userWithCard, 
-			string? transactionToken, // Use when register with online payment
-			int? libraryCardPackageId) // Use when register with cash payment
-	    {
-	        try
-	        {
-	            // Determine current lang context
-	            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-	                LanguageContext.CurrentLanguage);
-	            var isEng = lang == SystemLanguage.English;
-	            
-	            // Check exist process by information
-	            var isEmailExist = (await _employeeService.AnyAsync(e => Equals(e.Email, processedByEmail))).Data is true;
-	            if (!isEmailExist) // not found
-	            {
-		            throw new ForbiddenException(); 
-	            }
-	            
-	            // Retrieve user information
-	            // Build spec
-	            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
-	            var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userBaseSpec);
-	            if (user == null || userWithCard.LibraryCard == null) // Not found user or request without card inside
-	            {
-		            // Not found {0}
-		            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-		            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-			            StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
-	            }
-	            
-	            // Validate inputs using the generic validator
-	            var validationResult = await ValidatorExtensions.ValidateAsync(userWithCard.LibraryCard);
-	            // Check for valid validations
-	            if (validationResult != null && !validationResult.IsValid)
-	            {
-		            // Convert ValidationResult to ValidationProblemsDetails.Errors
-		            var errors = validationResult.ToProblemDetails().Errors;
-		            throw new UnprocessableEntityException("Invalid Validations", errors);
-	            }
-	            
-	            // Current local datetime
-	            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-		            // Vietnam timezone
-		            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-	            
-	            // Initialize empty transaction dto
-	            TransactionDto? transactionDto = null;
-	            // Initialize empty lib package dto
-	            LibraryCardPackageDto? libPackageDto = null;
-	            // Initialize payment utils
-	            var paymentUtils = new PaymentUtils(_logger);
-	            // Determine payment method
-	            if (transactionToken != null && // Online payment
-	                libraryCardPackageId == null) // Not include information of cash payment
-				{
-					// Validate transaction token
-					var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
-						token: transactionToken,
-						tokenValidationParameters: _tokenValidationParams);
-					if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
-
-					// Extract transaction data from token
-					var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
-
-					var transCode = tokenExtractedData.TransactionCode;
-					var transDate = tokenExtractedData.TransactionDate;
-					// Retrieve transaction
-					// Build spec
-					var transSpec = new BaseSpecification<Transaction>(t =>
-						t.TransactionDate != null && // with specific date
-						t.UserId == userId && // with specific user
-						t.LibraryCardPackageId != null && // payment for specific card package
-						t.TransactionStatus == TransactionStatus.Paid && // must be paid
-						t.TransactionType == TransactionType.LibraryCardRegister && // transaction type is lib card register
-						Equals(t.TransactionCode, transCode)); // transaction code
-					// Apply include
-					transSpec.ApplyInclude(q => q
-						.Include(t => t.LibraryCardPackage!)
-					);
-					// Retrieve with spec
-					transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
-					if (transactionDto == null || !Equals(transactionDto.TransactionDate?.Date, transDate.Date))
-					{
-						// Register library card failed as payment information is not found
-						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001);
-						return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
-							errMsg + (isEng
-								? "as not found payment information"
-								: "vì không tìm thấy thông tin thanh toán"));
-					}
-					// Assign lib package 
-					libPackageDto = transactionDto.LibraryCardPackage;
-				}
-	            else if (transactionToken == null && // Not include transaction token
-				          int.TryParse(libraryCardPackageId.ToString(), out var validPackageId)) // Cash payment
-				{
-					// Retrieve library card package by id 
-					libPackageDto =
-						(await _cardPackageService.GetByIdAsync(validPackageId)).Data as LibraryCardPackageDto;
-					if (libPackageDto == null)
-					{
-						// Not found {0}
-						var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-						return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-							StringUtils.Format(errMsg, isEng ? "library card package" : "gói thẻ thư viện"));
-					}
-					
-					// Generate transaction code
-					var transactionCode = PaymentUtils.GenerateRandomOrderCodeDigits(8);
-					// Create transaction with PAID status
-					transactionDto = new TransactionDto()
-					{
-						TransactionCode = transactionCode.ToString(),
-						Amount = libPackageDto.Price,
-						TransactionStatus = TransactionStatus.Paid,
-						TransactionType = TransactionType.LibraryCardRegister,
-						CreatedAt = currentLocalDateTime,
-						TransactionDate = currentLocalDateTime,
-						LibraryCardPackageId = libPackageDto.LibraryCardPackageId,
-						UserId = user.UserId,
-						Invoice = new InvoiceDto()
-						{
-							TotalAmount = libPackageDto.Price,
-							CreatedAt = currentLocalDateTime,
-							PaidAt = currentLocalDateTime,
-							UserId = user.UserId,
-						}
-					};
-					
-					// Assign transaction
-					user.Transactions.Add(_mapper.Map<Transaction>(transactionDto));
-				}
-
-				if (transactionDto == null || libPackageDto == null)
-				{
-					// Mark as fail to register
-					return new ServiceResult(ResultCodeConst.SYS_Fail0001,
-						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
-				}
-				
-				// Check exist avatar
-	            if (!string.IsNullOrEmpty(userWithCard.LibraryCard.Avatar))
-	            {
-	                // Initialize field
-	                var isImageOnCloud = true;
-
-	                // Extract provider public id
-	                var publicId = StringUtils.GetPublicIdFromUrl(userWithCard.LibraryCard.Avatar);
-	                if (publicId != null) // Found
-	                {
-	                    // Process check exist on cloud			
-	                    isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
-	                }
-
-	                if (!isImageOnCloud || publicId == null) // Not found image or public id
-	                {
-	                    // Not found image resource
-	                    return new ServiceResult(ResultCodeConst.Cloud_Warning0001,
-	                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
-	                }
-	            }
-	            
-	            // Check whether user has already registered library card
-	            if (user.LibraryCardId != null) // Card found 
-	            {
-	                // Cannot progress {0} as {1} already exist
-	                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
-	                return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-	                    StringUtils.Format(msg, 
-	                        isEng ? "register" : "đăng ký",
-	                        isEng ? "library card" : "thẻ thư viện"));
-	            }
-	            
-	            // Add library card to user
-	            user.LibraryCard = new()
-	            {
-		            FullName = userWithCard.LibraryCard.FullName,
-		            Avatar = userWithCard.LibraryCard.Avatar,
-		            Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix),
-		            IssuanceMethod = LibraryCardIssuanceMethod.InPerson,
-		            Status = LibraryCardStatus.Active, // Mark as card has been activated
-		            TransactionCode = transactionDto.TransactionCode ?? string.Empty,
-		            IssueDate = currentLocalDateTime,
-		            ExpiryDate = currentLocalDateTime.AddMonths(
-			            // Months defined in specific library card package 
-			            libPackageDto.DurationInMonths)
-	            };
-	            
-	            // Process update user
-	            await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
-	            
-	            // Save DB
-	            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
-	            if (isSaved)
-	            {
-		            if (transactionDto.LibraryCardPackage == null)
-		            {
-			            transactionDto.LibraryCardPackage = libPackageDto;
-		            }
-		            
-		            // Send card has been activated email
-		            var isSent = await SendActivatedEmailAsync(
-			            email: user.Email,
-			            cardDto: userWithCard.LibraryCard,
-			            transactionDto: transactionDto,
-			            libName: _appSettings.LibraryName,
-			            libContact: _appSettings.LibraryContact);
-		            
-		            if (isSent)
-		            {
-			            var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
-			            // Msg: Register library card success
-			            return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
-				            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002) + $". {successMsg}");
-		            }
-		            
-		            var failMsg = isEng ? ", but fail to send email" : ", nhưng gửi email thông báo thất bại";
-		            // Msg: Register library card success
-		            return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
-			            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002) + failMsg);
-	            }
-	            
-	            // Msg: Register library card failed
-	            return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
-	                await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001));
-	        }
-			catch(UnauthorizedException)
-			{
-				throw new Exception("Token has expired");
-			}
-	        catch (ForbiddenException)
-	        {
-	            throw;
-	        }
-	        catch (Exception ex)
-	        {
-	            _logger.Error(ex.Message);
-	            throw new Exception("Error invoke when process add library card by employee");
-	        }
-	    }
-
-		public async Task<IServiceResult> ExtendLibraryCardAsync(string email, string transactionToken)
-		{
-			try
-			{
-				// Determine current lang context
-				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-					LanguageContext.CurrentLanguage);
-				var isEng = lang == SystemLanguage.English;
-
-				// Build spec
-				var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-				// Apply include
-				userBaseSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
-				// Retrieve user information
-				var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userBaseSpec);
-				if (user == null) // Not found user or request without card inside
-				{
-					// Forbid
-					throw new ForbiddenException();
-				}else if (user.LibraryCardId == null || user.LibraryCard == null)
-				{
-					// Not found {0}
-					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
-				}
-				
-				// Initialize payment utils
-				var paymentUtils = new PaymentUtils(logger: _logger);
-				// Validate transaction token
-				var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
-					token: transactionToken,
-					tokenValidationParameters: _tokenValidationParams);
-				if (validatedToken == null) throw new ForbiddenException(); // Forbid as token is invalid
-            
-				// Extract transaction data from token
-				var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
-            
-				// Check whether email match (request and payment user is different)
-				if(!Equals(email, tokenExtractedData.Email)) throw new ForbiddenException(); // Forbid as email is not match
-				
-				var transCode = tokenExtractedData.TransactionCode; 
-				var transDate = tokenExtractedData.TransactionDate; 
-				// Retrieve transaction
-				// Build spec
-				var transSpec = new BaseSpecification<Transaction>(t => 
-					t.TransactionDate != null && // with specific date
-					t.UserId == user.UserId && // who request
-					t.LibraryCardPackageId != null && // payment for specific card package
-					t.TransactionStatus == TransactionStatus.Paid && // must be paid
-					t.TransactionType == TransactionType.LibraryCardExtension && // transaction type is lib card register
-					Equals(t.TransactionCode, transCode));  // transaction code
-				// Apply include
-				transSpec.ApplyInclude(q => q
-					.Include(t => t.LibraryCardPackage!)
-				);
-				// Retrieve with spec
-				var transactionDto = (await _tranService.GetWithSpecAsync(transSpec)).Data as TransactionDto;
-				if (transactionDto == null) throw new ForbiddenException(); // Not found transaction information  
-            
-				// Validate transaction date
-				if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date)) throw new ForbiddenException();
-				
-				// Check allow to extend card
-				var checkRes = await _libraryCardService.Value.CheckCardExtensionAsync(
-					Guid.Parse(user.LibraryCardId.ToString() ?? string.Empty));
-				if (checkRes.Data is false) return checkRes;
-				
-				// Current local datetime
-				var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-					// Vietnam timezone
-					TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-
-				// Change card status to Active
-				user.LibraryCard.Status = LibraryCardStatus.Active;
-				// Add expiry date
-				user.LibraryCard.ExpiryDate = currentLocalDateTime.AddMonths(
-					// Months defined in specific library card package 
-					transactionDto.LibraryCardPackage!.DurationInMonths);
-				// Change extension status
-				user.LibraryCard.IsExtended = true;
-				// Increase extend time
-				user.LibraryCard.ExtensionCount++;
-				
-				// Process update
-				await _unitOfWork.Repository<User, Guid>().UpdateAsync(user);
-				// Save DB
-				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
-				if (isSaved)
-				{
-					// Send card has been activated email
-					await SendCardExtensionSuccessEmailAsync(
-						email: user.Email,
-						cardDto: _mapper.Map<LibraryCardDto>(user.LibraryCard),
-						transactionDto: transactionDto,
-						libName: _appSettings.LibraryName,
-						libContact: _appSettings.LibraryContact);
-		            
-					// Extend library card expiration successfully
-					return new ServiceResult(ResultCodeConst.LibraryCard_Success0005,
-						await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0005));
-				}
-				
-				// Fail to extend library card
-				return new ServiceResult(ResultCodeConst.LibraryCard_Fail0004,
-					await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0004));
-			}
-			catch (ForbiddenException)
-			{
-				throw;
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when process extend library card");
-			}
-		}
-		
 		public async Task<IServiceResult> SoftDeleteLibraryCardHolderAsync(Guid userId)
 		{
 			try
@@ -2183,7 +1670,6 @@ namespace FPTU_ELibrary.Application.Services
 			                ((u.LibraryCardId != Guid.Empty && u.LibraryCard != null &&
 			                 u.LibraryCard.Status != LibraryCardStatus.Pending && 
 			                 u.LibraryCard.Status != LibraryCardStatus.Rejected) || // Already registered library card
-			                u.Invoices.Any() || // exist any invoices
 			                u.Transactions.Any() || // exist any transactions
 			                u.DigitalBorrows.Any() || // exist any transactions
 			                u.RefreshTokens.Any() || // has already signed in
@@ -2254,7 +1740,6 @@ namespace FPTU_ELibrary.Application.Services
 								((u.LibraryCardId != Guid.Empty && u.LibraryCard != null &&
 								 u.LibraryCard.Status != LibraryCardStatus.Rejected &&
 								 u.LibraryCard.Status != LibraryCardStatus.Pending) || // Already registered library card
-								u.Invoices.Any() || // exist any invoices
 								u.Transactions.Any() || // exist any transactions
 								u.DigitalBorrows.Any() || // exist any transactions
 								u.RefreshTokens.Any() || // has already signed in
@@ -3107,10 +2592,16 @@ namespace FPTU_ELibrary.Application.Services
 	                    if(cardStatus.ToLower() == LibraryCardStatus.Active.GetDescription().ToLower())
 	                    {
 	                        records[i].LibraryCardStatus = LibraryCardStatus.Active.ToString();
-	                    }else if (cardStatus.ToLower() == LibraryCardStatus.Expired.GetDescription().ToLower())
+	                    }
+	                    else if (cardStatus.ToLower() == LibraryCardStatus.UnPaid.GetDescription().ToLower())
+	                    {
+		                    records[i].LibraryCardStatus = LibraryCardStatus.UnPaid.ToString();
+	                    }
+	                    else if (cardStatus.ToLower() == LibraryCardStatus.Expired.GetDescription().ToLower())
 	                    {
 	                        records[i].LibraryCardStatus = LibraryCardStatus.Expired.ToString();
-	                    }else if (cardStatus.ToLower() == LibraryCardStatus.Pending.GetDescription().ToLower())
+	                    }
+	                    else if (cardStatus.ToLower() == LibraryCardStatus.Pending.GetDescription().ToLower())
 	                    {
 	                        records[i].LibraryCardStatus = LibraryCardStatus.Pending.ToString();
 	                    }
@@ -3127,6 +2618,23 @@ namespace FPTU_ELibrary.Application.Services
 	                {
 	                    switch (validCardStatus)
 	                    {
+		                    case LibraryCardStatus.UnPaid:
+			                    // Required issue date
+			                    if (!records[i].IssueDate.HasValue)
+			                    {
+				                    errors.Add(isEng 
+					                    ? "Issue date must be assigned when card status is Unpaid" 
+					                    : "Ngày tạo thẻ không được rỗng khi thẻ đang ở trạng thái 'Chưa thanh toán'");
+			                    }
+			                    
+			                    // Check for exist expiry date when card mark as pending
+			                    if (records[i].ExpiryDate.HasValue)
+			                    {
+				                    errors.Add(isEng 
+					                    ? "Expiry date must not assigned when card status is Unpaid" 
+					                    : "Không điền ngày hết hạn khi thẻ đang ở trạng thái 'Chưa thanh toán'");
+			                    }
+			                    break;
 	                        case LibraryCardStatus.Pending:
 	                            // Required issue date
 	                            if (!records[i].IssueDate.HasValue)
@@ -3362,262 +2870,5 @@ namespace FPTU_ELibrary.Application.Services
 
 	            return errMsgs;
 	        }
-		
-		private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
-			TransactionDto transactionDto, string libName, string libContact)
-		{
-			try
-			{
-				// Email subject 
-				var subject = "[ELIBRARY] Tài Khoản Thư Viện Đã Kích Hoạt";
-	                            
-				// Progress send confirmation email
-				var emailMessageDto = new EmailMessageDto( // Define email message
-					// Define Recipient
-					to: new List<string>() { email },
-					// Define subject
-					subject: subject,
-					// Add email body content
-					content: GetLibraryCardActivatedEmailBody(
-						signInEmail: email,
-						cardDto: cardDto,
-						transactionDto: transactionDto,
-						libName: libName,
-						libContact:libContact)
-				);
-	                            
-				// Process send email
-				return await _emailService.SendEmailAsync(emailMessageDto, isBodyHtml: true);
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when process send library card activated email");
-			}
-		}
-		private string GetLibraryCardActivatedEmailBody(
-			string signInEmail, LibraryCardDto cardDto,
-			TransactionDto transactionDto, string libName, string libContact)
-	    {
-	        var culture = new CultureInfo("vi-VN");
-	        
-	        return $$"""
-	                 <!DOCTYPE html>
-	                 <html>
-	                 <head>
-	                     <meta charset="UTF-8">
-	                     <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
-	                     <style>
-	                         body {
-	                             font-family: Arial, sans-serif;
-	                             line-height: 1.6;
-	                             color: #333;
-	                         }
-	                         .header {
-	                             font-size: 18px;
-	                             color: #2c3e50;
-	                             font-weight: bold;
-	                         }
-	                         .details {
-	                             margin: 15px 0;
-	                             padding: 10px;
-	                             background-color: #f9f9f9;
-	                             border-left: 4px solid #27ae60;
-	                         }
-	                         .details li {
-	                             margin: 5px 0;
-	                         }
-	                         .barcode {
-	                             color: #2980b9;
-	                             font-weight: bold;
-	                         }
-	                         .expiry-date {
-	                             color: #27ae60;
-	                             font-weight: bold;
-	                         }
-	                         .status-label {
-	                             color: #e74c3c;
-	                             font-weight: bold;
-	                         }
-	                         .status-text {
-	                             color: #f39c12;
-	                             font-weight: bold;
-	                         }
-	                         .footer {
-	                             margin-top: 20px;
-	                             font-size: 14px;
-	                             color: #7f8c8d;
-	                         }
-	                     </style>
-	                 </head>
-	                 <body>
-	                     <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
-	                     <p>Xin chào {{cardDto.FullName}},</p>
-	                     <p>Thẻ thư viện của bạn đã được tạo thành công. Bạn có thể sử dụng tất cả các dịch vụ của thư viện mà không bị gián đoạn.</p>
-	                     
-	                     <p><strong>Thông tin tài khoản đăng nhập:</strong></p>
-	                     <div class="details">
-	                 		<ul>
-	                 			<li><strong>Email:</strong> {{signInEmail}}</li>
-	                 		</ul>
-	                     </div>
-	                     
-	                     <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
-	                     <div class="details">
-	                         <ul>
-	                             <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
-	                             <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
-	                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
-	                         </ul>
-	                     </div>
-	                     
-	                     <p><strong>Chi Tiết Giao Dịch:</strong></p>
-	                     <div class="details">
-	                         <ul>
-	                             <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
-	                             <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
-	                             <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-	                             <li><strong>Phương Thức Thanh Toán:</strong> {transactionDto.PaymentMethod.MethodName}</li>
-	                             <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
-	                         </ul>
-	                     </div>
-	                     
-	                     <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
-	                     <div class="details">
-	                         <ul>
-	                             <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
-	                             <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
-	                             <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
-	                             <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
-	                         </ul>
-	                     </div>
-	                     
-	                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
-	                     
-	                     <p><strong>Trân trọng,</strong></p>
-	                     <p>{{libName}}</p>
-	                 </body>
-	                 </html>
-	                 """;
-	    }
-
-		private async Task<bool> SendCardExtensionSuccessEmailAsync(string email, LibraryCardDto cardDto,
-			TransactionDto transactionDto, string libName, string libContact)
-		{
-			try
-			{
-				// Email subject 
-				var subject = "[ELIBRARY] Gia hạn thẻ thư viện thành công";
-	                            
-				// Progress send confirmation email
-				var emailMessageDto = new EmailMessageDto( // Define email message
-					// Define Recipient
-					to: new List<string>() { email },
-					// Define subject
-					subject: subject,
-					// Add email body content
-					content: GetLibraryCardExtensionEmailBody(
-						cardDto: cardDto,
-						transactionDto: transactionDto,
-						libName: libName,
-						libContact:libContact)
-				);
-	                            
-				// Process send email
-				return await _emailService.SendEmailAsync(emailMessageDto, isBodyHtml: true);
-			}
-			catch (Exception ex)
-			{
-				_logger.Error(ex.Message);
-				throw new Exception("Error invoke when process send library card activated email");
-			}
-		}
-		
-		private string GetLibraryCardExtensionEmailBody(LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
-		{
-		    var culture = new CultureInfo("vi-VN");
-
-		    return $$"""
-		             <!DOCTYPE html>
-		             <html>
-		             <head>
-		                 <meta charset="UTF-8">
-		                 <title>Thông Báo Gia Hạn Thẻ Thư Viện</title>
-		                 <style>
-		                     body {
-		                         font-family: Arial, sans-serif;
-		                         line-height: 1.6;
-		                         color: #333;
-		                     }
-		                     .header {
-		                         font-size: 18px;
-		                         color: #2c3e50;
-		                         font-weight: bold;
-		                     }
-		                     .details {
-		                         margin: 15px 0;
-		                         padding: 10px;
-		                         background-color: #f9f9f9;
-		                         border-left: 4px solid #27ae60;
-		                     }
-		                     .details li {
-		                         margin: 5px 0;
-		                     }
-		                     .barcode {
-		                         color: #2980b9;
-		                         font-weight: bold;
-		                     }
-		                     .expiry-date {
-		                         color: #27ae60;
-		                         font-weight: bold;
-		                     }
-		                     .status-label {
-		                         color: #e74c3c;
-		                         font-weight: bold;
-		                     }
-		                     .status-text {
-		                         color: #f39c12;
-		                         font-weight: bold;
-		                     }
-		                     .footer {
-		                         margin-top: 20px;
-		                         font-size: 14px;
-		                         color: #7f8c8d;
-		                     }
-		                 </style>
-		             </head>
-		             <body>
-		                 <p class="header">Thông Báo Gia Hạn Thẻ Thư Viện</p>
-		                 <p>Xin chào {{cardDto.FullName}},</p>
-		                 <p>Chúc mừng! Thẻ thư viện của bạn đã được gia hạn thành công. Bạn có thể tiếp tục sử dụng tất cả các dịch vụ của thư viện.</p>
-		                 
-		                 <p><strong>Thông Tin Thẻ Thư Viện:</strong></p>
-		                 <div class="details">
-		                     <ul>
-		                         <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
-		                         <li><span class="expiry-date">Ngày Hết Hạn Mới:</span> {{cardDto.ExpiryDate:MM/dd/yyyy}}</li>
-		                         <li><span class="status-label">Trạng Thái:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
-		                     </ul>
-		                 </div>
-		                 
-		                 <p><strong>Chi Tiết Giao Dịch Gia Hạn:</strong></p>
-		                 <div class="details">
-		                     <ul>
-		                         <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
-		                         <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:MM/dd/yyyy}}</li>
-		                         <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-		                         <li><strong>Phương Thức Thanh Toán:</strong> {transactionDto.PaymentMethod.MethodName}</li>
-		                         <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
-		                     </ul>
-		                 </div>
-		                 
-		                 <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
-		                 
-		                 <p><strong>Trân trọng,</strong></p>
-		                 <p>{{libName}}</p>
-		             </body>
-		             </html>
-		             """;
-		}
 	}
 }

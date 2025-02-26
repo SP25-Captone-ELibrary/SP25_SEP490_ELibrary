@@ -52,7 +52,7 @@ public static class PayOsPaymentRequestExtensions
         var requestContent = new StringContent(
             content: requestData,
             encoding: Encoding.UTF8,
-            mediaType:"application/json");
+            mediaType: "application/json");
         // Execute POST request with uri and request content
         var createPaymentUrlRes = await httpClient.PostAsync(
             requestUri: payOsConfig.PaymentUrl, 

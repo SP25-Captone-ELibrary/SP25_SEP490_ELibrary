@@ -10,6 +10,7 @@ using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.API.Payloads.Requests.Supplier;
+using FPTU_ELibrary.API.Payloads.Requests.Transaction;
 using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
@@ -22,6 +23,7 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -367,15 +369,12 @@ namespace FPTU_ELibrary.API.Extensions
 		#endregion
 
 		#region Library Card
-		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(UserDto)
-		public static UserDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
+		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(LibraryCardDto)
+		public static LibraryCardDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
 			=> new()
 			{
-				LibraryCard = new()
-				{
-					Avatar = req.Avatar,
-					FullName = req.FullName
-				}
+				Avatar = req.Avatar,
+				FullName = req.FullName
 			};
 		
 		// Mapping from typeof(CreateLibraryCardHolderRequest) to typeof(UserDto)
@@ -888,6 +887,23 @@ namespace FPTU_ELibrary.API.Extensions
 				ConditionId = req.ConditionId
 			};
 		}
+		#endregion
+
+		#region Transaction
+		// Mapping from typeof(CreateTransactionRequest) to typeof(TransactionDto)
+		public static TransactionDto ToTransactionDto(this CreateTransactionRequest req)
+		{
+			return new()
+			{
+				ResourceId = req.ResourceId,
+				LibraryCardPackageId = req.LibraryCardPackageId,
+				Description = req.Description,
+				PaymentMethodId = req.PaymentMethodId,
+				TransactionType = req.TransactionType
+			};
+		}
+		
+
 		#endregion
 		
 		#region AIService

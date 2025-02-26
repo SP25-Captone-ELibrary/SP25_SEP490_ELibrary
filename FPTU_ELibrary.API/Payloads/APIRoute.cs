@@ -219,7 +219,6 @@
 			public const string CheckCardExtension = Base + "/library-cards/{id}/check-extension";
 			// [POST]
 			public const string Register = Base + "/library-cards/register";
-			public const string UserExtendCard = Base + "/library-cards/extend";
 			// [PATCH]
 			public const string SendReConfirm = Base + "/library-cards/re-confirm";
 		}
@@ -283,6 +282,9 @@
 			// [DELETE]
 			public const string Delete = Base + "/management/packages/{id}";
 			#endregion
+			
+			// [GET]
+			public const string GetAllPublic = Base + "/packages";
 		}
 		
 		/// <summary>
@@ -666,22 +668,41 @@
 			public const string Delete = Base + "/management/suppliers/{id}";
 		}
 
+		/// <summary>
+		/// Payment endpoints
+		/// </summary>
 		public static class Payment
 		{
-			//[Get]
-			public const string GetPayOsPaymentLinkInformation = Base + "/payment/create-payment/{paymentLinkId}";
-			//[Post]
+			// [GET]
+			public const string GetPayOsPaymentLinkInformation = Base + "/payment/{paymentLinkId}";
+			// [POST]
 			public const string CreatePayment = Base + "/payment/create-payment";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
-			public const string CreateTransactionDetails = Base + "/payment/create-transaction-details";
+			public const string CreateTransaction = Base + "/payment/transactions";
 		}
 
+		/// <summary>
+		/// Payment endpoints
+		/// </summary>
+		public static class PaymentMethod
+		{
+			// [GET]
+			public const string GetAll = Base + "/payment-methods";
+		}
+
+		
+		/// <summary>
+		/// Fine endpoints
+		/// </summary>
 		public static class Fine
 		{
 			public const string Create = Base + "/fine/create";
 		}
 		
+		/// <summary>
+		/// User favourite endpoints
+		/// </summary>
 		public static class UserFavorite
 		{
 			// [POST]

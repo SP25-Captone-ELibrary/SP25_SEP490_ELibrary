@@ -59,6 +59,9 @@ namespace FPTU_ELibrary.Application.Utils
             }
             return new string(result);
         }
+        
+        //  Summary:
+        //      HmacSha256 Encoding
         public static string HmacSha256(string text, string key)
         {
             ASCIIEncoding encoding = new ASCIIEncoding();

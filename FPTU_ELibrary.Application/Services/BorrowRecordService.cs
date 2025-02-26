@@ -29,12 +29,12 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 {
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
+    private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqSvc;
     
     private readonly ICloudinaryService _cloudSvc;
     private readonly IUserService<UserDto> _userSvc;
     private readonly IEmployeeService<EmployeeDto> _employeeSvc;
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
-    private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;
     private readonly ICategoryService<CategoryDto> _cateSvc;
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
 
@@ -43,10 +43,10 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
     public BorrowRecordService(
         // Lazy services
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
+        Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqSvc,
         
         // Normal services
         ICategoryService<CategoryDto> cateSvc,
-        IBorrowRequestService<BorrowRequestDto> borrowReqSvc,
         ILibraryCardService<LibraryCardDto> cardSvc,
         ILibraryItemConditionService<LibraryItemConditionDto> conditionSvc,
         IEmployeeService<EmployeeDto> employeeSvc,
@@ -619,7 +619,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			borrowReqSpec.ApplyInclude(q => q
 				.Include(br => br.BorrowRequestDetails)
 			);
-			var borrowReqDto = (await _borrowReqSvc.GetWithSpecAsync(borrowReqSpec)).Data as BorrowRequestDto;
+			var borrowReqDto = (await _borrowReqSvc.Value.GetWithSpecAsync(borrowReqSpec)).Data as BorrowRequestDto;
 			if (borrowReqDto == null)
 			{
 				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -849,7 +849,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			// Process add borrow record
 			await _unitOfWork.Repository<BorrowRecord, int>().AddAsync(_mapper.Map<BorrowRecord>(dto));
 			// Update borrow request status
-			await _borrowReqSvc.UpdateStatusWithoutSaveChangesAsync(borrowReqDto.BorrowRequestId,
+			await _borrowReqSvc.Value.UpdateStatusWithoutSaveChangesAsync(borrowReqDto.BorrowRequestId,
 				BorrowRequestStatus.Borrowed); // Update to borrowed status
 			// Update range library item status
 			await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(

@@ -32,4 +32,7 @@ public class LibraryResource : IAuditableEntity
     
     [JsonIgnore]
     public ICollection<DigitalBorrow> DigitalBorrows { get; set; } = new List<DigitalBorrow>();
+
+    [JsonIgnore] 
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

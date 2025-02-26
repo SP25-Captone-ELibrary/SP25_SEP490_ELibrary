@@ -27,7 +27,7 @@ public class LibraryCardHolderController : ControllerBase
     private readonly AppSettings _appSettings;
 
     private readonly IUserService<UserDto> _userSvc;
-    private readonly IInvoiceService<InvoiceDto> _invoiceSvc;
+    private readonly ILibraryCardService<LibraryCardDto> _libCardSvc;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecSvc;
     private readonly ITransactionService<TransactionDto> _transactionSvc;
@@ -37,17 +37,17 @@ public class LibraryCardHolderController : ControllerBase
 
     public LibraryCardHolderController(
         IUserService<UserDto> userSvc,
+        ILibraryCardService<LibraryCardDto> libCardSvc,
         IDigitalBorrowService<DigitalBorrowDto> digitalBorrowSvc,
         IBorrowRequestService<BorrowRequestDto> borrowReqSvc,
         IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
         IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
-        IInvoiceService<InvoiceDto> invoiceSvc,
         ITransactionService<TransactionDto> transactionSvc,
         INotificationService<NotificationDto> notificationSvc,
         IOptionsMonitor<AppSettings> monitor1)
     {
         _userSvc = userSvc;
-        _invoiceSvc = invoiceSvc;
+        _libCardSvc = libCardSvc;
         _digitalBorrowSvc = digitalBorrowSvc;
         _borrowReqSvc = borrowReqSvc;
         _borrowRecSvc = borrowRecSvc;
@@ -71,11 +71,12 @@ public class LibraryCardHolderController : ControllerBase
     public async Task<IActionResult> AddLibraryCardAsync([FromBody] AddLibraryCardAsync req)
     {
         var processedByEmail = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _userSvc.RegisterLibraryCardByEmployeeAsync(
+        return Ok(await _libCardSvc.RegisterCardByEmployeeAsync(
             processedByEmail: processedByEmail ?? string.Empty,
             userId: req.UserId,
-            userWithCard: req.ToUserWithLibraryCardDto(),
-            transactionToken: req.TransactionToken,
+            method: req.TransactionMethod,
+            dto: req.ToUserWithLibraryCardDto(),
+            paymentMethodId: req.PaymentMethodId,
             libraryCardPackageId: req.LibraryCardPackageId
         ));
     }
@@ -163,13 +164,6 @@ public class LibraryCardHolderController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderInvoiceById, Name = nameof(GetCardHolderInvoiceByIdAsync))]
-    public async Task<IActionResult> GetCardHolderInvoiceByIdAsync([FromRoute] Guid userId, [FromRoute] int invoiceId)
-    {
-        return Ok(await _invoiceSvc.GetCardHolderInvoiceByIdAsync(userId: userId, invoiceId: invoiceId));
-    }
-
-    [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderTransactionById, Name = nameof(GetCardHolderTransactionByIdAsync))]
     public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId,
         [FromRoute] int transactionId)
@@ -219,17 +213,6 @@ public class LibraryCardHolderController : ControllerBase
         [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
     {
         return Ok(await _reservationQueueSvc.GetAllCardHolderReservationByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
-    }
-
-    [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderInvoice, Name = nameof(GetAllCardHolderInvoiceAsync))]
-    public async Task<IActionResult> GetAllCardHolderInvoiceAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
-    {
-        return Ok(await _invoiceSvc.GetAllCardHolderInvoiceByUserIdAsync(
             userId: userId,
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
