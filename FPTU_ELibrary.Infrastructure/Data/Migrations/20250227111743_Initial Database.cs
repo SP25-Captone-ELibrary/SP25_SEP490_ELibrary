@@ -220,24 +220,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Notification",
-                columns: table => new
-                {
-                    notification_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    message = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    is_public = table.Column<bool>(type: "bit", nullable: false),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    created_by = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    notification_type = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Payment_Method",
                 columns: table => new
                 {
@@ -662,6 +644,29 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Notification",
+                columns: table => new
+                {
+                    notification_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    title = table.Column<string>(type: "nvarchar(150)", nullable: false),
+                    message = table.Column<string>(type: "nvarchar(4000)", nullable: false),
+                    is_public = table.Column<bool>(type: "bit", nullable: false),
+                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    notification_type = table.Column<string>(type: "nvarchar(50)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notification_NotificationId", x => x.notification_id);
+                    table.ForeignKey(
+                        name: "FK_Notification_CreatedBy",
+                        column: x => x.created_by,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Digital_Borrow",
                 columns: table => new
                 {
@@ -686,32 +691,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     table.ForeignKey(
                         name: "FK_DigitalBorrow_UserId",
                         column: x => x.user_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Notification_Recipient",
-                columns: table => new
-                {
-                    notification_recipient_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    notification_id = table.Column<int>(type: "int", nullable: false),
-                    recipient_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    is_read = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_NotificationRecipient_NotificationRecipientId", x => x.notification_recipient_id);
-                    table.ForeignKey(
-                        name: "FK_NotificationRecipient_NotificationId",
-                        column: x => x.notification_id,
-                        principalTable: "Notification",
-                        principalColumn: "notification_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_NotificationRecipient_UserId",
-                        column: x => x.recipient_id,
                         principalTable: "User",
                         principalColumn: "user_id");
                 });
@@ -800,6 +779,32 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.fine_policy_id,
                         principalTable: "Fine_Policy",
                         principalColumn: "fine_policy_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notification_Recipient",
+                columns: table => new
+                {
+                    notification_recipient_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    notification_id = table.Column<int>(type: "int", nullable: false),
+                    recipient_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    is_read = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NotificationRecipient_NotificationRecipientId", x => x.notification_recipient_id);
+                    table.ForeignKey(
+                        name: "FK_NotificationRecipient_NotificationId",
+                        column: x => x.notification_id,
+                        principalTable: "Notification",
+                        principalColumn: "notification_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_NotificationRecipient_UserId",
+                        column: x => x.recipient_id,
+                        principalTable: "User",
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1437,6 +1442,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "IX_Library_Zone_floor_id",
                 table: "Library_Zone",
                 column: "floor_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notification_created_by",
+                table: "Notification",
+                column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notification_Recipient_notification_id",

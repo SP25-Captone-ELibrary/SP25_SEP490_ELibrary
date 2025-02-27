@@ -409,7 +409,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? isEng ? "user" : "người dùng" : "người dùng"));
+						StringUtils.Format(errMsg, isEng ? isEng ? "user" : "bạn đọc" : "bạn đọc"));
 				}
 
 				// Update specific properties
@@ -812,7 +812,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+						StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 				}
 
 				// Progress change active status
@@ -929,7 +929,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+						StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 				}
 
 				// Update delete status
@@ -1011,7 +1011,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+						StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 				}
 
 				// Update delete status

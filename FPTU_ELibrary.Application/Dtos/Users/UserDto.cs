@@ -58,6 +58,7 @@ namespace FPTU_ELibrary.Application.Dtos
 		public SystemRoleDto Role { get; set; } = null!;
 		public LibraryCardDto? LibraryCard { get; set; } 
 		
+		[JsonIgnore]
 		public ICollection<NotificationRecipientDto> NotificationRecipients { get; set; } = new List<NotificationRecipientDto>();
 
 		[JsonIgnore]

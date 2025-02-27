@@ -12,6 +12,9 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Net.payOS;
+using Net.payOS.Types;
+using ILogger = Serilog.ILogger;
 using PayOSCancelPaymentRequest = FPTU_ELibrary.API.Payloads.Requests.Payment.PayOSCancelPaymentRequest;
 
 namespace FPTU_ELibrary.API.Controllers;
@@ -23,14 +26,45 @@ public class PaymentController : ControllerBase
     private readonly IPayOsService _payOsService;
     private readonly ITransactionService<TransactionDto> _transactionService;
 
+    private readonly ILogger _logger;
+    private readonly PayOSSettings _payOsSettings;
+
     public PaymentController(
+        ILogger logger,
         IPayOsService payOsService,
         ITransactionService<TransactionDto>transactionService,
-        IOptionsMonitor<AppSettings> monitor)
+        IOptionsMonitor<AppSettings> monitor,
+        IOptionsMonitor<PayOSSettings> monitor1)
     {
+        _logger = logger;
         _payOsService = payOsService;
         _transactionService = transactionService;
         _appSettings = monitor.CurrentValue;
+        _payOsSettings = monitor1.CurrentValue;
+    }
+
+    #region Management
+    [Authorize]
+    [HttpGet(APIRoute.Payment.GetAllTransaction, Name = nameof(GetAllTransaction))]
+    public async Task<IActionResult> GetAllTransaction([FromQuery] TransactionSpecParams specParams)
+    {
+        return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
+            specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
+    }
+    #endregion
+    
+    [Authorize]
+    [HttpGet(APIRoute.Payment.GetPrivacyTransaction, Name = nameof(GetOwnTransaction))]
+    public async Task<IActionResult> GetOwnTransaction([FromQuery] TransactionSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize,
+            email: email), tracked: false));
     }
     
     [Authorize]
@@ -65,28 +99,34 @@ public class PaymentController : ControllerBase
         return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req));
     }
 
-    [Authorize]
-    [HttpGet(APIRoute.Payment.GetAllTransaction, Name = nameof(GetAllTransaction))]
-    public async Task<IActionResult> GetAllTransaction([FromQuery] TransactionSpecParams specParams)
+    [HttpPost(APIRoute.Payment.WebhookPayOsReturn)]
+    public async Task<IActionResult> WebhookPayOsReturnAsync([FromBody] WebhookType req)
     {
-        return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
-            specParams,
-            pageIndex: specParams.PageIndex ?? 1,
-            pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
+         _logger.Information("Received data from web hook");
+        await Task.CompletedTask;
+        return Ok();
     }
     
-    [Authorize]
-    [HttpGet(APIRoute.Payment.GetPrivacyTransaction, Name = nameof(GetOwnTransaction))]
-    public async Task<IActionResult> GetOwnTransaction([FromQuery] TransactionSpecParams specParams)
+    [HttpPost(APIRoute.Payment.WebhookPayOsCancel)]
+    public async Task<IActionResult> WebhookPayOsCancelAsync([FromBody] WebhookType req)
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
-            specParams: specParams,
-            pageIndex: specParams.PageIndex ?? 1,
-            pageSize: specParams.PageSize ?? _appSettings.PageSize,
-            email: email), tracked: false));
+        _logger.Information("Received data from web hook");
+        await Task.CompletedTask;
+        return Ok();
     }
+    
+    [HttpPost(APIRoute.Payment.SendWebhookConfirm)]
+    public async Task<IActionResult> TestAsync()
+    {
+        PayOS payOs = new PayOS(_payOsSettings.ClientId, _payOsSettings.ApiKey, _payOsSettings.ChecksumKey);
+        var confirmWebhookUrl = await payOs.confirmWebhook("https://f91b-171-247-155-91.ngrok-free.app/api/payment/pay-os/return?code=00&id=89158b2d3a6a44ef970de02337577a26&cancel=true&status=PAID&orderCode=46800484");
+        // var confirmWebhookUrl =
+        //     await payOs.confirmWebhook(
+        //         "https://7b3b-2402-800-63b6-b04f-e85b-5329-2528-3e5f.ngrok-free.app/api/payment/pay-os/cancel?code=00&id=eb776244be6640b19bf62b28e963d3e5&cancel=true&status=CANCELLED&orderCode=59272");
 
+        return Ok();
+    }
+    
     #region Archived Code
     // [HttpPost(APIRoute.Payment.CreatePayment, Name = nameof(CreatePaymentAsync))]
     // public async Task<IActionResult> CreatePaymentAsync([FromBody] CreatePaymentRequest req)

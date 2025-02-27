@@ -1,5 +1,6 @@
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Notifications;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.Notification;
 
@@ -8,8 +9,7 @@ public class CreateNotificationRequest
     public string Title { get; set; } = null!;
     public string Message { get; set; } = null!;
     public bool IsPublic { get; set; }
-    public string CreateBy { get; set; } = null!;
-    public string NotificationType { get; set; } = null!;
+    public NotificationType NotificationType { get; set; } 
     public List<string>? ListRecipient { get; set; }
 }
 
@@ -22,8 +22,6 @@ public static class CreateNotificationRequestExtension
             IsPublic = req.IsPublic,
             Message = req.Message,
             Title = req.Title,
-            CreatedBy = req.CreateBy,
-            CreateDate = DateTime.Now ,
             NotificationType = req.NotificationType
         };
     }

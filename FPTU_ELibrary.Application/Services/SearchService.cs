@@ -39,7 +39,7 @@ namespace FPTU_ELibrary.Application.Services
 			var searchWithKeyword = parameters.SearchWithKeyword;
 			var isMatchExact = parameters.IsMatchExact;
 
-			// Determine the suffix based on the searchWithSpecial flag
+			// the suffix based on the searchWithSpecial flag
 			var fieldSuffix = parameters.SearchWithSpecial ? "non_special" : "exact";
 
 			// Pagination

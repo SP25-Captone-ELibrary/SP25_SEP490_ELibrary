@@ -1,84 +1,98 @@
 using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Notification;
-using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Notifications;
-using FPTU_ELibrary.Application.Services;
-using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace FPTU_ELibrary.API.Controllers;
 
-public class NotificationController: ControllerBase
+[ApiController]
+public class NotificationController : ControllerBase
 {
+    private readonly AppSettings _appSettings;
     private readonly INotificationService<NotificationDto> _notificationService;
     private readonly INotificationRecipientService<NotificationRecipientDto> _notificationRecipientService;
 
-    public NotificationController(INotificationService<NotificationDto> notificationService,
-        INotificationRecipientService<NotificationRecipientDto> notificationRecipientService)
+    public NotificationController(
+        INotificationService<NotificationDto> notificationService,
+        INotificationRecipientService<NotificationRecipientDto> notificationRecipientService,
+        IOptionsMonitor<AppSettings> monitor)
     {
+        _appSettings = monitor.CurrentValue;
         _notificationService = notificationService;
         _notificationRecipientService = notificationRecipientService;
     }
 
+    #region Management
     [Authorize]
-    [HttpPost(APIRoute.Notification.Create,Name=nameof(CreateNotification))]
-    public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationRequest req)
+    [HttpPost(APIRoute.Notification.Create, Name=nameof(CreateNotificationAsync))]
+    public async Task<IActionResult> CreateNotificationAsync([FromBody] CreateNotificationRequest req)
     {
-        return Ok(await _notificationService.CreateNotification(req.ToNotificationDto(), req.ListRecipient));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationService.CreateNotificationAsync(
+            createdByEmail: email ?? string.Empty, 
+            dto: req.ToNotificationDto(),
+            recipients: req.ListRecipient));
     }
-
-    [AllowAnonymous]
-    [HttpGet(APIRoute.Notification.GetTypes,Name= nameof(GetTypes))]
-    public async Task<IActionResult> GetTypes()
+    
+    [Authorize] 
+    [HttpGet(APIRoute.Notification.GetAll, Name = nameof(GetAllNotificationAsync))]
+    public async Task<IActionResult> GetAllNotificationAsync([FromQuery] NotificationSpecParams specParams)
     {
-        return Ok(await _notificationService.GetTypes());
+        return Ok(await _notificationService.GetAllWithSpecAsync(new NotificationSpecification(
+                specParams: specParams, 
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
+    
+    [Authorize]
+    [HttpGet(APIRoute.Notification.GetById, Name = nameof(GetNotificationByIdAsync))]
+    public async Task<IActionResult> GetNotificationByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _notificationService.GetByIdAsync(id: id));
+    }
+    #endregion
 
+    [Authorize] 
+    [HttpGet(APIRoute.Notification.GetAllPrivacy, Name = nameof(GetAllPrivacyNotificationAsync))]
+    public async Task<IActionResult> GetAllPrivacyNotificationAsync([FromQuery] NotificationSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationService.GetAllPrivacyNotificationAsync(
+            email: email ?? string.Empty, 
+            spec: new NotificationSpecification(
+                specParams: specParams, 
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    
     [Authorize]
     [HttpGet(APIRoute.Notification.GetNumberOfUnreadNotifications, Name = nameof(GetNumberOfUnreadNotifications))]
     public async Task<IActionResult> GetNumberOfUnreadNotifications()
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? ""; 
-        return Ok(await _notificationRecipientService.GetNumberOfUnreadNotifications(email));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationRecipientService.GetNumberOfUnreadNotificationsAsync(email ?? string.Empty));
     }
 
     [Authorize]
     [HttpPut(APIRoute.Notification.UpdateReadStatus, Name = nameof(UpdateReadStatus))]
     public async Task<IActionResult> UpdateReadStatus()
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? ""; 
-        return Ok(await _notificationRecipientService.UpdateReadStatus(email));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationRecipientService.UpdateReadStatusAsync(email ?? string.Empty));
     }
-
-    [HttpGet(APIRoute.Notification.GetNotificationByAdmin, Name = nameof(GetAllNotification))]
-    [Authorize] 
-    public async Task<IActionResult> GetAllNotification([FromQuery] NotificationSpecParams specParams)
-    {
-        // define who are using this 
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email,true));
-    }
-    [HttpGet(APIRoute.Notification.GetNotificationNotByAdmin, Name = nameof(GetNotificationNotByAdmin))]
-    [Authorize] 
-    public async Task<IActionResult> GetNotificationNotByAdmin([FromQuery] NotificationSpecParams specParams)
-    {
-        // define who are using this 
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _notificationService.GetAllWithSpecAsync(specParams, email, false));
-    }
-    [HttpGet(APIRoute.Notification.GetById, Name = nameof(GetById))]
+    
     [Authorize]
-    public async Task<IActionResult> GetById([FromRoute] int id)
+    [HttpGet(APIRoute.Notification.GetPrivacyById, Name = nameof(GetPrivacyByIdAsync))]
+    public async Task<IActionResult> GetPrivacyByIdAsync([FromRoute] int id)
     {
-        // define who are using this 
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _notificationService.GetById(email, id));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationService.GetPrivacyNotificationAsync(id: id, email: email ?? string.Empty));
     }
 }

@@ -27,10 +27,8 @@ public class Employee : BaseUser
     [JsonIgnore]
     public ICollection<Fine> FineCreateByNavigations { get; set; } = new List<Fine>();
 
-    //public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
-
-    // [JsonIgnore]
-    // public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    [JsonIgnore]
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
 	[JsonIgnore]
 	public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();

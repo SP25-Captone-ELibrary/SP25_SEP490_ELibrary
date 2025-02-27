@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.EntityFrameworkCore;
@@ -10,69 +11,67 @@ public class NotificationSpecification : BaseSpecification<Notification>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
 
-    public NotificationSpecification(
-        NotificationSpecParams notificationSpecParams,
-        int pageIndex,
-        int pageSize,
-        string email,
-        int roleId,
-        bool isManagement
-    ) : base(n =>
-    (
-        string.IsNullOrEmpty(notificationSpecParams.Search) ||
+    public NotificationSpecification(NotificationSpecParams specParams, int pageIndex, int pageSize) 
+        : base(n =>
+        string.IsNullOrEmpty(specParams.Search) ||
         (
-            (!string.IsNullOrEmpty(n.Title) && n.Title.Contains(notificationSpecParams.Search)) ||
-            (!string.IsNullOrEmpty(n.Message) && n.Message.Contains(notificationSpecParams.Search)) ||
-            (!string.IsNullOrEmpty(n.CreatedBy) && n.CreatedBy.Contains(notificationSpecParams.Search)) ||
-            (!string.IsNullOrEmpty(n.NotificationType) && n.NotificationType.Contains(notificationSpecParams.Search))
-        )
-    ))
+            (!string.IsNullOrEmpty(n.Title) && n.Title.Contains(specParams.Search)) ||
+            (!string.IsNullOrEmpty(n.Message) && n.Message.Contains(specParams.Search)) ||
+            
+            // Notification recipient info
+            n.NotificationRecipients.Any(nr => 
+                !string.IsNullOrEmpty(nr.Recipient.Email) && nr.Recipient.Email.Contains(specParams.Search) ||
+                !string.IsNullOrEmpty(nr.Recipient.FirstName) && nr.Recipient.FirstName.Contains(specParams.Search) ||
+                !string.IsNullOrEmpty(nr.Recipient.LastName) && nr.Recipient.LastName.Contains(specParams.Search)
+            )
+        ))
     {
+        // Pagination
         PageIndex = pageIndex;
         PageSize = pageSize;
 
+        // Enable split query
         EnableSplitQuery();
-            if (roleId == 1) // Admin
-        {
-            AddFilter(x => x.IsPublic);
-        }
-        else if (isManagement)
-        {
-            AddFilter(x => x.IsPublic || x.CreatedBy.Contains(email.Trim())&& !x.IsPublic);
-        }
-        else
-        {
-            AddFilter(x => x.IsPublic || x.NotificationRecipients.Any(r => r.Recipient.Email.Equals(email)));
-        }
-        ApplyInclude(q => q.Include(n => n.NotificationRecipients));
 
-        if (notificationSpecParams.Title != null)
+        if (specParams.IsPublic != null)
         {
-            AddFilter(x => x.Title.Contains(notificationSpecParams.Title));
+            // Filter default as public only
+            AddFilter(s => s.IsPublic == specParams.IsPublic);
         }
-        else if (!string.IsNullOrEmpty(notificationSpecParams.Message)) // With gender
-        {
-            AddFilter(x => x.Message.Contains(notificationSpecParams.Message));
+        if (specParams.Email != null)
+        {            
+            AddFilter(x => x.NotificationRecipients.Any(nr => nr.Recipient.Email == specParams.Email));
         }
-        else if (!string.IsNullOrEmpty(notificationSpecParams.CreatedBy)) // With gender
+        if (specParams.CreatedBy != null) // Created by
         {
-            AddFilter(x => x.CreatedBy.Contains(notificationSpecParams.CreatedBy));
+            AddFilter(x => x.CreatedBy == specParams.CreatedBy);
         }
-        else if (!string.IsNullOrEmpty(notificationSpecParams.NotificationType)) // With gender
+        if (specParams.NotificationType != null) // Notification type
         {
-            AddFilter(x => x.NotificationType.Contains(notificationSpecParams.NotificationType));
+            AddFilter(x => x.NotificationType == specParams.NotificationType);
         }
-        else if (notificationSpecParams.CreateDateRange != null
-                 && notificationSpecParams.CreateDateRange.Length > 1) // With range of dob
+        if (specParams.CreateDateRange != null
+            && specParams.CreateDateRange.Length > 1) // With range of create date 
         {
-            AddFilter(x =>
-                x.CreateDate.Date >= notificationSpecParams.CreateDateRange[0].Date
-                && x.CreateDate.Date <= notificationSpecParams.CreateDateRange[1].Date);
+            if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1].HasValue)
+            {
+                AddFilter(x =>
+                    x.CreateDate >= specParams.CreateDateRange[0]!.Value.Date
+                    && x.CreateDate <= specParams.CreateDateRange[1]!.Value.Date);
+            }
+            else if (specParams.CreateDateRange[0] is null && specParams.CreateDateRange[1].HasValue)
+            {
+                AddFilter(x => x.CreateDate <= specParams.CreateDateRange[1]);
+            }
+            else if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1] is null)
+            {
+                AddFilter(x => x.CreateDate >= specParams.CreateDateRange[0]);
+            }
         }
 
-        if (!string.IsNullOrEmpty(notificationSpecParams.Sort))
+        if (!string.IsNullOrEmpty(specParams.Sort))
         {
-            var sortBy = notificationSpecParams.Sort.Trim();
+            var sortBy = specParams.Sort.Trim();
             var isDescending = sortBy.StartsWith("-");
             var propertyName = isDescending ? sortBy.Substring(1) : sortBy;
 
