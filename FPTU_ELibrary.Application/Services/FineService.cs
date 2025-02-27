@@ -1,24 +1,12 @@
-using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.Payments;
-using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
-using FPTU_ELibrary.Application.Utils;
-using FPTU_ELibrary.Application.Validations;
-using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
-using FPTU_ELibrary.Domain.Interfaces.Services.Base;
-using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
-using Microsoft.AspNetCore.Mvc.Diagnostics;
-using Microsoft.EntityFrameworkCore;
-using MimeKit.Encodings;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -48,7 +36,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
         _borrowRecordService = borrowRecordService;
     }
 
-    // TODO: Reimplement create fine for borrow record
+    #region Archived Code
     // public async Task<IServiceResult> CreateFineForBorrowRecord(int finePolicyId, int borrowRecordId,string email)
     // {
     //     try
@@ -124,4 +112,5 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
     //         throw new Exception("Error invoke when process create fine");
     //     }
     // }
+    #endregion
 }

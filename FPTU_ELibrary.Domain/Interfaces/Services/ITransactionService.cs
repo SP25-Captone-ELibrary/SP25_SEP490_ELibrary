@@ -12,7 +12,6 @@ public interface ITransactionService<TDto> : IGenericService<Transaction, TDto, 
     Task<IServiceResult> GetAllByTransactionCodeAsync(string transactionCode);
     Task<IServiceResult> GetAllCardHolderTransactionByUserIdAsync(Guid userId, int pageIndex ,int pageSize);
     Task<IServiceResult> GetCardHolderTransactionByIdAsync(Guid userId, int transactionId);
-    Task<IServiceResult> GetAvailableTransactionType(string email);
     Task<IServiceResult> UpdateStatusByTransactionCodeAsync(
         string transactionCode, DateTime? transactionDate,
         string? cancellationReason, DateTime? cancelledAt, TransactionStatus status);

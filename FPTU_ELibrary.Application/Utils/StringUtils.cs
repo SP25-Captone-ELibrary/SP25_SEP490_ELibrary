@@ -259,11 +259,15 @@ namespace FPTU_ELibrary.Application.Utils
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
-                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
+                        if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
-                            // Keep only the result with the highest MatchedPoint
-                            titlePoints.Clear();
+                            titlePoints.Clear(); // Chỉ xóa nếu tìm thấy điểm cao hơn
                             titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
+                        }
+                        else if (titlePoints.First().Value.MatchedPoint == matchedPoint)
+                        {
+                            // Nếu có điểm trùng nhau, giữ lại 1 kết quả duy nhất
+                            titlePoints.TryAdd(value, (fuzzinessPoint, matchPhrasePoint, matchedPoint));
                         }
                     }
 
@@ -295,11 +299,15 @@ namespace FPTU_ELibrary.Application.Utils
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
-                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
+                        if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
-                            // Keep only the result with the highest MatchedPoint
-                            titlePoints.Clear();
+                            titlePoints.Clear(); // Chỉ xóa nếu tìm thấy điểm cao hơn
                             titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
+                        }
+                        else if (titlePoints.First().Value.MatchedPoint == matchedPoint)
+                        {
+                            // Nếu có điểm trùng nhau, giữ lại 1 kết quả duy nhất
+                            titlePoints.TryAdd(value, (fuzzinessPoint, matchPhrasePoint, matchedPoint));
                         }
                     }
                     var bestMatch = titlePoints.First();
@@ -340,6 +348,11 @@ namespace FPTU_ELibrary.Application.Utils
 
             matchResult.TotalPoint = totalWeightedScore;
             matchResult.ConfidenceThreshold = confidenceThreshold;
+            // if matchResult include 2 with same name, remove the one
+            matchResult.FieldPointsWithThreshole = matchResult.FieldPointsWithThreshole
+                .GroupBy(x => x.Name)
+                .Select(x => x.OrderByDescending(y => y.MatchedPoint).First())
+                .ToList();
             return matchResult;
         }
 

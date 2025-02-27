@@ -746,4 +746,57 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                  </html>
                  """;
     }
+
+    #region Archived Code
+    // public async Task<IServiceResult> CreateTransactionForDigitalBorrow(string email, int resourceId)
+    // {
+    //     // Determine current system lang
+    //     var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+    //         LanguageContext.CurrentLanguage);
+    //     var isEng = lang == SystemLanguage.English;
+		  //
+    //     // Get User By email
+    //     var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
+    //     var user = await _userSvc.Value.GetWithSpecAsync(userBaseSpec);
+    //     if (user.Data is null)
+    //     {
+    //         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+    //         return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+    //             StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+    //     }
+    //
+    //     var userValue = (UserDto)user.Data!;
+    //     //Create Borrow Record
+    //     DigitalBorrowDto newRecord = new DigitalBorrowDto()
+    //     {
+    //         UserId = userValue.UserId,
+    //         ExtensionCount = 0,
+    //         ResourceId = resourceId,
+    //         Status = BorrowDigitalStatus.Active,
+    //         RegisterDate = DateTime.Now,
+    //         IsExtended = false,
+    //         ExpiryDate = DateTime.Now.AddMonths(1)
+    //     };
+    //     var entity = _mapper.Map<DigitalBorrow>(newRecord);
+    //     await _unitOfWork.Repository<DigitalBorrow, int>().AddAsync(entity);
+    //     var addStatus = await _unitOfWork.SaveChangesAsync();
+    //     if (await _unitOfWork.SaveChangesAsync() <= 0)
+    //     {
+    //         return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+    //             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+    //     }
+    //
+    //     TransactionDto transaction = new TransactionDto();
+    //     transaction.TransactionCode = Guid.NewGuid().ToString();
+    //     transaction.TransactionType = TransactionType.DigitalBorrow;
+    //     transaction.UserId = userValue.UserId;
+    //     transaction.DigitalBorrowId = entity.DigitalBorrowId;
+    //     var transactionEntity = _mapper.Map<Transaction>(transaction);
+    //     var result = await _transactionService.Value.CreateAsync(transactionEntity);
+    //     if(result.Data is null) return result;
+    //
+    //     return new ServiceResult(ResultCodeConst.SYS_Success0001,
+    //         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+    // }
+    #endregion
 }

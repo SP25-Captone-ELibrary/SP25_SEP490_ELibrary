@@ -518,40 +518,6 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         }
     }
     
-    public async Task<IServiceResult> GetAvailableTransactionType(string email)
-    { 
-        // Determine current system lang
-        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-            LanguageContext.CurrentLanguage);
-        var isEng = lang == SystemLanguage.English;
-        
-        var userBaseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
-        var user = await _userSvc.Value.GetWithSpecAsync(userBaseSpec);
-        if (user.Data != null)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), new List<string>
-                {
-                    nameof(TransactionType.LibraryCardExtension),
-                    nameof(TransactionType.LibraryCardRegister),
-                    nameof(TransactionType.DigitalBorrow)
-                });
-        }
-        var employeeBaseSpec = new BaseSpecification<Employee>(e => e.Email.Equals(email));
-        var employee = await _employeeService.GetWithSpecAsync(employeeBaseSpec);
-        if (employee.Data != null)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), new List<string>
-                {
-                    nameof(TransactionType.Fine)
-                });
-        }
-        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-        return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-            StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
-    }
-
     public async Task<IServiceResult> UpdateStatusByTransactionCodeAsync(
         string transactionCode, DateTime? transactionDate,
         string? cancellationReason, DateTime? cancelledAt, TransactionStatus status)
@@ -797,6 +763,44 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     //     }
     // }
     
-
+    // public async Task<IServiceResult> GetAvailableTransactionType(string email)
+    // { 
+    //     // Determine current system lang
+    //     var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+    //         LanguageContext.CurrentLanguage);
+    //     var isEng = lang == SystemLanguage.English;
+    //     
+    //     var userBaseSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
+    //     var user = await _userSvc.Value.GetWithSpecAsync(userBaseSpec);
+    //     if (user.Data != null)
+    //     {
+    //         return new ServiceResult(ResultCodeConst.SYS_Success0001,
+    //             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), new List<string>
+    //             {
+    //                 nameof(TransactionType.LibraryCardExtension),
+    //                 nameof(TransactionType.LibraryCardRegister),
+    //                 nameof(TransactionType.DigitalBorrow)
+    //             });
+    //     }
+    //     var employeeBaseSpec = new BaseSpecification<Employee>(e => e.Email.Equals(email));
+    //     var employee = await _employeeService.GetWithSpecAsync(employeeBaseSpec);
+    //     if (employee.Data != null)
+    //     {
+    //         return new ServiceResult(ResultCodeConst.SYS_Success0001,
+    //             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), new List<string>
+    //             {
+    //                 nameof(TransactionType.Fine)
+    //             });
+    //     }
+    //     var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+    //     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+    //         StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+    // }
+    //
+    //
+    // public Task<IServiceResult> GetTransactionById(int transactionId)
+    // {
+    //     throw new NotImplementedException();
+    // }
     #endregion
 }

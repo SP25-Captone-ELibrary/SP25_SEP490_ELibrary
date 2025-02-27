@@ -673,8 +673,13 @@
 		/// </summary>
 		public static class Payment
 		{
+			#region Management
+			public const string GetAllTransaction = Base + "/management/payment/transactions";
+			#endregion
+			
 			// [GET]
 			public const string GetPayOsPaymentLinkInformation = Base + "/payment/{paymentLinkId}";
+			public const string GetPrivacyTransaction = Base + "/payment/transactions";
 			// [POST]
 			public const string CreatePayment = Base + "/payment/create-payment";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";

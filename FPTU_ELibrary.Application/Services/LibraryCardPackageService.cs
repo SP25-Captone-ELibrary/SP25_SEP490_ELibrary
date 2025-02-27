@@ -286,7 +286,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 		}
 	}
 
-	// TODO: Reimplement for library card transaction
+	#region Archived Code
 	// public async Task<IServiceResult> CreateTransactionForLibraryCardPackage(string email, int id)
 	// {
 	// 	// Determine current system lang
@@ -330,4 +330,49 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 	// 		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
 	//
 	// }
+	
+	// public async Task<IServiceResult> CreateTransactionForLibraryCardPackage(string email, int id)
+	// {
+	// 	// Determine current system lang
+	// 	var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+	// 		LanguageContext.CurrentLanguage);
+	// 	var isEng = lang == SystemLanguage.English;
+	// 	
+	// 	// Get User By email
+	// 	var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
+	// 	var user = await _userService.Value.GetWithSpecAsync(userBaseSpec);
+	// 	if (user.Data is null)
+	// 	{
+	// 		var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+	// 		return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+	// 			StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+	// 	}
+	// 	
+	// 	//get package by id
+	// 	var package = await _unitOfWork.Repository<LibraryCardPackage, int>().GetByIdAsync(id);
+	// 	if (package is null)
+	// 	{
+	// 		var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+	// 		return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+	// 			StringUtils.Format(errMsg, isEng ? "package" : "gói thẻ thư viện"));
+	// 	}
+	// 	
+	// 	TransactionDto response = new TransactionDto();
+	// 	response.TransactionCode = Guid.NewGuid().ToString();
+	// 	// fine caused by damaged or lost would base on the amount of item
+	// 	response.Amount = package.Price;
+	// 	response.UserId = (user.Data as UserDto)!.UserId;
+	// 	response.TransactionStatus = TransactionStatus.Pending;
+	// 	response.LibraryCardPackageId = package.LibraryCardPackageId;
+	// 	response.CreatedAt = DateTime.Now;
+	// 	// response.PaymentMethodId = 1;
+	// 	var transactionEntity = _mapper.Map<Transaction>(response);
+	// 	var result = await _transactionService.Value.CreateAsync(transactionEntity);
+	// 	if(result.Data is null) return result;
+	//
+	// 	return new ServiceResult(ResultCodeConst.SYS_Success0001,
+	// 		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+	//
+	// }
+	#endregion
 }
