@@ -27,7 +27,7 @@ public class TransactionDtoValidator : AbstractValidator<TransactionDto>
             .Must(t =>
             {
                 int count = (t.FineId.HasValue ? 1 : 0) +
-                            (t.DigitalBorrowId.HasValue ? 1 : 0) +
+                            (t.ResourceId.HasValue ? 1 : 0) +
                             (t.LibraryCardPackageId.HasValue ? 1 : 0);
                 return count == 1;
             })

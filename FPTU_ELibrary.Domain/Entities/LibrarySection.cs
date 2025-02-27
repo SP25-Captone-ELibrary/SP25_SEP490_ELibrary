@@ -9,7 +9,7 @@ public class LibrarySection
     
     // Zone belongs to
     public int ZoneId { get; set; }
-
+    
     // Section detail
     public string SectionName { get; set; } = null!;
 

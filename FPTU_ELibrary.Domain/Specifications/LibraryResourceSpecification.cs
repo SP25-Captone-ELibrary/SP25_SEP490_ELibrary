@@ -38,11 +38,6 @@ public class LibraryResourceSpecification : BaseSpecification<LibraryResource>
         // Enable split query
         EnableSplitQuery();
         
-        // Apply including book
-        // TODO: Change logic to LibraryItem
-        // ApplyInclude(q => 
-        //     q.Include(br => br.Book));
-        
         // Default order by first name
         AddOrderBy(e => e.ResourceType);
         

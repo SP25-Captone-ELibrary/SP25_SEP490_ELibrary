@@ -9,6 +9,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IWarehouseTrackingDetailService<TDto> : IGenericService<WarehouseTrackingDetail, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> GetDetailAsync(int id);
     Task<IServiceResult> AddToWarehouseTrackingAsync(int trackingId, TDto dto);
     Task<IServiceResult> DeleteItemAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> UpdateItemFromExternalAsync(int trackingDetailId, int libraryItemId);

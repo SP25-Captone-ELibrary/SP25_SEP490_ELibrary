@@ -37,11 +37,11 @@ builder.Services
     .ConfigureCloudinary(builder.Configuration)
     // Configure HealthCheck 
     .ConfigureHealthCheckServices(builder.Configuration)
-    //Configure OCR
+    // Configure OCR
     .ConfigureOCR(builder.Configuration)
     // Configure Azure Speech
-    .ConfigureAzureSpeech(builder.Configuration)    
-    .EstablishApplicationConfiguration(builder.Configuration, builder.Environment);
+    .ConfigureAzureSpeech(builder.Configuration);   
+
 builder.Services
     // Configure for application layer
     .AddApplication(builder.Configuration)

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -689,50 +689,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.ToTable("Fine_Policy", (string)null);
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Invoice", b =>
-                {
-                    b.Property<int>("InvoiceId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("invoice_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvoiceId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("InvoiceCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("invoice_code");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("datetime")
-                        .HasColumnName("paid_at");
-
-                    b.Property<int>("PaymentMethodId")
-                        .HasColumnType("int")
-                        .HasColumnName("payment_method_id");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("total_amount");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("InvoiceId")
-                        .HasName("PK_Invoice_InvoiceId");
-
-                    b.HasIndex("PaymentMethodId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Invoice", (string)null);
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryCard", b =>
                 {
                     b.Property<Guid>("LibraryCardId")
@@ -843,7 +799,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("total_missed_pick_up");
 
                     b.Property<string>("TransactionCode")
-                        .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("transaction_code");
 
@@ -2274,25 +2229,37 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("description");
 
-                    b.Property<int?>("DigitalBorrowId")
-                        .HasColumnType("int")
-                        .HasColumnName("digital_borrow_id");
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("expired_at");
 
                     b.Property<int?>("FineId")
                         .HasColumnType("int")
                         .HasColumnName("fine_id");
 
-                    b.Property<int?>("InvoiceId")
-                        .HasColumnType("int")
-                        .HasColumnName("invoice_id");
-
                     b.Property<int?>("LibraryCardPackageId")
                         .HasColumnType("int")
                         .HasColumnName("library_card_package_id");
+
+                    b.Property<int?>("PaymentMethodId")
+                        .HasColumnType("int")
+                        .HasColumnName("payment_method_id");
+
+                    b.Property<string>("PaymentUrl")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("payment_url");
+
+                    b.Property<int?>("ResourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("resource_id");
 
                     b.Property<string>("TransactionCode")
                         .HasColumnType("nvarchar(50)")
@@ -2301,6 +2268,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<DateTime?>("TransactionDate")
                         .HasColumnType("datetime")
                         .HasColumnName("transaction_date");
+
+                    b.Property<string>("TransactionMethod")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("transaction_method");
 
                     b.Property<string>("TransactionStatus")
                         .IsRequired()
@@ -2319,13 +2290,13 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasKey("TransactionId")
                         .HasName("PK_Transaction_TransactionId");
 
-                    b.HasIndex("DigitalBorrowId");
-
                     b.HasIndex("FineId");
 
-                    b.HasIndex("InvoiceId");
-
                     b.HasIndex("LibraryCardPackageId");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("ResourceId");
 
                     b.HasIndex("UserId");
 
@@ -2603,6 +2574,14 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrackingDetailId"));
 
+                    b.Property<string>("BarcodeRangeFrom")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("barcode_range_from");
+
+                    b.Property<string>("BarcodeRangeTo")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("barcode_range_to");
+
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("category_id");
@@ -2620,6 +2599,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("created_by");
+
+                    b.Property<bool>("HasGlueBarcode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_glue_barcode");
 
                     b.Property<string>("Isbn")
                         .HasMaxLength(13)
@@ -2642,9 +2627,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
 
-                    b.Property<string>("Reason")
+                    b.Property<string>("StockTransactionType")
+                        .IsRequired()
                         .HasColumnType("nvarchar(50)")
-                        .HasColumnName("reason");
+                        .HasColumnName("stock_transaction_type");
 
                     b.Property<decimal>("TotalAmount")
                         .ValueGeneratedOnAdd()
@@ -2683,6 +2669,34 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasIndex("TrackingId");
 
                     b.ToTable("Warehouse_Tracking_Detail", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.WarehouseTrackingInventory", b =>
+                {
+                    b.Property<int>("TrackingId")
+                        .HasColumnType("int")
+                        .HasColumnName("tracking_id");
+
+                    b.Property<int>("TotalCatalogedInstanceItem")
+                        .HasColumnType("int")
+                        .HasColumnName("total_cataloged_instance_item");
+
+                    b.Property<int>("TotalCatalogedItem")
+                        .HasColumnType("int")
+                        .HasColumnName("total_cataloged_item");
+
+                    b.Property<int>("TotalInstanceItem")
+                        .HasColumnType("int")
+                        .HasColumnName("total_instance_item");
+
+                    b.Property<int>("TotalItem")
+                        .HasColumnType("int")
+                        .HasColumnName("total_item");
+
+                    b.HasKey("TrackingId")
+                        .HasName("PK_WarehouseTrackingInventory_TrackingId");
+
+                    b.ToTable("Warehouse_Tracking_Inventory", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecord", b =>
@@ -2830,25 +2844,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("CreateByNavigation");
 
                     b.Navigation("FinePolicy");
-                });
-
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Invoice", b =>
-                {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.PaymentMethod", "PaymentMethod")
-                        .WithMany("Invoices")
-                        .HasForeignKey("PaymentMethodId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Invoice_PaymentMethodId");
-
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.User", "User")
-                        .WithMany("Invoices")
-                        .HasForeignKey("UserId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Invoice_UserId");
-
-                    b.Navigation("PaymentMethod");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItem", b =>
@@ -3125,25 +3120,25 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Transaction", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.DigitalBorrow", "DigitalBorrow")
-                        .WithMany("Transactions")
-                        .HasForeignKey("DigitalBorrowId")
-                        .HasConstraintName("FK_Transaction_DigitalBorrowId");
-
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Fine", "Fine")
                         .WithMany("Transactions")
                         .HasForeignKey("FineId")
                         .HasConstraintName("FK_Transaction_FineId");
 
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.Invoice", "Invoice")
-                        .WithMany("Transactions")
-                        .HasForeignKey("InvoiceId")
-                        .HasConstraintName("FK_Transaction_InvoiceId");
-
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCardPackage", "LibraryCardPackage")
                         .WithMany("Transactions")
                         .HasForeignKey("LibraryCardPackageId")
                         .HasConstraintName("FK_Transaction_LibraryCardPackageId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.PaymentMethod", "PaymentMethod")
+                        .WithMany("Transactions")
+                        .HasForeignKey("PaymentMethodId")
+                        .HasConstraintName("FK_Transaction_PaymentMethodId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryResource", "LibraryResource")
+                        .WithMany("Transactions")
+                        .HasForeignKey("ResourceId")
+                        .HasConstraintName("FK_Transaction_ResourceId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.User", "User")
                         .WithMany("Transactions")
@@ -3151,13 +3146,13 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_Transaction_UserId");
 
-                    b.Navigation("DigitalBorrow");
-
                     b.Navigation("Fine");
 
-                    b.Navigation("Invoice");
-
                     b.Navigation("LibraryCardPackage");
+
+                    b.Navigation("LibraryResource");
+
+                    b.Navigation("PaymentMethod");
 
                     b.Navigation("User");
                 });
@@ -3246,6 +3241,18 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("WarehouseTracking");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.WarehouseTrackingInventory", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.WarehouseTracking", "WarehouseTracking")
+                        .WithOne("WarehouseTrackingInventory")
+                        .HasForeignKey("FPTU_ELibrary.Domain.Entities.WarehouseTrackingInventory", "TrackingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_WarehouseTrackingInventory_TrackingId");
+
+                    b.Navigation("WarehouseTracking");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Author", b =>
                 {
                     b.Navigation("LibraryItemAuthors");
@@ -3270,11 +3277,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("WarehouseTrackingDetails");
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrow", b =>
-                {
-                    b.Navigation("Transactions");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
                     b.Navigation("BorrowRecords");
@@ -3292,11 +3294,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.FinePolicy", b =>
                 {
                     b.Navigation("Fines");
-                });
-
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Invoice", b =>
-                {
-                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryCard", b =>
@@ -3371,6 +3368,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("DigitalBorrows");
 
                     b.Navigation("LibraryItemResources");
+
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibrarySection", b =>
@@ -3399,7 +3398,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.PaymentMethod", b =>
                 {
-                    b.Navigation("Invoices");
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Supplier", b =>
@@ -3430,8 +3429,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     b.Navigation("DigitalBorrows");
 
-                    b.Navigation("Invoices");
-
                     b.Navigation("LibraryItemReviews");
 
                     b.Navigation("NotificationRecipients");
@@ -3446,6 +3443,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.WarehouseTracking", b =>
                 {
                     b.Navigation("WarehouseTrackingDetails");
+
+                    b.Navigation("WarehouseTrackingInventory")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

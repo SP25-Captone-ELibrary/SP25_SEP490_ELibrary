@@ -140,14 +140,20 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [LibraryCards]
 				if (!await _context.LibraryCards.AnyAsync()) await SeedLibraryCardAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryCard");
-            	// [FinePolicy]
+				
+				// [Suppliers]
+				if (!await _context.Suppliers.AnyAsync()) await SeedSupplierAsync();
+				else _logger.Information("Already seed data for table {0}", "Supplier");
+            	
+				// [FinePolicies]
 				if (!await _context.FinePolicies.AnyAsync()) await SeedFinePoliciesAsync();
 				else _logger.Information("Already seed data for table {0}", "FinePolicies");
-				// [Fine]
+				
+				// [Fines]
 				// if (!await _context.Fines.AnyAsync()) await SeedFinesAsync();
 				// else _logger.Information("Already seed data for table {0}", "Fines");
             
-				//[PaymentMethod]
+				// [PaymentMethods]
 				if (!await _context.PaymentMethods.AnyAsync()) await SeedPaymentMethodsAsync();
 				else _logger.Information("Already seed data for table {0}", "PaymentMethods");
             }
@@ -435,12 +441,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					MethodName = PaymentType.PayOS.ToString()
-				},
-				
-				new()
-				{
-					MethodName = PaymentType.Cash.ToString()
-				},
+				}
 			};
 			await _context.PaymentMethods.AddRangeAsync(paymentMethods);	
 			
@@ -1070,12 +1071,12 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				admin.LibraryCard = new()
 				{
 					FullName = $"{admin.FirstName} {admin.LastName}",
-					Avatar = admin.Avatar ?? string.Empty,
+					Avatar = "https://img.freepik.com/free-photo/serious-young-african-man-standing-isolated_171337-9633.jpg",
 					Barcode = DatabaseInitializerExtensions.GenerateBarcode("EC"),
 					IssuanceMethod = LibraryCardIssuanceMethod.Online,
 					Status = LibraryCardStatus.Active,
 					IsExtended = false,
-					IsReminderSent = false,
+					IsReminderSent = true,
 					ExtensionCount = 0,
 					IssueDate = DateTime.Now,
 					ExpiryDate = DateTime.Now.AddYears(2),
@@ -1519,7 +1520,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    PublicationPlace = "Hà Nội",
 				    ClassificationNumber = "330",
 				    CutterNumber = "L512T",
-				    Isbn = "9786041567892",
+				    Isbn = "9787127440582",
 				    Ean = "8934567890123",
 				    EstimatedPrice = 200000M,
 				    PageCount = 320,
@@ -1565,7 +1566,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    PublicationPlace = "Hà Nội",
 				    ClassificationNumber = "158",
 				    CutterNumber = "C512D",
-				    Isbn = "9786041789456",
+				    Isbn = "9788703856117",
 				    Ean = "8937890123456",
 				    EstimatedPrice = 150000M,
 				    PageCount = 400,
@@ -1703,7 +1704,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        PublicationPlace = "Hà Nội",
 			        ClassificationNumber = "895.922",
 			        CutterNumber = "NTA",
-			        Isbn = "9786043123458",
+			        Isbn = "9785862430813",
 			        Ean = "8934567890678",
 			        EstimatedPrice = 300000M,
 			        PageCount = 1000,
@@ -1785,6 +1786,161 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	        var saveSucc = await _context.SaveChangesAsync() > 0;
 	        if(saveSucc) _logger.Information("Seed library item reviews successfully.");
         }
+        
+        //	Summary:
+        //		Seed supplier
+        private async Task SeedSupplierAsync()
+		{
+		    List<Supplier> suppliers = new()
+		    {
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Trẻ",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Nguyễn Văn A",
+		            ContactEmail = "contact@xuatbantre.vn",
+		            ContactPhone = "0123456789",
+		            Address = "123 Đường Lê Lợi, Quận 1",
+		            Country = "Việt Nam",
+		            City = "TP.HCM",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Kim Đồng",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Trần Thị B",
+		            ContactEmail = "info@kimdong.com",
+		            ContactPhone = "0987654321",
+		            Address = "456 Phố Huế, Hà Nội",
+		            Country = "Việt Nam",
+		            City = "Hà Nội",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Giáo Dục",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Lê Văn C",
+		            ContactEmail = "contact@giaoduc.vn",
+		            ContactPhone = "0912345678",
+		            Address = "789 Đường Cách Mạng, Hà Nội",
+		            Country = "Việt Nam",
+		            City = "Hà Nội",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Văn Học",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Phạm Thị D",
+		            ContactEmail = "info@vanhoc.vn",
+		            ContactPhone = "0934567890",
+		            Address = "321 Đường Lê Duẩn, TP.HCM",
+		            Country = "Việt Nam",
+		            City = "TP.HCM",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Tổng Hợp",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Hoàng Văn E",
+		            ContactEmail = "contact@tonghop.vn",
+		            ContactPhone = "0976543210",
+		            Address = "654 Đường Nguyễn Trãi, TP.HCM",
+		            Country = "Việt Nam",
+		            City = "TP.HCM",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Khoa Học",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Đỗ Thị F",
+		            ContactEmail = "info@khoahoc.vn",
+		            ContactPhone = "0901234567",
+		            Address = "987 Đường Hai Bà Trưng, Hà Nội",
+		            Country = "Việt Nam",
+		            City = "Hà Nội",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Văn Nghệ",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Vũ Văn G",
+		            ContactEmail = "contact@vannghe.vn",
+		            ContactPhone = "0945678901",
+		            Address = "135 Đường Trần Hưng Đạo, Đà Nẵng",
+		            Country = "Việt Nam",
+		            City = "Đà Nẵng",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Sách Bách Khoa",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Ngô Thị H",
+		            ContactEmail = "info@sachbachkhoa.vn",
+		            ContactPhone = "0967890123",
+		            Address = "246 Đường Lý Thường Kiệt, Hà Nội",
+		            Country = "Việt Nam",
+		            City = "Hà Nội",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Văn Hóa",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Bùi Văn I",
+		            ContactEmail = "contact@vanhoa.vn",
+		            ContactPhone = "0923456789",
+		            Address = "357 Đường Phan Đình Phùng, TP.HCM",
+		            Country = "Việt Nam",
+		            City = "TP.HCM",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        },
+		        new Supplier
+		        {
+		            SupplierName = "Nhà Xuất Bản Cổ Truyền",
+		            SupplierType = SupplierType.Publisher,
+		            ContactPerson = "Trương Thị J",
+		            ContactEmail = "info@cotruyen.vn",
+		            ContactPhone = "0911122233",
+		            Address = "468 Đường Nguyễn Huệ, TP.HCM",
+		            Country = "Việt Nam",
+		            City = "TP.HCM",
+		            IsDeleted = false,
+		            IsActive = true,
+		            CreatedAt = DateTime.Now
+		        }
+		    };
+
+		    // Add range 
+		    await _context.Suppliers.AddRangeAsync(suppliers);
+		    // Save DB
+		    var saveSucc = await _context.SaveChangesAsync() > 0;
+		    if (saveSucc) _logger.Information("Seed supplier successfully.");
+		}
     }
 
 	//	Summary:

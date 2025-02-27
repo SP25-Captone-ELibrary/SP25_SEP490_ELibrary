@@ -1,6 +1,8 @@
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
+namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 
 public class WarehouseTrackingDetailDto
 {
@@ -21,9 +23,6 @@ public class WarehouseTrackingDetailDto
     // Total amount for the detail line
     public decimal TotalAmount { get; set; }
     
-    // Reason for stock-out or adjustment
-    public TrackingDetailReason? Reason { get; set; }
-
     // With specific warehouse tracking 
     public int TrackingId { get; set; }
     
@@ -36,11 +35,21 @@ public class WarehouseTrackingDetailDto
     // Condition
     public int ConditionId { get; set; }
     
+    // Stock transaction type
+    public StockTransactionType StockTransactionType { get; set; }
+    
     // Creation, update datetime 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
+    
+    // Barcode range 
+    public string? BarcodeRangeFrom { get; set; } = null!;
+    public string? BarcodeRangeTo { get; set; }
+
+    // Mark as is glue barcode 
+    public bool HasGlueBarcode { get; set; }
     
     // Navigation properties
     public LibraryItemDto? LibraryItem { get; set; }

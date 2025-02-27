@@ -1,7 +1,9 @@
 using System.Globalization;
 using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Exceptions;
@@ -20,6 +22,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -28,28 +31,41 @@ public class WarehouseTrackingDetailService :
     GenericService<WarehouseTrackingDetail, WarehouseTrackingDetailDto, int>,
     IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>
 {
+    private readonly AppSettings _appSettings;
+    private readonly ICloudinaryService _cloudSvc;
+    
+    private readonly IAuthorService<AuthorDto> _authorSvc;
     private readonly ICategoryService<CategoryDto> _cateSvc;
     private readonly ILibraryItemService<LibraryItemDto> _itemSvc;
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
+    private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceSvc;
     private readonly IWarehouseTrackingService<WarehouseTrackingDto> _trackingSvc;
 
     public WarehouseTrackingDetailService(
+	    IAuthorService<AuthorDto> authorSvc,
 	    ICategoryService<CategoryDto> cateSvc,
 	    ILibraryItemService<LibraryItemDto> itemSvc,
+	    ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceSvc,
 	    ILibraryItemConditionService<LibraryItemConditionDto> conditionSvc,
 	    IWarehouseTrackingService<WarehouseTrackingDto> trackingSvc,
+	    ICloudinaryService cloudSvc,
+	    IOptionsMonitor<AppSettings> monitor,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+	    _appSettings = monitor.CurrentValue;
+	    _authorSvc = authorSvc;
 	    _cateSvc = cateSvc;
+	    _cloudSvc = cloudSvc;
 	    _itemSvc = itemSvc;
+	    _itemInstanceSvc = itemInstanceSvc;
         _trackingSvc = trackingSvc;
         _conditionSvc = conditionSvc;
     }
 
-    public override async Task<IServiceResult> GetByIdAsync(int id)
+    public async Task<IServiceResult> GetDetailAsync(int id)
     {
 	    try
 	    {
@@ -71,11 +87,14 @@ public class WarehouseTrackingDetailService :
 						Isbn = w.Isbn,
 						UnitPrice = w.UnitPrice,
 						TotalAmount = w.TotalAmount,
-						Reason = w.Reason,
+						StockTransactionType = w.StockTransactionType,
 						TrackingId = w.TrackingId,
 						LibraryItemId = w.LibraryItemId,
 						CategoryId = w.CategoryId,
 						ConditionId = w.ConditionId,
+						BarcodeRangeFrom = w.BarcodeRangeFrom,
+						BarcodeRangeTo = w.BarcodeRangeFrom,
+						HasGlueBarcode = w.HasGlueBarcode,
 						CreatedAt = w.CreatedAt,
 						UpdatedAt = w.UpdatedAt,
 						CreatedBy = w.CreatedBy,
@@ -125,7 +144,6 @@ public class WarehouseTrackingDetailService :
 			                    // References
 			                    Category = w.LibraryItem.Category,
 			                    Shelf = w.LibraryItem.Shelf,
-			                    LibraryItemGroup = w.LibraryItem.LibraryItemGroup,
 			                    LibraryItemInventory = w.LibraryItem.LibraryItemInventory,
 			                    LibraryItemInstances = w.LibraryItem.LibraryItemInstances.Select(li => new LibraryItemInstance()
 			                    {
@@ -150,7 +168,27 @@ public class WarehouseTrackingDetailService :
 			                    }).ToList()
 							}
 							: null,
-						WarehouseTracking = w.WarehouseTracking,
+						WarehouseTracking = new WarehouseTracking()
+						{
+							TrackingId = w.WarehouseTracking.TrackingId,
+							SupplierId = w.WarehouseTracking.SupplierId,
+							ReceiptNumber = w.WarehouseTracking.ReceiptNumber,
+							TotalItem = w.WarehouseTracking.TotalItem,
+							TotalAmount = w.WarehouseTracking.TotalAmount,
+							TrackingType = w.WarehouseTracking.TrackingType,
+							TransferLocation = w.WarehouseTracking.TransferLocation,
+							Description = w.WarehouseTracking.Description,
+							Status = w.WarehouseTracking.Status,
+							ExpectedReturnDate = w.WarehouseTracking.ExpectedReturnDate,
+							ActualReturnDate = w.WarehouseTracking.ActualReturnDate,
+							EntryDate = w.WarehouseTracking.EntryDate,
+							CreatedAt = w.WarehouseTracking.CreatedAt,
+							UpdatedAt = w.WarehouseTracking.UpdatedAt,
+							CreatedBy = w.WarehouseTracking.CreatedBy,
+							UpdatedBy = w.WarehouseTracking.UpdatedBy,
+							Supplier = w.WarehouseTracking.Supplier,
+							WarehouseTrackingInventory = w.WarehouseTracking.WarehouseTrackingInventory
+						},
 						Category = w.Category,
 						Condition = w.Condition
 					});
@@ -254,12 +292,64 @@ public class WarehouseTrackingDetailService :
 			       Equals(dto.Isbn, w.Isbn) && 
 			       w.TrackingDetailId != existingEntity.TrackingDetailId)) // Exclude current update entity
 		    {
+			    // Add error
 			    customErrors.Add(
 				    StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
 				    [isEng 
 					    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking detail" 
 					    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong chi tiết theo dõi kho"
 				    ]);
+		    }
+		    
+		    // Check whether reason change with transaction type
+		    if (!Equals(existingEntity.StockTransactionType, dto.StockTransactionType))
+		    {
+			    // Initialize collection of transaction type
+			    var transactionTypes = new List<StockTransactionType>();
+			    // Check for invalid detail tracking type
+			    var transactionTypeRelations = WarehouseTrackingUtils.TransactionTypeRelations;
+			    switch (existingEntity.WarehouseTracking.TrackingType)
+			    {
+				    case TrackingType.StockIn:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.StockIn, out transactionTypes);
+					    break;
+				    case TrackingType.StockOut:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
+					    break;
+				    case TrackingType.Transfer:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+					    break;
+			    }
+			    
+		        if (transactionTypes == null || !transactionTypes.Any())
+	            {
+	                // Add error
+	                customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+		                key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+		                msg: isEng 
+			                ? $"Not found any appropriate stock transaction type for tracking type '{existingEntity.WarehouseTracking.TrackingType.ToString()}'" 
+			                : "Không tìm thấy loại biến động kho phù hợp");
+	            }
+	            else
+	            {
+	                // Convert to str collection
+	                var transactionList = transactionTypes.Select(x => x.ToString()).ToList();
+	                // Convert record transaction type to str
+	                var recordTransactionTypeStr = dto.StockTransactionType.ToString();
+	                
+	                if (!transactionList.Contains(recordTransactionTypeStr))
+	                {
+		                // Add error
+		                customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+			                key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+			                msg: isEng
+				                ? $"'${recordTransactionTypeStr} is invalid. Transaction types must include in '{String.Join(",", transactionList)}'"
+				                : $"Loại biến động kho yêu cầu '{String.Join(",", transactionList)}'");
+	                }
+	            }
 		    }
 		    
 		    // Check whether invoke any error
@@ -284,7 +374,7 @@ public class WarehouseTrackingDetailService :
 		    existingEntity.Isbn = dto.Isbn;
 		    existingEntity.UnitPrice = dto.UnitPrice;
 		    existingEntity.TotalAmount = dto.TotalAmount;
-		    existingEntity.Reason = dto.Reason;
+		    existingEntity.StockTransactionType = dto.StockTransactionType;
 		    existingEntity.CategoryId = dto.CategoryId;
 		    
 		    // Check if there are any differences between the original and the updated entity
@@ -399,7 +489,7 @@ public class WarehouseTrackingDetailService :
 		    throw new Exception("Error invoke when process delete warehouse tracking detail");
 	    }
     }
-
+	
     public async Task<IServiceResult> UpdateItemFromInternalAsync(int trackingDetailId, int libraryItemId)
     {
 	    try
@@ -523,6 +613,14 @@ public class WarehouseTrackingDetailService :
 				}
             }
             
+            // Not allow to update item when tracking type is not StockIn
+            if (existingEntity.WarehouseTracking.TrackingType != TrackingType.StockIn)
+            {
+	            // Msg: Cannot change item when tracking type is stock out or transfer
+	            return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0016,
+		            await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0016));
+            }
+            
             // Check exist library item
             var libraryItemDto = (await _itemSvc.GetByIdAsync(libraryItemId)).Data as LibraryItemDto;
             if (libraryItemDto == null)
@@ -532,20 +630,20 @@ public class WarehouseTrackingDetailService :
                     StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"), false);
             }
             
+            // Check whether warehouse tracking detail has already been placed in other item
+            if (await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(
+	                w => 
+		                w.TrackingId != existingEntity.TrackingId &&
+		                w.LibraryItemId == libraryItemDto.LibraryItemId))
+            {
+	            // Msg: Warehouse tracking detail has already been in other item
+	            return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0013,
+		            await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0013));
+            }
+            
             // Check for item change
             if (!Equals(existingEntity.LibraryItemId, libraryItemId))
             {
-	            // Check whether update already exist item
-	            if (existingEntity.LibraryItemId != null)
-	            {
-		            // Fail to update
-		            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-			            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003) + 
-			            (isEng 
-				            ? " as item already exist in warehouse tracking detail" 
-				            : " vì tài liệu đã tồn tại cho chi tiết dữ liệu nhập kho"), false);
-	            }
-	            
 	            // Check match ISBN (only process when item include ISBN)
 	            if (!string.IsNullOrEmpty(libraryItemDto.Isbn) && !Equals(existingEntity.Isbn, libraryItemDto.Isbn))
 	            {
@@ -614,8 +712,8 @@ public class WarehouseTrackingDetailService :
 		    var isEng = lang == SystemLanguage.English;
             
 		    // Check existing tracking id 
-		    var trackingEntity = (await _trackingSvc.GetByIdAsync(trackingId)).Data as WarehouseTrackingDto;
-		    if (trackingEntity == null)
+		    var trackingDto = (await _trackingSvc.GetByIdAsync(trackingId)).Data as WarehouseTrackingDto;
+		    if (trackingDto == null)
 		    {
 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -624,8 +722,8 @@ public class WarehouseTrackingDetailService :
 		    else
 		    {
 			    // Check for change detail of completed or cancelled warehouse tracking 
-			    if (trackingEntity.Status == WarehouseTrackingStatus.Completed ||
-			        trackingEntity.Status == WarehouseTrackingStatus.Cancelled)
+			    if (trackingDto.Status == WarehouseTrackingStatus.Completed ||
+			        trackingDto.Status == WarehouseTrackingStatus.Cancelled)
 			    {
 				    // Msg: Cannot change data as warehouse tracking was completed or cancelled
 				    return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0009,
@@ -645,25 +743,475 @@ public class WarehouseTrackingDetailService :
 		    
 		    // Custom errors
 		    var customErrors = new Dictionary<string, string[]>();
-		    // Check exist ISBN
-		    if(!string.IsNullOrEmpty(dto.Isbn) && 
-		       await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w => 
-			       Equals(dto.Isbn, w.Isbn)))
+		    
+		    // Check exist category
+		    var categoryDto = (await _cateSvc.GetByIdAsync(dto.CategoryId)).Data as CategoryDto;
+		    if (categoryDto == null)
 		    {
-			    customErrors.Add(
-				    StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
-				    [isEng 
-					    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking detail" 
-					    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong chi tiết theo dõi kho"
-				    ]);
+			    // Msg: Not found {0}
+			    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			    // Add error
+			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.CategoryId)),
+				    msg: StringUtils.Format(msg, isEng ? "item category" : "phân loại tài liệu"));
+		    }
+		    
+		    // Check exist condition
+		    var isExistCondition = (await _conditionSvc.AnyAsync(c => c.ConditionId == dto.ConditionId)).Data is true;
+		    if (!isExistCondition)
+		    {
+				// Msg: Not found {0}
+				var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				// Add error
+				customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ConditionId)),
+					msg: StringUtils.Format(msg, isEng ? "item condition" : "tình trạng tài liệu"));
+		    }
+			
+		    // Check exist ISBN
+		    var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w =>
+			    Equals(dto.Isbn, w.Isbn) && w.TrackingId == trackingDto.TrackingId);
+		    // Not allow duplicate ISBN in the same warehouse tracking
+		    if(isIsbnExist && trackingDto.TrackingType == TrackingType.StockIn) 
+		    {
+			    // Add error
+			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
+				    msg: isEng
+					    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking {trackingDto.ReceiptNumber}"
+					    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong dữ liệu nhập kho '{trackingDto.ReceiptNumber}'");
+		    }
+		    // Required exist ISBN when tracking type is stock-out or transfer
+		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || trackingDto.TrackingType == TrackingType.Transfer)) 
+		    {
+			    // Add error
+			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
+				    msg: isEng
+					    ? $"ISBN '{dto.Isbn}' must exist when tracking type is stock out or transfer"
+					    : $"Mã ISBN '{dto.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
+		    }
+		    
+			// Initialize field to check already announcement of stock transaction type
+			var isAnnounceTransType = false;
+		    // Set default library item (if null or equals 0)
+		    dto.LibraryItemId ??= 0;
+		    // Check whether create warehouse tracking detail with item
+		    if (dto.LibraryItemId > 0 && dto.LibraryItem != null)
+		    {
+			    // Mark as fail to create
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
+		    }
+		    
+		    // Generate barcode range based on registered warehouse tracking detail
+		    var barcodeRangeRes = (await _itemInstanceSvc.GenerateBarcodeRangeAsync(
+			    categoryId: dto.CategoryId,
+			    totalItem: dto.ItemTotal,
+			    skipItem: 0)).Data as GenerateBarcodeRangeResultDto;
+		    if (barcodeRangeRes != null && barcodeRangeRes.Barcodes.Any())
+		    {
+			    if (dto.LibraryItemId > 0 && dto.LibraryItem == null)
+			    {
+				    // Check transaction type
+				    if (dto.StockTransactionType != StockTransactionType.Additional)
+				    {
+					    // Add error
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+						    msg: isEng 
+							    ? $"Transaction type must be '{StockTransactionType.Additional.ToString()}' when add tracking detail with item's catalog information" 
+							    : $"Loại biến động kho cần chuyển sang '{StockTransactionType.Additional.GetDescription()}' khi tạo dữ liệu nhập kho đi kèm với thông tin biên mục");
+					    
+					    // Set transaction type announcement to prevent duplicate message
+					    isAnnounceTransType = true;
+				    }
+				    else
+				    {
+					    // Check exist library item id 
+					    var libItemDto = (await _itemSvc.GetByIdAsync(
+						    int.Parse(dto.LibraryItemId.ToString() ?? "0"))).Data as LibraryItemDto;
+					    if (libItemDto == null)
+					    {
+						    // Not found {0}
+						    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+						    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+							    StringUtils.Format(errMsg, isEng 
+								? "selected library item for warehouse tracking registered" 
+								: "tài liệu đã chọn cho đăng ký tài liệu nhập kho"));
+					    }
+					    
+					    // Check same category with warehouse tracking
+					    if (!Equals(dto.CategoryId, libItemDto.CategoryId))
+					    {
+						    // Add errors
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.LibraryItem.CategoryId)),
+							    msg: isEng
+								    ? "Category among warehouse tracking detail with catalog item must be the same"
+								    : "Phân loại của dữ liệu nhập kho và tài liệu biên mục đi kèm phải giống nhau");
+					    }
+					    
+					    // Check ISBN match among tracking detail and catalog item
+	                    if (!Equals(dto.Isbn, libItemDto.Isbn))
+	                    {
+	                        // Add errors
+	                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+	                            key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
+	                            msg: isEng
+	                                ? "ISBN is not match with warehouse tracking detail"
+	                                : "Mã ISBN không giống với dữ liệu đăng ký nhập kho");			
+	                    }
+	                    
+	                    // Check unit price match among tracking detail and catalog item
+	                    if (!Equals(dto.UnitPrice, libItemDto.EstimatedPrice))
+	                    {
+	                        // Add errors
+	                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+	                            key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.LibraryItem.EstimatedPrice)),
+	                            msg: isEng
+	                                ? "Estimated price is not match with warehouse tracking detail"
+	                                : "Giá tiền tài liệu không giống với dữ liệu đăng ký nhập kho");	
+	                    }
+					    
+	                    /* Do not create any libary item instance when create warehouse tracking detail
+	                    // Generate list of instance with default condition history
+	                    List<LibraryItemInstanceDto> instances = new();
+	                    foreach (var barcode in barcodeRangeRes.Barcodes)
+	                    {
+		                    instances.Add(new ()
+		                    {
+			                    Barcode = barcode,
+								    
+			                    // Default condition
+			                    LibraryItemConditionHistories = new List<LibraryItemConditionHistoryDto>()
+			                    {
+				                    new()
+				                    {
+					                    ConditionId = dto.ConditionId
+				                    }
+			                    }
+		                    });
+	                    }
+						    
+	                    // Process add range instance to library item
+	                    var addRes = await _itemInstanceSvc.AddRangeToLibraryItemAsync(
+		                    int.Parse(dto.LibraryItemId.ToString() ?? "0"), instances);
+	                    if (addRes.ResultCode != ResultCodeConst.SYS_Success0001)
+	                    {
+		                    // Log Error
+		                    if(addRes.Message != null) _logger.Warning(addRes.Message);
+							    
+		                    // Mark as fail to create
+		                    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+		                    var customMsg = isEng
+			                    ? "Cannot add range library item instances to library item"
+			                    : "Lưu danh sách đăng ký tài liệu nhập thêm thất bại";
+		                    return new ServiceResult(ResultCodeConst.SYS_Fail0001, $"{msg}.{customMsg}");
+	                    }
+	                    
+	                    */
+				    }
+			    }
+			    else if (dto.LibraryItemId == 0 && dto.LibraryItem != null)
+			    {
+				    // Declare library item
+				    var libItem = dto.LibraryItem;
+					// Add validation prefix 
+					var validationPrefix = StringUtils.ToCamelCase(nameof(LibraryItem));
+				    
+				    // Check transaction type
+				    if (dto.StockTransactionType != StockTransactionType.New)
+				    {
+					    // Add error
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+						    msg: isEng 
+								? $"Transaction type must be '{StockTransactionType.New.ToString()}' when add tracking detail with item's catalog information" 
+								: $"Loại biến động kho cần chuyển sang '{StockTransactionType.New.GetDescription()}' khi tạo dữ liệu nhập kho đi kèm với thông tin biên mục");
+					    
+					    // Set transaction type announcement to prevent duplicate message
+					    isAnnounceTransType = true;
+				    }
+				    
+				    // Validate library item
+				    var libItemValidateRes = await ValidatorExtensions.ValidateAsync(dto.LibraryItem);
+				    if (libItemValidateRes != null && !libItemValidateRes.IsValid)
+				    {
+					    // Convert ValidationResult to ValidationProblemsDetails.Errors
+					    var errors = libItemValidateRes.ToProblemDetails().Errors;
+					    foreach (var error in errors)
+					    {
+						    foreach (var value in error.Value)
+						    {
+							    // Add error
+							    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+									key: $"{validationPrefix}.{error.Key}",
+									msg: value);
+						    }
+					    }
+				    }
+				    
+				    // Select list of author ids
+				    var authorIds = libItem.LibraryItemAuthors
+					    .Select(be => be.AuthorId)
+					    .Distinct() // Eliminate same authorId from many library item
+					    .ToList();
+				    // Count total exist result
+				    var countAuthorResult = await _authorSvc.CountAsync(
+					    new BaseSpecification<Author>(ct => authorIds.Contains(ct.AuthorId)));
+				    // Check exist any author not being counted
+				    if (int.TryParse(countAuthorResult.Data?.ToString(), out var totalAuthor) // Parse result to integer
+				        && totalAuthor != authorIds.Count) // Not exist 1-many author
+				    {
+					    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0001,
+						    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0001));
+				    }
+				    
+				    // Check same category with warehouse tracking
+				    if (!Equals(dto.CategoryId, libItem.CategoryId))
+				    {
+					    // Add errors
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"{validationPrefix}.{StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.CategoryId))}",
+						    msg: isEng
+							    ? "Category among warehouse tracking detail with catalog item must be the same"
+							    : "Phân loại của dữ liệu nhập kho và tài liệu biên mục đi kèm phải giống nhau");
+				    }
+				    
+				    // Check exist cover image
+				    if (!string.IsNullOrEmpty(libItem.CoverImage))
+				    {
+					    // Initialize field
+					    var isImageOnCloud = true;
+
+					    // Extract provider public id
+					    var publicId = StringUtils.GetPublicIdFromUrl(libItem.CoverImage);
+					    if (publicId != null) // Found
+					    {
+						    // Process check exist on cloud			
+						    isImageOnCloud = (await _cloudSvc.IsExistAsync(publicId, FileType.Image)).Data is true;
+					    }
+
+					    if (!isImageOnCloud || publicId == null) // Not found image or public id
+					    {
+						    // Add error
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+							    key: $"{validationPrefix}.{StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.LibraryItem.CoverImage))}",
+							    msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+					    }
+				    }
+				    
+				    // Check exist condition id 
+				    var isConditionExist = (await _conditionSvc.AnyAsync(c => c.ConditionId == dto.ConditionId)).Data is true;
+				    if (!isConditionExist)
+				    {
+					    // Add error
+					    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ConditionId)),
+						    msg: StringUtils.Format(msg, isEng ? "item condition" : "trình trạng tài liệu"));
+				    }
+				    
+				    /* Do not create any library item instance when create warehouse tracking detail
+				    // Initialize hash set of string to check unique of barcode
+				    var itemInstanceBarcodes = new HashSet<string>();
+				    // Iterate each library item instance (if any) to check valid data
+		            var listItemInstances = libItem.LibraryItemInstances.ToList();
+		            for (int j = 0; j < listItemInstances.Count; ++j)
+		            {
+		                var iInstance = listItemInstances[j];
+
+		                if (itemInstanceBarcodes.Add(iInstance.Barcode)) // Add to hash set string to ensure uniqueness
+		                {
+		                    // Check exist edition copy barcode within DB
+		                    var isCodeExist = await _unitOfWork.Repository<LibraryItemInstance, int>()
+		                        .AnyAsync(x => x.Barcode == iInstance.Barcode);
+		                    if (isCodeExist)
+		                    {
+		                        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0005);
+		                        // Add errors
+		                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+		                            key: $"{validationPrefix}.libraryItemInstances[{j}].barcode",
+		                            msg: StringUtils.Format(errMsg, $"'{iInstance.Barcode}'"));
+		                    }
+		                    else
+		                    {
+		                        // Try to validate with category prefix
+		                        var isValidBarcode =
+		                            StringUtils.IsValidBarcodeWithPrefix(iInstance.Barcode, categoryDto!.Prefix);
+		                        if (!isValidBarcode)
+		                        {
+		                            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0006);
+		                            // Add errors
+		                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+		                                key: $"{validationPrefix}.libraryItemInstances[{j}].barcode",
+		                                msg: StringUtils.Format(errMsg, $"'{categoryDto.Prefix}'"));
+		                        }
+		                        
+		                        // Try to validate barcode length
+		                        var barcodeNumLength = iInstance.Barcode.Length - categoryDto.Prefix.Length; 
+		                        if (barcodeNumLength != _appSettings.InstanceBarcodeNumLength) // Different from threshold value
+		                        {
+		                            // Add errors
+		                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+		                                key: $"{validationPrefix}.libraryItemInstances[{j}].barcode",
+		                                msg: isEng 
+		                                    ? $"Total barcode number after prefix must equals to {_appSettings.InstanceBarcodeNumLength}"
+		                                    : $"Tổng chữ số sau tiền tố phải bằng {_appSettings.InstanceBarcodeNumLength}"
+		                            );
+		                        }
+		                    }
+		                }
+		                else // Duplicate found
+		                {
+		                    // Add error 
+		                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+		                        key: $"{validationPrefix}.libraryItemInstances[{j}].barcode",
+		                        msg: isEng
+		                            ? $"Barcode '{iInstance.Barcode}' is duplicated"
+		                            : $"Số đăng ký cá biệt '{iInstance.Barcode}' đã bị trùng"
+		                    );
+		                }
+
+		                // Default status
+		                iInstance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+		                // Boolean 
+		                iInstance.IsDeleted = false;
+		            }
+				    
+		            // Check whether total instance is equal to total warehouse tracking detail registered item
+		            if (dto.ItemTotal < listItemInstances.Count || dto.ItemTotal > listItemInstances.Count)
+		            {
+			            // Add errors
+			            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				            key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ItemTotal)),
+				            msg: isEng
+					            ? "Total item instance must equal to registered warehouse tracking item total"
+					            : "Tổng số lượng bản sao biên mục phải bằng với tổng số lượng tài liệu đăng ký nhập kho");	
+		            }
+		            
+		            */
+		            
+				    // Check ISBN match among tracking detail and catalog item
+		            if (!Equals(dto.Isbn, libItem.Isbn))
+		            {
+			            // Add errors
+			            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				            key: $"{validationPrefix}.{StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn))}",
+				            msg: isEng
+					            ? "ISBN is not match with warehouse tracking detail"
+					            : "Mã ISBN không giống với dữ liệu đăng ký nhập kho");			
+		            }
+		            
+		            // Check unit price match among tracking detail and catalog item
+		            if (!Equals(dto.UnitPrice, libItem.EstimatedPrice))
+		            {
+			            // Add errors
+			            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				            key: $"{validationPrefix}.{StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.LibraryItem.EstimatedPrice))}",
+				            msg: isEng
+					            ? "Estimated price is not match with warehouse tracking detail"
+					            : "Giá tiền tài liệu không giống với dữ liệu đăng ký nhập kho");	
+		            }
+		            
+				    // Add library item default value
+				    libItem.IsTrained = false;
+				    libItem.IsDeleted = false;
+				    libItem.CanBorrow = false;
+				    
+			    }
+			    else
+			    {
+				    // Create without including cataloged item or item need to be cataloged along with
+			    }
+			    
+			    // Assign barcode range to warehouse tracking detail
+			    dto.BarcodeRangeFrom = barcodeRangeRes.BarcodeRangeFrom;
+			    dto.BarcodeRangeTo = barcodeRangeRes.BarcodeRangeTo;
+			    dto.HasGlueBarcode = false;
+			    
+			    // Initialize collection of transaction type
+			    var transactionTypes = new List<StockTransactionType>();
+			    // Check for invalid detail tracking type
+			    var transactionTypeRelations = WarehouseTrackingUtils.TransactionTypeRelations;
+			    switch (trackingDto.TrackingType)
+			    {
+				    case TrackingType.StockIn:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.StockIn, out transactionTypes);
+					    break;
+				    case TrackingType.StockOut:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
+					    break;
+				    case TrackingType.Transfer:
+					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+					    break;
+			    }
+			    
+		        if (transactionTypes == null || !transactionTypes.Any())
+	            {
+	                // Add error
+	                customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+		                key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+		                msg: isEng 
+			                ? $"Not found any appropriate stock transaction type for tracking type '{trackingDto.TrackingType.ToString()}'" 
+			                : "Không tìm thấy loại biến động kho phù hợp");
+	            }
+	            else if(!isAnnounceTransType)
+	            {
+	                // Convert to str collection
+	                var transactionList = transactionTypes.Select(x => x.ToString()).ToList();
+	                // Convert record transaction type to str
+	                var recordTransactionTypeStr = dto.StockTransactionType.ToString();
+	                
+	                if (!transactionList.Contains(recordTransactionTypeStr))
+	                {
+		                // Add error
+		                customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+			                key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.StockTransactionType)),
+			                msg: isEng
+				                ? $"'${recordTransactionTypeStr} is invalid. Transaction types must include in '{String.Join(", ", transactionList)}'"
+				                : $"Loại biến động kho yêu cầu '{String.Join(", ", transactionTypes.Select(t => t.GetDescription()))}'");
+	                }
+	            }
+		    }
+		    else
+		    {
+			    // Mark as fail to create
+			    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+			    var customMsg = isEng
+				    ? "Cannot generate barcode range for one or many warehouse tracking detail"
+				    : "Lỗi xảy ra khi tạo số ĐKCB cho 1 hoặc nhiều tài liệu đăng ký nhập kho";
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0001, $"{msg}.{customMsg}");
 		    }
 		    
 		    // Check whether invoke any error
 		    if(customErrors.Any()) throw new UnprocessableEntityException("Invalid data", customErrors);
 		    
+		    // Update tracking inventory without saving
+		    var inventory = trackingDto.WarehouseTrackingInventory;		    
+		    
+		    // Check whether transaction type is 'New' or 'Additional'
+		    if ((dto.LibraryItemId != null && dto.LibraryItemId > 0) || dto.LibraryItem != null)
+		    {
+			    // Increase inventory cataloged item
+			    inventory.TotalCatalogedItem++;
+			    inventory.TotalCatalogedInstanceItem += dto.ItemTotal;
+		    }
+		    // Update default inventory amount
+		    inventory.TotalItem++;
+		    inventory.TotalInstanceItem += dto.ItemTotal;
+		    
 		    // Add tracking id to dto 
 		    dto.TrackingId = trackingId;
+		    // Set null if libraryItemId is zero
+		    if (dto.LibraryItemId == 0) dto.LibraryItemId = null;
 		    
+		    // Process update inventory without save change
+		    await _trackingSvc.UpdateInventoryWithoutSaveChanges(trackingId, trackingDto);
 		    // Progress add tracking detail to tracking 
 		    await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AddAsync(_mapper.Map<WarehouseTrackingDetail>(dto));
 		    // Save to DB
@@ -780,8 +1328,8 @@ public class WarehouseTrackingDetailService :
 		    var isEng = lang == SystemLanguage.English;
 			   
 		    // Check existing tracking id 
-		    var isTrackingExist = (await _trackingSvc.AnyAsync(x => x.TrackingId == trackingId)).Data is true;
-		    if (!isTrackingExist)
+		    var trackingDto = (await _trackingSvc.GetByIdAndIncludeInventoryAsync(trackingId)).Data as WarehouseTrackingDto;
+		    if (trackingDto == null)
 		    {
 			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -800,7 +1348,7 @@ public class WarehouseTrackingDetailService :
 		    // Apply include
 		    detailSpec.ApplyInclude(q => q
 			    .Include(w => w.LibraryItem)
-			    .ThenInclude(li => li!.LibraryItemInventory)
+					.ThenInclude(li => li!.LibraryItemInventory)
 			    .Include(w => w.Category)
 		    );
 		    
@@ -846,6 +1394,7 @@ public class WarehouseTrackingDetailService :
 			    
 			    // Convert to combined dto 
 			    var combinedDto = detailDtos.ToDetailCombinedDto(
+				    trackingDto: trackingDto,
 				    categories: categoryDtos,
 				    pageIndex: detailSpec.PageIndex,
 				    pageSize: detailSpec.PageSize,
@@ -897,7 +1446,8 @@ public class WarehouseTrackingDetailService :
 		    }
 		    
             // Add tracking filtering 
-            detailSpec.AddFilter(w => w.TrackingId == trackingId && w.LibraryItemId == null);
+            detailSpec.AddFilter(w => w.TrackingId == trackingId && w.LibraryItemId == null && 
+                                      w.WarehouseTracking.TrackingType == TrackingType.StockIn); // Retrieve stock-in only
 		    
             // Count total library items
             var totalDetailWithSpec = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().CountAsync(detailSpec);
@@ -987,8 +1537,8 @@ public class WarehouseTrackingDetailService :
             if (validationResult != null && !validationResult.IsValid)
             {
                 // Response the uploaded file is not supported
-                throw new NotSupportedException(
-                    await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+                return new ServiceResult(ResultCodeConst.File_Warning0001,
+	                await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
             }
             
             // Csv config
@@ -1004,7 +1554,7 @@ public class WarehouseTrackingDetailService :
 	            CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<WarehouseTrackingDetailCsvRecord>(
 		            file: file, 
 		            config: csvConfig,
-		            props: new ExcelHeaderProps()
+		            props: new ExcelProps()
 		            {
 			            // Header start from row 2-3
 			            FromRow = 2,
@@ -1016,7 +1566,6 @@ public class WarehouseTrackingDetailService :
 		            },
 		            encodingType: null,
 		            systemLang: lang);
-            
             if(readResp.Errors.Any())
             {
                 var errorResps = readResp.Errors.Select(x => new ImportErrorResultDto()
@@ -1033,7 +1582,10 @@ public class WarehouseTrackingDetailService :
             readResp.Records = readResp.Records.Where(r => !string.IsNullOrEmpty(r.ItemName)).ToList();
             
             // Try to detect wrong data
-            var wrongDataErrs = await DetectWrongDataAsync(readResp.Records, lang);
+            var wrongDataErrs = await DetectWrongDataAsync(
+	            trackingType: trackingEntity.TrackingType,
+	            records: readResp.Records,
+	            lang: lang);
             if (wrongDataErrs.Any())
             {
                 foreach (var err in wrongDataErrs)
@@ -1087,6 +1639,7 @@ public class WarehouseTrackingDetailService :
                 additionalMsg = handleResult.msg;
             }
             
+            // Retrieve all existing categories
             var categories = (await _cateSvc.GetAllAsync()).Data as List<CategoryDto>;
             if (categories == null || !categories.Any())
             {
@@ -1097,6 +1650,7 @@ public class WarehouseTrackingDetailService :
 		                : "phân loại để tiến hành import"));
             }
             
+            // Retrieve all existing conditions
             var conditions = (await _conditionSvc.GetAllAsync()).Data as List<LibraryItemConditionDto>;
             if (conditions == null || !conditions.Any())
             {
@@ -1121,13 +1675,15 @@ public class WarehouseTrackingDetailService :
 	            var condition = conditions.First(c => 
 		            Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) || 
 		            Equals(c.VietnameseName.ToLower(), record.Condition.ToLower()));
-
+	            
 	            // Convert to dto detail
-	            var trackingDetailDto = record.ToWarehouseTrackingDetailDto();
+	            var trackingDetailDto = record.ToWarehouseTrackingDetailDto(categories, conditions);
 	            // Assign category id
 	            trackingDetailDto.CategoryId = category.CategoryId;
 	            // Assign condition id
 	            trackingDetailDto.ConditionId = condition.ConditionId;
+	            // Assign tracking id 
+	            trackingDetailDto.TrackingId = trackingId;
                 // Add to warehouse tracking
                 warehouseTrackingDetails.Add(trackingDetailDto);
             }
@@ -1151,6 +1707,10 @@ public class WarehouseTrackingDetailService :
             return new ServiceResult(ResultCodeConst.SYS_Warning0005,
 	            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0005), false);
         }
+		catch(UnprocessableEntityException)
+		{
+			throw;
+		}
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
@@ -1159,82 +1719,145 @@ public class WarehouseTrackingDetailService :
     }
     
     private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
-    	    List<WarehouseTrackingDetailCsvRecord> records,
-    	    SystemLanguage? lang)
+	    TrackingType trackingType,
+    	List<WarehouseTrackingDetailCsvRecord> records,
+    	SystemLanguage? lang)
+    {
+        // Determine current system language
+        var isEng = lang == SystemLanguage.English;
+        
+        // Initialize error messages (for display purpose)
+        var errorMessages = new Dictionary<int, List<string>>();
+        // Initialize isbn hashset to check duplicates
+        var isbnHashSet = new HashSet<string>();
+		
+        // Default row index set to second row, as first row is header
+        var currDataRow = 2;
+        // Check exist category for each record
+        for (int i = 0; i < records.Count; i++)
         {
-    	    // Determine current system language
-    	    var isEng = lang == SystemLanguage.English;
-            
-    	    // Initialize error messages (for display purpose)
-    	    var errorMessages = new Dictionary<int, List<string>>();
-	        // Initialize isbn hashset to check duplicates
-	        var isbnHashSet = new HashSet<string>();
-			
-    	    // Default row index set to second row, as first row is header
-    	    var currDataRow = 2;
-    	    // Check exist category for each record
-    	    for (int i = 0; i < records.Count; i++)
-    	    {
-    		    var record = records[i];
-    	                
-    		    // Initialize row errors
-    		    var rowErrors = new List<string>();
-    			
-    		    // Check exist category
-    		    if ((await _cateSvc.AnyAsync(c =>
-    			        Equals(c.EnglishName.ToLower(), record.Category.ToLower()) || 
-    			        Equals(c.VietnameseName.ToLower(), record.Category.ToLower())
-    		        )).Data is false)
-    		    {
-    			    rowErrors.Add(isEng ? "Category name not exist" : "Tên phân loại không tồn tại");
-    		    }
-		        
-		        // Check exist condition
-		        if ((await _conditionSvc.AnyAsync(c =>
-			            Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) ||
-			            Equals(c.VietnameseName.ToLower(), record.Condition.ToLower())
-		            )).Data is false)
-		        {
-			        rowErrors.Add(isEng ? "Condition name not exist" : "Tên tình trạng tài liệu không tồn tại");
-		        }
-    		    
-		        var cleanedIsbn = ISBN.CleanIsbn(record.Isbn ?? string.Empty);
-		        if (!string.IsNullOrEmpty(cleanedIsbn)) // Check empty ISBN
-		        {
-			        // Validate ISBN 
-			        if(cleanedIsbn.Length > 13 || !ISBN.IsValid(cleanedIsbn, out _))
-			        {
-				        rowErrors.Add(isEng ? $"ISBN '{record.Isbn}' is not valid" : $"Mã ISBN '{record.Isbn}' không hợp lệ");
-			        }
-			        // Check exist ISBN
-			        if(await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w => 
-				           Equals(cleanedIsbn, w.Isbn)))
-			        {
-				        rowErrors.Add(isEng 
-					        ? $"ISBN '{record.Isbn}' already exist in warehouse tracking detail" 
-					        : $"Mã ISBN '{record.Isbn}' đã tồn tại trong chi tiết theo dõi kho");
-			        }
-			        // Check uniqueness
-			        if (!isbnHashSet.Add(cleanedIsbn))
-			        {
-				        rowErrors.Add(isEng
-					        ? $"ISBN '{record.Isbn}' is duplicated"
-					        : $"ISBN '{record.Isbn}' đã bị trùng");
-			        }
-		        }
-		        
-    		    // If errors exist for specific row, add to the dictionary
-    		    if (rowErrors.Any())
-    		    {
-    			    errorMessages.Add(currDataRow, rowErrors);
-    		    }
+    	    var record = records[i];
+                    
+    	    // Initialize row errors
+    	    var rowErrors = new List<string>();
+	        
+	        // Validate transaction type
+		    if (!Enum.TryParse(record.StockTransactionType, true, out TransactionType transactionType))
+		    {
+			    // Add error
+			    rowErrors.Add(isEng 
+					? $"Stock transaction type '{record.StockTransactionType}' is invalid" 
+					: $"Loại biến động kho '{record.StockTransactionType}' không hợp lệ");
+		    }
+		    
+		    // Initialize collection of transaction type
+		    var transactionTypes = new List<StockTransactionType>();
+		    // Check for invalid detail tracking type
+		    var transactionTypeRelations = WarehouseTrackingUtils.TransactionTypeRelations;
+		    switch (trackingType)
+		    {
+			    case TrackingType.StockIn:
+				    // Try to retrieve all detail transaction type within stock-in tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.StockIn, out transactionTypes);
+				    break;
+			    case TrackingType.StockOut:
+				    // Try to retrieve all detail transaction type within stock-in tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
+				    break;
+			    case TrackingType.Transfer:
+				    // Try to retrieve all detail transaction type within stock-in tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+				    break;
+		    }
+		    
+	        if (transactionTypes == null || !transactionTypes.Any())
+            {
+                // Add error
+                rowErrors.Add(isEng 
+					? $"Not found any appropriate stock transaction type for tracking type '{trackingType.ToString()}'" 
+					: "Không tìm thấy loại biến động kho phù hợp");
+            }
+            else
+            {
+                // Convert to str collection
+                var transactionList = transactionTypes.Select(x => x.ToString()).ToList();
+                // Convert record transaction type to str
+                var recordTransactionTypeStr = transactionType.ToString();
                 
-    		    // Increment the row counter
-    		    currDataRow++;
+                if (!transactionList.Contains(recordTransactionTypeStr))
+                {
+            	    // Add error
+            	    rowErrors.Add(isEng
+            		    ? $"'${recordTransactionTypeStr} is invalid. Transaction types must include in '{String.Join(",", transactionList)}'"
+            		    : $"Loại biến động kho yêu cầu '{String.Join(",", transactionList)}'");
+                }
+            }
+	        
+    	    // Check exist category
+    	    if ((await _cateSvc.AnyAsync(c =>
+    		        Equals(c.EnglishName.ToLower(), record.Category.ToLower()) || 
+    		        Equals(c.VietnameseName.ToLower(), record.Category.ToLower())
+    	        )).Data is false)
+    	    {
+    		    rowErrors.Add(isEng ? "Category name not exist" : "Tên phân loại không tồn tại");
     	    }
-    
-    	    return errorMessages;
+	        
+	        // Check exist condition
+	        if ((await _conditionSvc.AnyAsync(c =>
+		            Equals(c.EnglishName.ToLower(), record.Condition.ToLower()) ||
+		            Equals(c.VietnameseName.ToLower(), record.Condition.ToLower())
+	            )).Data is false)
+	        {
+		        rowErrors.Add(isEng ? "Condition name not exist" : "Tên tình trạng tài liệu không tồn tại");
+	        }
+	        
+	        var cleanedIsbn = ISBN.CleanIsbn(record.Isbn ?? string.Empty);
+	        if (!string.IsNullOrEmpty(cleanedIsbn)) // Check empty ISBN
+	        {
+		        // Validate ISBN 
+		        if(cleanedIsbn.Length > 13 || !ISBN.IsValid(cleanedIsbn, out _))
+		        {
+			        rowErrors.Add(isEng ? $"ISBN '{record.Isbn}' is not valid" : $"Mã ISBN '{record.Isbn}' không hợp lệ");
+		        }
+		        // Check exist ISBN
+		        var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w =>
+			        Equals(cleanedIsbn, w.Isbn));
+		        if(isIsbnExist && trackingType == TrackingType.StockIn) // Not allow duplicate ISBN when tracking type is StockIn
+		        {
+			        rowErrors.Add(isEng 
+				        ? $"ISBN '{record.Isbn}' already exist" 
+				        : $"Mã ISBN '{record.Isbn}' đã tồn tại");
+		        }
+		        // Required exist ISBN when tracking type is stock-out or transfer
+		        else if(!isIsbnExist && 
+		                (trackingType == TrackingType.StockOut || 
+		                 trackingType == TrackingType.Transfer)) 
+		        {
+			        rowErrors.Add(isEng 
+				        ? $"ISBN '{record.Isbn}' must exist when tracking type is stock out or transfer" 
+				        : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
+		        }
+		        // Check uniqueness
+		        if (!isbnHashSet.Add(cleanedIsbn))
+		        {
+			        rowErrors.Add(isEng
+				        ? $"ISBN '{record.Isbn}' is duplicated"
+				        : $"ISBN '{record.Isbn}' đã bị trùng");
+		        }
+	        }
+	        
+    	    // If errors exist for specific row, add to the dictionary
+    	    if (rowErrors.Any())
+    	    {
+    		    errorMessages.Add(currDataRow, rowErrors);
+    	    }
+            
+    	    // Increment the row counter
+    	    currDataRow++;
         }
+
+        return errorMessages;
+    }
         
     private (Dictionary<int, List<string>> Errors, Dictionary<int, List<int>> Duplicates) DetectDuplicatesInFile(
     	List<WarehouseTrackingDetailCsvRecord> records,

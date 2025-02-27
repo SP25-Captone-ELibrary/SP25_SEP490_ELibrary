@@ -11,7 +11,9 @@ public class WarehouseTrackingDetailSpecParams : BaseSpecParams
     public string? Isbn { get; set; }
     public decimal? UnitPrice { get; set; }
     public decimal? TotalAmount { get; set; }
-    public TrackingDetailReason? Reason { get; set; }
+    public string? SupplierName { get; set; }
+    public SupplierType? SupplierType { get; set; }
+    public StockTransactionType? StockTransactionType { get; set; }
     #endregion
     
     // Advanced filter fields:
@@ -19,8 +21,10 @@ public class WarehouseTrackingDetailSpecParams : BaseSpecParams
     // Isbn - text
     // UnitPrice - number
     // TotalAmount - number
+    // Stock transaction type - multiple (pass enum index)
     // Category - multiple (pass ID)
     // LibraryItemCondition - multiple (pass ID)
+    // Supplier - multiple (pass ID)
     // CreatedAt - date range
     // UpdatedAt - date range
     public string[]? F { get; set; } 

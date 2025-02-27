@@ -7,9 +7,11 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItemInstance, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> GenerateBarcodeRangeAsync(int categoryId, int totalItem, int? skipItem);
     Task<IServiceResult> GetByBarcodeAsync(string barcode);
     Task<IServiceResult> CheckExistBarcodeAsync(string barcode);
     Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId, List<TDto> libraryItemInstances);
+    Task<IServiceResult> AddRangeBarcodeWithoutSaveChangesAsync(string isbn, int conditionId, string barcodeRangeFrom, string barcodeRangeTo);
     Task<IServiceResult> UpdateRangeAsync(int libraryItemId, List<TDto> itemInstanceDtos);
     Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId);
     Task<IServiceResult> SoftDeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);

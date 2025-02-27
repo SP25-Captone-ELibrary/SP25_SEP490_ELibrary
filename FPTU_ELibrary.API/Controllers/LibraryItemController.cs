@@ -190,17 +190,6 @@ public class LibraryItemController : ControllerBase
     {
         return Ok(await _libraryItemService.DeleteRangeAsync(req.Ids));
     }
-
-    [Authorize]
-    [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
-    public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportLibraryItemRequest req)
-    {
-       return Ok(await _libraryItemService.ImportAsync(
-           file: req.File,
-           coverImageFiles: req.CoverImageFiles,
-           scanningFields: req.ScanningFields,
-           duplicateHandle: req.DuplicateHandle));
-    }
     
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.Export, Name = nameof(ExportLibraryItemAsync))]
@@ -325,4 +314,17 @@ public class LibraryItemController : ControllerBase
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
     }
+
+    #region Archived Function
+    // [Authorize]
+    // [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
+    // public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportLibraryItemRequest req)
+    // {
+    //    return Ok(await _libraryItemService.ImportAsync(
+    //        file: req.File,
+    //        coverImageFiles: req.CoverImageFiles,
+    //        scanningFields: req.ScanningFields,
+    //        duplicateHandle: req.DuplicateHandle));
+    // }
+    #endregion
 }

@@ -61,9 +61,6 @@ namespace FPTU_ELibrary.Application.Dtos
 		public ICollection<NotificationRecipientDto> NotificationRecipients { get; set; } = new List<NotificationRecipientDto>();
 
 		[JsonIgnore]
-		public ICollection<InvoiceDto> Invoices { get; set; } = new List<InvoiceDto>();
-    
-		[JsonIgnore]
 		public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
     
 		[JsonIgnore]

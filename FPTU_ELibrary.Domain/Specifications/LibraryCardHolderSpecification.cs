@@ -77,6 +77,10 @@ public class LibraryCardHolderSpecification : BaseSpecification<User>
         {
             AddFilter(lch => lch.LibraryCard != null && lch.LibraryCard.IsArchived == specParams.IsArchived);
         }
+        if (specParams.IsDeleted != null) // Is deleted
+        {
+            AddFilter(lch => lch.IsDeleted == specParams.IsDeleted);
+        }
         if (specParams.DobRange != null 
             && specParams.DobRange.Length > 1) // Dob 
         {

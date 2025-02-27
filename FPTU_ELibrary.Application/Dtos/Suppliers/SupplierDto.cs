@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
+namespace FPTU_ELibrary.Application.Dtos.Suppliers;
 
 public class SupplierDto
 {

@@ -46,7 +46,7 @@ public class LibraryCard
     public Guid? PreviousUserId { get; set; }
     
     // Payment information
-    public string TransactionCode { get; set; } = null!;
+    public string? TransactionCode { get; set; }
     
     // Mapping entities
     [JsonIgnore]

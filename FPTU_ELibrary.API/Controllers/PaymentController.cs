@@ -1,62 +1,68 @@
 using System.Security.Claims;
+using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
-using FPTU_ELibrary.API.Payloads.Requests.Payment;
+using FPTU_ELibrary.API.Payloads.Requests.Transaction;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Nest;
 using PayOSCancelPaymentRequest = FPTU_ELibrary.API.Payloads.Requests.Payment.PayOSCancelPaymentRequest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
 public class PaymentController : ControllerBase
 {
-    private readonly IInvoiceService<InvoiceDto> _invoiceService;
+    private readonly AppSettings _appSettings;
+    
+    private readonly IPayOsService _payOsService;
     private readonly ITransactionService<TransactionDto> _transactionService;
-    private readonly AppSettings _monitor;
 
-    public PaymentController(IInvoiceService<InvoiceDto> invoiceService,
+    public PaymentController(
+        IPayOsService payOsService,
         ITransactionService<TransactionDto>transactionService,
-        IOptionsMonitor<AppSettings> monitor
-        )
+        IOptionsMonitor<AppSettings> monitor)
     {
-        _invoiceService = invoiceService;
+        _payOsService = payOsService;
         _transactionService = transactionService;
-        _monitor = monitor.CurrentValue;
+        _appSettings = monitor.CurrentValue;
     }
-
-    [HttpPost(APIRoute.Payment.CreateTransactionDetails, Name = nameof(CreateTransactionDetails))]
-    public async Task<IActionResult> CreateTransactionDetails([FromBody] TransactionDto req)
+    
+    [Authorize]
+    [HttpPost(APIRoute.Payment.CreateTransaction, Name = nameof(CreateTransactionAsync))]
+    public async Task<IActionResult> CreateTransactionAsync([FromBody] CreateTransactionRequest req)
     {
-        return Ok(await _transactionService.CreateAsync(req));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _transactionService.CreateAsync(dto: req.ToTransactionDto(), createdByEmail: email ?? string.Empty));
     }
-    [HttpPost(APIRoute.Payment.CreatePayment, Name = nameof(CreatePayment))]
-    public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentRequest req)
-    {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        return Ok(await _invoiceService.CreatePayment(req.TransactionIds, email));
-    }
+        
+    [Authorize]
     [HttpGet(APIRoute.Payment.GetPayOsPaymentLinkInformation, Name = nameof(GetPayOsPaymentLinkInformation))]
     public async Task<IActionResult> GetPayOsPaymentLinkInformation([FromRoute] string paymentLinkId)
     {
-        return Ok(await _invoiceService.GetLinkInformationAsync(paymentLinkId));
+        return Ok(await _payOsService.GetLinkInformationAsync(paymentLinkId));
     }
+    
+    [Authorize]
     [HttpPost(APIRoute.Payment.CancelPayment, Name = nameof(CancelPayment))]
     public async Task<IActionResult> CancelPayment([FromRoute] string paymentLinkId,[FromBody] PayOSCancelPaymentRequest req)
     {
-        return Ok(await _invoiceService.CancelPayOsPaymentAsync(paymentLinkId,req.CancellationReason,req.TransactionCode));
+        return Ok(await _payOsService.CancelPaymentAsync(
+            paymentLinkId: paymentLinkId, 
+            orderCode: req.OrderCode,
+            cancellationReason: req.CancellationReason));
     }
+    
+    [Authorize]
     [HttpPost(APIRoute.Payment.VerifyPayment, Name = nameof(VerifyPayment))]
-    public async Task<IActionResult> VerifyPayment ([FromBody]PayOSPaymentLinkInformationResponse req)
+    public async Task<IActionResult> VerifyPayment ([FromBody] PayOSPaymentLinkInformationResponseDto req)
     {
-        return Ok(await _invoiceService.VerifyPaymentWebhookDataAsync(req));
+        return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req));
     }
 
     [Authorize]
@@ -66,22 +72,27 @@ public class PaymentController : ControllerBase
         return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
             specParams,
             pageIndex: specParams.PageIndex ?? 1,
-            pageSize: specParams.PageSize ?? _monitor.PageSize), tracked: false));
+            pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
     }
+    
     [Authorize]
-    [HttpGet(APIRoute.Payment.GetOwnTransaction, Name = nameof(GetOwnTransaction))]
+    [HttpGet(APIRoute.Payment.GetPrivacyTransaction, Name = nameof(GetOwnTransaction))]
     public async Task<IActionResult> GetOwnTransaction([FromQuery] TransactionSpecParams specParams)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
-            specParams,
+            specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
-            pageSize: specParams.PageSize ?? _monitor.PageSize,email), tracked: false));
+            pageSize: specParams.PageSize ?? _appSettings.PageSize,
+            email: email), tracked: false));
     }
-    [Authorize]
-    [HttpPatch(APIRoute.Payment.UpdateCashPaymentStatus, Name = nameof(UpdateCashPaymentStatus))]
-    public async Task<IActionResult> UpdateCashPaymentStatus([FromRoute] int id)
-    {
-        return Ok(await _invoiceService.UpdateCashPaymentStatusAsync(id));
-    }
+
+    #region Archived Code
+    // [HttpPost(APIRoute.Payment.CreatePayment, Name = nameof(CreatePaymentAsync))]
+    // public async Task<IActionResult> CreatePaymentAsync([FromBody] CreatePaymentRequest req)
+    // {
+    //     var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+    //     return Ok(await _invoiceService.CreatePayment(req.TransactionIds, email ?? string.Empty));
+    // }
+    #endregion
 }

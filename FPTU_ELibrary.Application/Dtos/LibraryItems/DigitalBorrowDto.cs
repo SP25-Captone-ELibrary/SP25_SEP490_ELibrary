@@ -18,7 +18,4 @@ public class DigitalBorrowDto
     [JsonIgnore]
     public LibraryResourceDto LibraryResource { get; set; } = null!;
     public UserDto User { get; set; } = null!;
-    
-    [JsonIgnore]
-    public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
 }

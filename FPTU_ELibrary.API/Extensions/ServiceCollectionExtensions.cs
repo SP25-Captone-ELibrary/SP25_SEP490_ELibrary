@@ -95,12 +95,37 @@ namespace FPTU_ELibrary.API.Extensions
 			services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
 			// Configure PayOS
 			services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
+			// Configure Payment
+			services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
 			
 			#region Development stage
-
 			if (env.IsDevelopment()) // Is Development env
 			{
+				// Config payOS
+				var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
+				if (payOsConfig != null)
+				{
+	                var payGate = "https://api-merchant.payos.vn";
+	                var paymentUrl = $"{payGate}/v2/payment-requests";
+	                var getPaymentLinkInformation = payGate + "/v2/payment-requests/{0}";
+	                var cancelPaymentUrl = payGate + "/v2/payment-requests/{0}/cancel";
+	                var confirmWebHookUrl = payGate + "/confirm-webhook";
+	                var returnUrl = "http://localhost:3000/payment-return";
+	                var cancelUrl = "http://localhost:3000/payment-cancel";
 
+	                services.Configure<PayOSSettings>(options =>
+	                {
+	                    options.ClientId = payOsConfig.ClientId;
+	                    options.ApiKey = payOsConfig.ApiKey;
+	                    options.ChecksumKey = payOsConfig.ChecksumKey;
+	                    options.ReturnUrl = returnUrl;
+	                    options.CancelUrl = cancelUrl;
+	                    options.PaymentUrl = paymentUrl;
+	                    options.GetPaymentLinkInformationUrl = getPaymentLinkInformation;
+	                    options.CancelPaymentUrl = cancelPaymentUrl;
+	                    options.ConfirmWebHookUrl = confirmWebHookUrl;
+	                });
+				}
 			}
 
 			#endregion
@@ -109,7 +134,31 @@ namespace FPTU_ELibrary.API.Extensions
 
 			else if (env.IsProduction()) // Is Production env
 			{
+				// Config payOS
+				var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
+				if (payOsConfig != null)
+				{
+					var payGate = "https://api-merchant.payos.vn";
+					var paymentUrl = $"{payGate}/v2/payment-requests";
+					var getPaymentLinkInformation = payGate + "/v2/payment-requests/{0}";
+					var cancelPaymentUrl = payGate + "/v2/payment-requests/{0}/cancel";
+					var confirmWebHookUrl = payGate + "/confirm-webhook";
+					var returnUrl = "https://prep4ielts.vercel.app/payment-return";
+					var cancelUrl = "https://prep4ielts.vercel.app/payment-cancel";
 
+					services.Configure<PayOSSettings>(options =>
+					{
+						options.ClientId = payOsConfig.ClientId;
+						options.ApiKey = payOsConfig.ApiKey;
+						options.ChecksumKey = payOsConfig.ChecksumKey;
+						options.ReturnUrl = returnUrl;
+						options.CancelUrl = cancelUrl;
+						options.PaymentUrl = paymentUrl;
+						options.GetPaymentLinkInformationUrl = getPaymentLinkInformation;
+						options.CancelPaymentUrl = cancelPaymentUrl;
+						options.ConfirmWebHookUrl = confirmWebHookUrl;
+					});
+				}
 			}
 
 			#endregion
@@ -138,40 +187,6 @@ namespace FPTU_ELibrary.API.Extensions
 
             return services;
         }
-
-        public static IServiceCollection EstablishApplicationConfiguration(
-            this IServiceCollection services,
-            IConfiguration configuration,
-            IWebHostEnvironment env)
-        {
-            // Cấu hình PayOS
-            var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
-            if (payOsConfig != null)
-            {
-                var payGate = "https://api-merchant.payos.vn";
-                var returnUrl = env.IsDevelopment()
-                    ? "http://localhost:3000/payment-return"
-                    : "https://prep4ielts.vercel.app/payment-return";
-                var cancelUrl = env.IsDevelopment()
-                    ? "http://localhost:3000/payment-cancel"
-                    : "https://prep4ielts.vercel.app/payment-cancel";
-
-                services.Configure<PayOSSettings>(options =>
-                {
-                    options.ClientId = payOsConfig.ClientId;
-                    options.ApiKey = payOsConfig.ApiKey;
-                    options.ChecksumKey = payOsConfig.ChecksumKey;
-                    options.ReturnUrl = returnUrl;
-                    options.CancelUrl = cancelUrl;
-                    options.PaymentUrl = $"{payGate}/v2/payment-requests";
-                    options.GetPaymentLinkInformationUrl = $"{payGate}/v2/payment-requests/{{0}}";
-                    options.CancelPaymentUrl = $"{payGate}/v2/payment-requests/{{0}}/cancel";
-                    options.ConfirmWebHookUrl = "https://api-merchant.payos.vn/confirm-webhook";
-                });
-            }
-            return services;
-        }
-
 
         public static IServiceCollection ConfigureRedis(this IServiceCollection services,
             IConfiguration configuration,

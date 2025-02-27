@@ -19,7 +19,10 @@ public class LibraryCardHolderDto
     
     // Basic user information
     public string Email { get; set; } = null!;
+    public string? FirstName { get; set; } 
+    public string? LastName { get; set; } 
     public string? Phone { get; set; }
+    public string? Avatar { get; set; }
     public string? Address { get; set; }
     public string? Gender { get; set; }
     public DateTime? Dob { get; set; }
@@ -49,9 +52,6 @@ public class LibraryCardHolderDto
     
     public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
     
-    // Payment/Transaction entities
-    public ICollection<InvoiceDto> Invoices { get; set; } = new List<InvoiceDto>();
-    
     public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
     
     // Notifications
@@ -68,6 +68,9 @@ public static class LibraryCardholderDtoExtensions
             RoleId = userDto.RoleId,
             LibraryCardId = userDto.LibraryCardId,
             Email = userDto.Email,
+            FirstName = userDto.FirstName,
+            LastName = userDto.LastName,
+            Avatar = !string.IsNullOrEmpty(userDto.Avatar) ? userDto.Avatar : null,
             Phone = userDto.Phone,
             Address = userDto.Address,
             Gender = userDto.Gender,
@@ -80,7 +83,6 @@ public static class LibraryCardholderDtoExtensions
             ModifiedBy = userDto.ModifiedBy,
             LibraryCard = userDto.LibraryCard,
             NotificationRecipients = userDto.NotificationRecipients,
-            Invoices = new List<InvoiceDto>(),
             Transactions = new List<TransactionDto>(),
             DigitalBorrows = new List<DigitalBorrowDto>(),
             BorrowRequests = new List<BorrowRequestDto>(),

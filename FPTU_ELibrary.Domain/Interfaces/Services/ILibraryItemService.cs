@@ -22,8 +22,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> GetReviewsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> GetRelatedItemsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> GetByInstanceBarcodeAsync(string barcode);
-    Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(
-        ISpecification<LibraryItem> specification, bool tracked = true);
+    Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(ISpecification<LibraryItem> specification, bool tracked = true);
     Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow);
     Task<IServiceResult> SoftDeleteAsync(int id);
     Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);
@@ -34,8 +33,13 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> UpdateStatusAsync(int id);
     Task<IServiceResult> UpdateShelfLocationAsync(int id, int? shelfId);
     Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId);
-    Task<IServiceResult> ImportAsync(
-        IFormFile? file, List<IFormFile> coverImageFiles, 
-        string[]? scanningFields, DuplicateHandle? duplicateHandle = null);
+    Task<IServiceResult> DetectWrongImportDataAsync<TCsvRecord>(int startRowIndex, List<TCsvRecord> records, List<string> coverImageNames);
+    Task<IServiceResult> DetectDuplicatesInFileAsync<TCsvRecord>(List<TCsvRecord> records, string[] scanningFields);
     Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec);
+
+    #region Archived Function
+    // Task<IServiceResult> ImportAsync(
+    //     IFormFile? file, List<IFormFile> coverImageFiles, 
+    //     string[]? scanningFields, DuplicateHandle? duplicateHandle = null);
+    #endregion
 }

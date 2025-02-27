@@ -238,6 +238,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0003 = "Borrow.Success0003";
 		/// <summary>
+		/// [SUCCESS] Register library digital resource success
+		/// </summary>
+		public const string Borrow_Success0004 = "Borrow.Success0004";
+		/// <summary>
+		/// [SUCCESS] Extend expiration date for library digital resource success
+		/// </summary>
+		public const string Borrow_Success0005 = "Borrow.Success0005";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -294,13 +302,42 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0014 = "Borrow.Warning0014";
 		/// <summary>
+		/// [WARNING] Digital resource {0} is borrowing. Cannot not create register
+		/// </summary>
+		public const string Borrow_Warning0015 = "Borrow.Warning0015";
+		/// <summary>
+		/// [WARNING] Digital resource {0} is borrowed but now is in expired status. You can extend expiration date in your borrowed history
+		/// </summary>
+		public const string Borrow_Warning0016 = "Borrow.Warning0016";
+		/// <summary>
+		/// [WARNING] Digital resource {0} not found in borrow history to process extend expiration date
+		/// </summary>
+		public const string Borrow_Warning0017 = "Borrow.Warning0017";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";
+
 		/// <summary>
 		/// [FAIL] An error occured, failed to create borrow record
 		/// </summary>
 		public const string Borrow_Fail0002 = "Borrow.Fail0002";
+		/// <summary>
+		/// [FAIL] Failed to register library digital resource as {0}
+		/// </summary>
+		public const string Borrow_Fail0003 = "Borrow.Fail0003";
+		/// <summary>
+		/// [FAIL] Failed to register library digital resource
+		/// </summary>
+		public const string Borrow_Fail0004 = "Borrow.Fail0004";
+		/// <summary>
+		/// [FAIL] Failed to extend library digital resource as {0}
+		/// </summary>
+		public const string Borrow_Fail0005 = "Borrow.Fail0005";
+		/// <summary>
+        /// [FAIL] Failed to extend library digital resource expiration date
+        /// </summary>
+        public const string Borrow_Fail0006 = "Borrow.Fail0006";
 		#endregion
 		
 		#region Role
@@ -481,6 +518,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Required all item instance to have the same prefix of new category
 		/// </summary>
 		public const string LibraryItem_Warning0014 = "LibraryItem.Warning0014";
+		/// <summary>
+		/// [WARNING] The number of instance item is exceed than default config threshold. Please modify system configuration to continue
+		/// </summary>
+		public const string LibraryItem_Warning0015 = "LibraryItem.Warning0015";
 
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
@@ -566,6 +607,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Warning0013 = "LibraryCard.Warning0013";
 		/// <summary>
+		/// [WARNING] Library card has not paid yet
+		/// </summary>
+		public const string LibraryCard_Warning0014 = "LibraryCard.Warning0014";
+		/// <summary>
 		/// [WARNING] Register library card failed
 		/// </summary>
 		public const string LibraryCard_Fail0001 = "LibraryCard.Fail0001";
@@ -581,6 +626,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Fail to extend library card
 		/// </summary>
 		public const string LibraryCard_Fail0004 = "LibraryCard.Fail0004";
+		/// <summary>
+		/// [WARNING] Register library card failed as {0}
+		/// </summary>
+		public const string LibraryCard_Fail0005 = "LibraryCard.Fail0005";
+		/// <summary>
+		/// [WARNING] Fail to extend library card as {0}
+		/// </summary>
+		public const string LibraryCard_Fail0006 = "LibraryCard.Fail0006";
 		#endregion
 		
 		#region Supplier
@@ -695,48 +748,85 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Cannot process update as exist item has been cataloged
         /// </summary>
         public const string WarehouseTracking_Warning0012 = "WarehouseTracking.Warning0012";
+        /// <summary>
+        /// [WARNING] Warehouse tracking detail has already been in other item
+        /// </summary>
+        public const string WarehouseTracking_Warning0013 = "WarehouseTracking.Warning0013";
+        /// <summary>
+        /// [WARNING] Cannot change data as existing item has been cataloged
+        /// </summary>
+        public const string WarehouseTracking_Warning0014 = "WarehouseTracking.Warning0014";
+        /// <summary>
+        /// [WARNING] Warehouse tracking file type is invalid
+        /// </summary>
+        public const string WarehouseTracking_Warning0015 = "WarehouseTracking.Warning0015";
+        /// <summary>
+        /// [WARNING] Cannot change item when tracking type is stock out or transfer
+        /// </summary>
+        public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
         #endregion
 
-        #region Payment
-
+        #region Transaction
         /// <summary>
-        /// [WARNING] Existed Code
+        /// [SUCCESS] Create payment link successfully
         /// </summary>
-        public const string Payment_Warning0001 = "Payment.Warning0001";
-
+        public const string Transaction_Success0001 = "Transaction.Success0001";
         /// <summary>
-        /// [WARNING] PayOS Warning
+        /// [SUCCESS] Verify payment transaction successfully
         /// </summary>
-        public const string Payment_Warning0002 = "Payment.Warning0002";
+        public const string Transaction_Success0002 = "Transaction.Success0002";
         /// <summary>
-        /// [WARNING] Request to server failed. Not found any response data
+        /// [SUCCESS] Cancel payment transaction successfully
         /// </summary>
-        public const string Payment_Warning0003 = "Payment.Warning0003";
+        public const string Transaction_Success0003 = "Transaction.Success0003";
         /// <summary>
-        /// [WARNING] PayOS Cancel
+        /// [WARNING] Not found library card to process extend expiration date
         /// </summary>
-        public const string Payment_Fail0001 = "Payment.Fail0001";
+        public const string Transaction_Warning0001 = "Transaction.Warning0001";
         /// <summary>
-        /// [SUCCESS] PayOS create payment successfully
+        /// [WARNING] Cannot process create payment for library card register as not found card information
         /// </summary>
-        public const string Payment_Success0001 = "Payment.Success0001";
+        public const string Transaction_Warning0002 = "Transaction.Warning0002";
         /// <summary>
-        /// [SUCCESS] PayOS cancel successfully
+        /// [WARNING] Failed to create payment transaction as existing transaction with pending status
         /// </summary>
-        public const string Payment_Success0002 = "Payment.Success0002";
+        public const string Transaction_Warning0003 = "Transaction.Warning0003";
         /// <summary>
-        /// [SUCCESS] PayOS payment verify Successfully
+        /// [FAIL] Failed to create payment transaction. Please try again
         /// </summary>
-        public const string Payment_Success0003 = "Payment.Success0003";
+        public const string Transaction_Fail0001 = "Transaction.Fail0001";
+        /// <summary>
+        /// [FAIL] Payment object does not exist. Please try again
+        /// </summary>
+        public const string Transaction_Fail0002 = "Transaction.Fail0002";
+        /// <summary>
+        /// [FAIL] You are not allowed to create this type of transaction
+        /// </summary>
+        public const string Transaction_Fail0003 = "Transaction.Fail0003";
+        /// <summary>
+        /// [FAIL] Error has been occurred. Failed to create payment link
+        /// </summary>
+        public const string Transaction_Fail0004 = "Transaction.Fail0004";
+        /// <summary>
+        /// [FAIL] Not found any transaction match to verify
+        /// </summary>
+        public const string Transaction_Fail0005 = "Transaction.Fail0005";
+        /// <summary>
+        /// [FAIL] Failed to verify payment transaction
+        /// </summary>
+        public const string Transaction_Fail0006 = "Transaction.Fail0006";
+        /// <summary>
+        /// [FAIL] Failed to cancel payment transaction
+        /// </summary>
+        public const string Transaction_Fail0007 = "Transaction.Fail0007";
         #endregion
-
+        
         #region Fine
         /// <summary>
         /// [WARNING] Cannot process adding fine when not defined what instance has error
         /// </summary>
         public const string Fine_Warning0001 = "Fine.Warning0001";
         #endregion
-
         #endregion
     }
 }

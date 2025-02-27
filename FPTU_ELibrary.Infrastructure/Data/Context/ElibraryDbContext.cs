@@ -33,7 +33,6 @@ public class ElibraryDbContext : DbContext
     public DbSet<Employee> Employees { get; set; }
     public DbSet<Fine> Fines { get; set; }
     public DbSet<FinePolicy> FinePolicies { get; set; }
-    public DbSet<Invoice> Invoices { get; set; }
     public DbSet<LibraryItemGroup> LibraryItemGroups { get; set; }
     public DbSet<LibraryItem> LibraryItems { get; set; }
     public DbSet<LibraryItemInstance> LibraryItemInstances { get; set; }
