@@ -896,7 +896,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     library_card_package_id = table.Column<int>(type: "int", nullable: true),
                     transaction_method = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     payment_method_id = table.Column<int>(type: "int", nullable: true),
-                    payment_url = table.Column<string>(type: "nvarchar(255)", nullable: true)
+                    qr_code = table.Column<string>(type: "nvarchar(255)", nullable: true)
                 },
                 constraints: table =>
                 {

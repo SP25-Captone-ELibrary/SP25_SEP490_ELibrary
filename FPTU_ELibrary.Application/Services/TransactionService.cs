@@ -313,7 +313,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             if (isCreatePaymentSuccess && payOsPaymentResp.Item3 != null)
             {
                 // Update payment information (if any)
-                dto.PaymentUrl = payOsPaymentResp.Item3.Data.CheckoutUrl;
+                dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
                 
                 // Process create transaction
                 await _unitOfWork.Repository<Transaction, int>().AddAsync(_mapper.Map<Transaction>(dto));
