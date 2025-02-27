@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests.Payment;
 using FPTU_ELibrary.API.Payloads.Requests.Transaction;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -56,8 +58,8 @@ public class PaymentController : ControllerBase
     #endregion
     
     [Authorize]
-    [HttpGet(APIRoute.Payment.GetPrivacyTransaction, Name = nameof(GetOwnTransaction))]
-    public async Task<IActionResult> GetOwnTransaction([FromQuery] TransactionSpecParams specParams)
+    [HttpGet(APIRoute.Payment.GetPrivacyTransaction, Name = nameof(GetPrivacyTransactionAsync))]
+    public async Task<IActionResult> GetPrivacyTransactionAsync([FromQuery] TransactionSpecParams specParams)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
@@ -84,7 +86,7 @@ public class PaymentController : ControllerBase
     
     [Authorize]
     [HttpPost(APIRoute.Payment.CancelPayment, Name = nameof(CancelPayment))]
-    public async Task<IActionResult> CancelPayment([FromRoute] string paymentLinkId,[FromBody] PayOSCancelPaymentRequest req)
+    public async Task<IActionResult> CancelPayment([FromRoute] string paymentLinkId, [FromBody] PayOSCancelPaymentRequest req)
     {
         return Ok(await _payOsService.CancelPaymentAsync(
             paymentLinkId: paymentLinkId, 
@@ -102,9 +104,7 @@ public class PaymentController : ControllerBase
     [HttpPost(APIRoute.Payment.WebhookPayOsReturn)]
     public async Task<IActionResult> WebhookPayOsReturnAsync([FromBody] WebhookType req)
     {
-         _logger.Information("Received data from web hook");
-        await Task.CompletedTask;
-        return Ok();
+        return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req.ToPayOsResponseDto(TransactionStatus.Paid)));
     }
     
     [HttpPost(APIRoute.Payment.WebhookPayOsCancel)]
@@ -116,15 +116,10 @@ public class PaymentController : ControllerBase
     }
     
     [HttpPost(APIRoute.Payment.SendWebhookConfirm)]
-    public async Task<IActionResult> TestAsync()
+    public async Task<IActionResult> TestAsync([FromBody] SendWebhookConfirmRequest req)
     {
         PayOS payOs = new PayOS(_payOsSettings.ClientId, _payOsSettings.ApiKey, _payOsSettings.ChecksumKey);
-        var confirmWebhookUrl = await payOs.confirmWebhook("https://f91b-171-247-155-91.ngrok-free.app/api/payment/pay-os/return?code=00&id=89158b2d3a6a44ef970de02337577a26&cancel=true&status=PAID&orderCode=46800484");
-        // var confirmWebhookUrl =
-        //     await payOs.confirmWebhook(
-        //         "https://7b3b-2402-800-63b6-b04f-e85b-5329-2528-3e5f.ngrok-free.app/api/payment/pay-os/cancel?code=00&id=eb776244be6640b19bf62b28e963d3e5&cancel=true&status=CANCELLED&orderCode=59272");
-
-        return Ok();
+        return Ok(await payOs.confirmWebhook(req.WebhookUrl));
     }
     
     #region Archived Code

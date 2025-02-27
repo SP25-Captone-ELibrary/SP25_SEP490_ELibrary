@@ -8,23 +8,30 @@ using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Constants;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Net.payOS;
 using Net.payOS.Types;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Serilog;
+using Transaction = FPTU_ELibrary.Domain.Entities.Transaction;
 
 namespace FPTU_ELibrary.Application.Services;
 
 public class PayOsService : IPayOsService
 {
+    private const string Hub_Method = "VerifyPaymentStatus";
+    
     private readonly ILogger _logger;
     private readonly IUserService<UserDto> _userService;
     private readonly ISystemMessageService _msgService;
@@ -35,8 +42,11 @@ public class PayOsService : IPayOsService
     private readonly ILibraryCardService<LibraryCardDto> _libCardService;
     private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowService;
 
+    private readonly IHubContext<PaymentHub> _hubContext;
+    
     public PayOsService(
         ILogger logger,
+        IHubContext<PaymentHub> hubContext,
         ISystemMessageService msgService,
         IUserService<UserDto> userService,
         ILibraryCardService<LibraryCardDto> libCardService,
@@ -46,6 +56,7 @@ public class PayOsService : IPayOsService
         IOptionsMonitor<WebTokenSettings> monitor1)
     {
         _logger = logger;
+        _hubContext = hubContext;
         _msgService = msgService;
         _userService = userService;
         _libCardService = libCardService;
@@ -182,7 +193,7 @@ public class PayOsService : IPayOsService
                     if (webhookData != null!) // Success status
                     {
                         DateTimeOffset parsedDateTimeOffset = DateTimeOffset.ParseExact(
-                            webhookData.transactionDateTime, "yyyy-MM-ddTHH:mm:ssK", null);
+                            webhookData.transactionDateTime, "yyyy-MM-dd HH:mm:ss", null);
                         // Transaction datetime
                         transactionDate = parsedDateTimeOffset.DateTime;
                         // Transaction status
@@ -288,6 +299,13 @@ public class PayOsService : IPayOsService
                 if (confirmRes.Data is false) return confirmRes;
             }   
        
+            // Send payment status to realtime hub
+            await _hubContext.Clients.User(userDto.Email).SendAsync(Hub_Method, new
+            {
+                Messsage = successMsg,
+                Status = status
+            });
+            
             // Msg: Verify payment transaction successfully
             return new ServiceResult(ResultCodeConst.Transaction_Success0002, successMsg);
         }
@@ -295,6 +313,89 @@ public class PayOsService : IPayOsService
         // Msg: Failed to verify payment transaction
         return new ServiceResult(ResultCodeConst.Transaction_Fail0006,
             await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0006));
+    }
+
+    public async Task<IServiceResult> CancelPaymentFromWebhookResponseAsync(PayOSPaymentLinkInformationResponseDto req)
+    {
+        try
+        {
+            PayOS payOs = new PayOS(_payOsSettings.ClientId, _payOsSettings.ApiKey, _payOsSettings.ChecksumKey);
+    
+            // Initiate transaction detail
+            string transactionCode = req.Data.OrderCode;
+            
+            // Try to retrieve transaction
+            var transactionSpec = new BaseSpecification<Transaction>(t => 
+                Equals(t.TransactionCode, transactionCode));
+            // Apply include
+            transactionSpec.ApplyInclude(q => 
+                q.Include(t => t.User)
+            );
+            var transactionDto = (await _transactionService.GetWithSpecAsync(transactionSpec)).Data as TransactionDto;
+            if (transactionDto == null)
+            {
+                // Msg: Failed to cancel payment transaction
+                return new ServiceResult(ResultCodeConst.Transaction_Fail0007,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0007));
+            }
+            
+            // Initiate Webhook type
+            WebhookType webhookType = new(
+                req.Code,
+                req.Desc,
+                new WebhookData(
+                    orderCode: long.Parse(req.Data.OrderCode),
+                    amount: (int)req.Data.Transactions[0].Amount,
+                    description: req.Data.Transactions[0].Description,
+                    accountNumber: req.Data.Transactions[0].AccountNumber,
+                    reference: req.Data.Transactions[0].Reference ?? string.Empty,
+                    transactionDateTime: req.Data.Transactions[0].TransactionDateTime,
+                    currency: "VND",
+                    paymentLinkId: req.Data.Id,
+                    code: req.Code,
+                    desc: req.Desc,
+                    counterAccountBankId: req.Data.Transactions[0].CounterAccountBankId,
+                    counterAccountBankName: req.Data.Transactions[0].CounterAccountBankName,
+                    counterAccountName: req.Data.Transactions[0].CounterAccountName,
+                    counterAccountNumber: req.Data.Transactions[0].CounterAccountNumber,
+                    virtualAccountName: req.Data.Transactions[0].VirtualAccountName,
+                    virtualAccountNumber: req.Data.Transactions[0].VirtualAccountNumber ?? string.Empty
+                ),
+                await req.GenerateWebhookSignatureAsync(req.Data.Id, _payOsSettings.ChecksumKey));
+
+            // Verify payment webhook data
+            WebhookData webhookData = payOs.verifyPaymentWebhookData(webhookType);
+
+            // Update transaction status to DB
+            if (webhookData != null!) // Success status
+            {
+                // Process change transaction status to expired by code
+                var cancelRes = await _transactionService.CancelTransactionsByCodeAsync(
+                    transactionCode: transactionCode,
+                    cancellationReason: req.Data.CancellationReason ?? string.Empty);
+                // Msg: Cancel payment transaction successfully
+                if (cancelRes.ResultCode == ResultCodeConst.Transaction_Success0003)
+                {
+                    // Send payment status to realtime hub
+                    await _hubContext.Clients.User(transactionDto.User.Email).SendAsync(Hub_Method, new
+                    {
+                        Messsage = cancelRes,
+                        Status = TransactionStatus.Cancelled
+                    });
+                }
+                
+                return cancelRes;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process cancel payment from webhook response");
+        }
+        
+        // Msg: Failed to cancel payment transaction
+        return new ServiceResult(ResultCodeConst.Transaction_Fail0007,
+            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0007));
     }
     
     public async Task<IServiceResult> CancelPaymentAsync(
