@@ -447,7 +447,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 		        // Not found {0}
 		        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 		        return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-			        StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+			        StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 	        }
             
             // Check whether user has registered card yet

@@ -16,8 +16,8 @@ using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
 
-public class NotificationRecipientService : GenericService<NotificationRecipient, NotificationRecipientDto, int>
-    , INotificationRecipientService<NotificationRecipientDto>
+public class NotificationRecipientService : GenericService<NotificationRecipient, NotificationRecipientDto, int>,
+    INotificationRecipientService<NotificationRecipientDto>
 {
     private readonly IUserService<UserDto> _userService;
 
@@ -30,113 +30,86 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         _userService = userService;
     }
 
-    public async Task<IServiceResult> CreatePrivateNotification(NotificationRecipientDto notification)
+    public async Task<IServiceResult> GetNumberOfUnreadNotificationsAsync(string email)
     {
-        // Initiate service result
-        var serviceResult = new ServiceResult();
-
         try
         {
-            // Validate inputs using the generic validator
-            var validationResult = await ValidatorExtensions.ValidateAsync(notification);
-            // Check for valid validations
-            if (validationResult != null && !validationResult.IsValid)
-            {
-                // Convert ValidationResult to ValidationProblemsDetails.Errors
-                var errors = validationResult.ToProblemDetails().Errors;
-                throw new UnprocessableEntityException("Invalid Validations", errors);
-            }
+            var userDto = (await _userService.GetByEmailAsync(email)).Data as UserDto;
+            if (userDto == null) throw new ForbiddenException();
 
-            // Process add new entity
-            await _unitOfWork.Repository<NotificationRecipient, int>()
-                .AddAsync(_mapper.Map<NotificationRecipient>(notification));
-            // Save to DB
-            if (await _unitOfWork.SaveChangesAsync() > 0)
-            {
-                serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
-                serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-                serviceResult.Data = notification;
-            }
-            else
-            {
-                serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
-                serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
-                serviceResult.Data = false;
-            }
+            // Build spec
+            var baseSpec = new BaseSpecification<NotificationRecipient>(n => 
+                n.RecipientId == userDto.UserId && n.IsRead == false);
+            // Include notification role
+            baseSpec.ApplyInclude(q =>
+                q.Include(u => u.Notification));
+        
+            // Return with count number
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                await _unitOfWork.Repository<NotificationRecipient, int>().CountAsync(baseSpec));
         }
-        catch (UnprocessableEntityException)
+        catch (ForbiddenException)
         {
             throw;
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception(ex.Message);
+            throw new Exception("Error invoke when process get number of unread notifications");
         }
-
-        return serviceResult;
     }
 
-    public async Task<IServiceResult> GetNumberOfUnreadNotifications(string email)
+    public async Task<IServiceResult> UpdateReadStatusAsync(string email)
     {
-        
-        var userResult = await _userService.GetByEmailAsync(email);
-        if (userResult.Data is null)
+        try
         {
-            
+            // Check exist user
+            var user = (await _userService.GetByEmailAsync(email)).Data as UserDto;
+            if (user == null) throw new ForbiddenException();
+
+            // Build spec
+            var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId
+                                                                             && n.IsRead == false);
+            // Include notification role
+            baseSpec.ApplyInclude(q =>
+                q.Include(u => u.Notification));
+            // Retrieve notification with spec
+            var notifications =
+                await _unitOfWork.Repository<NotificationRecipient, int>().GetAllWithSpecAsync(baseSpec);
+            // Convert to list
+            var notificationList = notifications.ToList();
+            if (!notificationList.Any())
+            {
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: true);
+            }
+
+            foreach (var noti in notificationList)
+            {
+                noti.IsRead = true;
+                await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
+            }
+
+            var result = await _unitOfWork.SaveChangesWithTransactionAsync();
+            if (result != -1)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: true);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
         }
-
-        var user = (UserDto)userResult.Data!;
-
-        var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId
-                                                                         && n.IsRead == false);
-        // Include notification role
-        baseSpec.ApplyInclude(q =>
-            q.Include(u => u.Notification));
-        var noti = await _unitOfWork.Repository<NotificationRecipient, int>().GetAllWithSpecAsync(baseSpec);
-        if (!noti.Any())
+        catch (ForbiddenException)
         {
-            var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0001);
-            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errorMsg, "notification-recipient"));
+            throw;
         }
-
-        return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),noti.Count());
-    }
-
-    public async Task<IServiceResult> UpdateReadStatus(string email)
-    {
-        var userResult = await _userService.GetByEmailAsync(email);
-        var user = (UserDto)userResult.Data!;
-
-        var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId
-                                                                         && n.IsRead == false);
-        // Include notification role
-        baseSpec.ApplyInclude(q =>
-            q.Include(u => u.Notification));
-        var notifications = await _unitOfWork.Repository<NotificationRecipient, int>().GetAllWithSpecAsync(baseSpec);
-        if (!notifications.Any())
+        catch (Exception ex)
         {
-            var errorMsg = await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0001);
-            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errorMsg, "notification recipient"));
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update read status");
         }
-
-        foreach (var noti  in notifications)
-        {
-            noti.IsRead = true;
-            await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
-        }
-
-        var result =await _unitOfWork.SaveChangesWithTransactionAsync();
-        if (result != -1)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: true);
-        }
-
-        return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
     }
 }

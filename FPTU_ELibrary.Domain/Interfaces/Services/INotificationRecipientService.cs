@@ -5,8 +5,6 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services.Base;
 public interface INotificationRecipientService<TDto> :IGenericService<NotificationRecipient,TDto,int> 
     where TDto: class
 {
-    Task<IServiceResult> CreatePrivateNotification(TDto notification);
-    Task<IServiceResult> GetNumberOfUnreadNotifications(string email);
-    Task<IServiceResult> UpdateReadStatus(string email);
-    
+    Task<IServiceResult> GetNumberOfUnreadNotificationsAsync(string email);
+    Task<IServiceResult> UpdateReadStatusAsync(string email);
 }

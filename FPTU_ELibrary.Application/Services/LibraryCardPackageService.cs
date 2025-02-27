@@ -301,7 +301,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 	// 	{
 	// 		var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 	// 		return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-	// 			StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+	// 			StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 	// 	}
 	// 	
 	// 	//get package by id
@@ -345,7 +345,7 @@ public class LibraryCardPackageService : GenericService<LibraryCardPackage, Libr
 	// 	{
 	// 		var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 	// 		return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-	// 			StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+	// 			StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
 	// 	}
 	// 	
 	// 	//get package by id

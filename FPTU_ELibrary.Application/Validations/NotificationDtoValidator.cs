@@ -22,8 +22,12 @@ namespace FPTU_ELibrary.Application.Validations
                 .NotEmpty()
                 .WithMessage(isEng
                     ? "Title cannot be empty"
-                    : "Tiêu đề không được phép rỗng");
-
+                    : "Tiêu đề không được phép rỗng")
+                .MaximumLength(150)
+                .WithMessage(isEng
+                    ? "Notification title must not exceed than 255 characters"
+                    : "Tiêu đề thông báo cho phép tối đa 150 ký tự");
+            
             // Message must not be null or empty
             RuleFor(notification => notification.Message)
                 .NotNull()
@@ -33,40 +37,40 @@ namespace FPTU_ELibrary.Application.Validations
                 .NotEmpty()
                 .WithMessage(isEng
                     ? "Message cannot be empty"
-                    : "Nội dung không được phép rỗng");
+                    : "Nội dung không được phép rỗng")
+                .MaximumLength(4000)
+                .WithMessage(isEng
+                    ? "Notification body must not exceed than 4000 characters"
+                    : "Nội dung thông báo cho phép tối đa 4000 ký tự");
 
             // CreatedDate must not be in the future
-            RuleFor(notification => notification.CreateDate)
-                .Must(date => date < DateTime.Now.AddMinutes(5))
-                .WithMessage(isEng
-                    ? "CreateDate cannot be in the future"
-                    : "Ngày tạo không được nằm trong tương lai");
+            // RuleFor(notification => notification.CreateDate)
+            //     .Must(date => date < DateTime.Now.AddMinutes(5))
+            //     .WithMessage(isEng
+            //         ? "CreateDate cannot be in the future"
+            //         : "Ngày tạo không được nằm trong tương lai");
 
             // CreatedBy must not be null or empty
-            RuleFor(notification => notification.CreatedBy)
-                .NotNull()
-                .WithMessage(isEng
-                    ? "CreatedBy is required"
-                    : "Yêu cầu nhập người tạo")
-                .NotEmpty()
-                .WithMessage(isEng
-                    ? "CreatedBy cannot be empty"
-                    : "Người tạo không được phép rỗng");
+            // RuleFor(notification => notification.CreatedBy)
+            //     .NotNull()
+            //     .WithMessage(isEng
+            //         ? "CreatedBy is required"
+            //         : "Yêu cầu nhập người tạo")
+            //     .NotEmpty()
+            //     .WithMessage(isEng
+            //         ? "CreatedBy cannot be empty"
+            //         : "Người tạo không được phép rỗng");
 
             // NotificationType must not be null or empty and must match a valid enum value
-            RuleFor(notification => notification.NotificationType)
-                .NotNull()
-                .WithMessage(isEng
-                    ? "NotificationType is required"
-                    : "Yêu cầu nhập loại thông báo")
-                .NotEmpty()
-                .WithMessage(isEng
-                    ? "NotificationType cannot be empty"
-                    : "Loại thông báo không được phép rỗng")
-                .Matches(@"^(Event|Reminder|Notice)$")
-                .WithMessage(isEng
-                    ? "NotificationType must be a valid value (e.g., Event, Reminder, Notice)"
-                    : "Loại thông báo phải là giá trị hợp lệ (vd: Sự kiện, Nhắc nhở, Thông báo)");
+            // RuleFor(notification => notification.NotificationType)
+            //     .NotNull()
+            //     .WithMessage(isEng
+            //         ? "Notification type is required"
+            //         : "Yêu cầu nhập loại thông báo")
+            //     .NotEmpty()
+            //     .WithMessage(isEng
+            //         ? "Notification type cannot be empty"
+            //         : "Loại thông báo không được phép rỗng");
         }
     }
 }

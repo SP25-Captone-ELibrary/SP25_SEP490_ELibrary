@@ -9,5 +9,5 @@ public enum NotificationType
     [Description("Thông báo trả sách")]
     Reminder,
     [Description("Thông báo chung")]
-    Notice,
+    Notice
 }

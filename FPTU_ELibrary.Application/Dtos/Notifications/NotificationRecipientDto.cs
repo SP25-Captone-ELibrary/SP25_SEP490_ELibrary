@@ -10,7 +10,7 @@ public class NotificationRecipientDto
     // For specific notification
     public int NotificationId { get; set; }
 
-    // Who recieve notification
+    // Who receive notification
     public Guid RecipientId { get; set; }
 
     // Mark as user is read or not
@@ -19,6 +19,6 @@ public class NotificationRecipientDto
     [JsonIgnore]
     public NotificationDto Notification { get; set; } = null!;
     
-    [JsonIgnore]
+    // [JsonIgnore]
     public UserDto Recipient { get; set; } = null!;   
 }
