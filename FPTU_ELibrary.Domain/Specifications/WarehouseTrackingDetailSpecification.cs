@@ -68,11 +68,12 @@ public class WarehouseTrackingDetailSpecification : BaseSpecification<WarehouseT
                     AddFilter(w => w.TotalAmount == specParams.TotalAmount.Value);
                 }
                 
-                // Reason
-                if (specParams.Reason != null)
+                // Stock transaction type
+                if (specParams.StockTransactionType != null)
                 {
-                    AddFilter(w => w.Reason == specParams.Reason);
+                    AddFilter(w => w.StockTransactionType == specParams.StockTransactionType.Value);
                 }
+                
                 break;
             case SearchType.AdvancedSearch:
                 // Apply filters
@@ -199,6 +200,61 @@ public class WarehouseTrackingDetailSpecification : BaseSpecification<WarehouseT
                                             case FilterOperator.NotEqualsTo:
                                                 AddFilter(w => !string.IsNullOrEmpty(w.Isbn) &&
                                                     w.Isbn.ToLower() != isbn.ToLower());
+                                                break;
+                                        }
+                                    }
+                                    
+                                    if (includeExpressions.Any())
+                                    {
+                                        var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                                            (exp1, exp2) =>
+                                            {
+                                                if (exp1 != null)
+                                                {
+                                                    // Try to combined body of different expression with 'OR' operator
+                                                    var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                                    
+                                                    // Return combined body
+                                                    return Expression.Lambda<Func<WarehouseTrackingDetail, bool>>(body, exp1.Parameters);
+                                                }
+                
+                                                return _ => false;
+                                            });
+                                        
+                                        // Apply filter with 'includes'
+                                        if(resultExpression != null) AddFilter(resultExpression);
+                                    }
+                                }
+                            }
+                            // Stock transaction type
+                            else if (filter.FieldName.ToLowerInvariant() ==
+                                     nameof(WarehouseTrackingDetail.StockTransactionType).ToLowerInvariant())
+                            {
+                                var enumList = filter.Value?
+                                    .Split(",")
+                                    .Select(x => x.Trim())
+                                    .Select(x => Enum.TryParse(x, true, out StockTransactionType resultEnum) ? resultEnum : (StockTransactionType?)null)
+                                    .ToList();
+                                if (enumList != null)
+                                {
+                                    // Initialize base spec to retrieve building filter when operator is 'includes'
+                                    List<Expression<Func<WarehouseTrackingDetail, bool>>> includeExpressions = new();
+                                    foreach (var transactionType in enumList)
+                                    {
+                                        // Determine operator
+                                        switch (filter.Operator)
+                                        {
+                                            case FilterOperator.Includes:
+                                                includeExpressions.Add(w => transactionType != null &&
+                                                    w.StockTransactionType == transactionType);
+                                                break;
+                                            case FilterOperator.Equals:
+                                                AddFilter(w => transactionType != null &&
+                                                    w.StockTransactionType == transactionType);
+                                                break;
+                                            case FilterOperator.NotEqualsTo:
+                                                AddFilter(w => transactionType != null &&
+                                                    w.StockTransactionType != transactionType);
                                                 break;
                                         }
                                     }

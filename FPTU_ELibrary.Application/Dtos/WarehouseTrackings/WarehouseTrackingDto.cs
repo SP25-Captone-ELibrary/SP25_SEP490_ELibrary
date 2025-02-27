@@ -1,7 +1,8 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
+namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 
 public class WarehouseTrackingDto
 {
@@ -27,10 +28,11 @@ public class WarehouseTrackingDto
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
-    
-    // Mapping entities
-    public SupplierDto Supplier { get; set; } = null!;
 
+    // References
+    public SupplierDto Supplier { get; set; } = null!;
+    public WarehouseTrackingInventoryDto WarehouseTrackingInventory { get; set; } = null!;
+    
     [JsonIgnore]
     public ICollection<WarehouseTrackingDetailDto> WarehouseTrackingDetails { get; set; } =
         new List<WarehouseTrackingDetailDto>();

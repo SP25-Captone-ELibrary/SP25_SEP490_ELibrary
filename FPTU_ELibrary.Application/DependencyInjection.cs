@@ -23,6 +23,8 @@ using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Dtos.Suppliers;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Domain.Entities;
 using Microsoft.AspNetCore.SignalR;
@@ -49,6 +51,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAIDetectionService, AIDetectionService>();
 			services.AddScoped<IVoiceService, VoiceService>(); 
 			services.AddScoped<IFaceDetectionService, FaceDetectionService>(); 
+			services.AddScoped<IPayOsService, PayOsService>(); 
 			
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
@@ -87,12 +90,10 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();
             services.AddScoped<IUserService<UserDto>, UserService>();
             services.AddScoped<IPaymentMethodService<PaymentMethodDto>, PaymentMethodService>();
-            services.AddScoped<IInvoiceService<InvoiceDto>, InvoiceService>();
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services.AddScoped<IWarehouseTrackingService<WarehouseTrackingDto>, WarehouseTrackingService>();
             services.AddScoped<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>, WarehouseTrackingDetailService>();
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
-            services.AddScoped<IInvoiceService<InvoiceDto>, InvoiceService>();
             services.AddScoped<IFineService<FineDto>,FineService>();
             services.AddScoped<IUserFavoriteService<UserFavoriteDto>,UserFavoriteService>();
             services

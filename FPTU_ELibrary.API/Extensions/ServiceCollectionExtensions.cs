@@ -301,6 +301,8 @@ namespace FPTU_ELibrary.API.Extensions
         services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
         services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
         services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
+        // Configure Payment
+        services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
         return services;
     }
 

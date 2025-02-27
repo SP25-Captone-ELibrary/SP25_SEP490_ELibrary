@@ -408,7 +408,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 // Data not found or empty
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+                    StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
             }
             
             // Build spec
@@ -558,6 +558,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                         .AnyAsync(br =>
                                 br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
                                 br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                                br.LibraryCardId == libCard.LibraryCardId && // With specific library card 
                                 br.BorrowRequestDetails.Any(brd =>
                                     brd.LibraryItemId == detail.LibraryItemId) // With specific item
                         );

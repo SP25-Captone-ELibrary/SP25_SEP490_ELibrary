@@ -28,10 +28,11 @@ public class WarehouseTracking : IAuditableEntity
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
-    
-    // Mapping entities
-    public Supplier Supplier { get; set; } = null!;
 
+    // References
+    public Supplier Supplier { get; set; } = null!;
+    public WarehouseTrackingInventory WarehouseTrackingInventory { get; set; } = null!;
+    
     [JsonIgnore]
     public ICollection<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; } =
         new List<WarehouseTrackingDetail>();

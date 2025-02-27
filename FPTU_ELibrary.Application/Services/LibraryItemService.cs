@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Elastic.Mappers;
 using FPTU_ELibrary.Application.Elastic.Models;
 using FPTU_ELibrary.Application.Exceptions;
@@ -288,7 +289,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     // Isbn already exist message
                     msg: StringUtils.Format(errMsg, dto.Isbn ?? string.Empty));
             }
-            
 
             // Check exist tracking detail
             var whTrackingDetail = (await _whTrackingService.Value.GetByIdAsync(trackingDetailId)
@@ -330,6 +330,31 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
                         key: StringUtils.ToCamelCase(nameof(Category.CategoryId)), 
                         msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0011));
+                }
+                
+                // Check whether tracking detail exist in any other item
+                var isExistInOtherItem = whTrackingDetail.LibraryItemId != null;
+                if (isExistInOtherItem)
+                {
+                    // Add error 
+                    // Msg: Warehouse tracking detail has already been in other item
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0013));
+                }
+                
+                // Extract all input instance barcodes
+                var inputBarcodes = dto.LibraryItemInstances
+                    .Select(li => li.Barcode).ToArray();
+                // Compared registered barcode total with warehouse tracking detail total
+                if (inputBarcodes.Length != whTrackingDetail.ItemTotal)
+                {
+                    // Add error
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                        key: $"libraryItemInstances[{listItemInstance[listItemInstance.Count - 1]}].barcode",
+                        msg: isEng 
+                            ? "Total registered barcode must equals to total warehouse tracking item" 
+                            : "Tổng số lượng ĐKCB phải bằng với số lượng đẵ đăng ký khi nhập kho");
                 }
             }
             
@@ -818,6 +843,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(
+        ISpecification<LibraryItem> specification, bool tracked = true)
+    {
+        return await base.GetAllWithSpecAsync(specification, tracked);
+    }
+    
     public async Task<IServiceResult> GetDetailAsync(int id)
     {
         try
@@ -2058,6 +2089,59 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
     
+    public async Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId)
+    {
+        foreach (var libraryItemId in libraryItemIds)
+        {
+            var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
+
+            if (item is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
+                        , "item"));
+            }
+            item.GroupId = newGroupId;
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
+        }
+
+        var isSuccess = await _unitOfWork.SaveChangesAsync();
+        if (isSuccess < 1)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+    }
+
+    public async Task<IServiceResult> UpdateTrainingStatusAsync(List<int> libraryItemIds)
+    {
+        foreach (var libraryItemId in libraryItemIds)
+        {
+            var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
+
+            if (item is null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
+                        , "item"));
+            }
+            item.IsTrained = true;
+            item.TrainedAt = DateTime.Now;
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
+        }
+
+        var isSuccess = await _unitOfWork.SaveChangesAsync();
+        if (isSuccess < 1)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+    }
+    
     public async Task<IServiceResult> SoftDeleteAsync(int id)
     {
         try
@@ -2477,6 +2561,548 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec)
+    {
+	    try
+	    {
+		    // Try to parse specification to LibraryItemSpecification
+		    var baseSpec = spec as LibraryItemSpecification;
+		    // Check if specification is null
+		    if (baseSpec == null)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+		    }				
+			
+		    // Apply include
+		    baseSpec.ApplyInclude(q => q
+			    .Include(be => be.Shelf)
+                .Include(be => be.Category)
+                .Include(be => be.LibraryItemAuthors)
+                    .ThenInclude(bea => bea.Author)
+                .Include(be => be.LibraryItemInstances)
+		    );
+		    // Get all with spec
+		    var entities = await _unitOfWork.Repository<LibraryItem, int>()
+			    .GetAllWithSpecAsync(baseSpec, tracked: false);
+		    if (entities.Any()) // Exist data
+		    {
+			    // Map entities to dtos 
+			    var bookEditionDtos = _mapper.Map<List<LibraryItemDto>>(entities);
+			    // Process export data to file
+			    var fileBytes = CsvUtils.ExportToExcelWithNameAttribute(
+				    bookEditionDtos.ToLibraryItemCsvRecords());
+
+			    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+				    fileBytes);
+		    }
+			
+		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+	    }
+	    catch (UnprocessableEntityException)
+	    {
+		    throw;
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process export library items");
+	    }
+    }
+
+    public async Task<IServiceResult> DetectWrongImportDataInternalAsync<TCsvRecord>(
+        int startRowIndex,
+        List<TCsvRecord> records,
+        List<string> coverImageNames) where TCsvRecord : LibraryItemCsvRecordDto
+    {
+        // Determine current system language
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+
+	    // Initialize dictionary to hold errors
+	    var errorMessages = new Dictionary<int, List<string>>();
+	    // Default row index set to second row, as first row is header
+	    var currDataRow = startRowIndex;
+
+	    foreach (var record in records)
+	    {
+	        // Initialize error list for the current row
+	        var rowErrors = new List<string>();
+            
+	        // Check exist cover image
+	        if (!coverImageNames.Exists(str => str.Equals(record.CoverImage)))
+	        {
+	            rowErrors.Add(isEng ? $"Image file name '{record.CoverImage}' does not exist" : $"Không tìm thấy file hình có tên '{record.CoverImage}'");
+	        }
+
+	        // Check exist shelf location
+	        var isExistShelfLocation = (await _libShelfService.AnyAsync(x => x.ShelfNumber == record.ShelfNumber)).Data is true;
+	        if (!isExistShelfLocation)
+	        {
+	            rowErrors.Add(isEng ? $"Shelf number '{record.ShelfNumber}' does not exist" : $"Kệ số '{record.ShelfNumber}' không tồn tại");
+	        }
+
+	        // Check exist author code
+            var isExistAuthor = (await _authorService.AnyAsync(x => !string.IsNullOrEmpty(record.AuthorCode) &&
+                x.AuthorCode.ToLower() == record.AuthorCode.ToLower())).Data is true;
+            if (!isExistAuthor)
+            {
+                rowErrors.Add(isEng ? $"Author code '{record.AuthorCode}' does not exist" : $"Mã tác giả '{record.AuthorCode}' không tồn tại");
+            }
+			
+            // Check exist category
+            var categoryDto = 
+                (await _cateService.GetWithSpecAsync(new BaseSpecification<Category>(
+                x => x.VietnameseName == record.Category 
+                     || x.EnglishName == record.Category))
+                ).Data as CategoryDto;
+            if (categoryDto == null)
+            {
+                rowErrors.Add(isEng
+                    ? $"Category '{record.Category}' does not exist"
+                    : $"Thể loại '{record.Category}' không tồn tại");
+            }
+            
+            /*
+		    // Check exist item instances
+		    var itemInstanceLength = record.ItemInstanceBarcodes != null ? record.ItemInstanceBarcodes.Split(",").Length : 0;
+		    if (itemInstanceLength > 0)
+		    {
+			    // Split elements by comma
+                var itemInstanceBarcodes = record.ItemInstanceBarcodes!.Split(",")
+                    .Select(str => str.Trim())
+                    .ToList();
+                
+			    // Group code and check duplicate
+			    var duplicateBarcodes = itemInstanceBarcodes.GroupBy(x => x)
+				    .Where(g => g.Count() > 1)
+				    .Select(g => g.Key)
+				    .ToList();
+
+			    // Check whether code is duplicate within a single cell
+			    if (duplicateBarcodes.Any())
+			    {
+				   rowErrors.Add(isEng
+					   ? $"The following barcodes are duplicated: {string.Join(", ", duplicateBarcodes)}"
+					   : $"Các mã barcode sau đây bị trùng lặp: {string.Join(", ", duplicateBarcodes)}");
+			    }
+			    
+			    foreach (var barcode in itemInstanceBarcodes)
+			    {
+			        // Check whether code is duplicate within all other cells
+				    if (!itemBarcodeSet.Add(barcode)) 
+				    {
+					    rowErrors.Add(isEng
+						    ? $"Barcode '{barcode}' already exists in file"
+						    : $"Barcode '{barcode}' bị trùng trong file");
+				    }
+                    
+			        // Check whether barcode already exist in DB
+                    var isExist = (await _itemInstanceService.Value.AnyAsync(x => x.Barcode.ToLower() == barcode.ToLower())).Data is true;
+                    if (isExist)
+                    {
+                        rowErrors.Add(isEng
+                            ? $"Barcode '{barcode}' already not exist"
+                            : $"Barcode '{barcode}' đã tồn tại");
+                    }
+                    
+                    // Try to validate with category prefix
+                    var isValidBarcode =
+                        StringUtils.IsValidBarcodeWithPrefix(barcode, categoryDto!.Prefix);
+                    if (!isValidBarcode)
+                    {
+                        rowErrors.Add(isEng
+                            ? $"The prefix of barcode is invalid, the prefix pattern of the category is {categoryDto.Prefix}"
+                            : $"Tiền tố của số đăng ký cá biệt không hợp lệ, mẫu tiền tố của thể loại là {categoryDto.Prefix}");
+                    }
+			    }
+		    }
+            */
+            
+            // Check exist ISBN
+            var isExistIsbn = await _unitOfWork.Repository<LibraryItem, int>()
+                .AnyAsync(be => !string.IsNullOrEmpty(record.Isbn) && be.Isbn == ISBN.CleanIsbn(record.Isbn));
+            if (isExistIsbn)
+            {
+                rowErrors.Add(isEng ? $"ISBN '{record.Isbn}' already exists" : $"Mã ISBN '{record.Isbn}' đã tồn tại");
+            }
+            else // Check duplicate ISBN
+            {
+                var isbnList = records.Select(x => x.Isbn).ToList();
+                var isIsbnDuplicate = isbnList.Count(x => x == record.Isbn) > 1;
+                if (isIsbnDuplicate)
+                {
+                    rowErrors.Add(isEng ? $"IBSN '{record.Isbn}' is duplicated" : $"Mã ISBN '{record.Isbn}' bị trùng");
+                }
+            }
+		    
+		    // Validations
+            if (string.IsNullOrEmpty(record.Title)) // Title
+            {
+                rowErrors.Add(isEng
+                    ? "Title is required" 
+                    : "Yêu cầu nhập tiêu đề cho tài liệu");
+            }
+            else if (record.Title.Length > 150) 
+		    {
+			    rowErrors.Add(isEng
+				    ? "Item title must not exceed than 150 characters"
+				    : "Tiêu đề của tài liệu phải nhỏ hơn 150 ký tự");
+		    }
+            
+            if (record.SubTitle?.Length > 150) // SubTitle
+            {
+                rowErrors.Add(isEng
+                    ? "Item subtitle must not exceed than 150 characters"
+                    : "Tiêu đề phụ của tài liệu phải nhỏ hơn 150 ký tự");
+            }
+            
+            if (record.Responsibility?.Length > 150) // Responsibility
+            {
+                rowErrors.Add(isEng
+                    ? "Statement of responsibility must not exceed than 155 characters"
+                    : "Thông tin trách nhiệm của tài liệu phải nhỏ hơn 155 ký tự");
+            }
+            
+            if (record.Edition?.Length > 100) // Edition
+            {
+                rowErrors.Add(isEng
+                    ? "Edition must not exceed than 100 characters"
+                    : "Thông tin lần xuất bản phải nhỏ hơn 150 ký tự");
+            }
+            
+            if (record.EditionNumber <= 0 && record.PageCount < int.MaxValue) // Edition number
+		    {
+			    rowErrors.Add(isEng
+				    ? "Item edition number is not valid"
+				    : "Số thứ tự tài liệu không hợp lệ");
+		    }
+            
+            if (string.IsNullOrEmpty(record.Language)) // Language
+            {
+                rowErrors.Add(isEng
+                    ? "Language is required" 
+                    : "Yêu cầu xác định ngôn ngữ cho tài liệu");
+            }
+            else if (record.Language.Length > 50) 
+            {
+                rowErrors.Add(isEng
+                    ? "Language must not exceed than 50 characters"
+                    : "Ngôn ngữ phải nhỏ hơn 50 ký tự");
+            }
+            
+            if (record.OriginLanguage?.Length > 50) // Origin language
+            {
+                rowErrors.Add(isEng
+                    ? "Origin language must not exceed than 50 characters"
+                    : "Ngôn ngữ gốc phải nhỏ hơn 50 ký tự");
+            }
+
+            if (record.Summary?.Length > 500) // Summary
+            {
+                rowErrors.Add(isEng
+                    ? "Item summary must not exceed 500 characters"
+                    : "Mô tả của tài liệu không vượt quá 500 ký tự");
+            }
+            
+            if (!(int.TryParse(record.PublicationYear.ToString(), out var year) 
+		        && year > 0 && year <= DateTime.Now.Year)) // Publication year
+		    {
+			    rowErrors.Add(isEng
+				    ? "Publication year is not valid"
+				    : "Năm xuất bản không hợp lệ");
+		    }
+            
+            if (record.Publisher.Length > 255) // Publisher
+            {
+                rowErrors.Add(isEng
+                    ? "Publisher must not exceed than 255 characters"
+                    : "Tên nhà xuất bản phải nhỏ hơn 255 ký tự");
+            }
+            else if (StringUtils.IsDateTime(record.Publisher)) 
+            {
+                rowErrors.Add(isEng
+                    ? "Publisher is not valid"
+                    : "Tên nhà xuất bản không hợp lệ");
+            }
+            
+            if (record.PublicationPlace.Length > 255) // Publication place
+            {
+                rowErrors.Add(isEng
+                    ? "Publication place must not exceed 255 characters"
+                    : "Nơi xuất bản không vượt quá 255 ký tự");
+            }
+            else if (StringUtils.IsNumeric(record.PublicationPlace) || 
+                StringUtils.IsDateTime(record.PublicationPlace)) 
+            {
+                rowErrors.Add(isEng
+                    ? "Publication place is not include number or date"
+                    : "Thông tin nơi xuất bản không bao gồm số hoặc ngày");
+            }
+            
+            
+            if (record.ClassificationNumber.Length > 50) // DDC number
+            {
+                rowErrors.Add(isEng
+                    ? "DDC number must not exceed than 50 characters"
+                    : "Mã DDC tài liệu phải nhỏ hơn 50 ký tự");
+            }
+            else if (!StringUtils.IsValidDeweyDecimal(record.ClassificationNumber)
+                     || StringUtils.IsDateTime(record.ClassificationNumber))
+            {
+                rowErrors.Add(isEng
+                    ? "DDC number is not valid"
+                    : "Mã DDC tài liệu không hợp lệ");
+            }
+            
+            if (record.CutterNumber.Length > 50) // CutterNumber
+            {
+                rowErrors.Add(isEng
+                    ? "Cutter number must not exceed than 50 characters"
+                    : "Ký hiệu xếp giá phải nhỏ hơn 50 ký tự");
+            }
+            else if (!StringUtils.IsValidCutterNumber(record.CutterNumber)
+                     || StringUtils.IsDateTime(record.CutterNumber))
+            {
+                rowErrors.Add(isEng
+                    ? "Cutter number is not valid"
+                    : "Ký hiệu xếp giá không hợp lệ");
+            }
+
+            if (ISBN.CleanIsbn(record.Isbn ?? string.Empty).Length > 13) // Isbn
+            {
+                rowErrors.Add(isEng
+                    ? "ISBN must not exceed 13 characters"
+                    : "Mã ISBN không vượt quá 13 ký tự");
+            }else if (!ISBN.IsValid(record.Isbn ?? string.Empty, out _))
+            {
+                rowErrors.Add(isEng
+                    ? "ISBN is not valid"
+                    : "Mã ISBN không hợp lệ");
+            }
+            
+            if (record.EstimatedPrice < 1000 || record.EstimatedPrice > 9999999999) // Estimated price
+            {
+                if (record.EstimatedPrice < 1000)
+                {
+                    rowErrors.Add(isEng
+                        ? "EstimatedPrice must be at least 1.000 VND"
+                        : "Giá phải ít nhất là 1.000 VND");
+                }
+                else if (record.EstimatedPrice > 9999999999)
+                {
+                    rowErrors.Add(isEng
+                        ? "EstimatedPrice exceeds the maximum limit of 9.999.999.999 VND"
+                        : "Giá vượt quá giới hạn tối đa là 9.999.999.999 VND");
+                }
+            }
+            
+            if (record.PageCount <= 0 && record.PageCount < int.MaxValue) // Page count
+            {
+                rowErrors.Add(isEng
+                    ? "Page count is not valid"
+                    : "Tổng số trang không hợp lệ");
+            }
+            
+            if (record.PhysicalDetails?.Length > 100) // Title
+            {
+                rowErrors.Add(isEng
+                    ? "Physical detail must not exceed 100 characters"
+                    : "Các đặc điểm vật lý khác không vượt quá 100 ký tự");
+            }
+
+            if (string.IsNullOrEmpty(record.Dimensions))
+            {
+                rowErrors.Add(isEng
+                    ? "Dimensions is required" 
+                    : "Yêu cầu xác định mô tả kích thước cho tài liệu");
+            }
+            else if (record.Dimensions.Length > 50) // Dimensions
+            {
+                rowErrors.Add(isEng
+                    ? "Dimensions must not exceed 50 characters"
+                    : "Mô tả kích thước không vượt quá 50 ký tự");
+            }
+            
+            if (record.Genres?.Length > 255) // Genres
+            {
+                rowErrors.Add(isEng
+                    ? "Genres must not exceed 255 characters"
+                    : "Chủ đề thể loại/hình thức không vượt quá 255 ký tự");
+            }
+            
+            if (record.GeneralNote?.Length > 100) // General note
+            {
+                rowErrors.Add(isEng
+                    ? "General note must not exceed 100 characters"
+                    : "Phụ chú chung không vượt quá 100 ký tự");
+            }
+            
+            if (record.BibliographicalNote?.Length > 100) // Bibliographical note
+            {
+                rowErrors.Add(isEng
+                    ? "Bibliographical note must not exceed 100 characters"
+                    : "Phụ chú thư mục không vượt quá 100 ký tự");
+            }
+            
+            if (record.TopicalTerms?.Length > 500) // Topical terms
+            {
+                rowErrors.Add(isEng
+                    ? "Topical terms must not exceed 500 characters"
+                    : "Chủ đề có kiểm soát không vượt quá 500 ký tự");
+            }
+            
+            if (record.AdditionalAuthors?.Length > 500) // Additional authors
+            {
+                rowErrors.Add(isEng
+                    ? "Additional authors must not exceed 500 characters"
+                    : "Tác giả bổ sung không vượt quá 500 ký tự");
+            }
+            
+	        // if errors exist for the row, add to the dictionary
+	        if (rowErrors.Any())
+	        {
+	            errorMessages.Add(currDataRow, rowErrors);
+	        }
+
+	        // Increment the row counter
+	        currDataRow++;
+	    }
+
+	    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), errorMessages);
+    }
+    
+    async Task<IServiceResult> ILibraryItemService<LibraryItemDto>.DetectWrongImportDataAsync<TCsvRecord>(
+        int startRowIndex,
+        List<TCsvRecord> records, 
+        List<string> coverImageNames)
+    {
+        return await DetectWrongImportDataInternalAsync(
+            startRowIndex: startRowIndex,
+            records: records.Cast<LibraryItemCsvRecordDto>().ToList(),
+            coverImageNames: coverImageNames);
+    }
+    
+    public async Task<IServiceResult> DetectDuplicatesInFileInternalAsync<TCsvRecord>(
+        List<TCsvRecord> records, string[] scanningFields) where TCsvRecord : LibraryItemCsvRecordDto
+    {
+        // Determine current system language
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+        
+        // Check whether exist any scanning fields
+        if (scanningFields.Length == 0)
+        {
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                new
+                {
+                    Errors = new Dictionary<int, List<string>>(),
+                    Duplicates = new Dictionary<int, List<int>>()
+                });
+        }
+
+        // Initialize error messages (for display purpose)
+        var errorMessages = new Dictionary<int, List<string>>();
+        
+        // Initialize key pair dictionary (for handle purpose)
+        // Key: root element
+        // Value: duplicate elements with root
+        var duplicates = new Dictionary<int, List<int>>();
+        
+        // Initialize a map to track seen keys for each field
+        var fieldToSeenKeys = new Dictionary<string, Dictionary<string, int>>();
+        foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
+        {
+            fieldToSeenKeys[field] = new Dictionary<string, int>();
+        }
+
+        // Default row index set to second row, as first row is header
+        var currDataRow = 2;
+        for (int i = 0; i < records.Count; i++)
+        {
+            var record = records[i];
+            
+            // Initialize row errors
+            var rowErrors = new List<string>();
+            
+            // Check duplicates for each scanning field
+            foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
+            {
+                string? fieldValue = field switch
+                {
+                    var title when title == nameof(LibraryItem.Title).ToUpperInvariant() => record.Title?.Trim()
+                        .ToUpperInvariant(),
+                    var coverImage when coverImage == nameof(LibraryItem.CoverImage).ToUpperInvariant() => record.CoverImage
+                        ?.Trim().ToUpperInvariant(),
+                    _ => null
+                };
+
+                // Skip if the field value is null or empty
+                if (string.IsNullOrEmpty(fieldValue))
+                    continue;
+
+                // Check if the key has already seen
+                var seenKeys = fieldToSeenKeys[field];
+                if (seenKeys.ContainsKey(fieldValue))
+                {
+                    // Retrieve the first index where the duplicate was seen
+                    var firstItemIndex = seenKeys[fieldValue];
+
+                    // Add the current index to the duplicates list
+                    if (!duplicates.ContainsKey(firstItemIndex))
+                    {
+                        duplicates[firstItemIndex] = new List<int>();
+                    }
+
+                    duplicates[firstItemIndex].Add(i);
+
+                    // Add duplicate error message
+                    rowErrors.Add(isEng
+                        ? $"Duplicate data for field '{field}': '{fieldValue}'"
+                        : $"Dữ liệu bị trùng cho trường '{field}': '{fieldValue}'");
+                }
+                else
+                {
+                    // Mark this field value as seen at the current index
+                    seenKeys[fieldValue] = i;
+                }
+            }
+            
+            // If errors exist for specific row, add to the dictionary
+            if (rowErrors.Any())
+            {
+                errorMessages.Add(currDataRow, rowErrors);
+            }
+            
+            // Increment the row counter
+            currDataRow++;
+        }
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+            new
+            {
+                Errors = errorMessages,
+                Duplicates = duplicates
+            });
+    }
+
+    async Task<IServiceResult> ILibraryItemService<LibraryItemDto>.DetectDuplicatesInFileAsync<TCsvRecord>(
+        List<TCsvRecord> records, string[] scanningFields)
+    {
+        return await DetectDuplicatesInFileInternalAsync(
+            records: records.Cast<LibraryItemCsvRecordDto>().ToList(),
+            scanningFields: scanningFields);
+    }
+
+    #region Archived Code Statement
+    /*
     public async Task<IServiceResult> ImportAsync(
 	    IFormFile? file, 
 	    List<IFormFile> coverImageFiles,
@@ -2501,7 +3127,8 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 		    if (validationResult != null && !validationResult.IsValid)
 		    {
 			    // Response the uploaded file is not supported
-			    throw new NotSupportedException(await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+                return new ServiceResult(ResultCodeConst.File_Warning0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
 		    }
 
 		    // Csv config
@@ -2517,7 +3144,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 			    CsvUtils.ReadCsvOrExcelByHeaderIndexWithErrors<LibraryItemCsvRecordDto>(
                     file: file,
                     config: csvConfig,
-                    props: new ExcelHeaderProps()
+                    props: new ExcelProps()
                     {
                         // Header start from row 1-1
                         FromRow = 1,
@@ -2564,9 +3191,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 		    }
 			
 		    // Detect record errors
-		    var detectResult =
-			    await DetectWrongDataAsync(readResp.Records, imageFileNames, (SystemLanguage)lang!);
-		    if (detectResult.Any())
+            if ((await DetectWrongImportDataInternalAsync(
+                    startRowIndex: 2, readResp.Records, imageFileNames)
+                ).Data is Dictionary<int, List<string>> detectResult && detectResult.Any())
 		    {
 			    var errorResps = detectResult.Select(x => new ImportErrorResultDto()
 			    {	
@@ -2581,7 +3208,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             // Additional message
             var additionalMsg = string.Empty;
             // Detect duplicates
-            var detectDuplicateResult = DetectDuplicatesInFile(readResp.Records, scanningFields ?? [], lang);
+            var detectDuplicateResult = DetectDuplicatesInFileInternal(readResp.Records, scanningFields ?? [], lang);
             if (detectDuplicateResult.Errors.Count != 0 && duplicateHandle == null) // Has not selected any handle options yet
             {
                 var errorResp = detectDuplicateResult.Errors.Select(x => new ImportErrorResultDto()
@@ -2831,645 +3458,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 		    throw new Exception("Error invoke when process import library items");
 	    }
     }
-
-    public async Task<IServiceResult> ExportAsync(ISpecification<LibraryItem> spec)
-    {
-	    try
-	    {
-		    // Try to parse specification to LibraryItemSpecification
-		    var baseSpec = spec as LibraryItemSpecification;
-		    // Check if specification is null
-		    if (baseSpec == null)
-		    {
-			    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
-		    }				
-			
-		    // Apply include
-		    baseSpec.ApplyInclude(q => q
-			    .Include(be => be.Shelf)
-                .Include(be => be.Category)
-                .Include(be => be.LibraryItemAuthors)
-                    .ThenInclude(bea => bea.Author)
-                .Include(be => be.LibraryItemInstances)
-		    );
-		    // Get all with spec
-		    var entities = await _unitOfWork.Repository<LibraryItem, int>()
-			    .GetAllWithSpecAsync(baseSpec, tracked: false);
-		    if (entities.Any()) // Exist data
-		    {
-			    // Map entities to dtos 
-			    var bookEditionDtos = _mapper.Map<List<LibraryItemDto>>(entities);
-			    // Process export data to file
-			    var fileBytes = CsvUtils.ExportToExcelWithNameAttribute(
-				    bookEditionDtos.ToLibraryItemCsvRecords());
-
-			    return new ServiceResult(ResultCodeConst.SYS_Success0002,
-				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-				    fileBytes);
-		    }
-			
-		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-	    }
-	    catch (UnprocessableEntityException)
-	    {
-		    throw;
-	    }
-	    catch (Exception ex)
-	    {
-		    _logger.Error(ex.Message);
-		    throw new Exception("Error invoke when process export library items");
-	    }
-    }
-    
-    private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
-	    List<LibraryItemCsvRecordDto> records,
-	    List<string> coverImageNames,
-	    SystemLanguage lang)
-	{
-	    // Check system lang
-	    var isEng = lang == SystemLanguage.English;
-
-	    // Initialize dictionary to hold errors
-	    var errorMessages = new Dictionary<int, List<string>>();
-	    // Initialize hashset to check uniqueness
-	    var coverImageSet = new HashSet<string>();
-	    var itemBarcodeSet = new HashSet<string>();
-	    // Default row index set to second row, as first row is header
-	    var currDataRow = 2;
-
-	    foreach (var record in records)
-	    {
-	        // Initialize error list for the current row
-	        var rowErrors = new List<string>();
-            
-	        // Check exist cover image
-	        if (!coverImageNames.Exists(str => str.Equals(record.CoverImage)))
-	        {
-	            rowErrors.Add(isEng ? $"Image file name '{record.CoverImage}' does not exist" : $"Không tìm thấy file hình có tên '{record.CoverImage}'");
-	        }
-
-	        // Check exist shelf location
-	        var isExistShelfLocation = (await _libShelfService.AnyAsync(x => x.ShelfNumber == record.ShelfNumber)).Data is true;
-	        if (!isExistShelfLocation)
-	        {
-	            rowErrors.Add(isEng ? $"Shelf number '{record.ShelfNumber}' does not exist" : $"Kệ số '{record.ShelfNumber}' không tồn tại");
-	        }
-
-	        // Check exist author code
-            var isExistAuthor = (await _authorService.AnyAsync(x => !string.IsNullOrEmpty(record.AuthorCode) &&
-                x.AuthorCode.ToLower() == record.AuthorCode.ToLower())).Data is true;
-            if (!isExistAuthor)
-            {
-                rowErrors.Add(isEng ? $"Author code '{record.AuthorCode}' does not exist" : $"Mã tác giả '{record.AuthorCode}' không tồn tại");
-            }
-			
-            // Check exist category
-            var categoryDto = 
-                (await _cateService.GetWithSpecAsync(new BaseSpecification<Category>(
-                x => x.VietnameseName == record.Category 
-                     || x.EnglishName == record.Category))
-                ).Data as CategoryDto;
-            if (categoryDto == null)
-            {
-                rowErrors.Add(isEng
-                    ? $"Category '{record.Category}' does not exist"
-                    : $"Thể loại '{record.Category}' không tồn tại");
-            }
-            
-		    // Check exist item instances
-		    var itemInstanceLength = record.ItemInstanceBarcodes != null ? record.ItemInstanceBarcodes.Split(",").Length : 0;
-		    if (itemInstanceLength > 0)
-		    {
-			    // Split elements by comma
-                var itemInstanceBarcodes = record.ItemInstanceBarcodes!.Split(",")
-                    .Select(str => str.Trim())
-                    .ToList();
-                
-			    // Group code and check duplicate
-			    var duplicateBarcodes = itemInstanceBarcodes.GroupBy(x => x)
-				    .Where(g => g.Count() > 1)
-				    .Select(g => g.Key)
-				    .ToList();
-
-			    // Check whether code is duplicate within a single cell
-			    if (duplicateBarcodes.Any())
-			    {
-				   rowErrors.Add(isEng
-					   ? $"The following barcodes are duplicated: {string.Join(", ", duplicateBarcodes)}"
-					   : $"Các mã barcode sau đây bị trùng lặp: {string.Join(", ", duplicateBarcodes)}");
-			    }
-			    
-			    foreach (var barcode in itemInstanceBarcodes)
-			    {
-			        // Check whether code is duplicate within all other cells
-				    if (!itemBarcodeSet.Add(barcode)) 
-				    {
-					    rowErrors.Add(isEng
-						    ? $"Barcode '{barcode}' already exists in file"
-						    : $"Barcode '{barcode}' bị trùng trong file");
-				    }
-                    
-			        // Check whether barcode already exist in DB
-                    var isExist = (await _itemInstanceService.Value.AnyAsync(x => x.Barcode.ToLower() == barcode.ToLower())).Data is true;
-                    if (isExist)
-                    {
-                        rowErrors.Add(isEng
-                            ? $"Barcode '{barcode}' already not exist"
-                            : $"Barcode '{barcode}' đã tồn tại");
-                    }
-                    
-                    // Try to validate with category prefix
-                    var isValidBarcode =
-                        StringUtils.IsValidBarcodeWithPrefix(barcode, categoryDto!.Prefix);
-                    if (!isValidBarcode)
-                    {
-                        rowErrors.Add(isEng
-                            ? $"The prefix of barcode is invalid, the prefix pattern of the category is {categoryDto.Prefix}"
-                            : $"Tiền tố của số đăng ký cá biệt không hợp lệ, mẫu tiền tố của thể loại là {categoryDto.Prefix}");
-                    }
-			    }
-		    }
-
-            // Check exist ISBN
-            var isExistIsbn = await _unitOfWork.Repository<LibraryItem, int>()
-                .AnyAsync(be => !string.IsNullOrEmpty(record.Isbn) && be.Isbn == ISBN.CleanIsbn(record.Isbn));
-            if (isExistIsbn)
-            {
-                rowErrors.Add(isEng ? $"ISBN '{record.Isbn}' already exists" : $"Mã ISBN '{record.Isbn}' đã tồn tại");
-            }
-            else // Check duplicate ISBN
-            {
-                var isbnList = records.Select(x => x.Isbn).ToList();
-                var isIsbnDuplicate = isbnList.Count(x => x == record.Isbn) > 1;
-                if (isIsbnDuplicate)
-                {
-                    rowErrors.Add(isEng ? $"IBSN '{record.Isbn}' is duplicated" : $"Mã ISBN '{record.Isbn}' bị trùng");
-                }
-            }
-			
-		    
-		    // Validations
-            if (string.IsNullOrEmpty(record.Title)) // Title
-            {
-                rowErrors.Add(isEng
-                    ? "Title is required" 
-                    : "Yêu cầu nhập tiêu đề cho tài liệu");
-            }
-            else if (record.Title.Length > 150) 
-		    {
-			    rowErrors.Add(isEng
-				    ? "Item title must not exceed than 150 characters"
-				    : "Tiêu đề của tài liệu phải nhỏ hơn 150 ký tự");
-		    }
-            
-            if (record.SubTitle?.Length > 150) // SubTitle
-            {
-                rowErrors.Add(isEng
-                    ? "Item subtitle must not exceed than 150 characters"
-                    : "Tiêu đề phụ của tài liệu phải nhỏ hơn 150 ký tự");
-            }
-            
-            if (record.Responsibility?.Length > 150) // Responsibility
-            {
-                rowErrors.Add(isEng
-                    ? "Statement of responsibility must not exceed than 155 characters"
-                    : "Thông tin trách nhiệm của tài liệu phải nhỏ hơn 155 ký tự");
-            }
-            
-            if (record.Edition?.Length > 100) // Edition
-            {
-                rowErrors.Add(isEng
-                    ? "Edition must not exceed than 100 characters"
-                    : "Thông tin lần xuất bản phải nhỏ hơn 150 ký tự");
-            }
-            
-            if (record.EditionNumber <= 0 && record.PageCount < int.MaxValue) // Edition number
-		    {
-			    rowErrors.Add(isEng
-				    ? "Item edition number is not valid"
-				    : "Số thứ tự tài liệu không hợp lệ");
-		    }
-            
-            if (string.IsNullOrEmpty(record.Language)) // Language
-            {
-                rowErrors.Add(isEng
-                    ? "Language is required" 
-                    : "Yêu cầu xác định ngôn ngữ cho tài liệu");
-            }
-            else if (record.Language.Length > 50) 
-            {
-                rowErrors.Add(isEng
-                    ? "Language must not exceed than 50 characters"
-                    : "Ngôn ngữ phải nhỏ hơn 50 ký tự");
-            }
-            
-            if (record.OriginLanguage?.Length > 50) // Origin language
-            {
-                rowErrors.Add(isEng
-                    ? "Origin language must not exceed than 50 characters"
-                    : "Ngôn ngữ gốc phải nhỏ hơn 50 ký tự");
-            }
-
-            if (record.Summary?.Length > 500) // Summary
-            {
-                rowErrors.Add(isEng
-                    ? "Item summary must not exceed 500 characters"
-                    : "Mô tả của tài liệu không vượt quá 500 ký tự");
-            }
-            
-            if (!(int.TryParse(record.PublicationYear.ToString(), out var year) 
-		        && year > 0 && year <= DateTime.Now.Year)) // Publication year
-		    {
-			    rowErrors.Add(isEng
-				    ? "Publication year is not valid"
-				    : "Năm xuất bản không hợp lệ");
-		    }
-
-            
-            if (record.Publisher.Length > 255) // Publisher
-            {
-                rowErrors.Add(isEng
-                    ? "Publisher must not exceed than 255 characters"
-                    : "Tên nhà xuất bản phải nhỏ hơn 255 ký tự");
-            }
-            else if (StringUtils.IsDateTime(record.Publisher)) 
-            {
-                rowErrors.Add(isEng
-                    ? "Publisher is not valid"
-                    : "Tên nhà xuất bản không hợp lệ");
-            }
-            
-            if (record.PublicationPlace.Length > 255) // Publication place
-            {
-                rowErrors.Add(isEng
-                    ? "Publication place must not exceed 255 characters"
-                    : "Nơi xuất bản không vượt quá 255 ký tự");
-            }
-            else if (StringUtils.IsNumeric(record.PublicationPlace) || 
-                StringUtils.IsDateTime(record.PublicationPlace)) 
-            {
-                rowErrors.Add(isEng
-                    ? "Publication place is not include number or date"
-                    : "Thông tin nơi xuất bản không bao gồm số hoặc ngày");
-            }
-            
-            
-            if (record.ClassificationNumber.Length > 50) // DDC number
-            {
-                rowErrors.Add(isEng
-                    ? "DDC number must not exceed than 50 characters"
-                    : "Mã DDC tài liệu phải nhỏ hơn 50 ký tự");
-            }
-            else if (!StringUtils.IsValidDeweyDecimal(record.ClassificationNumber)
-                     || StringUtils.IsDateTime(record.ClassificationNumber))
-            {
-                rowErrors.Add(isEng
-                    ? "DDC number is not valid"
-                    : "Mã DDC tài liệu không hợp lệ");
-            }
-            
-            if (record.CutterNumber.Length > 50) // CutterNumber
-            {
-                rowErrors.Add(isEng
-                    ? "Cutter number must not exceed than 50 characters"
-                    : "Ký hiệu xếp giá phải nhỏ hơn 50 ký tự");
-            }
-            else if (!StringUtils.IsValidCutterNumber(record.CutterNumber)
-                     || StringUtils.IsDateTime(record.CutterNumber))
-            {
-                rowErrors.Add(isEng
-                    ? "Cutter number is not valid"
-                    : "Ký hiệu xếp giá không hợp lệ");
-            }
-
-            if (ISBN.CleanIsbn(record.Isbn ?? string.Empty).Length > 13) // Isbn
-            {
-                rowErrors.Add(isEng
-                    ? "ISBN must not exceed 13 characters"
-                    : "Mã ISBN không vượt quá 13 ký tự");
-            }else if (!ISBN.IsValid(record.Isbn ?? string.Empty, out _))
-            {
-                rowErrors.Add(isEng
-                    ? "ISBN is not valid"
-                    : "Mã ISBN không hợp lệ");
-            }
-            
-            if (record.EstimatedPrice < 1000 || record.EstimatedPrice > 9999999999) // Estimated price
-            {
-                if (record.EstimatedPrice < 1000)
-                {
-                    rowErrors.Add(isEng
-                        ? "EstimatedPrice must be at least 1.000 VND"
-                        : "Giá phải ít nhất là 1.000 VND");
-                }
-                else if (record.EstimatedPrice > 9999999999)
-                {
-                    rowErrors.Add(isEng
-                        ? "EstimatedPrice exceeds the maximum limit of 9.999.999.999 VND"
-                        : "Giá vượt quá giới hạn tối đa là 9.999.999.999 VND");
-                }
-            }
-            
-            if (record.PageCount <= 0 && record.PageCount < int.MaxValue) // Page count
-            {
-                rowErrors.Add(isEng
-                    ? "Page count is not valid"
-                    : "Tổng số trang không hợp lệ");
-            }
-            
-            if (record.PhysicalDetails?.Length > 100) // Title
-            {
-                rowErrors.Add(isEng
-                    ? "Physical detail must not exceed 100 characters"
-                    : "Các đặc điểm vật lý khác không vượt quá 100 ký tự");
-            }
-
-            if (string.IsNullOrEmpty(record.Dimensions))
-            {
-                rowErrors.Add(isEng
-                    ? "Dimensions is required" 
-                    : "Yêu cầu xác định mô tả kích thước cho tài liệu");
-            }
-            else if (record.Dimensions.Length > 50) // Dimensions
-            {
-                rowErrors.Add(isEng
-                    ? "Dimensions must not exceed 50 characters"
-                    : "Mô tả kích thước không vượt quá 50 ký tự");
-            }
-            
-            if (record.Genres?.Length > 255) // Genres
-            {
-                rowErrors.Add(isEng
-                    ? "Genres must not exceed 255 characters"
-                    : "Chủ đề thể loại/hình thức không vượt quá 255 ký tự");
-            }
-            
-            if (record.GeneralNote?.Length > 100) // General note
-            {
-                rowErrors.Add(isEng
-                    ? "General note must not exceed 100 characters"
-                    : "Phụ chú chung không vượt quá 100 ký tự");
-            }
-            
-            if (record.BibliographicalNote?.Length > 100) // Bibliographical note
-            {
-                rowErrors.Add(isEng
-                    ? "Bibliographical note must not exceed 100 characters"
-                    : "Phụ chú thư mục không vượt quá 100 ký tự");
-            }
-            
-            if (record.TopicalTerms?.Length > 500) // Topical terms
-            {
-                rowErrors.Add(isEng
-                    ? "Topical terms must not exceed 500 characters"
-                    : "Chủ đề có kiểm soát không vượt quá 500 ký tự");
-            }
-            
-            if (record.AdditionalAuthors?.Length > 500) // Additional authors
-            {
-                rowErrors.Add(isEng
-                    ? "Additional authors must not exceed 500 characters"
-                    : "Tác giả bổ sung không vượt quá 500 ký tự");
-            }
-            
-	        // if errors exist for the row, add to the dictionary
-	        if (rowErrors.Any())
-	        {
-	            errorMessages.Add(currDataRow, rowErrors);
-	        }
-
-	        // Increment the row counter
-	        currDataRow++;
-	    }
-
-	    return errorMessages;
-	}
-
-    // private async Task<(
-    //     Dictionary<int, List<string>> Errors,
-    //     Dictionary<int, List<int>> Duplicates
-    //     )> DetectDuplicatesInDatabase(List<LibraryItemCsvRecord> records, string[] scanningFields, SystemLanguage lang)
-    // {
-    //     if(scanningFields.Length == 0) return (new(), new());
-    //     
-    //     // Determine current system lang
-    //     var isEng = lang == SystemLanguage.English;
-    //     
-    //     // Initialize library item base spec
-    //     BaseSpecification<LibraryItem>? itemBaseSpec = null;
-    //     
-    //     // Initialize error messages (for display purpose)
-    //     var errorMessages = new Dictionary<int, List<string>>();
-    //     
-    //     // Initialize key pair dictionary (for handle purpose)
-    //     // Key: root element
-    //     // Value: duplicate elements with root
-    //     var duplicates = new Dictionary<int, List<int>>();
-    //     var keyToIndexMap = new Dictionary<string, int>();
-    //     var seenKeys = new HashSet<string>();
-    //     
-    //     // Default row index set to second row, as first row is header
-    //     var currDataRow = 2;
-    //     // Iterate each record 
-    //     for (int i = 0; i < records.Count; ++i)
-    //     {
-    //         var record = records[i];
-    //         
-    //         // Initialize row errors
-    //         var rowErrors = new List<string>();
-    //                     
-    //         // Iterate each fields to add criteria scanning logic
-    //         foreach (var field in scanningFields)
-    //         {
-    //             var normalizedField = field.ToUpperInvariant();
-    //         
-    //             // Building query to check duplicates on LibraryItem 
-    //             var newEditionSpec = normalizedField switch
-    //             {
-    //                 var title when title == nameof(LibraryItem.Title).ToUpperInvariant() =>
-    //                     new BaseSpecification<LibraryItem>(e => e.Title.Equals(record.Title)),
-    //                 // Currently just only handle duplicate title in DB 
-    //                 _ => null
-    //             };
-    //         
-    //             if (newEditionSpec != null) // Found new edition spec
-    //             {
-    //                 // Combine specifications with AND logic
-    //                 itemBaseSpec = itemBaseSpec == null
-    //                     ? newEditionSpec
-    //                     : itemBaseSpec.Or(newEditionSpec);
-    //             }
-    //             
-    //             // Check exist with spec
-    //             if (itemBaseSpec != null && await _unitOfWork.Repository<LibraryItem, int>().AnyAsync(itemBaseSpec))
-    //             {
-    //                 rowErrors.Add(isEng ? $"Title '{record.Title}'" : $"Tên sách '{record.Title}' đã tồn tại");
-    //             }
-    //         }
-    //         
-    //         // if errors exist for the row, add to the dictionary
-    //         if (rowErrors.Any())
-    //         {
-    //             errorMessages.Add(currDataRow, rowErrors);
-    //         }
-    //
-    //         // Increment the row counter
-    //         currDataRow++;
-    //     }
-    //
-    //     return (errorMessages, duplicates);
-    // }
-    
-    private (Dictionary<int, List<string>> Errors, Dictionary<int, List<int>> Duplicates) DetectDuplicatesInFile(
-        List<LibraryItemCsvRecordDto> records, 
-        string[] scanningFields,
-        SystemLanguage? lang
-    )
-    {
-        // Check whether exist any scanning fields
-        if (scanningFields.Length == 0)
-            return (new(), new());
-
-        // Determine current system language
-        var isEng = lang == SystemLanguage.English;
-        
-        // Initialize error messages (for display purpose)
-        var errorMessages = new Dictionary<int, List<string>>();
-        
-        // Initialize key pair dictionary (for handle purpose)
-        // Key: root element
-        // Value: duplicate elements with root
-        var duplicates = new Dictionary<int, List<int>>();
-        
-        // Initialize a map to track seen keys for each field
-        var fieldToSeenKeys = new Dictionary<string, Dictionary<string, int>>();
-        foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
-        {
-            fieldToSeenKeys[field] = new Dictionary<string, int>();
-        }
-
-        // Default row index set to second row, as first row is header
-        var currDataRow = 2;
-        for (int i = 0; i < records.Count; i++)
-        {
-            var record = records[i];
-            
-            // Initialize row errors
-            var rowErrors = new List<string>();
-            
-            // Check duplicates for each scanning field
-            foreach (var field in scanningFields.Select(f => f.ToUpperInvariant()))
-            {
-                string? fieldValue = field switch
-                {
-                    var title when title == nameof(LibraryItem.Title).ToUpperInvariant() => record.Title?.Trim()
-                        .ToUpperInvariant(),
-                    var coverImage when coverImage == nameof(LibraryItem.CoverImage).ToUpperInvariant() => record.CoverImage
-                        ?.Trim().ToUpperInvariant(),
-                    _ => null
-                };
-
-                // Skip if the field value is null or empty
-                if (string.IsNullOrEmpty(fieldValue))
-                    continue;
-
-                // Check if the key has already seen
-                var seenKeys = fieldToSeenKeys[field];
-                if (seenKeys.ContainsKey(fieldValue))
-                {
-                    // Retrieve the first index where the duplicate was seen
-                    var firstItemIndex = seenKeys[fieldValue];
-
-                    // Add the current index to the duplicates list
-                    if (!duplicates.ContainsKey(firstItemIndex))
-                    {
-                        duplicates[firstItemIndex] = new List<int>();
-                    }
-
-                    duplicates[firstItemIndex].Add(i);
-
-                    // Add duplicate error message
-                    rowErrors.Add(isEng
-                        ? $"Duplicate data for field '{field}': '{fieldValue}'"
-                        : $"Dữ liệu bị trùng cho trường '{field}': '{fieldValue}'");
-                }
-                else
-                {
-                    // Mark this field value as seen at the current index
-                    seenKeys[fieldValue] = i;
-                }
-            }
-            
-            // If errors exist for specific row, add to the dictionary
-            if (rowErrors.Any())
-            {
-                errorMessages.Add(currDataRow, rowErrors);
-            }
-            
-            // Increment the row counter
-            currDataRow++;
-        }
-
-        return (errorMessages, duplicates);
-    } 
-    
-    public async Task<IServiceResult> UpdateGroupIdAsync(List<int> libraryItemIds, int newGroupId)
-    {
-        foreach (var libraryItemId in libraryItemIds)
-        {
-            var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
-
-            if (item is null)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
-                        , "item"));
-            }
-            item.GroupId = newGroupId;
-            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
-        }
-
-        var isSuccess = await _unitOfWork.SaveChangesAsync();
-        if (isSuccess < 1)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-        }
-        return new ServiceResult(ResultCodeConst.SYS_Success0003,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-    }
-
-    public Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(ISpecification<LibraryItem> specification, bool tracked = true)
-    {
-        return base.GetAllWithSpecAsync(specification, tracked);
-    }
-
-    public async Task<IServiceResult> UpdateTrainingStatusAsync(List<int> libraryItemIds)
-    {
-        foreach (var libraryItemId in libraryItemIds)
-        {
-            var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
-
-            if (item is null)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
-                        , "item"));
-            }
-            item.IsTrained = true;
-            item.TrainedAt = DateTime.Now;
-            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
-        }
-
-        var isSuccess = await _unitOfWork.SaveChangesAsync();
-        if (isSuccess < 1)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-        }
-        return new ServiceResult(ResultCodeConst.SYS_Success0003,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
-    }
+    */
+    #endregion
 }

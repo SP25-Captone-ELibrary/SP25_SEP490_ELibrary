@@ -14,6 +14,7 @@ public class LibraryCardHolderSpecParams : BaseSpecParams
     public bool? IsReminderSent { get; set; }
     public bool? IsExtended { get; set; }
     public bool? IsArchived { get; set; }
+    public bool? IsDeleted { get; set; }
     public DateTime?[]? CardIssueDateRange { get; set; }
     public DateTime?[]? CardExpiryDateRange { get; set; }
     public DateTime?[]? SuspensionDateRange { get; set; }

@@ -6,12 +6,14 @@ public class WarehouseTrackingDetailCombinedDto
 {
     public PaginatedResultDto<WarehouseTrackingDetailDto> Result { get; set; } = null!;
     public List<WarehouseTrackingCategorySummaryDto> Statistics { get; set; } = new();
+    public WarehouseTrackingInventoryDto StatisticSummary { get; set; } = null!;
 }
 
 public static class WarehouseTrackingDetailCombinedDtoExtensions
 {
     public static WarehouseTrackingDetailCombinedDto ToDetailCombinedDto(
         this List<WarehouseTrackingDetailDto> dtos,
+        WarehouseTrackingDto trackingDto,
         List<CategoryDto> categories,
         int pageIndex, int pageSize, int totalPage, int totalActualItem)
     {
@@ -25,7 +27,7 @@ public static class WarehouseTrackingDetailCombinedDtoExtensions
             var statisticSummary = dtos
                 .Where(g => g.CategoryId == cate.CategoryId)
                 .GroupBy(g => g.CategoryId)
-                .Select(g => g.ToList().ToSummaryDto(g.First().Category))
+                .Select(g => g.ToList().ToSummaryDto(category: g.First().Category))
                 .FirstOrDefault();
 
             // Add to collection
@@ -44,7 +46,8 @@ public static class WarehouseTrackingDetailCombinedDtoExtensions
         return new()
         {
             Result = paginationResultDto,
-            Statistics = statisticDtos.ToList()
+            Statistics = statisticDtos.ToList(),
+            StatisticSummary = trackingDto.WarehouseTrackingInventory
         };
     }
 }

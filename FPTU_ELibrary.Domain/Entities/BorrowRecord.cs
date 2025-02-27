@@ -39,7 +39,7 @@ public class BorrowRecord
 
     // Mapping entities
     public BorrowRequest? BorrowRequest { get; set; }
-    public Employee? ProcessedByNavigation { get; set; } = null!;
+    public Employee? ProcessedByNavigation { get; set; } 
     public LibraryCard LibraryCard { get; set; } = null!;
     
     public ICollection<BorrowRecordDetail> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetail>();

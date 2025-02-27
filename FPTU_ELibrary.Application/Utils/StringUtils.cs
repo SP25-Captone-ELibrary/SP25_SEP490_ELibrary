@@ -121,6 +121,47 @@ namespace FPTU_ELibrary.Application.Utils
             return new string(chars);
         }
 
+        //  Summary:
+        //      Extract number from specific barcode format such as "SD00001". The result must be "1" as typeof int
+        public static int ExtractNumber(string input, string prefix, int length)
+        {
+            // Define a regex pattern to match the prefix followed by digits of a specific length
+            var pattern = $"^{Regex.Escape(prefix)}(\\d{{{length}}})$";
+            Match match = Regex.Match(input, pattern);
+        
+            if (match.Success)
+            {
+                return int.Parse(match.Groups[1].Value);
+            }
+        
+            return -1; // Return -1 if extraction fail
+        }
+        
+        //  Summary:
+        //      Generate a barcode string by completing the number with specific prefix
+        public static string AutoCompleteBarcode(string prefix, int length, int number)
+        {
+            // Format the number to match the required length
+            var formattedNumber = number.ToString().PadLeft(length, '0');
+            return $"{prefix}{formattedNumber}";
+        }
+        
+        //  Summary:
+        //      Generate a barcode string by completing range of number with specific prefix
+        public static List<string> AutoCompleteBarcode(string prefix, int length, int min, int max)
+        {
+            // Initialize list of string 
+            var barcodeList = new List<string>();
+            for (int num = min; num <= max; num++)
+            {
+                // Format the number to match the required length
+                var formattedNumber = num.ToString().PadLeft(length, '0');
+                barcodeList.Add($"{prefix}{formattedNumber}");
+            }
+            
+            return barcodeList;
+        }
+        
         // Validate numeric & datetime
         public static bool IsDecimal(string text) => decimal.TryParse(text, out _);
         public static bool IsNumeric(string text) => int.TryParse(text, out _);
@@ -218,11 +259,15 @@ namespace FPTU_ELibrary.Application.Utils
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
-                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
+                        if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
-                            // Keep only the result with the highest MatchedPoint
-                            titlePoints.Clear();
+                            titlePoints.Clear(); // Chỉ xóa nếu tìm thấy điểm cao hơn
                             titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
+                        }
+                        else if (titlePoints.First().Value.MatchedPoint == matchedPoint)
+                        {
+                            // Nếu có điểm trùng nhau, giữ lại 1 kết quả duy nhất
+                            titlePoints.TryAdd(value, (fuzzinessPoint, matchPhrasePoint, matchedPoint));
                         }
                     }
 
@@ -254,11 +299,15 @@ namespace FPTU_ELibrary.Application.Utils
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
                         int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
 
-                        if (!titlePoints.Any() || titlePoints.All(x => x.Value.MatchedPoint <= matchedPoint))
+                        if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
-                            // Keep only the result with the highest MatchedPoint
-                            titlePoints.Clear();
+                            titlePoints.Clear(); // Chỉ xóa nếu tìm thấy điểm cao hơn
                             titlePoints[value] = (fuzzinessPoint, matchPhrasePoint, matchedPoint);
+                        }
+                        else if (titlePoints.First().Value.MatchedPoint == matchedPoint)
+                        {
+                            // Nếu có điểm trùng nhau, giữ lại 1 kết quả duy nhất
+                            titlePoints.TryAdd(value, (fuzzinessPoint, matchPhrasePoint, matchedPoint));
                         }
                     }
                     var bestMatch = titlePoints.First();
@@ -299,6 +348,11 @@ namespace FPTU_ELibrary.Application.Utils
 
             matchResult.TotalPoint = totalWeightedScore;
             matchResult.ConfidenceThreshold = confidenceThreshold;
+            // if matchResult include 2 with same name, remove the one
+            matchResult.FieldPointsWithThreshole = matchResult.FieldPointsWithThreshole
+                .GroupBy(x => x.Name)
+                .Select(x => x.OrderByDescending(y => y.MatchedPoint).First())
+                .ToList();
             return matchResult;
         }
 

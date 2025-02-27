@@ -1,5 +1,6 @@
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -49,7 +50,7 @@ public class ReminderService : BackgroundService
                         if (userInfo != null)
                         {
                             // Email subject 
-                            var subject = $"[ELIBRARY] Nhắc nhở lịch đặt mượn sách - Lấy Trước Ngày {br.ExpirationDate:MM//dd//yyyy}";
+                            var subject = $"[ELIBRARY] Nhắc nhở lịch đặt mượn sách - Lấy Trước Ngày {br.ExpirationDate:dd/MM/yyyy}";
                             
                             // Progress send confirmation email
                             var emailMessageDto = new EmailMessageDto( // Define email message
@@ -88,7 +89,7 @@ public class ReminderService : BackgroundService
                         if (userInfo != null)
                         {
                             // Email subject 
-                            var subject = $"[ELIBRARY] Thông Báo Thẻ Thư Viện Sắp Hết Hạn - Ngày Hết Hạn {libCard.ExpiryDate:MM//dd//yyyy}";
+                            var subject = $"[ELIBRARY] Thông Báo Thẻ Thư Viện Sắp Hết Hạn - Ngày Hết Hạn {libCard.ExpiryDate:dd/MM/yyyy}";
                             
                             // Progress send confirmation email
                             var emailMessageDto = new EmailMessageDto( // Define email message
@@ -242,11 +243,11 @@ public class ReminderService : BackgroundService
                          <ul>
                              <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{libraryCard.Barcode}}</li>
                              <li><span class="expiry-date">Ngày Hết Hạn:</span> {{libraryCard.ExpiryDate:dd/MM/yyyy}}</li>
-                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{libraryCard.Status}}</span></li>
+                             <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{libraryCard.Status.GetDescription()}}</span></li>
                          </ul>
                      </div>
                      
-                     <p>Để gia hạn thẻ thư viện, vui lòng đến trực tiếp thư viện hoặc liên hệ với chúng tôi qua số <strong>{{libContact}}</strong>.</p>
+                     <p>Để gia hạn thẻ thư viện, vui lòng đến trực tiếp thư viện hoặc liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
                      
                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, đừng ngần ngại liên hệ với chúng tôi.</p>
                      

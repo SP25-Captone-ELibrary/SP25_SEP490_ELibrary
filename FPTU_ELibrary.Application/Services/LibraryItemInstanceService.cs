@@ -2,7 +2,6 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
-using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -15,11 +14,9 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Nest;
 using Serilog;
 using Exception = System.Exception;
 
@@ -31,6 +28,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     private readonly AppSettings _appSettings;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
+    private readonly ICategoryService<CategoryDto> _categoryService;
     private readonly ILibraryItemService<LibraryItemDto> _libItemService;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventoryService;
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionService;
@@ -39,6 +37,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     public LibraryItemInstanceService(
         IBorrowRequestService<BorrowRequestDto> borrowReqService,
         IBorrowRecordService<BorrowRecordDto> borrowRecService,
+        ICategoryService<CategoryDto> categoryService,
         ILibraryItemService<LibraryItemDto> libItemService,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventoryService,
         ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
@@ -53,6 +52,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         _borrowReqService = borrowReqService;
         _borrowRecService = borrowRecService;
         _conditionService = conditionService;
+        _categoryService = categoryService;
         _libItemService = libItemService;
         _inventoryService = inventoryService;
         _conditionHistoryService = conditionHistoryService;
@@ -386,6 +386,125 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         }
     }
 
+    public async Task<IServiceResult> GenerateBarcodeRangeAsync(int categoryId, int totalItem, int? skipItem = 0)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Validate length
+            if (totalItem <= 0)
+            {
+                // Data not found or empty
+                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004);
+                var customMsg = isEng ? "Total item must greater than 0" : "Tổng số lượng phải lớn hơn 0";
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004, $"{msg}.{customMsg}");
+            }
+            
+            // Check exist category
+            var categoryDto = (await _categoryService.GetByIdAsync(categoryId)).Data as CategoryDto;
+            if (categoryDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                    ? "category to process auto filled item's barcode" 
+                    : "phân loại để tạo số đăng ký cá biệt cho tài liệu"));
+            }
+            
+            // Retrieve default maximum instance barcode length
+            var defaultBarcodeLength = _appSettings.InstanceBarcodeNumLength;
+            // Extract category prefix 
+            var prefix = categoryDto.Prefix;
+            // Initialize barcode range fields
+            string barcodeRangeFrom;
+            string barcodeRangeTo;
+            // Initialize start index
+            int startIndex = 0;
+            
+            // Retrieve all item's barcode
+            // Build spec
+            var instanceSpec = new BaseSpecification<LibraryItemInstance>(li => 
+                li.LibraryItem.CategoryId == categoryId); // All instance's item that match with specific category id
+            var existingBarcodes = (await _unitOfWork.Repository<LibraryItemInstance, int>()
+                    .GetAllWithSpecAndSelectorAsync(instanceSpec, selector: li => li.Barcode)).ToArray(); // Convert result to array
+            if (existingBarcodes.Any()) // At least one found
+            {
+                // Convert existing barcodes to list of int to retrieve the highest one
+                startIndex = existingBarcodes
+                    // Iterate each barcode, converting them to number
+                    .Select(barcode => StringUtils.ExtractNumber(input: barcode, prefix: prefix, length: defaultBarcodeLength))
+                    // Order by number descending
+                    .OrderByDescending(num => num)
+                    .FirstOrDefault();
+                
+                // Lengthen the start index when exist skip item
+                if (skipItem != null && int.TryParse(skipItem.ToString(), out var validSkipVal))
+                {
+                    startIndex += validSkipVal;
+                }
+                
+                // Add barcode range
+                barcodeRangeFrom = StringUtils.AutoCompleteBarcode(prefix: prefix, length: defaultBarcodeLength, number: startIndex + 1);
+                barcodeRangeTo = StringUtils.AutoCompleteBarcode(prefix: prefix, length: defaultBarcodeLength, number: startIndex + totalItem);
+            }
+            else // Not found any
+            {
+                // Lengthen the start index when exist skip item
+                if (skipItem != null && int.TryParse(skipItem.ToString(), out var validSkipVal))
+                {
+                    startIndex += validSkipVal;
+                }
+                
+                var lowerBoundary = startIndex > 0 ? startIndex + 1 : 1;
+                var upperBoundary = startIndex > 0 ? startIndex + totalItem : totalItem;
+                
+                // Add default barcode range
+                barcodeRangeFrom = StringUtils.AutoCompleteBarcode(prefix: prefix, length: defaultBarcodeLength, number: lowerBoundary);
+                barcodeRangeTo = StringUtils.AutoCompleteBarcode(prefix: prefix, length: defaultBarcodeLength, number: upperBoundary);
+            }
+            
+            // Check whether upper boundary exceed than instance barcode length
+            var upperBoundNum = barcodeRangeTo.Length - prefix.Length;
+            if (upperBoundNum > defaultBarcodeLength)
+            {
+                // Msg: The number of instance item is exceeding than default config threshold. Please modify system configuration to continue
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0015,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0015));   
+            }
+            
+            // Extract current lower boundary num
+            var currLowerBoundNum = StringUtils.ExtractNumber(input: barcodeRangeFrom, prefix: prefix, length: defaultBarcodeLength);
+            // Extract current upper boundary num
+            var currUpperBoundNum = StringUtils.ExtractNumber(input: barcodeRangeTo, prefix: prefix, length: defaultBarcodeLength);
+            // Generate list of barcode 
+            var barcodeList = StringUtils.AutoCompleteBarcode(
+                prefix: prefix,
+                length: defaultBarcodeLength,
+                min: currLowerBoundNum,
+                max: currUpperBoundNum);
+            
+            // Always return success (if any category found)
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                new GenerateBarcodeRangeResultDto()
+                {
+                    BarcodeRangeFrom = barcodeRangeFrom,
+                    BarcodeRangeTo = barcodeRangeTo,
+                    Barcodes = barcodeList
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when generate barcode range with specific length and category");
+        }
+    }
+    
     public async Task<IServiceResult> GetByBarcodeAsync(string barcode)
     {
         try
@@ -703,6 +822,140 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         }
     }
 
+    public async Task<IServiceResult> AddRangeBarcodeWithoutSaveChangesAsync(string isbn,
+        int conditionId, string barcodeRangeFrom, string barcodeRangeTo)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Check exist library item
+            // Build spec
+            var libItemSpec = new BaseSpecification<LibraryItem>(li => Equals(li.Isbn, isbn));
+            // Apply include
+            libItemSpec.ApplyInclude(q => q.Include(li => li.Category));
+            // Retrieve item with spec
+            var libItemDto = (await _libItemService.GetWithSpecAsync(libItemSpec)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                // Log
+                _logger.Error("Not found library item to process add range barcode without save changes");
+                // Mark as fail to update
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), data: 0);
+            }
+            
+            // Check exist condition
+            var isConditionExist = (await _conditionService.AnyAsync(c => c.ConditionId == conditionId)).Data is true;
+            if (!isConditionExist)
+            {
+                // Log
+                _logger.Error("Not found library item condition to process add range barcode without save changes");
+                // Mark as fail to update
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), data: 0);
+            }
+            
+            // Extract category prefix
+            var prefix = libItemDto.Category.Prefix;
+            // Extract current lower boundary num
+            var currLowerBoundNum = StringUtils.ExtractNumber(input: barcodeRangeFrom, prefix: prefix, length: _appSettings.InstanceBarcodeNumLength);
+            // Extract current upper boundary num
+            var currUpperBoundNum = StringUtils.ExtractNumber(input: barcodeRangeTo, prefix: prefix, length: _appSettings.InstanceBarcodeNumLength);
+            // Generate list of barcode 
+            var barcodeList = StringUtils.AutoCompleteBarcode(
+                prefix: prefix,
+                length: _appSettings.InstanceBarcodeNumLength,
+                min: currLowerBoundNum,
+                max: currUpperBoundNum);
+            
+            // Initialize list of library item instance
+            var itemInstances = new List<LibraryItemInstanceDto>();
+            // Iterate each barcode generated to add library item instance and its default condition history
+            foreach (var barcode in barcodeList)
+            {
+                itemInstances.Add(new ()
+                {
+                    Barcode = barcode,
+                    Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
+                    LibraryItemConditionHistories = new List<LibraryItemConditionHistoryDto>()
+                    {
+                        new()
+                        {
+                            ConditionId = conditionId
+                        }
+                    }
+                });
+            }
+            
+            // Check exist library item
+            var itemEntity = (await _libItemService.GetByIdAsync(libItemDto.LibraryItemId)).Data as LibraryItemDto;
+            if (itemEntity == null)
+            {
+                // Log
+                _logger.Error("Not found library item to process add range barcode without save changes");
+                // Mark as fail to update
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), data: 0);
+            }
+
+            var toAddItemInstances = new List<LibraryItemInstance>();
+            // Process add new item instance
+            itemInstances.ForEach(bec =>
+            {
+                toAddItemInstances.Add(new()
+                {
+                    // Assign to specific library item
+                    LibraryItemId = itemEntity.LibraryItemId,
+                    // Assign copy barcode
+                    Barcode = bec.Barcode,
+                    // Default status
+                    Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
+                    // Boolean 
+                    IsDeleted = false,
+                    // Condition histories
+                    LibraryItemConditionHistories =
+                        _mapper.Map<List<LibraryItemConditionHistory>>(bec.LibraryItemConditionHistories)
+                });
+            });
+
+            // Add range 
+            await _unitOfWork.Repository<LibraryItemInstance, int>().AddRangeAsync(toAddItemInstances);
+
+            // Update inventory total
+            // Get inventory by library item id
+            var getInventoryRes = await _inventoryService.GetWithSpecAsync(
+                new BaseSpecification<LibraryItemInventory>(
+                    x => x.LibraryItemId == itemEntity.LibraryItemId), tracked: false);
+            if (getInventoryRes.Data is LibraryItemInventoryDto inventoryDto) // Get data success
+            {
+                // Set relations to null
+                inventoryDto.LibraryItem = null!;
+                // Update total
+                inventoryDto.TotalUnits += toAddItemInstances.Count;
+
+                // Update without save
+                await _inventoryService.UpdateWithoutSaveChangesAsync(inventoryDto);
+            }
+
+            // Mark as success without save change
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: itemEntity.LibraryItemId);
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process add item instance to library item");
+        }
+    }
+    
     public async Task<IServiceResult> UpdateRangeAsync(int libraryItemId,
         List<LibraryItemInstanceDto> itemInstanceDtos)
     {

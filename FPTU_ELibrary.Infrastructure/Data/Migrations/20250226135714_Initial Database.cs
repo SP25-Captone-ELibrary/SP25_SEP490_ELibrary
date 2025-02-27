@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -113,7 +113,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     is_archived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     archive_reason = table.Column<string>(type: "nvarchar(250)", nullable: true),
                     previous_user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    transaction_code = table.Column<string>(type: "nvarchar(50)", nullable: false)
+                    transaction_code = table.Column<string>(type: "nvarchar(50)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -601,6 +601,27 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Warehouse_Tracking_Inventory",
+                columns: table => new
+                {
+                    tracking_id = table.Column<int>(type: "int", nullable: false),
+                    total_item = table.Column<int>(type: "int", nullable: false),
+                    total_instance_item = table.Column<int>(type: "int", nullable: false),
+                    total_cataloged_item = table.Column<int>(type: "int", nullable: false),
+                    total_cataloged_instance_item = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WarehouseTrackingInventory_TrackingId", x => x.tracking_id);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTrackingInventory_TrackingId",
+                        column: x => x.tracking_id,
+                        principalTable: "Warehouse_Tracking",
+                        principalColumn: "tracking_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Borrow_Record",
                 columns: table => new
                 {
@@ -664,34 +685,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         principalColumn: "resource_id");
                     table.ForeignKey(
                         name: "FK_DigitalBorrow_UserId",
-                        column: x => x.user_id,
-                        principalTable: "User",
-                        principalColumn: "user_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Invoice",
-                columns: table => new
-                {
-                    invoice_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    invoice_code = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    payment_method_id = table.Column<int>(type: "int", nullable: false),
-                    total_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime", nullable: false),
-                    paid_at = table.Column<DateTime>(type: "datetime", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Invoice_InvoiceId", x => x.invoice_id);
-                    table.ForeignKey(
-                        name: "FK_Invoice_PaymentMethodId",
-                        column: x => x.payment_method_id,
-                        principalTable: "Payment_Method",
-                        principalColumn: "payment_method_id");
-                    table.ForeignKey(
-                        name: "FK_Invoice_UserId",
                         column: x => x.user_id,
                         principalTable: "User",
                         principalColumn: "user_id");
@@ -888,37 +881,41 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     transaction_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     transaction_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     transaction_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    expired_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    created_by = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     canceled_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     fine_id = table.Column<int>(type: "int", nullable: true),
-                    digital_borrow_id = table.Column<int>(type: "int", nullable: true),
+                    resource_id = table.Column<int>(type: "int", nullable: true),
                     library_card_package_id = table.Column<int>(type: "int", nullable: true),
-                    invoice_id = table.Column<int>(type: "int", nullable: true)
+                    transaction_method = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    payment_method_id = table.Column<int>(type: "int", nullable: true),
+                    payment_url = table.Column<string>(type: "nvarchar(255)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Transaction_TransactionId", x => x.transaction_id);
-                    table.ForeignKey(
-                        name: "FK_Transaction_DigitalBorrowId",
-                        column: x => x.digital_borrow_id,
-                        principalTable: "Digital_Borrow",
-                        principalColumn: "digital_borrow_id");
                     table.ForeignKey(
                         name: "FK_Transaction_FineId",
                         column: x => x.fine_id,
                         principalTable: "Fine",
                         principalColumn: "fine_id");
                     table.ForeignKey(
-                        name: "FK_Transaction_InvoiceId",
-                        column: x => x.invoice_id,
-                        principalTable: "Invoice",
-                        principalColumn: "invoice_id");
-                    table.ForeignKey(
                         name: "FK_Transaction_LibraryCardPackageId",
                         column: x => x.library_card_package_id,
                         principalTable: "Library_Card_Package",
                         principalColumn: "library_card_package_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_PaymentMethodId",
+                        column: x => x.payment_method_id,
+                        principalTable: "Payment_Method",
+                        principalColumn: "payment_method_id");
+                    table.ForeignKey(
+                        name: "FK_Transaction_ResourceId",
+                        column: x => x.resource_id,
+                        principalTable: "Library_Resource",
+                        principalColumn: "resource_id");
                     table.ForeignKey(
                         name: "FK_Transaction_UserId",
                         column: x => x.user_id,
@@ -1094,15 +1091,18 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: true),
                     unit_price = table.Column<decimal>(type: "decimal(10,2)", nullable: false, defaultValue: 0.0m),
                     total_amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false, defaultValue: 0.0m),
-                    reason = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     tracking_id = table.Column<int>(type: "int", nullable: false),
                     library_item_id = table.Column<int>(type: "int", nullable: true),
                     category_id = table.Column<int>(type: "int", nullable: false),
                     condition_id = table.Column<int>(type: "int", nullable: false),
+                    stock_transaction_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    barcode_range_from = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    barcode_range_to = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    has_glue_barcode = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -1344,16 +1344,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "fine_policy_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Invoice_payment_method_id",
-                table: "Invoice",
-                column: "payment_method_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Invoice_user_id",
-                table: "Invoice",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Library_Item_category_id",
                 table: "Library_Item",
                 column: "category_id");
@@ -1499,24 +1489,24 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transaction_digital_borrow_id",
-                table: "Transaction",
-                column: "digital_borrow_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Transaction_fine_id",
                 table: "Transaction",
                 column: "fine_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transaction_invoice_id",
-                table: "Transaction",
-                column: "invoice_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Transaction_library_card_package_id",
                 table: "Transaction",
                 column: "library_card_package_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transaction_payment_method_id",
+                table: "Transaction",
+                column: "payment_method_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transaction_resource_id",
+                table: "Transaction",
+                column: "resource_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transaction_user_id",
@@ -1583,6 +1573,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Borrow_Request_Detail");
 
             migrationBuilder.DropTable(
+                name: "Digital_Borrow");
+
+            migrationBuilder.DropTable(
                 name: "Library_Item_Author");
 
             migrationBuilder.DropTable(
@@ -1625,6 +1618,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Warehouse_Tracking_Detail");
 
             migrationBuilder.DropTable(
+                name: "Warehouse_Tracking_Inventory");
+
+            migrationBuilder.DropTable(
                 name: "Author");
 
             migrationBuilder.DropTable(
@@ -1640,16 +1636,19 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "System_Permission");
 
             migrationBuilder.DropTable(
-                name: "Digital_Borrow");
-
-            migrationBuilder.DropTable(
                 name: "Fine");
 
             migrationBuilder.DropTable(
-                name: "Invoice");
+                name: "Library_Card_Package");
 
             migrationBuilder.DropTable(
-                name: "Library_Card_Package");
+                name: "Payment_Method");
+
+            migrationBuilder.DropTable(
+                name: "Library_Resource");
+
+            migrationBuilder.DropTable(
+                name: "User");
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Condition");
@@ -1661,19 +1660,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Library_Item");
 
             migrationBuilder.DropTable(
-                name: "Library_Resource");
-
-            migrationBuilder.DropTable(
                 name: "Borrow_Record");
 
             migrationBuilder.DropTable(
                 name: "Fine_Policy");
-
-            migrationBuilder.DropTable(
-                name: "Payment_Method");
-
-            migrationBuilder.DropTable(
-                name: "User");
 
             migrationBuilder.DropTable(
                 name: "Supplier");

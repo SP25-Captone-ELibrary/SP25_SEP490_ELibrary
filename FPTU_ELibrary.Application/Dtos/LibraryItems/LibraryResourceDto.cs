@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Payments;
 
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
 
@@ -31,4 +32,7 @@ public class LibraryResourceDto
     
     [JsonIgnore]
     public ICollection<DigitalBorrowDto> DigitalBorrows { get; set; } = new List<DigitalBorrowDto>();
+    
+    [JsonIgnore] 
+    public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
 }

@@ -66,4 +66,10 @@ public class LibraryCardPackageController : ControllerBase
         return Ok(await _packageSvc.DeleteAsync(id));
     }
     #endregion
+
+    [HttpGet(APIRoute.LibraryCardPackage.GetAllPublic, Name = nameof(GetAllLibraryCardPackagePublicAsync))]
+    public async Task<IActionResult> GetAllLibraryCardPackagePublicAsync()
+    {
+        return Ok(await _packageSvc.GetAllAsync());
+    }
 }

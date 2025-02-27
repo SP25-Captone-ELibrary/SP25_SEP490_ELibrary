@@ -10,6 +10,7 @@ using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.API.Payloads.Requests.Supplier;
+using FPTU_ELibrary.API.Payloads.Requests.Transaction;
 using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
@@ -22,7 +23,10 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Dtos.Suppliers;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -238,7 +242,7 @@ namespace FPTU_ELibrary.API.Extensions
 		}
 
 		// Mapping from typeof(CreateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
-		public static LibraryItemInstanceDto ToLibraryItemInstanceDto(this CreateItemInstanceRequest req)
+		private static LibraryItemInstanceDto ToLibraryItemInstanceDto(this CreateItemInstanceRequest req)
 		{
 			return new LibraryItemInstanceDto()
 			{
@@ -365,15 +369,12 @@ namespace FPTU_ELibrary.API.Extensions
 		#endregion
 
 		#region Library Card
-		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(UserDto)
-		public static UserDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
+		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(LibraryCardDto)
+		public static LibraryCardDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
 			=> new()
 			{
-				LibraryCard = new()
-				{
-					Avatar = req.Avatar,
-					FullName = req.FullName
-				}
+				Avatar = req.Avatar,
+				FullName = req.FullName
 			};
 		
 		// Mapping from typeof(CreateLibraryCardHolderRequest) to typeof(UserDto)
@@ -388,7 +389,12 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender,
 				Dob = req.Dob,
-				Avatar = req.Avatar
+				Avatar = req.Avatar,
+				LibraryCard = new()
+				{
+					FullName = $"{req.FirstName} {req.LastName}",
+					Avatar = req.Avatar
+				}
 			};
 		}
 		
@@ -695,7 +701,7 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#region Warehouse Tracking
 
-		// Mapping from (CreateWarehouseTracking) to typeof(WarehouseTrackingDto)
+		// Mapping from typeof(CreateWarehouseTracking) to typeof(WarehouseTrackingDto)
 		public static WarehouseTrackingDto ToWarehouseTrackingDto(this CreateWarehouseTrackingRequest req)
 		{
 			return new WarehouseTrackingDto()
@@ -707,11 +713,19 @@ namespace FPTU_ELibrary.API.Extensions
 				TransferLocation = req.TransferLocation,
 				Description = req.Description,
 				EntryDate = req.EntryDate,
-				ExpectedReturnDate = req.ExpectedReturnDate
+				ExpectedReturnDate = req.ExpectedReturnDate,
+				// Default inventory values
+				WarehouseTrackingInventory = new ()
+				{
+					TotalItem = 0,
+					TotalCatalogedItem = 0,
+					TotalInstanceItem = 0,
+					TotalCatalogedInstanceItem = 0
+				}
 			};
 		}
 
-		// Mapping from (UpdateWarehouseTrackingRequest) to typeof(WarehouseTrackingDto)
+		// Mapping from typeof(UpdateWarehouseTrackingRequest) to typeof(WarehouseTrackingDto)
 		public static WarehouseTrackingDto ToWarehouseTrackingDto(this UpdateWarehouseTrackingRequest req)
 		{
 			return new WarehouseTrackingDto()
@@ -726,7 +740,120 @@ namespace FPTU_ELibrary.API.Extensions
 				ExpectedReturnDate = req.ExpectedReturnDate
 			};
 		}
-
+		
+		// Mapping from typeof(CreateStockInRequest) to typeof(WarehouseTrackingDto)
+		public static WarehouseTrackingDto ToWarehouseTrackingDto(this CreateStockInRequest req)
+		{
+			// Total item <- Number of warehouse tracking details  
+			var totalItem = req.WarehouseTrackingDetails.Count;
+			// Total instance item <- Sum of each warehouse tracking detail's item total
+			var totalInstanceItem = req.WarehouseTrackingDetails.Count != 0
+                ? req.WarehouseTrackingDetails
+					.Select(wtd => wtd.ItemTotal).Sum() 
+				: 0;
+			// Total cataloged item <- Any tracking detail request along with libraryItemId > 0 or libraryItem != null
+			var totalCatalogedItem = req.WarehouseTrackingDetails
+				.Count(wtd =>
+					(wtd.LibraryItemId != null && wtd.LibraryItemId > 0) || wtd.LibraryItem != null);
+			// Total instance cataloged item  
+			// var totalCatalogedInstanceItem = req.WarehouseTrackingDetails
+			// 	.Where(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId != 0)
+			// 	.Select(wtd => wtd.ItemTotal).Sum();
+			// Sum of number of library item instances in each warehouse tracking detail's item
+			// var totalItemToBeCataloged = req.WarehouseTrackingDetails.Count != 0
+			// 	? req.WarehouseTrackingDetails
+			// 		.Where(wtd => wtd.LibraryItem != null)
+			// 		.Select(wtd => wtd.LibraryItem?.LibraryItemInstances?.Count)
+			// 		.Sum()
+			// 	: 0;
+			
+            return new()
+            {
+                SupplierId = req.SupplierId,
+                Description = req.Description,
+                EntryDate = req.EntryDate,
+                TotalItem = req.TotalItem,
+                TotalAmount = req.TotalAmount,
+                WarehouseTrackingDetails = req.WarehouseTrackingDetails.Any()
+                    ? req.WarehouseTrackingDetails.Select(wtd => wtd.ToWarehouseTrackingDetailDto()).ToList()
+                    : new(),
+                // Inventory
+                WarehouseTrackingInventory = new WarehouseTrackingInventoryDto()
+                {
+	                TotalItem = totalItem,
+					TotalInstanceItem = totalInstanceItem,
+	                TotalCatalogedItem = totalCatalogedItem,
+	                TotalCatalogedInstanceItem = 0
+                }
+            };
+        }
+		
+		// Mapping from typeof(CreateStockInDetailRequest) to typeof(WarehouseTrackingDetailDto)
+		private static WarehouseTrackingDetailDto ToWarehouseTrackingDetailDto(this CreateStockInDetailRequest req)
+		{
+			return new()
+			{
+				ItemName = req.ItemName,
+				ItemTotal = req.ItemTotal,
+				Isbn = !string.IsNullOrEmpty(req.Isbn) ? ISBN.CleanIsbn(req.Isbn) : null,
+				UnitPrice = req.UnitPrice,
+				TotalAmount = req.TotalAmount,
+				CategoryId = req.CategoryId,
+				ConditionId = req.ConditionId,
+				StockTransactionType = req.StockTransactionType,
+				LibraryItemId = req.LibraryItemId,
+				LibraryItem = req.LibraryItem?.ToLibraryItemDto()
+			};
+		}
+		
+		// Mapping from typeof(CreateStockInDetailItemRequest) to typeof(LibraryItemDto)
+		private static LibraryItemDto ToLibraryItemDto(this CreateStockInDetailItemRequest req)
+		{
+			return new()
+			{
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				Responsibility = req.Responsibility,
+				Edition = req.Edition,
+				EditionNumber = req.EditionNumber,
+				Language = req.Language,
+				OriginLanguage = req.OriginLanguage,
+				Summary = req.Summary,
+				CoverImage = req.CoverImage,
+				PublicationYear = req.PublicationYear,
+				Publisher = req.Publisher,
+				PublicationPlace = req.PublicationPlace,
+				ClassificationNumber = req.ClassificationNumber,
+				CutterNumber = req.CutterNumber,
+				Isbn = req.Isbn != null ? ISBN.CleanIsbn(req.Isbn) : req.Isbn,
+				Ean = req.Ean,
+				EstimatedPrice = req.EstimatedPrice,
+				PageCount = req.PageCount,
+				PhysicalDetails = req.PhysicalDetails,
+				Dimensions = req.Dimensions,
+				AccompanyingMaterial = req.AccompanyingMaterial,
+				Genres = req.Genres,
+				GeneralNote = req.GeneralNote,
+				BibliographicalNote = req.BibliographicalNote,
+				TopicalTerms = req.TopicalTerms,
+				AdditionalAuthors = req.AdditionalAuthors,
+				// In-library management fields
+				CategoryId = req.CategoryId,
+				// Inventory
+				LibraryItemInventory = new LibraryItemInventoryDto()
+				{
+					TotalUnits = 0,
+					AvailableUnits = 0,
+					BorrowedUnits = 0,
+					RequestUnits = 0,
+					ReservedUnits = 0
+				},
+				// Authors
+				LibraryItemAuthors = req.AuthorIds.Any()
+					? req.AuthorIds.Select(id => new LibraryItemAuthorDto() { AuthorId = id }).ToList()
+					: new List<LibraryItemAuthorDto>()
+			};
+		}
 		#endregion
 
 		#region Warehouse Traking Detail
@@ -741,9 +868,11 @@ namespace FPTU_ELibrary.API.Extensions
 				Isbn = req.Isbn != null ? ISBN.CleanIsbn(req.Isbn) : null,
 				UnitPrice = req.UnitPrice,
 				TotalAmount = req.TotalAmount,
-				Reason = req.Reason,
+				StockTransactionType = req.StockTransactionType,
 				CategoryId = req.CategoryId,
-				ConditionId = req.ConditionId
+				ConditionId = req.ConditionId,
+				LibraryItemId = req.LibraryItemId,
+				LibraryItem = req.LibraryItem?.ToLibraryItemDto()
 			};
 		}
 		
@@ -758,11 +887,28 @@ namespace FPTU_ELibrary.API.Extensions
 				Isbn = req.Isbn != null ? ISBN.CleanIsbn(req.Isbn) : null,
 				UnitPrice = req.UnitPrice,
 				TotalAmount = req.TotalAmount,
-				Reason = req.Reason,
+				StockTransactionType = req.StockTransactionType,
 				CategoryId = req.CategoryId,
 				ConditionId = req.ConditionId
 			};
 		}
+		#endregion
+
+		#region Transaction
+		// Mapping from typeof(CreateTransactionRequest) to typeof(TransactionDto)
+		public static TransactionDto ToTransactionDto(this CreateTransactionRequest req)
+		{
+			return new()
+			{
+				ResourceId = req.ResourceId,
+				LibraryCardPackageId = req.LibraryCardPackageId,
+				Description = req.Description,
+				PaymentMethodId = req.PaymentMethodId,
+				TransactionType = req.TransactionType
+			};
+		}
+		
+
 		#endregion
 		
 		#region AIService

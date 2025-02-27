@@ -95,6 +95,7 @@ public class LibraryCardConfiguration : IEntityTypeConfiguration<LibraryCard>
 
         #region Update at 17/02/2025 by Le Xuan Phuoc
         builder.Property(e => e.TransactionCode)
+            .IsRequired(false)
             .HasColumnType("nvarchar(50)")
             .HasColumnName("transaction_code");
         builder.Property(e => e.RejectReason)

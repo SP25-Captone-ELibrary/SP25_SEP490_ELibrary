@@ -210,7 +210,7 @@ public static class CsvUtils
     public static (List<T> Records, Dictionary<int, string[]> Errors) ReadCsvOrExcelByHeaderIndexWithErrors<T>(
         IFormFile file,
         CsvConfiguration config,
-        ExcelHeaderProps props,
+        ExcelProps props,
         string? encodingType,
         SystemLanguage? systemLang = SystemLanguage.English)
         where T : class, new()
@@ -280,7 +280,7 @@ public static class CsvUtils
             using (var stream = file.OpenReadStream())
             using (var package = new OfficeOpenXml.ExcelPackage(stream))
             {
-                var worksheet = package.Workbook.Worksheets[0];
+                var worksheet = package.Workbook.Worksheets[props.WorkSheetIndex > 0 ? props.WorkSheetIndex : 0];
                 var rows = worksheet.Dimension.Rows;
                 var cols = worksheet.Dimension.Columns;
 
@@ -419,7 +419,7 @@ public static class CsvUtils
         }
     }
     
-    public static (List<T> handledRecords, string msg) HandleDuplicates<T>(
+    public static (List<T> handledRecords, string msg, int totalInvalidItem) HandleDuplicates<T>(
         List<T> records, 
         Dictionary<int, List<int>> duplicateIndexes,
         DuplicateHandle duplicateHandle,
@@ -477,12 +477,12 @@ public static class CsvUtils
 				
                 // Update the additional message
 				msg = isEng
-					? $"{objectsToSkip.Count} data have been replaced"
-					: $"{objectsToSkip.Count} đã bị lượt bỏ";
+					? $"{objectsToSkip.Count} data have been skip"
+					: $"đã bỏ qua {objectsToSkip.Count} dữ liệu";
 				break;
 		}
 
-        return (records, msg);
+        return (records, msg, duplicateIndexes.Keys.Count);
     }
     
     private static Dictionary<int, PropertyInfo> MapHeadersToProperties<T>(string[] headers)
@@ -558,10 +558,11 @@ public static class CsvUtils
     }
 }
 
-public class ExcelHeaderProps
+public class ExcelProps
 {
     public int FromRow { get; set; }
     public int FromCol { get; set; }
     public int ToRow { get; set; }
     public int StartRowIndex { get; set; }
+    public int WorkSheetIndex { get; set; } = 0;
 }

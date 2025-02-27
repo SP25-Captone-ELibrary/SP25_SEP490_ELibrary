@@ -33,6 +33,17 @@ public class LibraryItemInstanceController : ControllerBase
     {
         return Ok(await _itemInstanceService.GetByBarcodeAsync(barcode: barcode));
     }
+
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItemInstance.GenerateBarcodeRange, Name = nameof(GenerateBarcodeRangeAsync))]
+    public async Task<IActionResult> GenerateBarcodeRangeAsync([FromQuery] int categoryId,
+        [FromQuery] int totalItem, [FromQuery] int? skipItem = 0)
+    {
+        return Ok(await _itemInstanceService.GenerateBarcodeRangeAsync(
+            categoryId: categoryId,
+            totalItem: totalItem,
+            skipItem: skipItem));
+    }
     
     [Authorize]
     [HttpGet(APIRoute.LibraryItemInstance.CheckExistBarcode, Name = nameof(CheckExistLibraryItemInstanceByBarcodeAsync))]

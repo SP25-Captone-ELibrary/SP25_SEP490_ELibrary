@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -82,7 +83,7 @@ public class WarehouseTrackingDetailController : ControllerBase
     [HttpGet(APIRoute.WarehouseTrackingDetail.GetById, Name = nameof(GetWarehouseTrackingDetailByIdAsync))]
     public async Task<IActionResult> GetWarehouseTrackingDetailByIdAsync([FromRoute] int id)
     {
-        return Ok(await _trackingDetailService.GetByIdAsync(id));
+        return Ok(await _trackingDetailService.GetDetailAsync(id));
     }
     
     [Authorize]

@@ -19,10 +19,18 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
                 (!string.IsNullOrEmpty(w.Description) && w.Description.Contains(specParams.Search)) || 
                 (!string.IsNullOrEmpty(w.TransferLocation) && w.TransferLocation.Contains(specParams.Search)) ||
                 (!string.IsNullOrEmpty(w.Description) && w.Description.Contains(specParams.Search)) ||
-                // (w.TrackingType.ToString().Contains(specParams.Search)) ||
-                // (w.Status.ToString().Contains(specParams.Search))
-                
-                (specParams.ParsedSearchDate.HasValue && w.EntryDate.Date == specParams.ParsedSearchDate.Value.Date)
+                (specParams.ParsedSearchDate.HasValue && w.EntryDate.Date == specParams.ParsedSearchDate.Value.Date) ||
+                // Supplier 
+                (
+                    (!string.IsNullOrEmpty(w.Supplier.SupplierName) && w.Supplier.SupplierName.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.ContactPerson) && w.Supplier.ContactPerson.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.ContactEmail) && w.Supplier.ContactEmail.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.ContactPhone) && w.Supplier.ContactPhone.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.Address) && w.Supplier.Address.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.Country) && w.Supplier.Country.Contains(specParams.Search)) ||
+                    (!string.IsNullOrEmpty(w.Supplier.City) && w.Supplier.City.Contains(specParams.Search)) ||
+                    w.Supplier.SupplierType.ToString().Contains(specParams.Search)
+                ) 
             )
         )
     {
@@ -30,20 +38,16 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
         PageIndex = pageIndex;
         PageSize = pageSize;
         
+        // Apply including supplier
+        ApplyInclude(q => q
+            .Include(w => w.Supplier)
+            .Include(w => w.WarehouseTrackingInventory)
+        );
+        
         // Enable split query
         EnableSplitQuery();
         
-        // Apply include
-        ApplyInclude(q => q
-            .Include(w => w.Supplier)
-        );
-        
         // Progress filtering 
-        // Supplier 
-        if (specParams.SupplierId != null)
-        {
-            AddFilter(w => w.SupplierId == specParams.SupplierId);
-        }
         // Tracking type
         if (specParams.TrackingType != null)
         {
@@ -53,6 +57,11 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
         if (specParams.Status != null)
         {
             AddFilter(w => w.Status == specParams.Status);
+        }
+        // Supplier
+        if (specParams.SupplierId != null)
+        {
+            AddFilter(w => w.SupplierId == specParams.SupplierId);
         }
 
         // Total item range
@@ -212,8 +221,6 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
                 { "TRACKINGTYPE", x => x.TrackingType },
                 { "TOTALITEM", x => x.TotalItem },
                 { "TOTALAMOUNT", x => x.TotalAmount },
-                { "SUPPLIERNAME", x => x.Supplier.SupplierName },
-                { "SUPPLIERTYPE", x => x.Supplier.SupplierType },
                 { "DESCRIPTION", x => x.Description ?? null! },
                 { "TRANSFERLOCATION", x => x.TransferLocation ?? null! },
                 { "EXPECTEDRETURNDATE", x => x.ExpectedReturnDate ?? null! },

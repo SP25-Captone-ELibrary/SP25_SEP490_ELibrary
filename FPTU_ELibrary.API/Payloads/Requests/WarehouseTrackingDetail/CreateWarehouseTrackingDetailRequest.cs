@@ -1,3 +1,4 @@
+using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.WarehouseTrackingDetail;
@@ -19,12 +20,18 @@ public class CreateWarehouseTrackingDetailRequest
     // Total amount for the detail line
     public decimal TotalAmount { get; set; }
     
-    // Reason for stock-out or adjustment
-    public TrackingDetailReason? Reason { get; set; }
-    
     // For specific item category
     public int CategoryId { get; set; }
 
     // Item condition
     public int ConditionId { get; set; }
+    
+    // Stock transaction type
+    public StockTransactionType StockTransactionType { get; set; }
+    
+    // Cataloged item
+    public int? LibraryItemId { get; set; }
+    
+    // Add warehouse tracking detail along with cataloged item
+    public CreateStockInDetailItemRequest? LibraryItem { get; set; } 
 }

@@ -1,5 +1,6 @@
 using FluentValidation;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -75,6 +76,14 @@ public class WarehouseTrackingDetailDtoValidator : AbstractValidator<WarehouseTr
                     ? "Invalid total amount value"
                     : "Giá trị không hợp lệ";
             });
+        // // Barcode range from
+        // RuleFor(e => e.BarcodeRangeFrom)
+        //     .MaximumLength(50)
+        //     .WithMessage(isEng ? "Barcode must not exceed 50 characters" : "Số ĐKCB không vượt quá 50 ký tự");
+        // // Barcode range to
+        // RuleFor(e => e.BarcodeRangeTo)
+        //     .MaximumLength(50)
+        //     .WithMessage(isEng ? "Barcode must not exceed 50 characters" : "Số ĐKCB không vượt quá 50 ký tự");
         // Total item
         RuleFor(e => e.ItemTotal)
             .Must(v => v < int.MaxValue)

@@ -19,12 +19,12 @@ public class UpdateWarehouseTrackingDetailRequest
     // Total amount for the detail line
     public decimal TotalAmount { get; set; }
     
-    // Reason for stock-out or adjustment
-    public TrackingDetailReason? Reason { get; set; }
-    
     // For specific item category
     public int CategoryId { get; set; }
 
     // Item condition
     public int ConditionId { get; set; }
+    
+    // Stock transaction type
+    public StockTransactionType StockTransactionType { get; set; }
 }
