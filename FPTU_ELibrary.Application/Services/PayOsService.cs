@@ -268,9 +268,12 @@ public class PayOsService : IPayOsService
                         
                         // Assign success message
                         successMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002);
-                        successMsg += isEng 
-                            ? ".Please wait library to confirm your card register" 
-                            : ".Vui lòng đợi để được thư viện xác nhận";
+                        if (!userDto.IsEmployeeCreated) // Not add custom message when not created by employee
+                        {
+                            successMsg += isEng 
+                                ? ". Please wait library to confirm your card register" 
+                                : ". Vui lòng đợi để được thư viện xác nhận";
+                        }
                         break;
                     case TransactionType.LibraryCardExtension:
                         confirmRes = await _libCardService.ConfirmCardExtensionAsync(

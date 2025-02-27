@@ -676,11 +676,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         	cardDto: dto,
                         	transactionDto: transactionDto,
                         	libName: _appSettings.LibraryName,
-                        	libContact: _appSettings.LibraryContact);
+                        	libContact: _appSettings.LibraryContact,
+                            isEmployeeCreated: true);
                         
                         if (isSent)
                         {
-                        	var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                        	var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
                         	// Msg: Register library card success
                         	return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
                         		await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002) + $". {successMsg}");
@@ -703,10 +704,6 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 	        return new ServiceResult(ResultCodeConst.LibraryCard_Fail0001,
 	            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Fail0001));
 	    }
-		catch(UnauthorizedException)
-		{
-			throw new Exception("Token has expired");
-		}
 	    catch (ForbiddenException)
 	    {
 	        throw;
@@ -908,8 +905,28 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     : "ngày thanh toán không hợp lệ"), false);
             }
 			
-			// Process change library card status to pending (waiting to be confirmed)
-			libCardEntity.Status = LibraryCardStatus.Pending;
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+			// Check whether user has been created by employee or not 
+            if (userDto.IsEmployeeCreated)
+            {
+                // Process change library card status to pending active, as card has been created by employee.
+                // Do not require to confirm
+                libCardEntity.Status = LibraryCardStatus.Active;
+                // Set expiry date
+                libCardEntity.ExpiryDate = currentLocalDateTime.AddMonths(
+                    // Months defined in specific library card package 
+                    transactionDto.LibraryCardPackage!.DurationInMonths);
+            }
+            else
+            {
+			    // Process change library card status to pending (waiting to be confirmed)
+                libCardEntity.Status = LibraryCardStatus.Pending;
+            }
+            
 			// Assign transaction code 
 			libCardEntity.TransactionCode = tokenExtractedData.TransactionCode;
 			
@@ -926,7 +943,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             		cardDto: _mapper.Map<LibraryCardDto>(libCardEntity),
             		transactionDto: transactionDto,
             		libName: _appSettings.LibraryName,
-            		libContact: _appSettings.LibraryContact);
+            		libContact: _appSettings.LibraryContact,
+                    isEmployeeCreated: userDto.IsEmployeeCreated);
             	
             	// Msg: Register library card success
             	return new ServiceResult(ResultCodeConst.LibraryCard_Success0002,
@@ -1203,7 +1221,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         libContact: _appSettings.LibraryContact);
                     if (isSent)
                     {
-                        var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                        var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
                         // Msg: Update successfully
                         return new ServiceResult(ResultCodeConst.SYS_Success0003,
                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + $". {successMsg}");
@@ -1294,7 +1312,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         libContact: _appSettings.LibraryContact);
                     if (isSent)
                     {
-                        var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                        var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
                         // Msg: Update successfully
                         return new ServiceResult(ResultCodeConst.SYS_Success0003,
                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003) + $". {successMsg}");
@@ -1519,7 +1537,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                             libContact: _appSettings.LibraryContact);
                         if (isSent)
                         {
-                            var successMsg = isEng ? "Announcement email has sent to reader" : "Email thông báo đã gửi đến độc giả"; 
+                            var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
                             // Msg: // Extend library card expiration successfully
                             return new ServiceResult(ResultCodeConst.LibraryCard_Success0005,
                                 await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0005) + $". {successMsg}");
@@ -1978,7 +1996,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 // Not found {0}
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+                    StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
             }else if (userDto.LibraryCardId != libraryCardId)
             {
                 // Not found {0}
@@ -2145,7 +2163,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
     }
     
     private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
-        TransactionDto transactionDto, string libName, string libContact)
+        TransactionDto transactionDto, string libName, string libContact, bool isEmployeeCreated = false)
     {
         try
         {
@@ -2163,7 +2181,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     cardDto: cardDto,
                     transactionDto: transactionDto,
                     libName: libName,
-                    libContact:libContact)
+                    libContact:libContact,
+                    isEmployeeCreated: isEmployeeCreated)
             );
                             
             // Process send email
@@ -2209,8 +2228,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
     }
     
     private string GetLibraryCardActivatedEmailBody(
-         LibraryCardDto cardDto, TransactionDto transactionDto, string libName, string libContact)
+         LibraryCardDto cardDto, TransactionDto transactionDto, 
+         string libName, string libContact, bool isEmployeeCreated = false)
      {
+         // Custom message based on who performed
+         string employeeMessage = !isEmployeeCreated ? "Vui lòng chờ để được xét duyệt." : "";
+         
          var culture = new CultureInfo("vi-VN");
          
          return $$"""
@@ -2265,7 +2288,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                   <body>
                       <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
                       <p>Xin chào {{cardDto.FullName}},</p>
-                      <p>Thẻ thư viện của bạn đã được kích hoạt thành công. Vui lòng chờ để được xét duyệt.</p>
+                      <p>Thẻ thư viện của bạn đã được kích hoạt thành công. {{employeeMessage}}</p>
                       
                       <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
                       <div class="details">

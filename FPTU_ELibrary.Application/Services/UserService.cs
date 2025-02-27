@@ -8,6 +8,7 @@ using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -51,6 +52,7 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly IPaymentMethodService<PaymentMethodDto> _paymentMethodService;
 		
 		private readonly AppSettings _appSettings;
+		private readonly PayOSSettings _payOsSettings;
 		private readonly BorrowSettings _borrowSettings;
 		private readonly PaymentSettings _paymentSettings;
 		private readonly TokenValidationParameters _tokenValidationParams;
@@ -70,6 +72,7 @@ namespace FPTU_ELibrary.Application.Services
 			IOptionsMonitor<AppSettings> monitor,
 			IOptionsMonitor<BorrowSettings> monitor1,
 			IOptionsMonitor<PaymentSettings> monitor2,
+			IOptionsMonitor<PayOSSettings> monitor3,
 			ISystemRoleService<SystemRoleDto> roleService,
 			IPaymentMethodService<PaymentMethodDto> paymentMethodService,
 			TokenValidationParameters tokenValidationParams,
@@ -88,6 +91,7 @@ namespace FPTU_ELibrary.Application.Services
 			_paymentMethodService = paymentMethodService;
 			_appSettings = monitor.CurrentValue;
 			_borrowSettings = monitor1.CurrentValue;
+			_payOsSettings = monitor3.CurrentValue;
 			_paymentSettings = monitor2.CurrentValue;
 			_tokenValidationParams = tokenValidationParams;
 		}
@@ -1310,7 +1314,12 @@ namespace FPTU_ELibrary.Application.Services
 		}
 
 		#region Library card holders
-		public async Task<IServiceResult> CreateLibraryCardHolderAsync(UserDto dto)
+		public async Task<IServiceResult> CreateLibraryCardHolderAsync(
+			string createdByEmail,
+			UserDto dto,
+			TransactionMethod transactionMethod,
+			int? paymentMethodId,
+			int libraryCardPackageId)
 		{
 			try
 			{
@@ -1318,6 +1327,13 @@ namespace FPTU_ELibrary.Application.Services
 				var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
 					LanguageContext.CurrentLanguage);
 				var isEng = lang == SystemLanguage.English;
+				
+				// Check exist process by information
+                var isCreateByEmailExist = (await _employeeService.AnyAsync(e => Equals(e.Email, createdByEmail))).Data is true;
+                if (!isCreateByEmailExist) // not found
+                {
+                    throw new ForbiddenException(); 
+                }
 				
 				// Validate user
 				var validationResult = await ValidatorExtensions.ValidateAsync(dto);
@@ -1329,6 +1345,17 @@ namespace FPTU_ELibrary.Application.Services
 					throw new UnprocessableEntityException("Invalid Validations", errors);
 				}
 
+				// Check exist library card go along with
+				if (dto.LibraryCard == null)
+				{
+					// Not found {0}
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002);
+					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+						StringUtils.Format(errMsg, isEng 
+							? "library card go along with user information to process create patron" 
+							: "thông tin thẻ thư viện đi kèm với thông tin bạn đọc để tạo mới"));
+				}
+				
 				// Current local datetime
 	            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
 		            // Vietnam timezone
@@ -1394,6 +1421,137 @@ namespace FPTU_ELibrary.Application.Services
 				// Check whether invoke any validation error
 				if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
 				
+				// Try to retrieve library card package 
+				var libCardPackageDto = (await _cardPackageService.Value.GetByIdAsync(id: libraryCardPackageId)
+					).Data as LibraryCardPackageDto;
+				if (libCardPackageDto == null)
+				{
+					// Msg: Payment object does not exist. Please try again
+					return new ServiceResult(ResultCodeConst.Transaction_Fail0002,
+						await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
+				}
+				
+				// Initialize payOS response
+                PayOSPaymentResponseDto? payOsResp = null; 
+                // Initialize transaction 
+                TransactionDto? transactionDto = null;
+                // Generate transaction code
+                var transactionCode = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
+                // Determine transaction method
+                switch (transactionMethod)
+                {
+                	// Cash
+                	case TransactionMethod.Cash:
+                		// Create transaction with PAID status
+                		transactionDto = new TransactionDto
+                		{
+                			TransactionCode = transactionCode.ToString(),
+                			Amount = libCardPackageDto.Price,
+                			TransactionMethod = TransactionMethod.Cash,
+                			TransactionStatus = TransactionStatus.Paid,
+                			TransactionType = TransactionType.LibraryCardRegister,
+                			CreatedAt = currentLocalDateTime,
+                			TransactionDate = currentLocalDateTime,
+                			LibraryCardPackageId = libCardPackageDto.LibraryCardPackageId,
+                			CreatedBy = createdByEmail
+                		};
+                		
+                		// Update card status
+                        dto.LibraryCard.Status = LibraryCardStatus.Active;
+                        // Set expiry date
+		                dto.LibraryCard.ExpiryDate = currentLocalDateTime.AddMonths(
+                            // Months defined in specific library card package 
+                            libCardPackageDto.DurationInMonths);
+                		break;
+                	// Digital payment
+                	case TransactionMethod.DigitalPayment:
+                		// Check exist payment method id 
+                        var isExistPaymentMethod = (await _paymentMethodService.AnyAsync(p => 
+                            Equals(p.PaymentMethodId, paymentMethodId))).Data is true;
+                		if (!isExistPaymentMethod)
+                		{
+                			// Not found {0}
+                			var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                			return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                				StringUtils.Format(errMsg, isEng ? "payment method" : "phương thức thanh toán"));
+                		}
+                		
+                        // Check whether existing any transaction has pending status
+                        var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
+                            .AnyAsync(t => t.TransactionType == TransactionType.LibraryCardRegister &&
+                                           t.TransactionStatus == TransactionStatus.Pending);
+                        if (isExistPendingStatus)
+                        {
+                            // Msg: Failed to create payment transaction as existing transaction with pending status
+                            return new ServiceResult(ResultCodeConst.Transaction_Warning0003,
+                                await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003));
+                        }
+                        
+                		// Create transaction with PENDING status (digital payment)
+                        transactionDto = new TransactionDto
+                        {
+                            TransactionCode = transactionCode.ToString(),
+                            Amount = libCardPackageDto.Price,
+                            TransactionMethod = TransactionMethod.DigitalPayment,
+                            TransactionStatus = TransactionStatus.Pending,
+                            TransactionType = TransactionType.LibraryCardRegister,
+                            CreatedAt = currentLocalDateTime,
+                            ExpiredAt = currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes),
+                            LibraryCardPackageId = libCardPackageDto.LibraryCardPackageId,
+                            PaymentMethodId = paymentMethodId,
+                            CreatedBy = createdByEmail
+                        };
+                        
+                        // Generate payment link
+                        var payOsPaymentRequest = new PayOSPaymentRequestDto()
+                        {
+                            OrderCode = transactionCode,
+                            Amount = (int) transactionDto.Amount,
+                            Description = isEng ? "Library card register"  : "Dang ky the thu vien",
+                            BuyerName = $"{dto.FirstName} {dto.LastName}".ToUpper(),
+                            BuyerEmail = dto.Email,
+                            BuyerPhone = dto.Phone ?? string.Empty,
+                            BuyerAddress = dto.Address ?? string.Empty,
+                            Items = [
+                                new
+                                {
+                                    Name = isEng ? transactionDto.TransactionType.ToString() : transactionDto.TransactionType.GetDescription(),
+                                    Quantity = 1,
+                                    Price = transactionDto.Amount
+                                }
+                            ],
+                            CancelUrl = _payOsSettings.CancelUrl,
+                            ReturnUrl = _payOsSettings.ReturnUrl,
+                            ExpiredAt = (int)((DateTimeOffset) transactionDto.ExpiredAt).ToUnixTimeSeconds()
+                        };
+                        
+                        // Generate signature
+                        await payOsPaymentRequest.GenerateSignatureAsync(transactionCode, _payOsSettings);
+                        var payOsPaymentResp = await payOsPaymentRequest.GetUrlAsync(_payOsSettings);
+                        
+                        // Create Payment status
+                        bool isCreatePaymentSuccess = payOsPaymentResp.Item1; // Is created success
+                        if (isCreatePaymentSuccess && payOsPaymentResp.Item3 != null)
+                        {
+                            // Assign payOs response
+                            payOsResp = payOsPaymentResp.Item3;
+                            
+                            // Set library card default status
+                            dto.LibraryCard.Status = LibraryCardStatus.UnPaid;
+                            // Assign transaction code
+                            dto.LibraryCard.TransactionCode = transactionCode.ToString();
+                            // Assign payment URL
+                            transactionDto.PaymentUrl = payOsResp.Data.CheckoutUrl;
+                        }
+                        else
+                        {
+                            // Msg: Failed to create payment transaction. Please try again
+                            return new ServiceResult(ResultCodeConst.Transaction_Fail0001,
+                                await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0001));
+                        }
+                        break;
+                }
+				
 				// Assign default role 
 				var roleDto = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
 				if (roleDto == null)
@@ -1409,12 +1567,70 @@ namespace FPTU_ELibrary.Application.Services
 				dto.RoleId = roleDto.RoleId;
 				dto.IsEmployeeCreated = true;
 
+				// Add library card necessary props
+				dto.LibraryCard.Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix);
+				dto.LibraryCard.IssuanceMethod = LibraryCardIssuanceMethod.InPerson;
+				dto.LibraryCard.IssueDate = currentLocalDateTime;
+				dto.LibraryCard.IsReminderSent = false;
+				dto.LibraryCard.IsExtended = false;
+				dto.LibraryCard.ExtensionCount = 0;
+
+				// Extend borrow default
+				dto.LibraryCard.IsAllowBorrowMore = false;
+				dto.LibraryCard.MaxItemOnceTime = 0;
+
+				// Total missed default 
+				dto.LibraryCard.TotalMissedPickUp = 0;
+				
+				// Add transaction to user
+				if (transactionDto != null) dto.Transactions.Add(transactionDto);
+				else
+				{
+					// Fail to create
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                    	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+				}
+				
 				// Progress add new user with library card
 				await _unitOfWork.Repository<User, Guid>().AddAsync(_mapper.Map<User>(dto));
 				// Save change
 				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 				if (isSaved)
 				{
+					// Determine transaction method
+					switch (transactionMethod)
+					{
+						// CASH
+						case TransactionMethod.Cash:
+							// Send card has been activated email
+							var isSent = await SendActivatedEmailAsync(
+								email: dto.Email,
+								cardDto: dto.LibraryCard,
+								transactionDto: transactionDto,
+								libName: _appSettings.LibraryName,
+								libContact: _appSettings.LibraryContact,
+								isEmployeeCreated: true);
+                        
+							if (isSent)
+							{
+								var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
+								// Msg: Register library card success
+								return new ServiceResult(ResultCodeConst.SYS_Success0001,
+									await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001) + $". {successMsg}");
+							}
+                        
+							var failMsg = isEng ? ", but fail to send email" : ", nhưng gửi email thông báo thất bại";
+							// Msg: Register library card success
+							return new ServiceResult(ResultCodeConst.SYS_Success0001,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001) + failMsg);
+                    
+						// DIGITAL PAYMENT
+						case TransactionMethod.DigitalPayment:
+							// Msg: Create payment link successfully
+							return new ServiceResult(ResultCodeConst.SYS_Success0001,
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), payOsResp);
+					}
+					
 					// Msg: Create successfully
 					return new ServiceResult(ResultCodeConst.SYS_Success0001,
 						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
@@ -1423,6 +1639,10 @@ namespace FPTU_ELibrary.Application.Services
 				// Fail to create
 				return new ServiceResult(ResultCodeConst.SYS_Fail0001,
 					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+			}
+			catch(ForbiddenException)
+			{
+				throw;
 			}
 			catch (UnprocessableEntityException)
 			{
@@ -1515,7 +1735,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+						StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
 				}
 
 				// Get data successfully
@@ -1602,7 +1822,7 @@ namespace FPTU_ELibrary.Application.Services
 					// Not found {0}
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+						StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
 				}
 
 				// Update properties
@@ -1658,7 +1878,7 @@ namespace FPTU_ELibrary.Application.Services
                 {
                     var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                        StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+                        StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
                 }
                 
                 // Check constraints
@@ -1805,7 +2025,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+						StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
 				}
 				
 				// Update soft delete status
@@ -1894,7 +2114,7 @@ namespace FPTU_ELibrary.Application.Services
 				{
 					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
 					return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-						StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+						StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
 				}
 
 				// Check whether cardholder in the trash bin
@@ -2809,6 +3029,140 @@ namespace FPTU_ELibrary.Application.Services
 
 	        return (errorMessages, duplicates);
 	    } 
+		
+		private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
+			TransactionDto transactionDto, string libName, string libContact, bool isEmployeeCreated = false)
+		{
+			try
+			{
+				// Email subject 
+				var subject = "[ELIBRARY] Thẻ Thư Viện Đã Kích Hoạt";
+                            
+				// Progress send confirmation email
+				var emailMessageDto = new EmailMessageDto( // Define email message
+					// Define Recipient
+					to: new List<string>() { email },
+					// Define subject
+					subject: subject,
+					// Add email body content
+					content: GetLibraryCardActivatedEmailBody(
+						cardDto: cardDto,
+						transactionDto: transactionDto,
+						libName: libName,
+						libContact:libContact,
+						isEmployeeCreated: isEmployeeCreated)
+				);
+                            
+				// Process send email
+				return await _emailService.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process send library card activated email");
+			}
+		}
+		
+		private string GetLibraryCardActivatedEmailBody(
+	         LibraryCardDto cardDto, TransactionDto transactionDto, 
+	         string libName, string libContact, bool isEmployeeCreated = false)
+	    {
+		    // Custom message based on who performed
+		    string employeeMessage = !isEmployeeCreated ? "Vui lòng chờ để được xét duyệt." : "";
+	        var culture = new CultureInfo("vi-VN");
+	         
+	        return $$"""
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                      <meta charset="UTF-8">
+                      <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
+                      <style>
+                          body {
+                              font-family: Arial, sans-serif;
+                              line-height: 1.6;
+                              color: #333;
+                          }
+                          .header {
+                              font-size: 18px;
+                              color: #2c3e50;
+                              font-weight: bold;
+                          }
+                          .details {
+                              margin: 15px 0;
+                              padding: 10px;
+                              background-color: #f9f9f9;
+                              border-left: 4px solid #27ae60;
+                          }
+                          .details li {
+                              margin: 5px 0;
+                          }
+                          .barcode {
+                              color: #2980b9;
+                              font-weight: bold;
+                          }
+                          .expiry-date {
+                              color: #27ae60;
+                              font-weight: bold;
+                          }
+                          .status-label {
+                              color: #e74c3c;
+                              font-weight: bold;
+                          }
+                          .status-text {
+                              color: #f39c12;
+                              font-weight: bold;
+                          }
+                          .footer {
+                              margin-top: 20px;
+                              font-size: 14px;
+                              color: #7f8c8d;
+                          }
+                      </style>
+                  </head>
+                  <body>
+                      <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
+                      <p>Xin chào {{cardDto.FullName}},</p>
+                      <p>Thẻ thư viện của bạn đã được kích hoạt thành công. {{employeeMessage}}</p>
+                      
+                      <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
+                      <div class="details">
+                          <ul>
+                              <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+                              <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:dd/MM/yyyy}}</li>
+                              <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+                          </ul>
+                      </div>
+                      
+                      <p><strong>Chi Tiết Giao Dịch:</strong></p>
+                      <div class="details">
+                          <ul>
+                              <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+                              <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:dd/MM/yyyy}}</li>
+                              <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+                              <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod?.MethodName ?? TransactionMethod.Cash.GetDescription()}}</li>
+                              <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+                          </ul>
+                      </div>
+                      
+                      <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
+                      <div class="details">
+                          <ul>
+                              <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
+                              <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
+                              <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
+                              <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
+                          </ul>
+                      </div>
+                      
+                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                      
+                      <p><strong>Trân trọng,</strong></p>
+                      <p>{{libName}}</p>
+                  </body>
+                  </html>
+                  """;
+	    }
 		#endregion
 		
 		
