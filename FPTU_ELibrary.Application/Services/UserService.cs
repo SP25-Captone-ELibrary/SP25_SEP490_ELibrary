@@ -1541,7 +1541,7 @@ namespace FPTU_ELibrary.Application.Services
                             // Assign transaction code
                             dto.LibraryCard.TransactionCode = transactionCode.ToString();
                             // Assign payment URL
-                            transactionDto.PaymentUrl = payOsResp.Data.CheckoutUrl;
+                            transactionDto.QrCode = payOsResp.Data.QrCode;
                         }
                         else
                         {
@@ -1566,6 +1566,11 @@ namespace FPTU_ELibrary.Application.Services
 				dto.CreateDate = currentLocalDateTime;
 				dto.RoleId = roleDto.RoleId;
 				dto.IsEmployeeCreated = true;
+				
+				// Generate random password
+				var rndPass = HashUtils.GenerateRandomPassword();
+				// Hash password
+				dto.PasswordHash = HashUtils.HashPassword(rndPass);
 
 				// Add library card necessary props
 				dto.LibraryCard.Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix);
@@ -1605,6 +1610,7 @@ namespace FPTU_ELibrary.Application.Services
 							// Send card has been activated email
 							var isSent = await SendActivatedEmailAsync(
 								email: dto.Email,
+								password: rndPass,
 								cardDto: dto.LibraryCard,
 								transactionDto: transactionDto,
 								libName: _appSettings.LibraryName,
@@ -3030,7 +3036,9 @@ namespace FPTU_ELibrary.Application.Services
 	        return (errorMessages, duplicates);
 	    } 
 		
-		private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
+		private async Task<bool> SendActivatedEmailAsync(
+			string email, string password, 
+			LibraryCardDto cardDto,
 			TransactionDto transactionDto, string libName, string libContact, bool isEmployeeCreated = false)
 		{
 			try
@@ -3046,6 +3054,8 @@ namespace FPTU_ELibrary.Application.Services
 					subject: subject,
 					// Add email body content
 					content: GetLibraryCardActivatedEmailBody(
+						email: email,
+						password: password,
 						cardDto: cardDto,
 						transactionDto: transactionDto,
 						libName: libName,
@@ -3064,105 +3074,121 @@ namespace FPTU_ELibrary.Application.Services
 		}
 		
 		private string GetLibraryCardActivatedEmailBody(
-	         LibraryCardDto cardDto, TransactionDto transactionDto, 
-	         string libName, string libContact, bool isEmployeeCreated = false)
-	    {
+		    string email, string password,
+		    LibraryCardDto cardDto, TransactionDto transactionDto, 
+		    string libName, string libContact, bool isEmployeeCreated = false)
+		{
 		    // Custom message based on who performed
 		    string employeeMessage = !isEmployeeCreated ? "Vui lòng chờ để được xét duyệt." : "";
-	        var culture = new CultureInfo("vi-VN");
-	         
-	        return $$"""
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                      <meta charset="UTF-8">
-                      <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
-                      <style>
-                          body {
-                              font-family: Arial, sans-serif;
-                              line-height: 1.6;
-                              color: #333;
-                          }
-                          .header {
-                              font-size: 18px;
-                              color: #2c3e50;
-                              font-weight: bold;
-                          }
-                          .details {
-                              margin: 15px 0;
-                              padding: 10px;
-                              background-color: #f9f9f9;
-                              border-left: 4px solid #27ae60;
-                          }
-                          .details li {
-                              margin: 5px 0;
-                          }
-                          .barcode {
-                              color: #2980b9;
-                              font-weight: bold;
-                          }
-                          .expiry-date {
-                              color: #27ae60;
-                              font-weight: bold;
-                          }
-                          .status-label {
-                              color: #e74c3c;
-                              font-weight: bold;
-                          }
-                          .status-text {
-                              color: #f39c12;
-                              font-weight: bold;
-                          }
-                          .footer {
-                              margin-top: 20px;
-                              font-size: 14px;
-                              color: #7f8c8d;
-                          }
-                      </style>
-                  </head>
-                  <body>
-                      <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
-                      <p>Xin chào {{cardDto.FullName}},</p>
-                      <p>Thẻ thư viện của bạn đã được kích hoạt thành công. {{employeeMessage}}</p>
-                      
-                      <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
-                      <div class="details">
-                          <ul>
-                              <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
-                              <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:dd/MM/yyyy}}</li>
-                              <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
-                          </ul>
-                      </div>
-                      
-                      <p><strong>Chi Tiết Giao Dịch:</strong></p>
-                      <div class="details">
-                          <ul>
-                              <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
-                              <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:dd/MM/yyyy}}</li>
-                              <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
-                              <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod?.MethodName ?? TransactionMethod.Cash.GetDescription()}}</li>
-                              <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
-                          </ul>
-                      </div>
-                      
-                      <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
-                      <div class="details">
-                          <ul>
-                              <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
-                              <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
-                              <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
-                              <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
-                          </ul>
-                      </div>
-                      
-                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
-                      
-                      <p><strong>Trân trọng,</strong></p>
-                      <p>{{libName}}</p>
-                  </body>
-                  </html>
-                  """;
-	    }
+		    var culture = new CultureInfo("vi-VN");
+
+		    return $$"""
+		          <!DOCTYPE html>
+		          <html>
+		          <head>
+		              <meta charset="UTF-8">
+		              <title>Thông Báo Kích Hoạt Thẻ Thư Viện</title>
+		              <style>
+		                  body {
+		                      font-family: Arial, sans-serif;
+		                      line-height: 1.6;
+		                      color: #333;
+		                  }
+		                  .header {
+		                      font-size: 18px;
+		                      color: #2c3e50;
+		                      font-weight: bold;
+		                  }
+		                  .details {
+		                      margin: 15px 0;
+		                      padding: 10px;
+		                      background-color: #f9f9f9;
+		                      border-left: 4px solid #27ae60;
+		                  }
+		                  .details li {
+		                      margin: 5px 0;
+		                  }
+		                  .barcode {
+		                      color: #2980b9;
+		                      font-weight: bold;
+		                  }
+		                  .expiry-date {
+		                      color: #27ae60;
+		                      font-weight: bold;
+		                  }
+		                  .status-label {
+		                      color: #e74c3c;
+		                      font-weight: bold;
+		                  }
+		                  .status-text {
+		                      color: #f39c12;
+		                      font-weight: bold;
+		                  }
+		                  .login-info {
+		                      background-color: #eef5ff;
+		                      padding: 10px;
+		                      border-left: 4px solid #3498db;
+		                      font-weight: bold;
+		                  }
+		                  .footer {
+		                      margin-top: 20px;
+		                      font-size: 14px;
+		                      color: #7f8c8d;
+		                  }
+		              </style>
+		          </head>
+		          <body>
+		              <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
+		              <p>Xin chào {{cardDto.FullName}},</p>
+		              <p>Thẻ thư viện của bạn đã được kích hoạt thành công. {{employeeMessage}}</p>
+		              
+		              <p><strong>Thông Tin Đăng Nhập:</strong></p>
+		              <div class="login-info">
+		                  <ul>
+		                      <li><strong>Email:</strong> {{email}}</li>
+		                      <li><strong>Mật khẩu:</strong> {{password}}</li>
+		                  </ul>
+		                  <p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p>
+		              </div>
+
+		              <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
+		              <div class="details">
+		                  <ul>
+		                      <li><span class="barcode">Mã Thẻ Thư Viện:</span> {{cardDto.Barcode}}</li>
+		                      <li><span class="expiry-date">Ngày Hết Hạn:</span> {{cardDto.ExpiryDate:dd/MM/yyyy}}</li>
+		                      <li><span class="status-label">Trạng Thái Hiện Tại:</span> <span class="status-text">{{cardDto.Status.GetDescription()}}</span></li>
+		                  </ul>
+		              </div>
+
+		              <p><strong>Chi Tiết Giao Dịch:</strong></p>
+		              <div class="details">
+		                  <ul>
+		                      <li><strong>Mã Giao Dịch:</strong> {{transactionDto.TransactionCode}}</li>
+		                      <li><strong>Ngày Giao Dịch:</strong> {{transactionDto.TransactionDate:dd/MM/yyyy}}</li>
+		                      <li><strong>Số Tiền Đã Thanh Toán:</strong> {{transactionDto.Amount.ToString("C0", culture)}}</li>
+		                      <li><strong>Phương Thức Thanh Toán:</strong> {{transactionDto.PaymentMethod?.MethodName ?? TransactionMethod.Cash.GetDescription()}}</li>
+		                      <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
+		                  </ul>
+		              </div>
+
+		              <p><strong>Chi Tiết Gói Thẻ Thư Viện:</strong></p>
+		              <div class="details">
+		                  <ul>
+		                      <li><strong>Tên Gói:</strong> {{transactionDto.LibraryCardPackage?.PackageName}}</li>
+		                      <li><strong>Thời Gian Hiệu Lực:</strong> {{transactionDto.LibraryCardPackage?.DurationInMonths}} tháng</li>
+		                      <li><strong>Giá:</strong> {{transactionDto.LibraryCardPackage?.Price.ToString("C0", culture)}}</li>
+		                      <li><strong>Mô Tả:</strong> {{transactionDto.LibraryCardPackage?.Description}}</li>
+		                  </ul>
+		              </div>
+
+		              <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+
+		              <p><strong>Trân trọng,</strong></p>
+		              <p>{{libName}}</p>
+		          </body>
+		          </html>
+		          """;
+		}
 		#endregion
 		
 		

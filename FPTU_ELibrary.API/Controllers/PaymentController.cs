@@ -107,14 +107,6 @@ public class PaymentController : ControllerBase
         return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req.ToPayOsResponseDto(TransactionStatus.Paid)));
     }
     
-    [HttpPost(APIRoute.Payment.WebhookPayOsCancel)]
-    public async Task<IActionResult> WebhookPayOsCancelAsync([FromBody] WebhookType req)
-    {
-        _logger.Information("Received data from web hook");
-        await Task.CompletedTask;
-        return Ok();
-    }
-    
     [HttpPost(APIRoute.Payment.SendWebhookConfirm)]
     public async Task<IActionResult> TestAsync([FromBody] SendWebhookConfirmRequest req)
     {

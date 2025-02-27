@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250227111743_Initial Database")]
+    [Migration("20250227172717_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -2256,9 +2256,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("payment_method_id");
 
-                    b.Property<string>("PaymentUrl")
+                    b.Property<string>("QrCode")
                         .HasColumnType("nvarchar(255)")
-                        .HasColumnName("payment_url");
+                        .HasColumnName("qr_code");
 
                     b.Property<int?>("ResourceId")
                         .HasColumnType("int")

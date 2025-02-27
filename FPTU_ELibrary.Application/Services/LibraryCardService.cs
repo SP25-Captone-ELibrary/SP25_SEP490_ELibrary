@@ -598,7 +598,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         // Assign transaction code
                         dto.TransactionCode = transactionCode.ToString();
                         // Assign payment URL
-                        transactionDto.PaymentUrl = payOsResp.Data.CheckoutUrl;
+                        transactionDto.QrCode = payOsResp.Data.QrCode;
                     }
                     else
                     {
@@ -1495,7 +1495,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         // Assign transaction code
                         user.LibraryCard.TransactionCode = transactionCode.ToString();
                         // Assign payment URL
-                        transactionDto.PaymentUrl = payOsResp.Data.CheckoutUrl;
+                        transactionDto.QrCode = payOsResp.Data.QrCode;
                     }
                     else
                     {

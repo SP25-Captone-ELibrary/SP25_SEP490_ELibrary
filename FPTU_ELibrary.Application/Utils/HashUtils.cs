@@ -19,45 +19,31 @@ namespace FPTU_ELibrary.Application.Utils
 
         //  Summary:
         //      Generate random password base on specific requirement
-        public static string GenerateRandomPassword()
+        public static string GenerateRandomPassword(int length = 8)
         {
-            //Collection of password requirement 
-            const string upperCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            const string digits = "0123456789";
-            const string specialCharacters = "@$!%*?&";
-            const string allCharacters =
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
+            // Define character groups
+            const string uppercaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // Uppercase letters
+            const string lowercaseChars = "abcdefghijklmnopqrstuvwxyz"; // Lowercase letters
+            const string digitChars = "0123456789"; // Numbers
+            const string specialChars = "@$!%*?&"; // Special characters
+            const string allChars = uppercaseChars + lowercaseChars + digitChars + specialChars; // Combined character pool
 
             Random random = new Random();
+            StringBuilder password = new StringBuilder();
 
-            char[] result = new char[8];
+            // Ensure at least one uppercase letter, one digit, and one special character
+            password.Append(uppercaseChars[random.Next(uppercaseChars.Length)]);
+            password.Append(digitChars[random.Next(digitChars.Length)]);
+            password.Append(specialChars[random.Next(specialChars.Length)]);
 
-            // Process randomly add value for blank value of default password
-            int upperCasePosition = random.Next(8);
-            int digitPosition;
-            int specialCharPosition;
-            do
+            // Fill the remaining characters randomly from all character pools
+            for (int i = 3; i < length; i++)
             {
-                digitPosition = random.Next(8);
-            } while (digitPosition == upperCasePosition);
-
-            do
-            {
-                specialCharPosition = random.Next(8);
-            } while (specialCharPosition == upperCasePosition || specialCharPosition == digitPosition);
-            
-            result[upperCasePosition] = upperCaseLetters[random.Next(upperCaseLetters.Length)];
-            result[digitPosition] = digits[random.Next(digits.Length)];
-            result[specialCharPosition] = specialCharacters[random.Next(specialCharacters.Length)];
-            
-            for (int i = 0; i < 8; i++)
-            {
-                if (result[i] == '\0') //only add value for the blank value
-                {
-                    result[i] = allCharacters[random.Next(allCharacters.Length)];
-                }
+                password.Append(allChars[random.Next(allChars.Length)]);
             }
-            return new string(result);
+
+            // Shuffle the characters to prevent predictable patterns
+            return new string(password.ToString().OrderBy(c => random.Next()).ToArray());
         }
         
         //  Summary:

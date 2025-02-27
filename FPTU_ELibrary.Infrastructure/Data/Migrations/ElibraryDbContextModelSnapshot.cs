@@ -2253,9 +2253,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("payment_method_id");
 
-                    b.Property<string>("PaymentUrl")
+                    b.Property<string>("QrCode")
                         .HasColumnType("nvarchar(255)")
-                        .HasColumnName("payment_url");
+                        .HasColumnName("qr_code");
 
                     b.Property<int?>("ResourceId")
                         .HasColumnType("int")
