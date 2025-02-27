@@ -94,12 +94,14 @@ public class LibraryCardController : ControllerBase
     }
     
     [Authorize]
-    [HttpPatch(APIRoute.LibraryCard.ExtendCard, Name = nameof(ExtendLibraryCardAsync))]
-    public async Task<IActionResult> ExtendLibraryCardAsync([FromRoute] Guid id, [FromBody] ExtendLibraryCardRequest req)
+    [HttpPatch(APIRoute.LibraryCard.ExtendCard, Name = nameof(ExtendLibraryCardByEmployeeAsync))]
+    public async Task<IActionResult> ExtendLibraryCardByEmployeeAsync([FromRoute] Guid id, [FromBody] ExtendLibraryCardRequest req)
     {
-        return Ok(await _cardSvc.ExtendCardAsync(
-            libraryCardId: id, 
-            transactionToken: req.TransactionToken,
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _cardSvc.ExtendCardByEmployeeAsync(
+            processedByEmail: email ?? string.Empty, 
+            libraryCardId: id,
+            transactionMethod: req.TransactionMethod,
             libraryCardPackageId: req.LibraryCardPackageId,
             paymentMethodId: req.PaymentMethodId));
     }
@@ -149,9 +151,7 @@ public class LibraryCardController : ControllerBase
     public async Task<IActionResult> RegisterLibraryCardOnlineAsync([FromBody] RegisterLibraryCardOnlineRequest req)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _cardSvc.RegisterCardAsync(
-            email: email ?? string.Empty, 
-            dto: req.ToUserWithLibraryCardDto()));
+        return Ok(await _cardSvc.RegisterCardAsync(email: email ?? string.Empty, dto: req.ToUserWithLibraryCardDto()));
     }
     
     [Authorize]

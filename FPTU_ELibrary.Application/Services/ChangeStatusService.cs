@@ -51,6 +51,8 @@ public class ChangeStatusService : BackgroundService
                     hasChanges |= await UpdateAllBorrowRequestExpiredStatusAsync(unitOfWork, borrowSettings: monitor.CurrentValue);
                     // Update borrow record expired status
                     hasChanges |= await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
+                    // Update digital borrow expired status
+                    hasChanges |= await UpdateAllDigitalBorrowExpiredStatusAsync(unitOfWork);
                     
                     // Save changes only if at least one update was made
                     if (hasChanges) await unitOfWork.SaveChangesAsync();
@@ -197,7 +199,7 @@ public class ChangeStatusService : BackgroundService
         // Build specification
         var baseSpec = new BaseSpecification<BorrowRecord>(br =>
             br.ReturnDate != null && // Not include borrow record exist return date
-            br.DueDate < currentLocalDateTime && // Exceed than due date (expected return date)
+            br.DueDate <= currentLocalDateTime && // Exceed than due date (expected return date)
             br.Status == BorrowRecordStatus.Borrowing); // Is in borrowing status
         // Retrieve all with spec
         var entities = await unitOfWork.Repository<BorrowRecord, int>()
@@ -209,6 +211,38 @@ public class ChangeStatusService : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<BorrowRecord, int>().UpdateAsync(br);
+            
+            // Mark as changed
+            hasChanges = true;
+        }
+        
+        return hasChanges;
+    }
+
+    private async Task<bool> UpdateAllDigitalBorrowExpiredStatusAsync(IUnitOfWork unitOfWork)
+    {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Build specification
+        var baseSpec = new BaseSpecification<DigitalBorrow>(br =>
+            br.ExpiryDate <= currentLocalDateTime && // Exceed than due date (expected return date)
+            br.Status == BorrowDigitalStatus.Active); // Is in borrowing status
+        // Retrieve all with spec
+        var entities = await unitOfWork.Repository<DigitalBorrow, int>()
+            .GetAllWithSpecAsync(baseSpec);
+        foreach (var br in entities)
+        {
+            // Change borrow status to expired
+            br.Status = BorrowDigitalStatus.Expired;
+            
+            // Progress update 
+            await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(br);
             
             // Mark as changed
             hasChanges = true;

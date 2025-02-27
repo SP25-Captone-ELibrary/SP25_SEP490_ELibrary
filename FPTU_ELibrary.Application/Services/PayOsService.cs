@@ -3,6 +3,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Exceptions;
@@ -11,7 +12,6 @@ using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Constants;
 using FPTU_ELibrary.Domain.Common.Enums;
-using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.Extensions.Options;
@@ -33,6 +33,7 @@ public class PayOsService : IPayOsService
     private readonly PayOSSettings _payOsSettings;
     private readonly WebTokenSettings _webTokenSettings;
     private readonly ILibraryCardService<LibraryCardDto> _libCardService;
+    private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowService;
 
     public PayOsService(
         ILogger logger,
@@ -40,14 +41,16 @@ public class PayOsService : IPayOsService
         IUserService<UserDto> userService,
         ILibraryCardService<LibraryCardDto> libCardService,
         ITransactionService<TransactionDto> transactionService,
+        IDigitalBorrowService<DigitalBorrowDto> digitalBorrowService,
         IOptionsMonitor<PayOSSettings> monitor,
         IOptionsMonitor<WebTokenSettings> monitor1)
     {
         _logger = logger;
         _msgService = msgService;
         _userService = userService;
-        _transactionService = transactionService;
         _libCardService = libCardService;
+        _transactionService = transactionService;
+        _digitalBorrowService = digitalBorrowService;
         _payOsSettings = monitor.CurrentValue;
         _webTokenSettings = monitor1.CurrentValue;
     }
@@ -230,6 +233,8 @@ public class PayOsService : IPayOsService
                     transactionDate: transactionDate,
                     webTokenSettings: _webTokenSettings);
             
+            // Initialize success message
+            var successMsg = string.Empty;
             // Iterate each transaction to process confirm payment
             foreach (var transaction in transactionDtos)
             {
@@ -241,17 +246,39 @@ public class PayOsService : IPayOsService
                         // TODO: Add function to confirm fine payment
                         break;
                     case TransactionType.DigitalBorrow:
-                        // TODO: Add function to confirm digital borrow
+                        confirmRes = await _digitalBorrowService.ConfirmDigitalBorrowAsync(
+                            email: userDto.Email,
+                            transactionToken: paymentToken);
+                        
+                        // Assign success message
+                        successMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004);
+                        break;
+                    case TransactionType.DigitalExtension:
+                        confirmRes = await _digitalBorrowService.ConfirmDigitalExtensionAsync(
+                            email: userDto.Email,
+                            transactionToken: paymentToken);
+                        
+                        // Assign success message
+                        successMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0005);
                         break;
                     case TransactionType.LibraryCardRegister:
-                        confirmRes = await _libCardService.ConfirmCardRegisterWithoutSaveChangesAsync(
+                        confirmRes = await _libCardService.ConfirmCardRegisterAsync(
                             email: userDto.Email,
                             transactionToken: paymentToken);
+                        
+                        // Assign success message
+                        successMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0002);
+                        successMsg += isEng 
+                            ? ".Please wait library to confirm your card register" 
+                            : ".Vui lòng đợi để được thư viện xác nhận";
                         break;
                     case TransactionType.LibraryCardExtension:
-                        confirmRes = await _libCardService.ConfirmCardExtensionWithoutSaveChangesAsync(
+                        confirmRes = await _libCardService.ConfirmCardExtensionAsync(
                             email: userDto.Email,
                             transactionToken: paymentToken);
+                        
+                        // Assign success message
+                        successMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0005);
                         break;
                 }
                 
@@ -259,8 +286,7 @@ public class PayOsService : IPayOsService
             }   
        
             // Msg: Verify payment transaction successfully
-            return new ServiceResult(ResultCodeConst.Transaction_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0002), paymentToken);
+            return new ServiceResult(ResultCodeConst.Transaction_Success0002, successMsg);
         }
         
         // Msg: Failed to verify payment transaction

@@ -11,11 +11,12 @@ public interface ILibraryCardService<TDto> : IGenericService<LibraryCard, TDto, 
     Task<IServiceResult> RegisterCardByEmployeeAsync(string processedByEmail, 
         Guid userId, TDto dto, TransactionMethod method, int? paymentMethodId, int libraryCardPackageId);
     Task<IServiceResult> SendRequireToConfirmCardAsync(string userEmail);
-    Task<IServiceResult> ConfirmCardRegisterWithoutSaveChangesAsync(string email, string transactionToken);
-    Task<IServiceResult> ConfirmCardExtensionWithoutSaveChangesAsync(string email, string transactionToken);
+    Task<IServiceResult> ConfirmCardRegisterAsync(string email, string transactionToken);
+    Task<IServiceResult> ConfirmCardExtensionAsync(string email, string transactionToken);
     Task<IServiceResult> ConfirmCardAsync(Guid libraryCardId);
-    Task<IServiceResult> ExtendCardAsync(Guid libraryCardId, 
-        string? transactionToken, int? libraryCardPackageId, int? paymentMethodId);
+    Task<IServiceResult> ExtendCardByEmployeeAsync(
+        string processedByEmail, Guid libraryCardId,
+        TransactionMethod transactionMethod, int? paymentMethodId, int libraryCardPackageId);
     Task<IServiceResult> RejectCardAsync(Guid libraryCardId, string rejectReason);
     Task<IServiceResult> CheckCardExtensionAsync(Guid libraryCardId);
     Task<IServiceResult> CheckCardValidityAsync(Guid libraryCardId);

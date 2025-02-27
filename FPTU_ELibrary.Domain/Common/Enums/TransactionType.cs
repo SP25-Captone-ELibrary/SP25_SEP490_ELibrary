@@ -12,6 +12,8 @@ public enum TransactionType
     LibraryCardRegister,
     [Description("Gia hạn thẻ thư viện")]
     LibraryCardExtension,
+    [Description("Gia hạn tài liệu điện tử")]
+    DigitalExtension,
     
     // Add more type... 
 }

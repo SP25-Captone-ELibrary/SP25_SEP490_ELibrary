@@ -91,6 +91,7 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasColumnName("transaction_method");
         
         builder.Property(e => e.ExpiredAt)
+            .IsRequired(false)
             .HasColumnType("datetime")
             .HasColumnName("expired_at");
         

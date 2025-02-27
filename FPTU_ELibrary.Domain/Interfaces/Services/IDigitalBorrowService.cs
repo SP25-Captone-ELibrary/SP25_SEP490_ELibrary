@@ -8,4 +8,6 @@ public interface IDigitalBorrowService<TDto> : IGenericService<DigitalBorrow, TD
 {
     Task<IServiceResult> GetAllCardHolderDigitalBorrowByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> GetCardHolderDigitalBorrowByIdAsync(Guid userId, int digitalBorrowId);
+    Task<IServiceResult> ConfirmDigitalBorrowAsync(string email, string transactionToken);
+    Task<IServiceResult> ConfirmDigitalExtensionAsync(string email, string transactionToken);
 }

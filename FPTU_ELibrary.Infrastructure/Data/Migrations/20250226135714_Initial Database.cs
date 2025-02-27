@@ -881,7 +881,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     transaction_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     transaction_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     transaction_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    expired_at = table.Column<DateTime>(type: "datetime", nullable: false),
+                    expired_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     created_by = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     canceled_at = table.Column<DateTime>(type: "datetime", nullable: true),

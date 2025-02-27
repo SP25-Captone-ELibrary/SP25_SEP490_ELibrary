@@ -15,7 +15,7 @@ public class TransactionDto
     public TransactionStatus TransactionStatus { get; set; }
     public TransactionType TransactionType { get; set; }
     public DateTime? TransactionDate { get; set; }
-    public DateTime ExpiredAt { get; set; }
+    public DateTime? ExpiredAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime? CancelledAt { get; set; }

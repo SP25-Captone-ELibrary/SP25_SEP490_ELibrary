@@ -29,6 +29,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     // Lazy services
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<ILibraryCardService<LibraryCardDto>> _libCardService;
+    private readonly Lazy<IDigitalBorrowService<DigitalBorrowDto>> _digitalBorrowService;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
     private readonly Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> _cardPackageService;
 
@@ -43,6 +44,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         Lazy<ILibraryCardService<LibraryCardDto>> libCardService,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
         Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> cardPackageService,
+        Lazy<IDigitalBorrowService<DigitalBorrowDto>> digitalBorrowService,
         
         IEmployeeService<EmployeeDto> employeeService,
         IOptionsMonitor<PaymentSettings> monitor,
@@ -56,6 +58,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         _libCardService = libCardService;
         _resourceService = resourceService;
         _cardPackageService = cardPackageService;
+        _digitalBorrowService = digitalBorrowService;
         _employeeService = employeeService;
         _paymentSettings = monitor.CurrentValue;
         _payOsSettings = payOsMonitor.CurrentValue;
@@ -153,7 +156,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                             
                         // Assign amount need to pay for 
                         dto.Amount = cardPackageDto.Price;
-                        // Assign Id 
+                        // Assign id
                         dto.LibraryCardPackageId = validPackageId;
                     }
                     break;
@@ -178,14 +181,79 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                                 await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
                         }
                         
+                        // Check whether user has already borrowed the resource
+                        var digitalSpec = new BaseSpecification<DigitalBorrow>(
+                            db => db.ResourceId == resourceDto.ResourceId && db.UserId == userDto.UserId);
+                        var digitalBorrowDto = (await _digitalBorrowService.Value.GetWithSpecAsync(digitalSpec)).Data as DigitalBorrowDto;
+                        if (digitalBorrowDto != null)
+                        {
+                            // Declare err message string
+                            string errMsg;
+                            
+                            // Check whether digital borrow has expired
+                            if (digitalBorrowDto.Status == BorrowDigitalStatus.Expired)
+                            {
+                                // Msg: Digital resource {0} is borrowed but now is in expired status. You can extend expiration date in your borrowed history
+                                errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0016);
+                                return new ServiceResult(ResultCodeConst.Borrow_Warning0016,
+                                    StringUtils.Format(errMsg, $"'{resourceDto.ResourceTitle}'"));
+                            }
+                            
+                            // Msg: Digital resource {0} is borrowing. Cannot not create register
+                            errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0015);
+                            return new ServiceResult(ResultCodeConst.Borrow_Warning0015,
+                                StringUtils.Format(errMsg, $"'{resourceDto.ResourceTitle}'"));
+                        }
+                        
                         // Assign amount need to pay for 
                         dto.Amount = resourceDto.BorrowPrice;
-                        // Assign Id 
-                        dto.LibraryCardPackageId = validResourceId;
+                        // Assign id 
+                        dto.ResourceId = validResourceId;
                         
                         // Assign digital borrow desc
                         if (isEng) engPaymentDesc = "Digital resource borrow";
                         else viePaymentDesc = "Muon tai lieu dien tu";
+                    }
+                    break;
+                case TransactionType.DigitalExtension:
+                    // Check whether request along with digital borrow or not
+                    if (dto.ResourceId == null || dto.ResourceId == 0)
+                    {
+                        // Msg: Failed to create payment transaction. Please try again
+                        return new ServiceResult(ResultCodeConst.Transaction_Fail0001,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0001));
+                    }else if (int.TryParse(dto.ResourceId.ToString(), out var validResourceId))
+                    {
+                        // Try to retrieve resource id
+                        var resourceSpec = new BaseSpecification<LibraryResource>(r => 
+                            r.ResourceId == validResourceId);
+                        var resourceDto = (await _resourceService.Value.GetWithSpecAsync(resourceSpec)).Data as LibraryResourceDto;
+                        if (resourceDto == null || resourceDto.IsDeleted)
+                        {
+                            // Msg: Payment object does not exist. Please try again
+                            return new ServiceResult(ResultCodeConst.Transaction_Fail0002,
+                                await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
+                        }
+                        
+                        // Check whether user has borrowed the resource or not 
+                        var isDigitalBorrowing = (await _digitalBorrowService.Value.AnyAsync(
+                            db => db.ResourceId == resourceDto.ResourceId && db.UserId == userDto.UserId)).Data is true;
+                        if (!isDigitalBorrowing) // Not found any digital borrow
+                        {
+                            // Msg: Digital resource {0} not found in borrow history to process extend expiration date
+                            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0017);
+                            return new ServiceResult(ResultCodeConst.Borrow_Warning0017,
+                                StringUtils.Format(errMsg, $"'{resourceDto.ResourceTitle}'"));
+                        }
+                        
+                        // Assign amount need to pay for 
+                        dto.Amount = resourceDto.BorrowPrice;
+                        // Assign id 
+                        dto.ResourceId = validResourceId;
+                        
+                        // Assign digital borrow desc
+                        if (isEng) engPaymentDesc = "Digital resource extend";
+                        else viePaymentDesc = "Gia han tai lieu dien tu";
                     }
                     break;
                 default:

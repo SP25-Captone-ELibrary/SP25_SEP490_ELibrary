@@ -238,6 +238,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0003 = "Borrow.Success0003";
 		/// <summary>
+		/// [SUCCESS] Register library digital resource success
+		/// </summary>
+		public const string Borrow_Success0004 = "Borrow.Success0004";
+		/// <summary>
+		/// [SUCCESS] Extend expiration date for library digital resource success
+		/// </summary>
+		public const string Borrow_Success0005 = "Borrow.Success0005";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -294,13 +302,42 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0014 = "Borrow.Warning0014";
 		/// <summary>
+		/// [WARNING] Digital resource {0} is borrowing. Cannot not create register
+		/// </summary>
+		public const string Borrow_Warning0015 = "Borrow.Warning0015";
+		/// <summary>
+		/// [WARNING] Digital resource {0} is borrowed but now is in expired status. You can extend expiration date in your borrowed history
+		/// </summary>
+		public const string Borrow_Warning0016 = "Borrow.Warning0016";
+		/// <summary>
+		/// [WARNING] Digital resource {0} not found in borrow history to process extend expiration date
+		/// </summary>
+		public const string Borrow_Warning0017 = "Borrow.Warning0017";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";
+
 		/// <summary>
 		/// [FAIL] An error occured, failed to create borrow record
 		/// </summary>
 		public const string Borrow_Fail0002 = "Borrow.Fail0002";
+		/// <summary>
+		/// [FAIL] Failed to register library digital resource as {0}
+		/// </summary>
+		public const string Borrow_Fail0003 = "Borrow.Fail0003";
+		/// <summary>
+		/// [FAIL] Failed to register library digital resource
+		/// </summary>
+		public const string Borrow_Fail0004 = "Borrow.Fail0004";
+		/// <summary>
+		/// [FAIL] Failed to extend library digital resource as {0}
+		/// </summary>
+		public const string Borrow_Fail0005 = "Borrow.Fail0005";
+		/// <summary>
+        /// [FAIL] Failed to extend library digital resource expiration date
+        /// </summary>
+        public const string Borrow_Fail0006 = "Borrow.Fail0006";
 		#endregion
 		
 		#region Role

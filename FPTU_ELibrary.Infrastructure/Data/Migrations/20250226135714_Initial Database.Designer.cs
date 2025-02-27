@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250226123822_Initial Database")]
+    [Migration("20250226135714_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -2240,7 +2240,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("description");
 
-                    b.Property<DateTime>("ExpiredAt")
+                    b.Property<DateTime?>("ExpiredAt")
                         .HasColumnType("datetime")
                         .HasColumnName("expired_at");
 
