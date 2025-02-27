@@ -389,7 +389,12 @@ namespace FPTU_ELibrary.API.Extensions
 				Address = req.Address,
 				Gender = req.Gender,
 				Dob = req.Dob,
-				Avatar = req.Avatar
+				Avatar = req.Avatar,
+				LibraryCard = new()
+				{
+					FullName = $"{req.FirstName} {req.LastName}",
+					Avatar = req.Avatar
+				}
 			};
 		}
 		

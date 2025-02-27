@@ -63,7 +63,13 @@ public class LibraryCardHolderController : ControllerBase
     [HttpPost(APIRoute.LibraryCardHolder.Create, Name = nameof(CreateLibraryCardHolderAsync))]
     public async Task<IActionResult> CreateLibraryCardHolderAsync([FromBody] CreateLibraryCardHolderRequest req)
     {
-        return Ok(await _userSvc.CreateLibraryCardHolderAsync(dto: req.ToLibraryCardHolderDto()));
+        var processedByEmail = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _userSvc.CreateLibraryCardHolderAsync(
+            createdByEmail: processedByEmail ?? string.Empty,
+            dto: req.ToLibraryCardHolderDto(),
+            transactionMethod: req.TransactionMethod,
+            paymentMethodId: req.PaymentMethodId,
+            libraryCardPackageId: req.LibraryCardPackageId));
     }
 
     [Authorize]

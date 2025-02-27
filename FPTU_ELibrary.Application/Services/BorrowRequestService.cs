@@ -408,7 +408,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 // Data not found or empty
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    StringUtils.Format(errMsg, isEng ? "reader" : "bạn đọc"));
+                    StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
             }
             
             // Build spec
