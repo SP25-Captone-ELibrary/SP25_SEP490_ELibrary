@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using Azure.Core;
 using Azure.Identity;
 using CloudinaryDotNet;
 using FluentValidation;
@@ -23,6 +24,7 @@ using Serilog.Core;
 using StackExchange.Redis;
 using Azure.Identity;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Azure.Security.KeyVault.Secrets;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -264,132 +266,131 @@ namespace FPTU_ELibrary.API.Extensions
             IConfiguration configuration,
             IWebHostEnvironment env)
         {
-            // Load settings từ appsettings.json
-            services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 
-            // Kiểm tra xem có KeyVaultUrl không
+            // Kiểm tra Key Vault có được cấu hình không
             var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
-            if (!string.IsNullOrEmpty(keyVaultUrl))
+            var clientId = configuration["AzureSettings:KeyVaultClientId"];
+            var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+            var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+
+            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+            var client = new SecretClient(new Uri(keyVaultUrl), credential);
+            var appSettings = new AppSettings
             {
-                var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    ExcludeEnvironmentCredential = true,
-                    ExcludeManagedIdentityCredential = true,
-                    ExcludeVisualStudioCredential = true,
-                    ExcludeVisualStudioCodeCredential = true,
-                    ExcludeAzurePowerShellCredential = true,
-                    ExcludeInteractiveBrowserCredential = true
-                });
-                configuration = new ConfigurationBuilder()
-                    .AddConfiguration(configuration)
-                    .AddAzureKeyVault(new Uri(keyVaultUrl), credential)
-                    .Build();
-            }
-
-            // Configure các settings khác
-            services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
-            services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
-            services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
-            services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-            services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-            services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-            services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-            services.Configure<AISettings>(configuration.GetSection("AISettings"));
-            services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-            services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-            services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
-            services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
-            services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
-
-            return services;
-        }
-
-
-        public static IServiceCollection AddAuthentication(this IServiceCollection services,
-            IConfiguration configuration)
-        {
-            // Define TokenValidationParameters
-            var tokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
-                IssuerSigningKey =
-                    new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
-                ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
-                ValidAudience = configuration["WebTokenSettings:ValidAudience"],
-                ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
-                ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
-                RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
-                ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
-                ClockSkew = TimeSpan.Zero
+                // PageSize = int.Parse(client.GetSecret("AppSettings--PageSize").Value.Value),
+                //update parse json string from key vault
             };
 
-            // Register TokenValidationParameters in the DI container
-            services.AddSingleton(tokenValidationParameters);
-
-            // Add authentication
-            services.AddAuthentication(options =>
+            // 🔹 Binding vào DI container
+            services.Configure<AppSettings>(options =>
             {
-                // Define default scheme
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options => // Enables JWT-bearer authentication
-            {
-                // Disable Https required for the metadata address or authority
-                options.RequireHttpsMetadata = false;
-                // Define type and definitions required for validating a token
-                options.TokenValidationParameters = services.BuildServiceProvider()
-                    .GetRequiredService<TokenValidationParameters>();
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        var accessToken = context.Request.Query["access_token"];
-
-                        // If the request is for our hub...
-                        var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrEmpty(accessToken))
-                        {
-                            // Read the token out of the query string
-                            context.Token = accessToken;
-                        }
-
-                        return Task.CompletedTask;
-                    }
-                };
+                options.PageSize = appSettings.PageSize;
             });
 
-            return services;
-        }
+        // 🔹 Cấu hình các settings khác
+        services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
+        services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
+        services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
+        services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
+        services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
+        services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
+        services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
+        services.Configure<AISettings>(configuration.GetSection("AISettings"));
+        services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
+        services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
+        services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
+        services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
+        services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
+        return services;
+    }
 
-        public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+
+    public static IServiceCollection AddAuthentication(this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Define TokenValidationParameters
+        var tokenValidationParameters = new TokenValidationParameters
         {
-            // Configure CORS
-            services.AddCors(p => p.AddPolicy(policyName, policy =>
+            ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
+            IssuerSigningKey =
+                new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
+            ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
+            ValidAudience = configuration["WebTokenSettings:ValidAudience"],
+            ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
+            ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
+            RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
+            ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Register TokenValidationParameters in the DI container
+        services.AddSingleton(tokenValidationParameters);
+
+        // Add authentication
+        services.AddAuthentication(options =>
+        {
+            // Define default scheme
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        }).AddJwtBearer(options => // Enables JWT-bearer authentication
+        {
+            // Disable Https required for the metadata address or authority
+            options.RequireHttpsMetadata = false;
+            // Define type and definitions required for validating a token
+            options.TokenValidationParameters = services.BuildServiceProvider()
+                .GetRequiredService<TokenValidationParameters>();
+            options.Events = new JwtBearerEvents
             {
-                // allow all with any header, method
-                policy.WithOrigins("*")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
-            }));
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
 
-            return services;
-        }
+                    // If the request is for our hub...
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken))
+                    {
+                        // Read the token out of the query string
+                        context.Token = accessToken;
+                    }
 
-        public static IServiceCollection AddLazyResolution(this IServiceCollection services)
+                    return Task.CompletedTask;
+                }
+            };
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+    {
+        // Configure CORS
+        services.AddCors(p => p.AddPolicy(policyName, policy =>
         {
-            return services.AddTransient(
-                typeof(Lazy<>),
-                typeof(LazilyResolved<>));
-        }
+            // allow all with any header, method
+            policy.WithOrigins("*")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }));
 
-        private class LazilyResolved<T> : Lazy<T>
+        return services;
+    }
+
+    public static IServiceCollection AddLazyResolution(this IServiceCollection services)
+    {
+        return services.AddTransient(
+            typeof(Lazy<>),
+            typeof(LazilyResolved<>));
+    }
+
+    private class LazilyResolved<T> : Lazy<T>
+    {
+        public LazilyResolved(IServiceProvider serviceProvider)
+            : base(serviceProvider.GetRequiredService<T>)
         {
-            public LazilyResolved(IServiceProvider serviceProvider)
-                : base(serviceProvider.GetRequiredService<T>)
-            {
-            }
         }
     }
+}
+
 }
