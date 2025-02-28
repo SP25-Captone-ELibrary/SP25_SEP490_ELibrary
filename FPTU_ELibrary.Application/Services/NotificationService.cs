@@ -57,7 +57,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(n => n.NotificationRecipients)
-                .ThenInclude(nr => nr.Recipient)
+                    .ThenInclude(nr => nr.Recipient)
+                .Include(n => n.CreatedByNavigation)
             );
             // Retrieve notification with spec
             var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
@@ -95,6 +96,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             // Apply include
             notificationSpec.ApplyInclude(q => q
                 .Include(n => n.NotificationRecipients)
+                    .Include(n => n.CreatedByNavigation)
             );
             
             // Count total actual items in DB
@@ -252,6 +254,9 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
 
+            // Apply include
+            notificationSpec.ApplyInclude(q => q.Include(n => n.CreatedByNavigation));
+            
             // Filtering 
             notificationSpec.AddFilter(x => x.NotificationRecipients.Any(nr => nr.Recipient.Email == email));
             
@@ -321,6 +326,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             
             // Build spec
             var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q.Include(n => n.CreatedByNavigation));
             // Retrieve notification with spec
             var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
             if (existingEntity == null)
@@ -407,6 +414,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     {
         // Build spec
         var userSpec = new BaseSpecification<User>(u => u.Role.EnglishName == nameof(Role.GeneralMember));
+        // Apply include
+        userSpec.ApplyInclude(q => q.Include(u => u.Role));
         // Retrieve all users with spec
         var users = (await _userService.GetAllWithSpecAndSelectorAsync(
             specification: userSpec,
@@ -414,7 +423,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             {
                 UserId = u.UserId,
                 Email = u.Email
-            })).Data as IEnumerable<UserDto>;
+            })).Data as List<User>;
         
         // Exist at least one user
         if (users != null)

@@ -486,8 +486,10 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 			        await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
 	        }
 	        
+            // Initialize expired offset unix seconds
+            var expiredAtOffsetUnixSeconds = 0;
             // Initialize payOS response
-            PayOSPaymentResponseDto? payOsResp = null; 
+            PayOSPaymentResponseDto? payOsResp = null;
 	        // Initialize transaction 
 	        TransactionDto? transactionDto = null;
 	        // Generate transaction code
@@ -559,6 +561,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         CreatedBy = processedByEmail
                     };
                     
+                    // Assign expired at 
+                    expiredAtOffsetUnixSeconds = (int)((DateTimeOffset)transactionDto.ExpiredAt).ToUnixTimeSeconds();
                     // Generate payment link
                     var payOsPaymentRequest = new PayOSPaymentRequestDto()
                     {
@@ -579,7 +583,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         ],
                         CancelUrl = _payOsSettings.CancelUrl,
                         ReturnUrl = _payOsSettings.ReturnUrl,
-                        ExpiredAt = (int)((DateTimeOffset) transactionDto.ExpiredAt).ToUnixTimeSeconds()
+                        ExpiredAt = expiredAtOffsetUnixSeconds
                     };
                     
                     // Generate signature
@@ -696,7 +700,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     case TransactionMethod.DigitalPayment:
                         // Msg: Create payment link successfully
                         return new ServiceResult(ResultCodeConst.Transaction_Success0001,
-                            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), payOsResp);
+                            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), 
+                            new PayOSPaymentLinkResponseDto()
+                            {
+                                PayOsResponse = payOsResp!,
+                                ExpiredAtOffsetUnixSeconds = expiredAtOffsetUnixSeconds
+                            });
                 }
 	        }
 	        

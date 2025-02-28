@@ -303,7 +303,7 @@ public class PayOsService : IPayOsService
             // Send payment status to realtime hub
             await _hubContext.Clients.User(userDto.Email).SendAsync(Hub_Method, new
             {
-                Messsage = successMsg,
+                Message = successMsg,
                 Status = status
             });
             

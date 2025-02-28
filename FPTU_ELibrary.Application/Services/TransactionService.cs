@@ -279,6 +279,8 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             // Add default transaction method is digital payment as this function only use by user
             dto.TransactionMethod = TransactionMethod.DigitalPayment;
                 
+            // Initialize expired at offset unix seconds
+            var expiredAtOffsetUnixSeconds = (int)((DateTimeOffset)dto.ExpiredAt).ToUnixTimeSeconds();
             // Generate payment link
             var payOsPaymentRequest = new PayOSPaymentRequestDto()
             {
@@ -299,7 +301,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 ],
                 CancelUrl = _payOsSettings.CancelUrl,
                 ReturnUrl = _payOsSettings.ReturnUrl,
-                ExpiredAt = (int)((DateTimeOffset) dto.ExpiredAt).ToUnixTimeSeconds()
+                ExpiredAt = expiredAtOffsetUnixSeconds
             };
             
             // Generate signature
@@ -322,7 +324,12 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 {
                     // Create payment link successfully
                     return new ServiceResult(ResultCodeConst.Transaction_Success0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), payOsPaymentResp.Item3);
+                        await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), 
+                        new PayOSPaymentLinkResponseDto()
+                        {
+                            PayOsResponse = payOsPaymentResp.Item3,
+                            ExpiredAtOffsetUnixSeconds = expiredAtOffsetUnixSeconds
+                        });
                 }
             }
             
