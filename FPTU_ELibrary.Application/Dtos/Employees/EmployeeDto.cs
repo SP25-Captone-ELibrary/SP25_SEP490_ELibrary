@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using FPTU_ELibrary.Application.Dtos.Auth;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Roles;
 
 namespace FPTU_ELibrary.Application.Dtos.Employees
@@ -58,8 +59,8 @@ namespace FPTU_ELibrary.Application.Dtos.Employees
 
 		//public ICollection<BorrowRequest> BorrowRequests { get; set; } = new List<BorrowRequest>();
 
-		//[JsonIgnore]
-		//public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+		[JsonIgnore]
+		public ICollection<NotificationDto> Notifications { get; set; } = new List<NotificationDto>();
 
 		[JsonIgnore]
 		public ICollection<RefreshTokenDto> RefreshTokens { get; set; } = new List<RefreshTokenDto>();

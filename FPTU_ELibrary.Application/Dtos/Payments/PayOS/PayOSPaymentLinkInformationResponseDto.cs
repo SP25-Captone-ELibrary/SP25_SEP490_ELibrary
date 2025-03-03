@@ -1,4 +1,6 @@
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
+using Net.payOS.Types;
 
 namespace FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 
@@ -13,6 +15,41 @@ public class PayOSPaymentLinkInformationResponseDto
 
 public static class PayOSPaymentLinkInformationResponseDtoExtensions
 {
+    public static PayOSPaymentLinkInformationResponseDto ToPayOsResponseDto(this WebhookType webhookType,
+        TransactionStatus transactionStatus)
+    {
+        return new()
+        {
+            Code = webhookType.code,
+            Desc = webhookType.desc,
+            Signature = webhookType.signature,
+            Data = new ()
+            {
+                OrderCode = webhookType.data.orderCode.ToString(),
+                Amount = webhookType.data.amount,
+                Id = webhookType.data.paymentLinkId,
+                Status = transactionStatus.ToString().ToUpperInvariant(),
+                AmountPaid = webhookType.data.amount,
+                Transactions = [
+                    new()
+                    {
+                        Reference = webhookType.data.reference,
+                        Amount = webhookType.data.amount,
+                        AccountNumber = webhookType.data.accountNumber,
+                        TransactionDateTime = webhookType.data.transactionDateTime,
+                        VirtualAccountName = webhookType.data.virtualAccountName,
+                        VirtualAccountNumber = webhookType.data.virtualAccountNumber,
+                        CounterAccountBankId = webhookType.data.counterAccountBankId,
+                        CounterAccountBankName = webhookType.data.counterAccountBankName,
+                        CounterAccountName = webhookType.data.counterAccountName,
+                        CounterAccountNumber = webhookType.data.counterAccountNumber,
+                        Description = webhookType.data.description,
+                    }
+                ]
+            }
+        };
+    }
+    
     /// <summary>
     /// Generate webhook signature
     /// </summary>

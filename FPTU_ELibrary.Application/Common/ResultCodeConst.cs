@@ -457,16 +457,26 @@ namespace FPTU_ELibrary.Application.Common
 		#endregion
 		
 		#region Notification
-
 		/// <summary>
-		/// There is no important message 
+		/// [SUCCESS] Send notification successfully
+		/// </summary>
+		public static string Notification_Success0001 = "Notification.Success0001";
+		/// <summary>
+		/// [WARNING] There is no important message 
 		/// </summary>
 		public static string Notification_Warning0001 = "Notification.Warning0001";
 		/// <summary>
-		/// Access to noti that not belongs to this account 
+		/// [WARNING] Access to noti that not belongs to this account 
 		/// </summary>
 		public static string Notification_Warning0002 = "Notification.Warning0002";
-
+		/// <summary>
+		/// [WARNING] Not found user's email {0} to process send privacy notification
+		/// </summary>
+		public static string Notification_Warning0003 = "Notification.Warning0003";
+		/// <summary>
+		/// [FAIL] Failed to send notification
+		/// </summary>
+		public static string Notification_Fail0001 = "Notification.Fail0001";
 		#endregion
 
 		#region Library Item

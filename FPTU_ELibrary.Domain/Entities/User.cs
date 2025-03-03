@@ -21,6 +21,7 @@ public class  User : BaseUser
     public SystemRole Role { get; set; } = null!;
     public LibraryCard? LibraryCard { get; set; } 
     
+    [JsonIgnore]
     public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 
     [JsonIgnore]

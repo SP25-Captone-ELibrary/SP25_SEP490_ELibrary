@@ -30,7 +30,7 @@ public class TransactionDto
     public int? PaymentMethodId { get; set; }
     
     // Store payment information
-    public string? PaymentUrl { get; set; }
+    public string? QrCode { get; set; }
     
     // Mapping entities
     public UserDto User { get; set; } = null!;

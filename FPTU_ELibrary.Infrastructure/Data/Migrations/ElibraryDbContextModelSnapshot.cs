@@ -1712,9 +1712,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsPublic")
@@ -1723,22 +1722,23 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("nvarchar(4000)")
                         .HasColumnName("message");
 
                     b.Property<string>("NotificationType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("notification_type");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
+                        .HasColumnType("nvarchar(150)")
                         .HasColumnName("title");
 
                     b.HasKey("NotificationId")
                         .HasName("PK_Notification_NotificationId");
+
+                    b.HasIndex("CreatedBy");
 
                     b.ToTable("Notification", (string)null);
                 });
@@ -2253,9 +2253,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("payment_method_id");
 
-                    b.Property<string>("PaymentUrl")
+                    b.Property<string>("QrCode")
                         .HasColumnType("nvarchar(255)")
-                        .HasColumnName("payment_url");
+                        .HasColumnName("qr_code");
 
                     b.Property<int?>("ResourceId")
                         .HasColumnType("int")
@@ -3025,6 +3025,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Floor");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreatedByNavigation")
+                        .WithMany("Notifications")
+                        .HasForeignKey("CreatedBy")
+                        .IsRequired()
+                        .HasConstraintName("FK_Notification_CreatedBy");
+
+                    b.Navigation("CreatedByNavigation");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.NotificationRecipient", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Notification", "Notification")
@@ -3282,6 +3293,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("BorrowRecords");
 
                     b.Navigation("FineCreateByNavigations");
+
+                    b.Navigation("Notifications");
 
                     b.Navigation("RefreshTokens");
                 });

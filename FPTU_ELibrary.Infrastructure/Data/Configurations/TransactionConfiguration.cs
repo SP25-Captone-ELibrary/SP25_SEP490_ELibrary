@@ -99,9 +99,9 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasColumnType("nvarchar(50)")
             .HasColumnName("created_by");
         
-        builder.Property(e => e.PaymentUrl)
+        builder.Property(e => e.QrCode)
             .HasColumnType("nvarchar(255)")
-            .HasColumnName("payment_url");
+            .HasColumnName("qr_code");
         #endregion
 
         #region Update at 26/02/2025 by Le Xuan Phuoc
@@ -110,7 +110,6 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         //     .HasForeignKey(e => e.InvoiceId)
         //     .OnDelete(DeleteBehavior.ClientSetNull)
         //     .HasConstraintName("FK_Transaction_InvoiceId");
-
         #endregion
     }
 }

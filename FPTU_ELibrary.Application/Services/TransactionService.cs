@@ -313,7 +313,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             if (isCreatePaymentSuccess && payOsPaymentResp.Item3 != null)
             {
                 // Update payment information (if any)
-                dto.PaymentUrl = payOsPaymentResp.Item3.Data.CheckoutUrl;
+                dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
                 
                 // Process create transaction
                 await _unitOfWork.Repository<Transaction, int>().AddAsync(_mapper.Map<Transaction>(dto));
@@ -691,7 +691,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     //             {
     //                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
     //                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-    //                     StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+    //                     StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
     //             }
     //
     //             var userValue = (UserDto)user.Data!;
@@ -794,7 +794,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     //     }
     //     var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
     //     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-    //         StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
+    //         StringUtils.Format(errMsg, isEng ? "user" : "bạn đọc"));
     // }
     //
     //

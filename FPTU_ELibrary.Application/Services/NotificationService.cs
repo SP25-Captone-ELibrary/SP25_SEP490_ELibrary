@@ -6,7 +6,9 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -20,6 +22,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Org.BouncyCastle.Crypto.Agreement.Srp;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services.IServices;
@@ -28,206 +31,72 @@ public class NotificationService : GenericService<Notification, NotificationDto,
     INotificationService<NotificationDto>
 {
     private readonly IHubContext<NotificationHub> _hubContext;
-    private readonly IEmployeeService<EmployeeDto> _employeeService;
-    private readonly INotificationRecipientService<NotificationRecipientDto> _notificationRecipient;
+    
     private readonly IUserService<UserDto> _userService;
+    private readonly IEmployeeService<EmployeeDto> _employeeService;
     public NotificationService(
         IHubContext<NotificationHub> hubContext,
         ILogger logger,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,IEmployeeService<EmployeeDto> employeeService,
-        INotificationRecipientService<NotificationRecipientDto> notificationRecipient,
-        IUserService<UserDto> userService
-        ) : base(msgService, unitOfWork,
-        mapper, logger)
+        IUserService<UserDto> userService) 
+        : base(msgService, unitOfWork, mapper, logger)
     {
         _hubContext = hubContext;
         _employeeService = employeeService;
-        _notificationRecipient = notificationRecipient;
         _userService = userService;
     }
 
-    public async Task<IServiceResult> CreateNotification(NotificationDto noti,
-        List<string>? recipients)
+    public override async Task<IServiceResult> GetByIdAsync(int id)
     {
-        //create parallel thread to handle create noti 
-        //version 1: response when finished creating noti
-        // update: like create many accounts func (UserService)
-        var serviceResult = new ServiceResult();
         try
         {
-            // Validate inputs using the generic validator
-            var validationResult = await ValidatorExtensions.ValidateAsync(noti);
-            // Check for valid validations
-            if (validationResult != null && !validationResult.IsValid)
+            // Build spec
+            var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(n => n.NotificationRecipients)
+                .ThenInclude(nr => nr.Recipient)
+            );
+            // Retrieve notification with spec
+            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
             {
-                // Convert ValidationResult to ValidationProblemsDetails.Errors
-                var errors = validationResult.ToProblemDetails().Errors;
-                throw new UnprocessableEntityException("Invalid Validations", errors);
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
             }
 
-            var notiEntity = _mapper.Map<Notification>(noti);
-            await _unitOfWork.Repository<Notification, int>().AddAsync(notiEntity);
-            if (await _unitOfWork.SaveChangesAsync() > 0)
-            {
-                if (noti.IsPublic == true)
-                {
-                    await SendPublicNotification(noti);
-                    serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
-                    serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-                    serviceResult.Data = true;
-                }
-                else
-                {
-                    foreach (var recipient in recipients)
-                    {
-                        var userResult = await _userService.GetByEmailAsync(recipient);
-                        
-                        var user = (UserDto)userResult.Data!;
-                        var privateNoti = new NotificationRecipientDto()
-                        
-                        {
-                            IsRead = false,
-                            NotificationId = notiEntity.NotificationId,
-                            RecipientId = user.UserId
-                        };
-                        var addPrivateNotiResult = await _notificationRecipient.CreatePrivateNotification(privateNoti);
-                        if (addPrivateNotiResult.ResultCode == ResultCodeConst.SYS_Success0001)
-                        {
-                            await SendPrivateNotification(recipient, _mapper.Map<NotificationDto>(notiEntity));
-                            serviceResult.ResultCode = ResultCodeConst.SYS_Success0001;
-                            serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001);
-                            serviceResult.Data = true;
-                        }
-                        else
-                        {
-                            serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
-                            serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
-                            serviceResult.Data = false;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                serviceResult.ResultCode = ResultCodeConst.SYS_Fail0001;
-                serviceResult.Message = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
-                serviceResult.Data = false;
-            }
-        }
-        catch (UnprocessableEntityException e)
-        {
-            throw;
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), _mapper.Map<NotificationDto>(existingEntity));
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke while create notification");
+            throw new Exception("Error invoke when get notification by id");
         }
-
-        return serviceResult;
     }
-
-    public async Task<IServiceResult> GetTypes()
-    {
-        var result = Enum.GetNames(typeof(NotificationType));
-        return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new { NotificationType = result });
-    }
-
-    public async Task<IServiceResult> GetById(string email, int id)
-    {
-        var userResult = await _userService.GetByEmailAsync(email);
-        var user = (UserDto)userResult.Data!;
-        //check if the 
-        var recipientBaseSpec = new BaseSpecification<NotificationRecipient>(nr
-            => nr.RecipientId == user.UserId
-               && nr.NotificationId == id);
-        
-        //check the existed noti
-        var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
-        baseSpec.ApplyInclude(q => q.Include(n => n.NotificationRecipients));
-        // find the suitble noti
-        var noti = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
-        if (noti is null)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-        }
-        if (!noti.IsPublic &&
-                 await _unitOfWork.Repository<NotificationRecipient, int>()
-                     .GetWithSpecAsync(recipientBaseSpec) is null)
-        {
-            return new ServiceResult(ResultCodeConst.Notification_Warning0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0002));
-        }
-
-        return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), noti);
-    }
-
-
-    private async Task SendPrivateNotification(string userId, NotificationDto dto)
-    {
-        await _hubContext.Clients.User(userId).SendAsync("ReceiveNotification", new
-        {
-            NotificationId = dto.NotificationId,
-            Title = dto.Title,
-            Message = dto.Message,
-            IsPublic = false,
-            Timestamp = dto.CreateDate,
-            NotificationType = dto.NotificationType
-        });
-    }
-
-    private async Task SendPublicNotification(NotificationDto dto)
-    {
-        if ((await _userService.GetAllAsync()).Data is IEnumerable<UserDto> generalUsers)
-            foreach (var user in generalUsers.Where(x =>x.RoleId == (int)Role.GeneralMember))
-            {
-                await _hubContext.Clients.User(userId:user.Email).SendAsync("ReceiveNotification", new
-                {
-                    NotificationId = dto.NotificationId,
-                    Title = dto.Title,
-                    Message = dto.Message,
-                    IsPublic = true,
-                    Timestamp = dto.CreateDate,
-                    NotificationType = dto.NotificationType
-                });
-            }
-    }
-    public async Task<IServiceResult> GetAllWithSpecAsync(
-        NotificationSpecParams specParams,
-        string email,bool isMangement,
-        bool tracked = true
-    )
+    
+    public override async Task<IServiceResult> GetAllWithSpecAsync(
+        ISpecification<Notification> spec, bool tracked = true)
     {
         try
         {
-            var userResult = await _userService.GetByEmailAsync(email);
-            int roleId=0;
-            if(userResult.Data != null) roleId = ((UserDto)userResult.Data!).RoleId;
-
-            var employeeResult = await _employeeService.GetByEmailAsync(email);
-            if (employeeResult.Data != null) roleId = ((EmployeeDto)employeeResult.Data!).RoleId;
-
-            if (userResult.Data is null && employeeResult.Data is null)
+            // Try to parse specification to NotificationSpecification
+            var notificationSpec = spec as NotificationSpecification;
+            // Check if specification is null
+            if (notificationSpec == null)
             {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    string.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "user"));
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
-
-            // Tạo mới NotificationSpecification dựa trên specParams, email, và roleId
-            var notificationSpec = new NotificationSpecification(
-                specParams,
-                specParams.PageIndex ?? 1,
-                specParams.PageSize ?? 5,
-                email,
-                roleId,
-                isMangement
+            
+            // Apply include
+            notificationSpec.ApplyInclude(q => q
+                .Include(n => n.NotificationRecipients)
             );
-
+            
             // Count total actual items in DB
             var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
             var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
@@ -246,7 +115,6 @@ public class NotificationService : GenericService<Notification, NotificationDto,
 
             var entities = await _unitOfWork.Repository<Notification, int>()
                 .GetAllWithSpecAsync(notificationSpec, false);
-
             if (entities.Any())
             {
                 var paginationResultDto = new PaginatedResultDto<NotificationDto>(
@@ -268,6 +136,215 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         }
     }
 
+    public async Task<IServiceResult> CreateNotificationAsync(
+        string createdByEmail, NotificationDto dto, List<string>? recipients)
+    {
+        // Create parallel thread to handle create notification 
+        // Version 1: response when finished creating notification
+        
+        try
+        {
+            // Check exist employee
+            var baseSpec = new BaseSpecification<Employee>(e => Equals(e.Email, createdByEmail));
+            var employeeDto = (await _employeeService.GetWithSpecAsync(baseSpec)).Data as EmployeeDto;
+            // Not found any employee match
+            if (employeeDto == null) throw new ForbiddenException(); // Forbid to access
+            
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
+            {
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
+            }
+
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+            // Add create date
+            dto.CreateDate = currentLocalDateTime;
+            // Add create by
+            dto.CreatedBy = employeeDto.EmployeeId;
+            
+            // Add notification recipients (if any)
+            if (recipients != null && recipients.Any() && !dto.IsPublic)
+            {
+                foreach (var recipient in recipients)
+                {
+                    // Try to retrieve user by email
+                    var user = (await _userService.GetByEmailAsync(recipient)).Data as UserDto;
+                    if (user == null) // Not found user match
+                    {
+                        // Msg: Not found user's email {0} to process send privacy notification
+                        var msg = await _msgService.GetMessageAsync(ResultCodeConst.Notification_Warning0003);
+                        return new ServiceResult(ResultCodeConst.Notification_Warning0003,
+                            StringUtils.Format(msg, recipient));
+                    }
+                    
+                    // Add notification recipient
+                    dto.NotificationRecipients.Add(new ()
+                    {
+                        RecipientId = user.UserId,
+                        IsRead = false
+                    });
+                }
+            }
+            
+            // Map notification from dto to entity
+            var notificationEntity = _mapper.Map<Notification>(dto);
+            // Process add new notification
+            await _unitOfWork.Repository<Notification, int>().AddAsync(notificationEntity);
+            // Save DB
+            if (await _unitOfWork.SaveChangesAsync() > 0)
+            {
+                await SendHubNotificationAsync(notificationDto: dto, recipients: recipients, isPublic: dto.IsPublic);
+
+                return new ServiceResult(ResultCodeConst.Notification_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Notification_Success0001));
+            }
+            
+            // Msg: Failed to send notification
+            return new ServiceResult(ResultCodeConst.Notification_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.Notification_Fail0001), false);
+        }
+        catch(ForbiddenException)
+        {
+            throw;
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke while create notification");
+        }
+    }
+
+    public async Task<IServiceResult> GetAllPrivacyNotificationAsync(
+        string email, ISpecification<Notification> spec)
+    {
+        try
+        {
+            // Initialize check exist field
+            var isEmailExist = false;
+            // Check exist user or employee 
+            isEmailExist |= (await _userService.AnyAsync(u => Equals(u.Email, email))).Data is true;
+            isEmailExist |= (await _employeeService.AnyAsync(e => Equals(e.Email, email))).Data is true;
+
+            // Not found any match
+            if (!isEmailExist)
+            {
+                throw new ForbiddenException();
+            }
+
+            // Try to parse specification to NotificationSpecification
+            var notificationSpec = spec as NotificationSpecification;
+            // Check if specification is null
+            if (notificationSpec == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            // Filtering 
+            notificationSpec.AddFilter(x => x.NotificationRecipients.Any(nr => nr.Recipient.Email == email));
+            
+            // Enable to see privacy email
+            notificationSpec.AddFilter(s => s.IsPublic || !s.IsPublic);
+            
+            // Count total actual items in DB
+            var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
+            var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
+
+            // Set pagination to specification after count total notification 
+            if (notificationSpec.PageIndex > totalPage
+                || notificationSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                notificationSpec.PageIndex = 1; // Set default to first page
+            }
+
+            // Apply paging
+            notificationSpec.ApplyPaging(
+                skip: notificationSpec.PageSize * (notificationSpec.PageIndex - 1),
+                take: notificationSpec.PageSize
+            );
+
+            // Retrieve all data with spec
+            var entities = await _unitOfWork.Repository<Notification, int>()
+                .GetAllWithSpecAsync(notificationSpec, false);
+            if (entities.Any())
+            {
+                var paginationResultDto = new PaginatedResultDto<NotificationDto>(
+                    _mapper.Map<IEnumerable<NotificationDto>>(entities),
+                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalNotification);
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                _mapper.Map<IEnumerable<NotificationDto>>(entities));
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all privacy notifications");
+        }
+    }
+    
+    public async Task<IServiceResult> GetPrivacyNotificationAsync(int id, string email)
+    {
+        try
+        {
+            // Initialize check exist field
+            var isEmailExist = false;
+            // Check exist user or employee 
+            isEmailExist |= (await _userService.AnyAsync(u => Equals(u.Email, email))).Data is true;
+            isEmailExist |= (await _employeeService.AnyAsync(e => Equals(e.Email, email))).Data is true;
+
+            // Not found any match
+            if (!isEmailExist)
+            {
+                throw new ForbiddenException();
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
+            // Retrieve notification with spec
+            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                _mapper.Map<NotificationDto>(existingEntity));
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get notification by id");
+        }
+    }
+    
     public async Task<IServiceResult> GetAllCardHolderNotificationByUserIdAsync(Guid userId, int pageIndex, int pageSize)
     {
         try
@@ -322,6 +399,61 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get all notification by user id");
+        }
+    }
+    
+    private async Task SendHubNotificationAsync(
+        NotificationDto notificationDto, List<string>? recipients, bool isPublic)
+    {
+        // Build spec
+        var userSpec = new BaseSpecification<User>(u => u.Role.EnglishName == nameof(Role.GeneralMember));
+        // Retrieve all users with spec
+        var users = (await _userService.GetAllWithSpecAndSelectorAsync(
+            specification: userSpec,
+            selector: u => new User()
+            {
+                UserId = u.UserId,
+                Email = u.Email
+            })).Data as IEnumerable<UserDto>;
+        
+        // Exist at least one user
+        if (users != null)
+        {
+            // Convert to list
+            var userEmails = users.Select(u => u.Email).ToList();
+        
+            if (isPublic)
+            {
+                // Iterate each email to process send notification
+                var tasks = userEmails
+                    .Select(email => _hubContext.Clients.User(email).SendAsync("ReceiveNotification", new
+                    {
+                        NotificationId = notificationDto.NotificationId,
+                        Title = notificationDto.Title,
+                        Message = notificationDto.Message,
+                        IsPublic = true,
+                        Timestamp = notificationDto.CreateDate,
+                        NotificationType = notificationDto.NotificationType
+                    }));
+
+                await Task.WhenAll(tasks);
+            }
+            else if(recipients != null && recipients.Any())
+            {
+                var tasks = userEmails
+                    .Where(email => recipients.Contains(email))
+                    .Select(email => _hubContext.Clients.User(email).SendAsync("ReceiveNotification", new
+                    {
+                        NotificationId = notificationDto.NotificationId,
+                        Title = notificationDto.Title,
+                        Message = notificationDto.Message,
+                        IsPublic = true,
+                        Timestamp = notificationDto.CreateDate,
+                        NotificationType = notificationDto.NotificationType
+                    }));
+
+                await Task.WhenAll(tasks);
+            }
         }
     }
 }

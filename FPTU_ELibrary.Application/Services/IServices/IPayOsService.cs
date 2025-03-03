@@ -7,5 +7,6 @@ public interface IPayOsService
 {
     Task<IServiceResult> GetLinkInformationAsync(string paymentLinkId);
     Task<IServiceResult> VerifyPaymentWebhookDataAsync(PayOSPaymentLinkInformationResponseDto req);
+    Task<IServiceResult> CancelPaymentFromWebhookResponseAsync(PayOSPaymentLinkInformationResponseDto req);
     Task<IServiceResult> CancelPaymentAsync(string paymentLinkId, string orderCode, string cancellationReason);
 }

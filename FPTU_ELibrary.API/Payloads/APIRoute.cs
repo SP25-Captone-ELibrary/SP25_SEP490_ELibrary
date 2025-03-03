@@ -517,20 +517,19 @@
 		{
 			#region Management
 			//	[GET]	
-			public const string Create = Base + "/management/notifications";
-			public const string GetTypes = Base + "/management/notifications/types";
-			public const string GetNotificationByAdmin = Base + "/management/notifications";
+			public const string GetAll = Base + "/management/notifications";
+			public const string GetById = Base + "/management/notifications/{id}";
 			//	[POST]
+			public const string Create = Base + "/management/notifications";
 			//	[PUT]
 			//	[PATCH]
 			//	[DELETE]
-			public const string DeleteNotification = Base + "/management/notifications/{notiId}";
 			#endregion
 			
 			//	[GET]
-			public const string GetById = Base + "/privacy/notifications/{id}";
+			public const string GetPrivacyById = Base + "/privacy/notifications/{id}";
 			//	[POST]
-			public const string GetNotificationNotByAdmin = Base + "/privacy/notifications";
+			public const string GetAllPrivacy = Base + "/privacy/notifications";
 			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; //filter unread notification
 			//	[PUT]
 			public const string UpdateReadStatus = Base + "/privacy/notifications";
@@ -681,10 +680,12 @@
 			public const string GetPayOsPaymentLinkInformation = Base + "/payment/{paymentLinkId}";
 			public const string GetPrivacyTransaction = Base + "/payment/transactions";
 			// [POST]
-			public const string CreatePayment = Base + "/payment/create-payment";
+			public const string CreateTransaction = Base + "/payment/transactions";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
-			public const string CreateTransaction = Base + "/payment/transactions";
+			public const string SendWebhookConfirm = Base + "/payment/pay-os/webhook-confirm";
+			public const string WebhookPayOsReturn = Base + "/payment/pay-os/return";
+			public const string WebhookPayOsCancel = Base + "/payment/pay-os/cancel";
 		}
 
 		/// <summary>

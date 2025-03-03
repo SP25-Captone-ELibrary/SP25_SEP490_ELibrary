@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
@@ -14,8 +15,11 @@ public class Notification
 
     // Creation datetime and employee
     public DateTime CreateDate { get; set; }
-    public string CreatedBy { get; set; } = null!;
-    // notification type 
-    public string NotificationType { get; set; } = null!;
+    public Guid CreatedBy { get; set; }
+    
+    // Notification type 
+    public NotificationType NotificationType { get; set; }
+    
+    public Employee CreatedByNavigation { get; set; } = null!;
     public ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 }

@@ -9,6 +9,7 @@ public static class HubMappingExtensions
         endpoints.MapHub<NotificationHub>("/notificationHub");
         endpoints.MapHub<AccountHub>("/accountHub");
         endpoints.MapHub<AiHub>("/ai-hub");
+        endpoints.MapHub<PaymentHub>("/payment-hub");
         // Add hub endpoint if needed
     }
 }
