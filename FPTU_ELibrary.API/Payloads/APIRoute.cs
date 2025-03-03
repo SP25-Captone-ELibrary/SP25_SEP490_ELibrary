@@ -717,5 +717,20 @@
 			// [GET]
 			public const string GetAll = Base + "/user-favorite";
 		}
+		/// <summary>
+		/// AdminConfiguration endpoints
+		/// </summary>
+		public static class AdminConfiguration
+		{
+			// [GET]
+			public const string GetAll = Base + "/admin-configuration";
+
+			public const string GetDetail = Base + "/admin-configuration/{name}";
+			// [PUT]
+			public const string Update = Base + "/admin-configuration";
+			
+		}
+		
+		
 	}
 }

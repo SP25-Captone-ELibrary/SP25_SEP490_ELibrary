@@ -52,7 +52,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IVoiceService, VoiceService>(); 
 			services.AddScoped<IFaceDetectionService, FaceDetectionService>(); 
 			services.AddScoped<IPayOsService, PayOsService>(); 
-			
+			services.AddScoped<IAdminConfigurationService, AdminConfigurationService>();
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
 			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));

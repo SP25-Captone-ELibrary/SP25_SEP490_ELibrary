@@ -1,30 +1,25 @@
-﻿using System.Collections.Immutable;
-using System.Data.Common;
+﻿using System.Data.Common;
 using System.Reflection;
 using FPTU_ELibrary.Application.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
-using Azure.Core;
 using Azure.Identity;
 using CloudinaryDotNet;
 using FluentValidation;
-using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.HealthChecks;
 using FPTU_ELibrary.Application.Services;
-using FPTU_ELibrary.Application.Services.IServices;
-using Mapster;
-using MapsterMapper;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog.Core;
 using StackExchange.Redis;
-using Azure.Identity;
-using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Security.KeyVault.Secrets;
+using System.Text.Json;
+using System.Linq.Expressions;
+using FPTU_ELibrary.Domain.Entities;
+using Expression = System.Linq.Expressions.Expression;
 
 namespace FPTU_ELibrary.API.Extensions
 {
@@ -67,68 +62,98 @@ namespace FPTU_ELibrary.API.Extensions
             return services;
         }
 
-        // public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-        // 	IConfiguration configuration,
-        // 	IWebHostEnvironment env)
-        // {
-        // 	// Configure AppSettings
-        // 	services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
-        // 	// Configure BorrowSettings
-        // 	services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
-        // 	// Configure ElasticSettings
-        // 	services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
-        // 	// Configure WebTokenSettings
-        // 	services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
-        // 	// Configure GoogleAuthSettings
-        // 	services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-        // 	// Configure FacebookAuthSettings
-        // 	services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-        // 	// Configure CloudinarySettings
-        // 	services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-        // 	// Configure AzureSettings
-        // 	services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-        // 	// Configure OCRSettings
-        // 	services.Configure<AISettings>(configuration.GetSection("AISettings"));
-        // 	// Configure CustomVisionSettings
-        // 	services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-        // 	// Configure DetectSettings
-        // 	services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-        // 	// Configure AzureSpeechSettings
-        // 	services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
-        // 	// Configure FaceDetectionSettings
-        // 	services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
-        // 	// Configure PayOS
-        // 	services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
-        // 	
-        // 	#region Development stage
-        //
-        // 	if (env.IsDevelopment()) // Is Development env
-        // 	{
-        //
-        // 	}
-        //
-        // 	#endregion
-        //
-        // 	#region Production stage
-        //
-        // 	else if (env.IsProduction()) // Is Production env
-        // 	{
-        //
-        // 	}
-        //
-        // 	#endregion
-        //
-        // 	#region Staging
-        //
-        // 	else if (env.IsStaging()) // Is Staging env
-        // 	{
-        //
-        // 	}
-        //
-        // 	#endregion
-        //
-        // 	return services;
-        // }
+        public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+        	IConfiguration configuration,
+        	IWebHostEnvironment env)
+        {
+            //Get KeyVault settings
+            var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
+            var clientId = configuration["AzureSettings:KeyVaultClientId"];
+            var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+            var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+            
+            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+            var client = new SecretClient(new Uri(keyVaultUrl), credential);
+
+            // dictionary to store key vault secrets
+            var keyVaultSecrets = new Dictionary<string, string>();
+
+            var secretProperties =  client.GetPropertiesOfSecrets();
+            foreach (var secretProperty in secretProperties)
+            {
+                var secret = secretProperty.Name;
+                var secretValue = client.GetSecret(secret).Value.Value;
+                
+                // Convert "Class-Property" to "Class:Property" for IConfiguration mapping
+                var formattedKey = secret.Replace("-", ":");
+                keyVaultSecrets[formattedKey] = secretValue;
+            }
+            
+            //  override Iconfiguration with key vault secrets
+            var configBuilder = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddInMemoryCollection(keyVaultSecrets); // Override with Key Vault values
+
+            var updatedConfiguration = configBuilder.Build();
+            
+        	// Configure AppSettings
+        	services.Configure<AppSettings>(updatedConfiguration.GetSection("AppSettings"));
+        	// Configure BorrowSettings
+        	services.Configure<BorrowSettings>(updatedConfiguration.GetSection("BorrowSettings"));
+        	// Configure ElasticSettings
+        	services.Configure<ElasticSettings>(updatedConfiguration.GetSection("ElasticSettings"));
+        	// Configure WebTokenSettings
+        	services.Configure<WebTokenSettings>(updatedConfiguration.GetSection("WebTokenSettings"));
+        	// Configure GoogleAuthSettings
+        	services.Configure<GoogleAuthSettings>(updatedConfiguration.GetSection("GoogleAuthSettings"));
+        	// Configure FacebookAuthSettings
+        	services.Configure<FacebookAuthSettings>(updatedConfiguration.GetSection("FacebookAuthSettings"));
+        	// Configure CloudinarySettings
+        	services.Configure<CloudinarySettings>(updatedConfiguration.GetSection("CloudinarySettings"));
+        	// Configure AzureSettings
+        	services.Configure<AzureSettings>(updatedConfiguration.GetSection("AzureSettings"));
+        	// Configure OCRSettings
+        	services.Configure<AISettings>(updatedConfiguration.GetSection("AISettings"));
+        	// Configure CustomVisionSettings
+        	services.Configure<CustomVisionSettings>(updatedConfiguration.GetSection("CustomVision"));
+        	// Configure DetectSettings
+        	services.Configure<DetectSettings>(updatedConfiguration.GetSection("DetectSettings"));
+        	// Configure AzureSpeechSettings
+        	services.Configure<AzureSpeechSettings>(updatedConfiguration.GetSection("AzureSpeechSettings"));
+        	// Configure FaceDetectionSettings
+        	services.Configure<FaceDetectionSettings>(updatedConfiguration.GetSection("FaceDetectionSettings"));
+        	// Configure PayOS
+        	services.Configure<PayOSSettings>(updatedConfiguration.GetSection("PayOSSettings"));
+        	//Configure DigitalBorrowSettings
+            services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
+        	#region Development stage
+        
+        	if (env.IsDevelopment()) // Is Development env
+        	{
+        
+        	}
+        	#endregion
+        
+        	#region Production stage
+        
+        	else if (env.IsProduction()) // Is Production env
+        	{
+        
+        	}
+        
+        	#endregion
+        
+        	#region Staging
+        
+        	else if (env.IsStaging()) // Is Staging env
+        	{
+        
+        	}
+        
+        	#endregion
+        
+        	return services;
+        }
 
         public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
             IConfiguration configuration)
@@ -262,137 +287,188 @@ namespace FPTU_ELibrary.API.Extensions
             return services;
         }
 
-        public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-            IConfiguration configuration,
-            IWebHostEnvironment env)
+
+        public static IServiceCollection AddAuthentication(this IServiceCollection services,
+            IConfiguration configuration)
         {
-
-            // Kiểm tra Key Vault có được cấu hình không
-            var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
-            var clientId = configuration["AzureSettings:KeyVaultClientId"];
-            var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
-            var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
-
-            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-            var client = new SecretClient(new Uri(keyVaultUrl), credential);
-            var appSettings = new AppSettings
+            // Define TokenValidationParameters
+            var tokenValidationParameters = new TokenValidationParameters
             {
-                // PageSize = int.Parse(client.GetSecret("AppSettings--PageSize").Value.Value),
-                //update parse json string from key vault
+                ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
+                ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
+                ValidAudience = configuration["WebTokenSettings:ValidAudience"],
+                ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
+                ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
+                RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
+                ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
+                ClockSkew = TimeSpan.Zero
             };
 
-            // 🔹 Binding vào DI container
-            services.Configure<AppSettings>(options =>
+            // Register TokenValidationParameters in the DI container
+            services.AddSingleton(tokenValidationParameters);
+
+            // Add authentication
+            services.AddAuthentication(options =>
             {
-                options.PageSize = appSettings.PageSize;
+                // Define default scheme
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options => // Enables JWT-bearer authentication
+            {
+                // Disable Https required for the metadata address or authority
+                options.RequireHttpsMetadata = false;
+                // Define type and definitions required for validating a token
+                options.TokenValidationParameters = services.BuildServiceProvider()
+                    .GetRequiredService<TokenValidationParameters>();
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+
+                        // If the request is for our hub...
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            // Read the token out of the query string
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
-        // 🔹 Cấu hình các settings khác
-        services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
-        services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
-        services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
-        services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-        services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-        services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-        services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-        services.Configure<AISettings>(configuration.GetSection("AISettings"));
-        services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-        services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-        services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
-        services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
-        services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
-        // Configure Payment
-        services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
-        return services;
-    }
-
-
-    public static IServiceCollection AddAuthentication(this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Define TokenValidationParameters
-        var tokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = bool.Parse(configuration["WebTokenSettings:ValidateIssuerSigningKey"]!),
-            IssuerSigningKey =
-                new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(configuration["WebTokenSettings:IssuerSigningKey"]!)),
-            ValidateIssuer = bool.Parse(configuration["WebTokenSettings:ValidateIssuer"]!),
-            ValidAudience = configuration["WebTokenSettings:ValidAudience"],
-            ValidIssuer = configuration["WebTokenSettings:ValidIssuer"],
-            ValidateAudience = bool.Parse(configuration["WebTokenSettings:ValidateAudience"]!),
-            RequireExpirationTime = bool.Parse(configuration["WebTokenSettings:RequireExpirationTime"]!),
-            ValidateLifetime = bool.Parse(configuration["WebTokenSettings:ValidateLifetime"]!),
-            ClockSkew = TimeSpan.Zero
-        };
-
-        // Register TokenValidationParameters in the DI container
-        services.AddSingleton(tokenValidationParameters);
-
-        // Add authentication
-        services.AddAuthentication(options =>
-        {
-            // Define default scheme
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // For API requests
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // For login challenge
-            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-        }).AddJwtBearer(options => // Enables JWT-bearer authentication
-        {
-            // Disable Https required for the metadata address or authority
-            options.RequireHttpsMetadata = false;
-            // Define type and definitions required for validating a token
-            options.TokenValidationParameters = services.BuildServiceProvider()
-                .GetRequiredService<TokenValidationParameters>();
-            options.Events = new JwtBearerEvents
-            {
-                OnMessageReceived = context =>
-                {
-                    var accessToken = context.Request.Query["access_token"];
-
-                    // If the request is for our hub...
-                    var path = context.HttpContext.Request.Path;
-                    if (!string.IsNullOrEmpty(accessToken))
-                    {
-                        // Read the token out of the query string
-                        context.Token = accessToken;
-                    }
-
-                    return Task.CompletedTask;
-                }
-            };
-        });
-
-        return services;
-    }
-
-    public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
-    {
-        // Configure CORS
-        services.AddCors(p => p.AddPolicy(policyName, policy =>
-        {
-            // allow all with any header, method
-            policy.WithOrigins("*")
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-        }));
-
-        return services;
-    }
-
-    public static IServiceCollection AddLazyResolution(this IServiceCollection services)
-    {
-        return services.AddTransient(
-            typeof(Lazy<>),
-            typeof(LazilyResolved<>));
-    }
-
-    private class LazilyResolved<T> : Lazy<T>
-    {
-        public LazilyResolved(IServiceProvider serviceProvider)
-            : base(serviceProvider.GetRequiredService<T>)
-        {
+            return services;
         }
-    }
-}
 
+        public static IServiceCollection AddCors(this IServiceCollection services, string policyName)
+        {
+            // Configure CORS
+            services.AddCors(p => p.AddPolicy(policyName, policy =>
+            {
+                // allow all with any header, method
+                policy.WithOrigins("*")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }));
+
+            return services;
+        }
+
+        public static IServiceCollection AddLazyResolution(this IServiceCollection services)
+        {
+            return services.AddTransient(
+                typeof(Lazy<>),
+                typeof(LazilyResolved<>));
+        }
+
+        private class LazilyResolved<T> : Lazy<T>
+        {
+            public LazilyResolved(IServiceProvider serviceProvider)
+                : base(serviceProvider.GetRequiredService<T>)
+            {
+            }
+        }
+        
+        #region KeyVault
+         //      public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+    //     IConfiguration configuration,
+    //     IWebHostEnvironment env)
+    // {
+    //     var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
+    //     var clientId = configuration["AzureSettings:KeyVaultClientId"];
+    //     var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+    //     var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+    //
+    //     var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+    //     var client = new SecretClient(new Uri(keyVaultUrl), credential);
+    //
+    //     //  Load assembly of `FPTU_ELibrary.Application`
+    //     string targetNamespace = "FPTU_ELibrary.Application.Configurations";
+    //     string assemblyName = "FPTU_ELibrary.Application";
+    //     var assembly = LoadAssembly(assemblyName);
+    //
+    //     //  Get all class 
+    //     var configTypes = assembly.GetTypes()
+    //         .Where(t => t.IsClass && t.Namespace == targetNamespace)
+    //         .ToList();
+    //
+    //     foreach (var configType in configTypes)
+    //     {
+    //         var secretName = configType.Name;
+    //         var secretResponse = client.GetSecret(secretName);
+    //
+    //         if (secretResponse?.Value?.Value != null)
+    //         {
+    //             // parse json in key vault to object
+    //             var configInstance = JsonSerializer.Deserialize(secretResponse.Value.Value, configType);
+    //
+    //             if (configInstance != null)
+    //             {
+    //                 // Get Configure<TOptions> method
+    //                 var configureGenericMethod = typeof(OptionsServiceCollectionExtensions)
+    //                     .GetMethods()
+    //                     .FirstOrDefault(m =>
+    //                         m.Name == "Configure" &&
+    //                         m.IsGenericMethodDefinition &&
+    //                         m.GetParameters().Length == 2 &&
+    //                         m.GetParameters()[0].ParameterType == typeof(IServiceCollection) &&
+    //                         m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Action<>))
+    //                     ?.MakeGenericMethod(configType);
+    //
+    //                 if (configureGenericMethod != null)
+    //                 {
+    //                     // Create action to assign value from parsed instance to DI container
+    //                     var configureAction = CreateConfigureAction(configType, configInstance);
+    //
+    //                     // Invoke Configure<TOptions> method
+    //                     configureGenericMethod.Invoke(null, new object[] { services, configureAction });
+    //                 }
+    //             }
+    //         }
+    //     }
+    //
+    //     return services;
+    // }
+
+        // /// <summary>
+        // /// Create Action<T> for assigning value from parsed instance to DI container.
+        // /// </summary>
+        // private static object CreateConfigureAction(Type configType, object instance)
+        // {
+        //     var method = typeof(ServiceCollectionExtensions)
+        //         .GetMethod(nameof(CreateConfigureActionGeneric), BindingFlags.NonPublic | BindingFlags.Static)
+        //         ?.MakeGenericMethod(configType);
+        //
+        //     return method?.Invoke(null, new object[] { instance });
+        // }
+        //
+        // /// <summary>
+        // /// Create Action for Configure<TOptions> method.
+        // /// </summary>
+        // private static Action<T> CreateConfigureActionGeneric<T>(T instance)
+        // {
+        //     return options =>
+        //     {
+        //         foreach (var property in typeof(T).GetProperties())
+        //         {
+        //             property.SetValue(options, property.GetValue(instance));
+        //         }
+        //     };
+        // }
+        //
+        // /// <summary>
+        // /// Load assembly by name.
+        // /// </summary>
+        // private static Assembly LoadAssembly(string assemblyName)
+        // {
+        //     return Assembly.Load(assemblyName) ?? throw new Exception($"Cannot load assembly {assemblyName}");
+        // }
+        #endregion
+    }
 }
