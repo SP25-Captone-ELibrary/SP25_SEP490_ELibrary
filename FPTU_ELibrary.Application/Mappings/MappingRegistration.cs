@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Application.Dtos;
+﻿using System.Globalization;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -9,7 +10,6 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
-using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -25,7 +25,9 @@ namespace FPTU_ELibrary.Application.Mappings
 			// From [Entity] to [Dto]
 			config.NewConfig<Author, AuthorDto>();
 			config.NewConfig<BorrowRecord, BorrowRecordDto>();
+			config.NewConfig<BorrowRecordDetail, BorrowRecordDetailDto>();
 			config.NewConfig<BorrowRequest, BorrowRequestDto>();
+			config.NewConfig<BorrowRequestDetail, BorrowRequestDetailDto>();
 			config.NewConfig<DigitalBorrow, DigitalBorrowDto>();
 			config.NewConfig<Employee, EmployeeDto>();
 			config.NewConfig<FinePolicy, FinePolicyDto>();
@@ -37,12 +39,10 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<LibraryItemAuthor, LibraryItemAuthorDto>();
 			config.NewConfig<LibraryItemInventory, LibraryItemInventoryDto>();
 			config.NewConfig<LibraryItemInstance, LibraryItemInstanceDto>();
+			config.NewConfig<LibraryItemCondition, LibraryItemConditionDto>();
 			config.NewConfig<LibraryItemConditionHistory, LibraryItemConditionHistoryDto>();
-			config.NewConfig<LibraryShelf, LibraryShelfDto>();
-			config.NewConfig<LibrarySection, LibrarySectionDto>();
 			config.NewConfig<LibraryZone, LibraryZoneDto>();
 			config.NewConfig<LibraryFloor, LibraryFloorDto>();
-			config.NewConfig<LibraryPath, LibraryPathDto>();
 			config.NewConfig<LibraryCard, LibraryCardDto>();
 			config.NewConfig<LibraryCardPackage, LibraryCardPackageDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
@@ -61,6 +61,19 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<UserFavorite, UserFavoriteDto>();
 			config.NewConfig<WarehouseTracking, WarehouseTrackingDto>();
 			config.NewConfig<WarehouseTrackingDetail, WarehouseTrackingDetailDto>();
+			config.NewConfig<WarehouseTrackingInventory, WarehouseTrackingInventoryDto>();
+			
+			// Config special mapping
+			config.NewConfig<LibraryShelf, LibraryShelfDto>()
+				.Map(dest => dest.ClassificationNumberRangeFrom, 
+					src => RemoveTrailingZeros(src.ClassificationNumberRangeFrom))
+				.Map(dest => dest.ClassificationNumberRangeTo, 
+					src => RemoveTrailingZeros(src.ClassificationNumberRangeTo));
+			config.NewConfig<LibrarySection, LibrarySectionDto>()
+				.Map(dest => dest.ClassificationNumberRangeFrom, 
+					src => RemoveTrailingZeros(src.ClassificationNumberRangeFrom))
+				.Map(dest => dest.ClassificationNumberRangeTo, 
+					src => RemoveTrailingZeros(src.ClassificationNumberRangeTo));
 			
 			// From [Dto] to [Entity]
 			config.NewConfig<AuthorDto, Author>()
@@ -81,6 +94,11 @@ namespace FPTU_ELibrary.Application.Mappings
 				.IgnoreNullValues(false);
 			config.NewConfig<TransactionDto, Transaction>()
 				.IgnoreNullValues(true);
+		}
+		
+		private string RemoveTrailingZeros(decimal value)
+		{
+			return value % 1 == 0 ? value.ToString("0") : value.ToString(CultureInfo.InvariantCulture);
 		}
 	}
 }

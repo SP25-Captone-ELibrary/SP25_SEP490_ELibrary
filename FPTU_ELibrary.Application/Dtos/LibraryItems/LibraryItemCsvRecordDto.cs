@@ -80,9 +80,6 @@ public class LibraryItemCsvRecordDto
     [Name("Phụ Chú Thư Mục")] 
     public string? BibliographicalNote { get; set; } 
     
-    [Name("Số Kệ")] 
-    public string? ShelfNumber { get; set; } 
-    
     [Name("Mã Tác Giả")] 
     public string? AuthorCode { get; set; }
 
@@ -119,7 +116,6 @@ public static class LibraryItemCsvRecordExtensions
             BibliographicalNote = be.BibliographicalNote,
             EstimatedPrice = be.EstimatedPrice,
             Isbn = be.Isbn,
-            ShelfNumber = be.Shelf?.ShelfNumber ?? null!,
             Category = be.Category.VietnameseName,
             AuthorCode = String.Join(", ", be.LibraryItemAuthors.Select(bea => bea.Author).Select(a => a.AuthorCode).ToList())
         }).ToList();
@@ -128,11 +124,8 @@ public static class LibraryItemCsvRecordExtensions
         this LibraryItemCsvRecordDto record,
         Dictionary<string, string> imageUrlDic,
         List<CategoryDto> categories,
-        List<LibraryShelfDto>? shelves,
         List<AuthorDto>? authors)
     {
-        // Try to get library shelf
-        var shelf = shelves?.FirstOrDefault(s => Equals(s.ShelfNumber, record.ShelfNumber));
         // Try to get category
         var category = categories.FirstOrDefault(c =>
             Equals(c.EnglishName.ToLower(), record.Category.ToLower()) || 
@@ -191,8 +184,6 @@ public static class LibraryItemCsvRecordExtensions
             IsDeleted = false,
             CanBorrow = false,
             Status = LibraryItemStatus.Draft,
-            // Shelf
-            ShelfId = shelf?.ShelfId,
             // Inventory
             LibraryItemInventory = new()
             {

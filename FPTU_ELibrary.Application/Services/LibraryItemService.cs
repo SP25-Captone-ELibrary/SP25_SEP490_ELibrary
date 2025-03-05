@@ -1,10 +1,7 @@
-using System.Globalization;
-using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
-using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -23,12 +20,9 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Nest;
-using Org.BouncyCastle.Tls;
 using Serilog;
 using Exception = System.Exception;
 
@@ -45,11 +39,13 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     private readonly Lazy<IElasticService> _elasticService;
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingService;
 
-    private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
     private readonly ICloudinaryService _cloudService;
     private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAuthorService<AuthorDto> _authorService;
     private readonly AppSettings _appSettings;
+    
+    private readonly ILibraryShelfService<LibraryShelfDto> _libShelfService;
+    private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionService;
 
     public LibraryItemService(
         // Lazy service
@@ -64,6 +60,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         ICategoryService<CategoryDto> cateService,
         ICloudinaryService cloudService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
+        ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
         IOptionsMonitor<AppSettings> monitor,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
@@ -75,6 +72,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _cloudService = cloudService;
         _cateService = cateService;
         _libShelfService = libShelfService;
+        _conditionService = conditionService;
         _elasticService = elasticService;
         _resourceService = resourceService;
         _itemGroupService = itemGroupService;
@@ -343,18 +341,58 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0013));
                 }
                 
-                // Extract all input instance barcodes
-                var inputBarcodes = dto.LibraryItemInstances
-                    .Select(li => li.Barcode).ToArray();
-                // Compared registered barcode total with warehouse tracking detail total
-                if (inputBarcodes.Length != whTrackingDetail.ItemTotal)
+                // Check exist barcode range in warehouse tracking detail
+                if (string.IsNullOrEmpty(whTrackingDetail.BarcodeRangeFrom) ||
+                    string.IsNullOrEmpty(whTrackingDetail.BarcodeRangeTo))
                 {
-                    // Add error
-                    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-                        key: $"libraryItemInstances[{listItemInstance[listItemInstance.Count - 1]}].barcode",
-                        msg: isEng 
-                            ? "Total registered barcode must equals to total warehouse tracking item" 
-                            : "Tổng số lượng ĐKCB phải bằng với số lượng đẵ đăng ký khi nhập kho");
+                    // Msg: Unique barcode range of warehouse tracking detail is not valid. Please modify and try again
+                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                        key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TrackingDetailId)), 
+                        msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0021));
+                }
+                else
+                {
+                    // Check whether belongs to range of barcode in warehouse tracking detail
+                    var barcodeRangeFrom = StringUtils.ExtractNumber(
+                        input: whTrackingDetail.BarcodeRangeFrom,
+                        prefix: categoryDto.Prefix,
+                        length: _appSettings.InstanceBarcodeNumLength);
+                    var barcodeRangeTo = StringUtils.ExtractNumber(
+                        input: whTrackingDetail.BarcodeRangeTo,
+                        prefix: categoryDto.Prefix,
+                        length: _appSettings.InstanceBarcodeNumLength);
+                    
+                    // Generate range barcodes
+                    var barcodes = StringUtils.AutoCompleteBarcode(
+                        prefix: categoryDto.Prefix,
+                        length: _appSettings.InstanceBarcodeNumLength,
+                        min: barcodeRangeFrom,
+                        max: barcodeRangeTo);
+                    
+                    // Add range library item instances
+                    foreach (var barcode in barcodes)
+                    {
+                        // Retrieve condition (if any)
+                        var libConditions = dto.LibraryItemInstances.FirstOrDefault(li => Equals(li.Barcode, barcode))?.LibraryItemConditionHistories;
+                        
+                        dto.LibraryItemInstances.Add(new ()
+                        {
+                            // Barcode
+                            Barcode = barcode,
+                            // Default status
+                            Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
+                            // Condition
+                            LibraryItemConditionHistories = libConditions != null && libConditions.Any() // Check exist requested condition
+                                ? libConditions // Assign if exist
+                                : new List<LibraryItemConditionHistoryDto>() // Initialize & use default if not exist
+                                {
+                                    new()
+                                    {
+                                        ConditionId = whTrackingDetail.ConditionId
+                                    }
+                                }
+                        });
+                    }
                 }
             }
             
@@ -408,6 +446,84 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> AddRangeInstancesWithoutSaveChangesAsync(List<LibraryItemDto> itemListIncludeInstances)
+    {
+        try
+        {
+            if (itemListIncludeInstances.Any())
+            {
+                // Retrieve default condition 
+                var goodCondition = (await _conditionService.GetWithSpecAsync(
+                    new BaseSpecification<LibraryItemCondition>(
+                        lc => lc.EnglishName == nameof(LibraryItemConditionStatus.Good)))).Data as LibraryItemConditionDto;
+                if (goodCondition == null)
+                {
+                    // Logging
+                    _logger.Error("Good condition could not be found to process add range item instances");
+                    // Mark as failed to create
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+                }
+                
+                // Iterate each item list to process add range instances
+                foreach (var item in itemListIncludeInstances)
+                {
+                    // Retrieve item with spec
+                    var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == item.LibraryItemId);
+                    // Apply include
+                    baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemInventory!));
+                    var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+                    if (existingEntity == null || !item.LibraryItemInstances.Any())
+                    {
+                        // Logging
+                        _logger.Error("Not found fibrary item to process add range item instances");
+                        // Mark as failed to create
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+                    }
+                
+                    // Add range item instances
+                    item.LibraryItemInstances
+                        .ToList()
+                        // Iterate each request item instances to add to existing entity
+                        .ForEach(li => existingEntity.LibraryItemInstances.Add(_mapper.Map<LibraryItemInstance>(li)));
+                    // Increase item's inventory total
+                    if (existingEntity.LibraryItemInventory == null)
+                    {
+                        // Initialize new inventory
+                        existingEntity.LibraryItemInventory = new()
+                        {
+                            TotalUnits = existingEntity.LibraryItemInstances.Count
+                        };
+                    }
+                    else
+                    {
+                        // Update existing inventory
+                        existingEntity.LibraryItemInventory.TotalUnits += item.LibraryItemInstances.Count;
+                    }
+                
+                    // Progress update
+                    await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(existingEntity);
+                }
+                
+                // Mark as create success
+                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+            }
+            
+            // Logging 
+            _logger.Error("Error invoke when process saving range item instances");
+            // Mark as failed to create
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process add range item instances without save changes");
+        }
+    }
+    
     public override async Task<IServiceResult> GetAllWithSpecAsync(
         ISpecification<LibraryItem> specification, bool tracked = true)
     {
@@ -2639,11 +2755,11 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 	        }
 
 	        // Check exist shelf location
-	        var isExistShelfLocation = (await _libShelfService.AnyAsync(x => x.ShelfNumber == record.ShelfNumber)).Data is true;
-	        if (!isExistShelfLocation)
-	        {
-	            rowErrors.Add(isEng ? $"Shelf number '{record.ShelfNumber}' does not exist" : $"Kệ số '{record.ShelfNumber}' không tồn tại");
-	        }
+	        // var isExistShelfLocation = (await _libShelfService.AnyAsync(x => x.ShelfNumber == record.ShelfNumber)).Data is true;
+	        // if (!isExistShelfLocation)
+	        // {
+	        //     rowErrors.Add(isEng ? $"Shelf number '{record.ShelfNumber}' does not exist" : $"Kệ số '{record.ShelfNumber}' không tồn tại");
+	        // }
 
 	        // Check exist author code
             var isExistAuthor = (await _authorService.AnyAsync(x => !string.IsNullOrEmpty(record.AuthorCode) &&

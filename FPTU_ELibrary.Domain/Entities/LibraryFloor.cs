@@ -6,7 +6,7 @@ public class LibraryFloor
     public int FloorId { get; set; }
     
     // Floor number
-    public string FloorNumber { get; set; } = null!;
+    public int FloorNumber { get; set; } 
 
     // Creation and update datetime
     public DateTime CreateDate { get; set; }

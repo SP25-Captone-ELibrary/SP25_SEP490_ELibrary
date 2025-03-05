@@ -22,6 +22,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
         Task<IServiceResult> ChangeActiveStatusAsync(Guid userId);
         Task<IServiceResult> UpdateMfaSecretAndBackupAsync(string email, string mfaKey, IEnumerable<string> backupCodes);
         Task<IServiceResult> UpdateMfaStatusAsync(Guid userId);
+        Task<IServiceResult> UpdatePasswordWithoutSaveChangesAsync(Guid userId, string password);
         Task<IServiceResult> SoftDeleteAsync(Guid userId);
         Task<IServiceResult> SoftDeleteRangeAsync(Guid[] userIds);
         Task<IServiceResult> UndoDeleteAsync(Guid userId);

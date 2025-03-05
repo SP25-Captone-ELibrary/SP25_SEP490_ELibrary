@@ -34,6 +34,15 @@ public class WarehouseTrackingDetailSpecification : BaseSpecification<WarehouseT
         // Enable split query
         EnableSplitQuery();
         
+        // Filter has glue barcode
+        if (specParams.HasGlueBarcode != null)
+        {
+            AddFilter(wd => wd.HasGlueBarcode == specParams.HasGlueBarcode);
+            
+            // Combine with filtering library item id
+            AddFilter(wd => wd.LibraryItemId != null);
+        }
+        
         // Determine search type
         switch (specParams.SearchType)
         {

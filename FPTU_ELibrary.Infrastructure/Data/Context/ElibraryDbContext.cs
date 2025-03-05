@@ -44,7 +44,6 @@ public class ElibraryDbContext : DbContext
     public DbSet<LibraryCard> LibraryCards { get; set; }
     public DbSet<LibraryCardPackage> LibraryCardPackages { get; set; }
     public DbSet<LibraryFloor> LibraryFloors { get; set; }
-    public DbSet<LibraryPath> LibraryPaths { get; set; }
     public DbSet<LibrarySection> LibrarySections { get; set; }
     public DbSet<LibraryShelf> LibraryShelves { get; set; }
     public DbSet<LibraryZone> LibraryZones { get; set; }

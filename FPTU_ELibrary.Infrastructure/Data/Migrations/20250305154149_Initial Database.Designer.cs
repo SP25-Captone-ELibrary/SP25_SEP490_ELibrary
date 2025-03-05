@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250227172717_Initial Database")]
+    [Migration("20250305154149_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -62,12 +62,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("NewValues")
                         .IsRequired()
-                        .HasColumnType("nvarchar(2500)")
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("new_values");
 
                     b.Property<string>("OldValues")
                         .IsRequired()
-                        .HasColumnType("nvarchar(2500)")
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("old_values");
 
                     b.Property<string>("TrailType")
@@ -103,7 +103,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("author_image");
 
                     b.Property<string>("Biography")
-                        .HasMaxLength(3000)
                         .HasColumnType("nvarchar(3000)")
                         .HasColumnName("biography");
 
@@ -865,11 +864,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
 
-                    b.Property<string>("FloorNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("floor_number");
+                    b.Property<int>("FloorNumber")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
@@ -1323,23 +1319,33 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("library_item_id");
 
                     b.Property<int>("AvailableUnits")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("available_units");
 
                     b.Property<int>("BorrowedUnits")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("borrowed_units");
 
                     b.Property<int>("RequestUnits")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("request_units");
 
                     b.Property<int>("ReservedUnits")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("reserved_units");
 
                     b.Property<int>("TotalUnits")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
+                        .HasDefaultValue(0)
                         .HasColumnName("total_units");
 
                     b.HasKey("LibraryItemId")
@@ -1436,54 +1442,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Library_Item_Review", (string)null);
-                });
-
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryPath", b =>
-                {
-                    b.Property<int>("PathId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("path_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PathId"));
-
-                    b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("create_date");
-
-                    b.Property<double>("Distance")
-                        .HasColumnType("float")
-                        .HasColumnName("distance");
-
-                    b.Property<int>("FromZoneId")
-                        .HasColumnType("int")
-                        .HasColumnName("from_zone_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("PathDescription")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .HasColumnName("path_description");
-
-                    b.Property<int>("ToZoneId")
-                        .HasColumnType("int")
-                        .HasColumnName("to_zone_id");
-
-                    b.Property<DateTime?>("UpdateDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("update_date");
-
-                    b.HasKey("PathId")
-                        .HasName("PK_LibraryPath_PathId");
-
-                    b.HasIndex("FromZoneId");
-
-                    b.HasIndex("ToZoneId");
-
-                    b.ToTable("Library_Path", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryResource", b =>
@@ -1587,23 +1545,64 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SectionId"));
 
+                    b.Property<decimal>("ClassificationNumberRangeFrom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(10,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("classification_number_range_from");
+
+                    b.Property<decimal>("ClassificationNumberRangeTo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(10,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("classification_number_range_to");
+
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
+
+                    b.Property<string>("EngSectionName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("eng_section_name");
+
+                    b.Property<bool>("IsChildrenSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_children_section");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
 
-                    b.Property<string>("SectionName")
+                    b.Property<bool>("IsJournalSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_journal_section");
+
+                    b.Property<bool>("IsReferenceSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_reference_section");
+
+                    b.Property<string>("ShelfPrefix")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("section_name");
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("shelf_prefix");
 
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime")
                         .HasColumnName("update_date");
+
+                    b.Property<string>("VieSectionName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("vie_section_name");
 
                     b.Property<int>("ZoneId")
                         .HasColumnType("int")
@@ -1626,9 +1625,26 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ShelfId"));
 
+                    b.Property<decimal>("ClassificationNumberRangeFrom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(10,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("classification_number_range_from");
+
+                    b.Property<decimal>("ClassificationNumberRangeTo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(10,4)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("classification_number_range_to");
+
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
+
+                    b.Property<string>("EngShelfName")
+                        .HasMaxLength(155)
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("eng_shelf_name");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
@@ -1647,6 +1663,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime")
                         .HasColumnName("update_date");
+
+                    b.Property<string>("VieShelfName")
+                        .HasMaxLength(155)
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("vie_shelf_name");
 
                     b.HasKey("ShelfId")
                         .HasName("PK_LibraryShelf_ShelfId");
@@ -1669,30 +1690,47 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("create_date");
 
+                    b.Property<string>("EngDescription")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("eng_description");
+
+                    b.Property<string>("EngZoneName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("eng_zone_name");
+
                     b.Property<int>("FloorId")
                         .HasColumnType("int")
                         .HasColumnName("floor_id");
 
                     b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
+
+                    b.Property<int>("TotalCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_count");
 
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime")
                         .HasColumnName("update_date");
 
-                    b.Property<double>("XCoordinate")
-                        .HasColumnType("float")
-                        .HasColumnName("x_coordinate");
+                    b.Property<string>("VieDescription")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("vie_description");
 
-                    b.Property<double>("YCoordinate")
-                        .HasColumnType("float")
-                        .HasColumnName("y_coordinate");
-
-                    b.Property<string>("ZoneName")
+                    b.Property<string>("VieZoneName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
-                        .HasColumnName("zone_name");
+                        .HasColumnName("vie_zone_name");
 
                     b.HasKey("ZoneId")
                         .HasName("PK_LibraryZone_ZoneId");
@@ -2976,25 +3014,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryPath", b =>
-                {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryZone", "FromZone")
-                        .WithMany("LibraryPathFromZones")
-                        .HasForeignKey("FromZoneId")
-                        .IsRequired()
-                        .HasConstraintName("FK_LibraryPath_FromZoneId");
-
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryZone", "ToZone")
-                        .WithMany("LibraryPathToZones")
-                        .HasForeignKey("ToZoneId")
-                        .IsRequired()
-                        .HasConstraintName("FK_LibraryPath_ToZoneId");
-
-                    b.Navigation("FromZone");
-
-                    b.Navigation("ToZone");
-                });
-
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibrarySection", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryZone", "Zone")
@@ -3400,10 +3419,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryZone", b =>
                 {
-                    b.Navigation("LibraryPathFromZones");
-
-                    b.Navigation("LibraryPathToZones");
-
                     b.Navigation("LibrarySections");
                 });
 

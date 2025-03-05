@@ -5,6 +5,7 @@ using FPTU_ELibrary.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Serilog;
 using SystemFeature = FPTU_ELibrary.Domain.Entities.SystemFeature;
 using SystemFeatureEnum = FPTU_ELibrary.Domain.Common.Enums.SystemFeature;
@@ -116,14 +117,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [LibraryZones]
 				if (!await _context.LibraryZones.AnyAsync()) await SeedLibraryZoneAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryZone");
-				
-				// [LibrarySections]
-				if (!await _context.LibrarySections.AnyAsync()) await SeedLibrarySectionAsync();
-				else _logger.Information("Already seed data for table {0}", "LibrarySection");
-				
-				// [LibraryShelves]
-				if (!await _context.LibraryShelves.AnyAsync()) await SeedLibraryShelvesAsync();
-				else _logger.Information("Already seed data for table {0}", "LibraryShelf");
 				
 				// [LibraryItemConditions]
 				if (!await _context.LibraryItemConditions.AnyAsync()) await SeedLibraryItemConditionAsync();
@@ -606,11 +599,11 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 },
                 new()
                 {
-	                Prefix = "SCN",
-	                EnglishName = nameof(LibraryItemCategory.SpecializedBook),
-	                VietnameseName = LibraryItemCategory.SpecializedBook.GetDescription(),
-					IsAllowAITraining = true,
-					TotalBorrowDays = 90
+	                Prefix = "SS",
+	                EnglishName = nameof(LibraryItemCategory.DigitalBook),
+	                VietnameseName = LibraryItemCategory.DigitalBook.GetDescription(),
+	                IsAllowAITraining = true,
+	                TotalBorrowDays = 30
                 },
                 new()
                 {
@@ -622,42 +615,11 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 },
                 new()
                 {
-	                Prefix = "SNV",
-	                EnglishName = nameof(LibraryItemCategory.ProfessionalBook),
-	                VietnameseName = LibraryItemCategory.ProfessionalBook.GetDescription(),
-					IsAllowAITraining = true,
-					TotalBorrowDays = 60
-                },
-                new()
-                {
-	                Prefix = "SVH",
-	                EnglishName = nameof(LibraryItemCategory.Literature),
-	                VietnameseName = LibraryItemCategory.Literature.GetDescription(),
-	                TotalBorrowDays = 30
-                },
-                new()
-                {
-	                Prefix = "SMV",
-	                EnglishName = nameof(LibraryItemCategory.Multimedia),
-	                VietnameseName = LibraryItemCategory.Multimedia.GetDescription(),
-					IsAllowAITraining = false,
-					TotalBorrowDays = 60
-                },
-                new()
-                {
                     Prefix = "TC",
-                    EnglishName = nameof(LibraryItemCategory.Journal),
-                    VietnameseName = LibraryItemCategory.Journal.GetDescription(),
+                    EnglishName = nameof(LibraryItemCategory.Magazine),
+                    VietnameseName = LibraryItemCategory.Magazine.GetDescription(),
 					IsAllowAITraining = false,
 					TotalBorrowDays = 30
-                },
-                new()
-                {
-	                Prefix = "NC",
-	                EnglishName = nameof(LibraryItemCategory.ResearchPaper),
-	                VietnameseName = LibraryItemCategory.ResearchPaper.GetDescription(),
-					IsAllowAITraining = false,
-					TotalBorrowDays = 90
                 },
                 new()
                 {
@@ -666,23 +628,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription(),
 					IsAllowAITraining = false,
 					TotalBorrowDays = 20
-                },
-                new()
-                {
-	                Prefix = "HT",
-	                EnglishName = nameof(LibraryItemCategory.LearningSupportMaterial),
-	                VietnameseName = LibraryItemCategory.LearningSupportMaterial.GetDescription(),
-					IsAllowAITraining = false,
-					TotalBorrowDays = 90
-                },
-                new()
-                {
-	                Prefix = "LA",
-	                EnglishName = nameof(LibraryItemCategory.AcademicThesis),
-	                VietnameseName = LibraryItemCategory.AcademicThesis.GetDescription(),
-					IsAllowAITraining = false,
-					TotalBorrowDays = 90
-                },
+                }
 			};
         
 			// Add range
@@ -870,12 +816,17 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			{
 				new()
 				{
-					FloorNumber = "Floor 1", 
+					FloorNumber = 1, 
 					CreateDate = DateTime.Now
 				},
 				new()
 				{
-					FloorNumber = "Floor 2", 
+					FloorNumber = 2, 
+					CreateDate = DateTime.Now
+				},
+				new()
+				{
+					FloorNumber = 3, 
 					CreateDate = DateTime.Now
 				}
 			};
@@ -891,65 +842,278 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		//		Seeding Library zone
 		private async Task SeedLibraryZoneAsync()
 		{
-			// Initialize random 
-			var rnd = new Random();
-			
 			// Retrieve all current floor
 			var floors = await _context.LibraryFloors.ToListAsync();
+			if (!floors.Any())
+			{
+				_logger.Warning("Not found any library floors to process seeding library zone");
+				return;
+			}
+			
+			// Retrieve floors
+			var firstFloor = floors.FirstOrDefault(f => f.FloorNumber == 1) ?? floors.First();
+			var secondFloor = floors.FirstOrDefault(f => f.FloorNumber == 2) ?? floors.First();
+			var thirdFloor = floors.FirstOrDefault(f => f.FloorNumber == 3) ?? floors.First();
 			
 			List<LibraryZone> zones = new()
 			{
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.Lobby)),
+			        VieZoneName = LibraryLocation.Zones.Lobby,
+			        EngDescription = "Located near the main entrance, connecting to the checkout area and leading to various sections of the library.",
+			        VieDescription = "Nằm gần lối vào chính, kết nối với khu vực quầy thanh toán và dẫn đến các khu vực khác của thư viện.",
+			        TotalCount = 1,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.LibraryStacks)),
+			        VieZoneName = LibraryLocation.Zones.LibraryStacks,
+			        EngDescription = "Positioned centrally, surrounded by reading spaces and computer zones, it houses various book collections.",
+			        VieDescription = "Nằm ở trung tâm, được bao quanh bởi khu đọc sách và khu máy tính, chứa nhiều bộ sưu tập sách.",
+			        TotalCount = 3,
+			        CreateDate = DateTime.Now,
+			        LibrarySections = new List<LibrarySection>()
+			        {
+				        // 000-099: Computer science, information & general works
+				        LibraryLocation.Sections.ComputerScienceAndGeneralWorks,
+				        // 800-899: Literature
+				        LibraryLocation.Sections.Literature,
+				        // 000-999: Children
+				        LibraryLocation.Sections.Children,
+			        }
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.ReadingSpace)),
+			        VieZoneName = LibraryLocation.Zones.ReadingSpace,
+			        EngDescription = "Positioned on the left side of the floor, near the book area, providing a quiet space for reading.",
+			        VieDescription = "Nằm ở phía bên trái tầng, gần khu sách, cung cấp không gian yên tĩnh để đọc sách.",
+			        TotalCount = 1,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.RestRoom)),
+			        VieZoneName = LibraryLocation.Zones.RestRoom,
+			        EngDescription = "Situated in the lower-left corner, separate from other areas to provide a quiet resting space.",
+			        VieDescription = "Nằm ở góc dưới bên trái, tách biệt với các khu vực khác để tạo không gian nghỉ ngơi yên tĩnh.",
+			        TotalCount = 2,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.MeetingRoom)),
+			        VieZoneName = LibraryLocation.Zones.MeetingRoom,
+			        EngDescription = "Positioned in the upper-left corner of the library, adjacent to the reading space and computer zone.",
+			        VieDescription = "Nằm ở góc trên bên trái của thư viện, bên cạnh khu đọc sách và khu máy tính.",
+			        TotalCount = 2,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.ComputerZone)),
+			        VieZoneName = LibraryLocation.Zones.ComputerZone,
+			        EngDescription = "Located along the left side of the library, providing access to public computers for research and study.",
+			        VieDescription = "Nằm dọc theo phía bên trái của thư viện, cung cấp máy tính công cộng cho nghiên cứu và học tập.",
+			        TotalCount = 2,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.SelfCheckoutStation)),
+			        VieZoneName = LibraryLocation.Zones.SelfCheckoutStation,
+			        EngDescription = "Positioned near the parking entrance, allowing users to return books conveniently.",
+			        VieDescription = "Nằm gần lối vào bãi đỗ xe, giúp người dùng trả sách một cách thuận tiện.",
+			        TotalCount = 1,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.Auditorium)),
+			        VieZoneName = LibraryLocation.Zones.Auditorium,
+			        EngDescription = "Situated in the upper-right section of the library, near the gallery and restrooms.",
+			        VieDescription = "Nằm ở khu vực phía trên bên phải của thư viện, gần phòng trưng bày và nhà vệ sinh.",
+			        TotalCount = 1,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+			        FloorId = firstFloor.FloorId,
+			        EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.Gallery)),
+			        VieZoneName = LibraryLocation.Zones.Gallery,
+			        EngDescription = "Located next to the auditorium and near the restrooms, providing a space for exhibitions and displays.",
+			        VieDescription = "Nằm cạnh thính phòng và gần nhà vệ sinh, cung cấp không gian cho các cuộc triển lãm và trưng bày.",
+			        TotalCount = 1,
+			        CreateDate = DateTime.Now
+			    },
+			    new()
+			    {
+				    FloorId = firstFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.CheckoutCounter)),
+				    VieZoneName = LibraryLocation.Zones.CheckoutCounter,
+				    EngDescription = "Located centrally in the lobby, the checkout counter serves as the main point for borrowing and returning books.",
+				    VieDescription = "Nằm ở trung tâm sảnh chính, quầy thanh toán là điểm chính để mượn và trả sách.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+			    },
+			    new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.LibraryStacks)),
+				    VieZoneName = LibraryLocation.Zones.LibraryStacks,
+				    EngDescription = "Located in the left section of the floor, adjacent to the reading space and near the entrance corridor.",
+				    VieDescription = "Nằm ở khu vực bên trái của tầng, liền kề với không gian đọc và gần hành lang lối vào.",
+				    TotalCount = 8,
+				    CreateDate = DateTime.Now,
+				    LibrarySections = new List<LibrarySection>()
+				    {
+					    // 100-199: Philosophy & Psychology
+					    LibraryLocation.Sections.PhilosophyAndPsychology,
+					    // 300-399: Social sciences
+					    LibraryLocation.Sections.SocialSciences,
+					    // 400-499: Language
+					    LibraryLocation.Sections.Language,
+					    // 500-599: Natural sciences and mathematics
+					    LibraryLocation.Sections.NaturalSciencesAndMathematics,
+					    // 600-699: Technology
+					    LibraryLocation.Sections.Technology,
+					    // 700-799: Arts & Recreation
+					    LibraryLocation.Sections.ArtsAndRecreation,
+					    // Magazines & News
+					    LibraryLocation.Sections.MagazinesAndNews,
+					    // Reference
+					    LibraryLocation.Sections.Reference,
+				    }
+				},
 				new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Lounge",
-                    XCoordinate = 10.5,
-                    YCoordinate = 20.3,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Reading Room",
-                    XCoordinate = 15.2,
-                    YCoordinate = 25.8,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Study Area",
-                    XCoordinate = 5.0,
-                    YCoordinate = 10.0,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Computer Lab",
-                    XCoordinate = 30.7,
-                    YCoordinate = 40.2,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                },
-                new()
-                {
-                    FloorId = floors[rnd.Next(floors.Count)].FloorId,
-                    ZoneName = "Rest Room",
-                    XCoordinate = 12.4,
-                    YCoordinate = 18.9,
-                    CreateDate = DateTime.Now,
-                    UpdateDate = null,
-                    IsDeleted = false
-                }			
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.ReadingSpace)),
+				    VieZoneName = LibraryLocation.Zones.ReadingSpace,
+				    EngDescription = "Positioned at the top-right corner of the floor, connected to the checkout counter.",
+				    VieDescription = "Nằm ở góc trên bên phải của tầng, kết nối với quầy thủ thư.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.CheckoutCounter)),
+				    VieZoneName = LibraryLocation.Zones.CheckoutCounter,
+				    EngDescription = "Located near the entrance of the reading space, providing access to book checkouts.",
+				    VieDescription = "Nằm gần lối vào của khu vực đọc sách, tạo thuận lợi cho việc mượn sách.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.TrusteesRoom)),
+				    VieZoneName = LibraryLocation.Zones.TrusteesRoom,
+				    EngDescription = "Located in the lower-right section of the floor, adjacent to the admin office.",
+				    VieDescription = "Nằm ở phần dưới bên phải của tầng, liền kề với văn phòng hành chính.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.AdminOffice)),
+				    VieZoneName = LibraryLocation.Zones.AdminOffice,
+				    EngDescription = "Positioned at the bottom-right of the floor, next to the trustees room and near the toilets.",
+				    VieDescription = "Nằm ở phía dưới bên phải của tầng, cạnh phòng hội đồng quản trị và gần khu vệ sinh.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.MeetingRoom)),
+				    VieZoneName = LibraryLocation.Zones.MeetingRoom,
+				    EngDescription = "Located near the central corridor, next to the toilets and across from the trustees room.",
+				    VieDescription = "Nằm gần hành lang trung tâm, bên cạnh nhà vệ sinh và đối diện phòng hội đồng quản trị.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = secondFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.Toilet)),
+				    VieZoneName = LibraryLocation.Zones.Toilet,
+				    EngDescription = "Positioned centrally on the floor, separated into male and female sections, near the meeting room.",
+				    VieDescription = "Nằm ở trung tâm của tầng, chia thành khu vực nam và nữ, gần phòng họp.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = thirdFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.LibraryStacks)),
+				    VieZoneName = LibraryLocation.Zones.LibraryStacks,
+				    EngDescription = "Located at the upper left section of the floor, adjacent to the checkout corner.",
+				    VieDescription = "Nằm ở khu vực phía trên bên trái của tầng, liền kề với quầy thủ thư.",
+				    TotalCount = 2,
+				    CreateDate = DateTime.Now,
+				    LibrarySections = new List<LibrarySection>()
+				    {
+					    // 200-299: Religion
+					    LibraryLocation.Sections.Religion,
+					    // 900-999: History & Geography
+					    LibraryLocation.Sections.HistoryAndGeography
+				    }
+				},
+				new()
+				{
+				    FloorId = thirdFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.CheckoutCounter)),
+				    VieZoneName = LibraryLocation.Zones.CheckoutCounter,
+				    EngDescription = "Positioned at the top-right corner of the floor, next to the book stacks.",
+				    VieDescription = "Nằm ở góc trên bên phải của tầng, cạnh khu vực sách.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = thirdFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.StudyArea)),
+				    VieZoneName = LibraryLocation.Zones.StudyArea,
+				    EngDescription = "Occupies the lower left section of the floor, providing ample space for studying, near the printer station.",
+				    VieDescription = "Chiếm khu vực phía dưới bên trái của tầng, cung cấp không gian rộng rãi để học tập, gần trạm in.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = thirdFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.MeetingRoom)),
+				    VieZoneName = LibraryLocation.Zones.MeetingRoom,
+				    EngDescription = "Located in the lower center of the floor, next to the study area.",
+				    VieDescription = "Nằm ở khu vực trung tâm phía dưới của tầng, bên cạnh khu học tập.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				},
+				new()
+				{
+				    FloorId = thirdFloor.FloorId,
+				    EngZoneName = DatabaseInitializerExtensions.AddWhitespaceToString(nameof(LibraryLocation.Zones.Printer)),
+				    VieZoneName = "Máy in",
+				    EngDescription = "Situated at the left side of the study area, easily accessible for students.",
+				    VieDescription = "Nằm ở phía bên trái của khu học tập, thuận tiện cho sinh viên sử dụng.",
+				    TotalCount = 1,
+				    CreateDate = DateTime.Now
+				}
 			};
+
 			
 			// Add Range
 			await _context.LibraryZones.AddRangeAsync(zones);
@@ -958,103 +1122,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			if (saveSucc) _logger.Information("Seed library zones successfully.");
 		}
 		
-		//	Summary:
-		//		Seeding Library section
-		private async Task SeedLibrarySectionAsync()
-		{
-			// Initialize random 
-			var rnd = new Random();
-			
-			// Retrieve all zones
-			var zones = await _context.LibraryZones.ToListAsync();
-			
-			List<LibrarySection> sections = new()
-			{
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Fiction",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Non-Fiction",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Science",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "History",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				},
-				new()
-				{
-					ZoneId = zones[rnd.Next(zones.Count)].ZoneId,
-					SectionName = "Novel",
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				}
-			};
-			
-			// Add Range
-			await _context.LibrarySections.AddRangeAsync(sections);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library sections successfully.");
-		}
-		
-		//	Summary:
-		//		Seeding Library shelf
-		private async Task SeedLibraryShelvesAsync()
-		{
-			// Initialize random 
-			var rnd = new Random();
-			
-			// Retrieve all existing sections
-			var sections = await _context.LibrarySections.ToListAsync();
-
-			List<LibraryShelf> shelves = new();
-			
-			// Generate shelves
-			for (int i = 0; i < 20; i++) // Example: Create 20 shelves
-			{
-				// Generate random shelf number
-				string shelfNumber = $"{(char)('A' + rnd.Next(0, 26))}-{rnd.Next(1, 100):D2}";
-
-				// Create a new shelf
-				shelves.Add(new LibraryShelf
-				{
-					SectionId = sections[rnd.Next(sections.Count)].SectionId, // Random section
-					ShelfNumber = shelfNumber,
-					CreateDate = DateTime.Now,
-					UpdateDate = null,
-					IsDeleted = false
-				});
-			}
-			
-			// Add Range
-			await _context.LibraryShelves.AddRangeAsync(shelves);
-			var saveSucc = await _context.SaveChangesAsync() > 0;
-
-			if (saveSucc) _logger.Information("Seed library shelves successfully.");
-		}
-        
 		//	Summary:
 		//		Seeding Library card
 		private async Task SeedLibraryCardAsync()
@@ -1215,7 +1282,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        BibliographicalNote = "Danh mục tài liệu tham khảo ở cuối sách.",
 			        TopicalTerms = "Lập trình, Ngôn ngữ C#, Phát triển phần mềm",
 			        AdditionalAuthors = "Trần Thị B",
-			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SpecializedBook)).CategoryId,
+			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.SingleBook)).CategoryId,
 			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
 			        CanBorrow = false,
@@ -1667,7 +1734,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Genres = "Môi trường, Nghiên cứu",
 			        GeneralNote = "Bao gồm dữ liệu thực tế từ năm 2010 đến 2020.",
 			        TopicalTerms = "Biến đổi khí hậu, Bảo vệ môi trường",
-			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.ResearchPaper)).CategoryId,
+			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Newspaper)).CategoryId,
 			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
 			        CanBorrow = false,
@@ -1713,7 +1780,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Genres = "Văn học, Kinh điển",
 			        GeneralNote = "Gồm 3 tập với các tác phẩm từ thế kỷ 18 đến thế kỷ 20.",
 			        TopicalTerms = "Văn học Việt Nam, Tác phẩm kinh điển",
-			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.Literature)).CategoryId,
+			        CategoryId = categories.First(x => x.EnglishName == nameof(LibraryItemCategory.ReferenceBook)).CategoryId,
 			        // TODO: Change to Draft
 			        Status = LibraryItemStatus.Published,
 			        CanBorrow = false,
@@ -1960,6 +2027,17 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		public static string GenerateBarcode(string prefix)
 		{
 			return $"{prefix}-{Guid.NewGuid().ToString("N").Substring(20).ToUpper()}";
+		}
+		
+		public static string AddWhitespaceToString(string input)
+		{
+			if (string.IsNullOrEmpty(input))
+				return input;
+
+			// Use a regex to identify boundaries between lowercase and uppercase letters
+			string result = Regex.Replace(input, "([a-z])([A-Z])", "$1 $2");
+
+			return result;
 		}
 	}
 }

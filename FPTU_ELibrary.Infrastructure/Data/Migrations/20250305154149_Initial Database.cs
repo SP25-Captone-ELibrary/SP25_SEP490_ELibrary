@@ -22,8 +22,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     entity_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     trail_type = table.Column<string>(type: "nvarchar(20)", nullable: false),
                     date_utc = table.Column<DateTime>(type: "datetime", nullable: false),
-                    old_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
-                    new_values = table.Column<string>(type: "nvarchar(2500)", nullable: false),
+                    old_values = table.Column<string>(type: "nvarchar(3000)", nullable: false),
+                    new_values = table.Column<string>(type: "nvarchar(3000)", nullable: false),
                     changed_columns = table.Column<string>(type: "nvarchar(800)", nullable: false)
                 },
                 constraints: table =>
@@ -40,7 +40,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     author_code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     author_image = table.Column<string>(type: "varchar(2048)", unicode: false, maxLength: 2048, nullable: true),
                     full_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    biography = table.Column<string>(type: "nvarchar(3000)", maxLength: 3000, nullable: true),
+                    biography = table.Column<string>(type: "nvarchar(3000)", nullable: true),
                     dob = table.Column<DateTime>(type: "datetime", nullable: true),
                     date_of_death = table.Column<DateTime>(type: "datetime", nullable: true),
                     nationality = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -144,7 +144,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     floor_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    floor_number = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    FloorNumber = table.Column<int>(type: "int", nullable: false),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     update_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false)
@@ -358,12 +358,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     zone_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     floor_id = table.Column<int>(type: "int", nullable: false),
-                    zone_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    x_coordinate = table.Column<double>(type: "float", nullable: false),
-                    y_coordinate = table.Column<double>(type: "float", nullable: false),
+                    eng_zone_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    vie_zone_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    eng_description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    vie_description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    total_count = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -532,45 +534,23 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Library_Path",
-                columns: table => new
-                {
-                    path_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    from_zone_id = table.Column<int>(type: "int", nullable: false),
-                    to_zone_id = table.Column<int>(type: "int", nullable: false),
-                    distance = table.Column<double>(type: "float", nullable: false),
-                    path_description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    create_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LibraryPath_PathId", x => x.path_id);
-                    table.ForeignKey(
-                        name: "FK_LibraryPath_FromZoneId",
-                        column: x => x.from_zone_id,
-                        principalTable: "Library_Zone",
-                        principalColumn: "zone_id");
-                    table.ForeignKey(
-                        name: "FK_LibraryPath_ToZoneId",
-                        column: x => x.to_zone_id,
-                        principalTable: "Library_Zone",
-                        principalColumn: "zone_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Library_Section",
                 columns: table => new
                 {
                     section_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     zone_id = table.Column<int>(type: "int", nullable: false),
-                    section_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    eng_section_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    vie_section_name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    shelf_prefix = table.Column<string>(type: "nvarchar(10)", nullable: false),
+                    classification_number_range_from = table.Column<decimal>(type: "decimal(10,4)", nullable: false, defaultValue: 0m),
+                    classification_number_range_to = table.Column<decimal>(type: "decimal(10,4)", nullable: false, defaultValue: 0m),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     update_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    is_children_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_reference_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_journal_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -733,6 +713,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     section_id = table.Column<int>(type: "int", nullable: false),
                     shelf_number = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    eng_shelf_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: true),
+                    vie_shelf_name = table.Column<string>(type: "nvarchar(155)", maxLength: 155, nullable: true),
+                    classification_number_range_from = table.Column<decimal>(type: "decimal(10,4)", nullable: false, defaultValue: 0m),
+                    classification_number_range_to = table.Column<decimal>(type: "decimal(10,4)", nullable: false, defaultValue: 0m),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     update_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false)
@@ -986,11 +970,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 columns: table => new
                 {
                     library_item_id = table.Column<int>(type: "int", nullable: false),
-                    total_units = table.Column<int>(type: "int", nullable: false),
-                    available_units = table.Column<int>(type: "int", nullable: false),
-                    request_units = table.Column<int>(type: "int", nullable: false),
-                    borrowed_units = table.Column<int>(type: "int", nullable: false),
-                    reserved_units = table.Column<int>(type: "int", nullable: false)
+                    total_units = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    available_units = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    request_units = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    borrowed_units = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    reserved_units = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {
@@ -1419,16 +1403,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Library_Path_from_zone_id",
-                table: "Library_Path",
-                column: "from_zone_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Library_Path_to_zone_id",
-                table: "Library_Path",
-                column: "to_zone_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Library_Section_zone_id",
                 table: "Library_Section",
                 column: "zone_id");
@@ -1599,9 +1573,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Review");
-
-            migrationBuilder.DropTable(
-                name: "Library_Path");
 
             migrationBuilder.DropTable(
                 name: "Notification_Recipient");
