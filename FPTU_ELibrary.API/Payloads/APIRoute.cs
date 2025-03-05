@@ -140,6 +140,7 @@
 			public const string GetRelatedItems = Base + "/library-items/{id}/related-items";
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
+			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
 		}
 
 		/// <summary>
@@ -418,6 +419,7 @@
 			// [POST]
 			public const string UploadImage = Base + "/management/resources/images/upload";
 			public const string UploadVideo = Base + "/management/resources/videos/upload";
+			public const string UploadBigVideo = Base + "/management/resources/big-videos/upload";
 			// [PUT]
 			public const string UpdateImage = Base + "/management/resources/images/update";
 			public const string UpdateVideo = Base + "/management/resources/videos/update";

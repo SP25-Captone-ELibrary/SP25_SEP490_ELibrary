@@ -16,27 +16,27 @@ public class AdminConfigurationController : ControllerBase
     {
         _adminConfigurationService = adminConfigurationService;
     }
-    
+
     // base on the service function, create the suitable api
-    
-    [HttpGet(APIRoute.AdminConfiguration.GetAll,Name = nameof(GetAllKeyVault))]
+
+    [HttpGet(APIRoute.AdminConfiguration.GetAll, Name = nameof(GetAllKeyVault))]
     [Authorize]
     public async Task<IActionResult> GetAllKeyVault()
     {
         return Ok(await _adminConfigurationService.GetAllKeyVault());
     }
-    
-    [HttpGet(APIRoute.AdminConfiguration.GetDetail,Name = nameof(GetKeyVault))]
+
+    [HttpGet(APIRoute.AdminConfiguration.GetDetail, Name = nameof(GetKeyVault))]
     [Authorize]
-    public async Task<IActionResult> GetKeyVault([FromRoute]string name)
+    public async Task<IActionResult> GetKeyVault([FromRoute] string name)
     {
         return Ok(await _adminConfigurationService.GetKeyVault(name));
     }
-    
-    [HttpPatch(APIRoute.AdminConfiguration.Update,Name = nameof(UpdateKeyVault))]
+
+    [HttpPatch(APIRoute.AdminConfiguration.Update, Name = nameof(UpdateKeyVault))]
     [Authorize]
-    public async Task<IActionResult> UpdateKeyVault([FromBody] UpdateKeyVaultDto dto)
-        {
-        return Ok(await _adminConfigurationService.UpdateKeyVault(dto.FullFormatKey, dto.Value));
+    public async Task<IActionResult> UpdateKeyVault([FromBody] UpdateListKeyVaultDto dto)
+    {
+        return Ok(await _adminConfigurationService.UpdateKeyVault(dto.ToUpdateKeyVaultDtos()));
     }
 }

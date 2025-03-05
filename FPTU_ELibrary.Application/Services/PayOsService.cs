@@ -195,7 +195,7 @@ public class PayOsService : IPayOsService
                     // }
                     
                     DateTimeOffset parsedDateTimeOffset = DateTimeOffset.ParseExact(
-                        req.Data.Transactions[0].TransactionDateTime, "yyyy-MM-dd HH:mm:ss", null);
+                        req.Data.Transactions[0].TransactionDateTime, "yyyy-MM-ddTHH:mm:sszzz", null);
                     // Transaction datetime
                     transactionDate = parsedDateTimeOffset.DateTime;
                     // Transaction status

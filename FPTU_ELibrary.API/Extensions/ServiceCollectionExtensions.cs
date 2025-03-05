@@ -124,9 +124,12 @@ namespace FPTU_ELibrary.API.Extensions
         	services.Configure<FaceDetectionSettings>(updatedConfiguration.GetSection("FaceDetectionSettings"));
         	// Configure PayOS
         	services.Configure<PayOSSettings>(updatedConfiguration.GetSection("PayOSSettings"));
+            // Configure PayOS
+            services.Configure<PaymentSettings>(updatedConfiguration.GetSection("PaymentSettings"));
         	//Configure DigitalBorrowSettings
             services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
-        	#region Development stage
+        	
+            #region Development stage
         
         	if (env.IsDevelopment()) // Is Development env
         	{
@@ -168,7 +171,7 @@ namespace FPTU_ELibrary.API.Extensions
             return services;
         }
 
-        public static IServiceCollection EstablishApplicationConfiguration(
+      public static IServiceCollection EstablishApplicationConfiguration(
             this IServiceCollection services,
             IConfiguration configuration,
             IWebHostEnvironment env)

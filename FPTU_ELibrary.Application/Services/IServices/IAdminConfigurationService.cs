@@ -6,5 +6,5 @@ public interface IAdminConfigurationService
 {
     Task<IServiceResult> GetAllKeyVault();
     Task<IServiceResult> GetKeyVault(string key);
-    Task<IServiceResult> UpdateKeyVault(string key, string value);
+    Task<IServiceResult> UpdateKeyVault(IDictionary<string,string> keyValues);
 }

@@ -12,4 +12,7 @@ public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource
     Task<IServiceResult> UndoDeleteAsync(int id);
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
+
+    Task<IServiceResult<Stream>> GetOwnBorrowResource(string email, int resourceId
+        , int? latestMinute);
 }

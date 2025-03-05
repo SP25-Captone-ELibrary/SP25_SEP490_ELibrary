@@ -132,32 +132,34 @@ public class AdminConfigurationService : IAdminConfigurationService
     }
 
 
-    public async Task<IServiceResult> UpdateKeyVault(string key, string value)
+    public async Task<IServiceResult> UpdateKeyVault(IDictionary<string,string> keyValues)
     {
-        // Create FullFormatKey to check validation
-        UpdateKeyVaultDto req = new UpdateKeyVaultDto()
+        foreach (var keyValuePair in keyValues)
         {
-            FullFormatKey = key,
-            Value = value
-        };
-        // Validate inputs using the generic validator
-        var validationResult = await ValidatorExtensions.ValidateAsync(req);
-        if (validationResult != null && !validationResult.IsValid)
-        {
-            // Convert ValidationResult to ValidationProblemsDetails.Errors
-            var errors = validationResult.ToProblemDetails().Errors;
-            throw new UnprocessableEntityException("Invalid Validations", errors);
-        }
+            // Create FullFormatKey to check validation
+            UpdateKeyVaultDto req = new UpdateKeyVaultDto()
+            {
+                FullFormatKey = keyValuePair.Key,
+                Value = keyValuePair.Value
+            };
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(req);
+            if (validationResult != null && !validationResult.IsValid)
+            {
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
+            }
 
-        var secret = await _client.GetSecretAsync(key);
-        if (secret.Value is null)
-        {
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-            return new ServiceResult(errMsg, "Secret value is null");
+            var secret = await _client.GetSecretAsync(keyValuePair.Key);
+            if (secret.Value is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(errMsg, "Secret value is null");
+            }
+            var secretProperties = new KeyVaultSecret(keyValuePair.Key, keyValuePair.Value);
+            await _client.SetSecretAsync(secretProperties);
         }
-
-        var secretProperties = new KeyVaultSecret(key, value);
-        await _client.SetSecretAsync(secretProperties);
         return new ServiceResult(ResultCodeConst.SYS_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
     }

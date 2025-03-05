@@ -666,127 +666,161 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult> GetOwnBorrowResource(string email, int resourceId
-        , int? pageNumber,int? latestMinute)
+    public async Task<IServiceResult<Stream>> GetOwnBorrowResource(string email, int resourceId
+        , int? latestMinute)
     {
-        // Determine current system language
-        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-            LanguageContext.CurrentLanguage);
-        var isEng = lang == SystemLanguage.English;
-        
-        // Get resource
-        var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
-        var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
-        if (resource is null)
+        try
         {
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
-        }
-        
-        // Check if this email is available to have this resource
-        var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email)
-                                                        && u.DigitalBorrows.Any(db =>
-                                                            db.LibraryResource.ResourceId == resourceId));
-        userSpec.ApplyInclude(q => q
-            .Include(u => u.DigitalBorrows)
-            .ThenInclude(db => db.LibraryResource));
-        var user = await _userService.GetWithSpecAsync(userSpec);
-        if (user.Data is null)
-        {
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0018);
-            return new ServiceResult(ResultCodeConst.Borrow_Warning0018,
-                StringUtils.Format(errMsg, isEng 
-                    ? "user has not borrowed this resource" 
-                    : "người dùng chưa mượn tài nguyên này"));
-        }
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
 
-        var userValue = (user.Data as UserDto)!;
-        var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
-                                                                        && db.Status == BorrowDigitalStatus.Active
-                                                                        && db.ExpiryDate.Date > DateTime.Now.Date);
-        if (userBorrows is null)
-        {
-            return new ServiceResult(ResultCodeConst.Borrow_Warning0019,
-                await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
-        }
-
-        if (resource.ResourceType.Equals(Enum.GetName(ResourceType.BookImage)))
-        {
-            var resourceUrl = resource.ResourceUrl;
-            var watermarkInfo = userValue.UserId.ToString();
-            var pdfStream = await DownloadAndAddWatermark(resourceUrl, watermarkInfo, pageNumber??0);
-
-            var response = new FileStreamResult(pdfStream, "application/pdf")
+            // Get resource
+            var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
+            if (resource is null)
             {
-                FileDownloadName = $"Watermarked_{resourceId}.pdf"
-            };
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), response);
-        }
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
+            }
 
-        if (resource.ResourceType.Equals(Enum.GetName(ResourceType.BookAudio)))
+            // Check if this email is available to have this resource
+            var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email)
+                                                            && u.DigitalBorrows.Any(db =>
+                                                                db.LibraryResource.ResourceId == resourceId));
+            userSpec.ApplyInclude(q => q
+                .Include(u => u.DigitalBorrows)
+                .ThenInclude(db => db.LibraryResource));
+            var user = await _userService.GetWithSpecAsync(userSpec);
+            if (user.Data is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0018);
+                return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0018,
+                    StringUtils.Format(errMsg, isEng
+                        ? "user has not borrowed this resource"
+                        : "người dùng chưa mượn tài nguyên này"));
+            }
+
+            var userValue = (user.Data as UserDto)!;
+            var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
+                                                                            && db.Status == BorrowDigitalStatus.Active
+                                                                            && db.ExpiryDate.Date > DateTime.Now.Date);
+            if (userBorrows is null)
+            {
+                return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0019,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
+            }
+
+            // resource.FileFormat.ToLower().Equals("pdf    ")
+            if (resource.FileFormat.ToLower().Equals("image"))
+            {
+                var resourceUrl = resource.ResourceUrl;
+                var watermarkInfo = userValue.UserId.ToString();
+
+                // if (pageNumber == 0 || pageNumber is null) pageNumber = 1;
+                var pdfStream = await DownloadAndAddWatermark(resourceUrl, watermarkInfo);
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
+            }
+
+            if (resource.FileFormat.ToLower().Equals("video"))
+            {
+                var resourceUrl = resource.ResourceUrl;
+                //Todo: Implement add ads for audio book
+            }
+
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+        }
+        catch (Exception ex)
         {
-            var resourceUrl = resource.ResourceUrl;
-            //Todo: Implement add ads for audio book
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get digital resource");
         }
-
-        return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
     }
+
     // function to process
-    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText, int pageNumber)
+    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText)
     {
         using HttpClient client = new HttpClient();
         byte[] pdfBytes = await client.GetByteArrayAsync(pdfUrl);
-    
-        using MemoryStream inputPdfStream = new MemoryStream(pdfBytes);
-        using MemoryStream outputPdfStream = new MemoryStream();
 
-        PdfReader reader = new PdfReader(inputPdfStream);
-        Document document = new Document(reader.GetPageSizeWithRotation(1));
-        PdfWriter writer = PdfWriter.GetInstance(document, outputPdfStream);
-        document.Open();
-        PdfContentByte contentByte = writer.DirectContent;
-
-        int totalPages = reader.NumberOfPages;
-        int endPage = Math.Min(pageNumber + _digitalSettings.PagePerLoad, totalPages);
-
-        for (int i = 1; i <= totalPages; i++)
+        if (pdfBytes == null || pdfBytes.Length == 0)
         {
-            document.SetPageSize(reader.GetPageSizeWithRotation(i));
-            document.NewPage();
-            PdfImportedPage importedPage = writer.GetImportedPage(reader, i);
-            contentByte.AddTemplate(importedPage, 0, 0);
-
-            if (i >= pageNumber && i < endPage)
-            {
-                AddWatermark(contentByte, reader.GetPageSize(i), watermarkText);
-            }
+            throw new InvalidOperationException("Downloaded PDF file is empty or corrupted.");
         }
 
-        document.Close();
-        writer.Close();
-        reader.Close();
+        using MemoryStream inputPdfStream = new MemoryStream(pdfBytes);
+        MemoryStream outputPdfStream = new MemoryStream();
 
-        outputPdfStream.Position = 0;
-        return outputPdfStream;
+        try
+        {
+            PdfReader reader = new PdfReader(inputPdfStream);
+            int totalPages = reader.NumberOfPages;
+
+            if (totalPages == 0)
+            {
+                throw new InvalidOperationException("The PDF file contains no pages.");
+            }
+
+            // if (pageNumber < 1 || pageNumber > totalPages)
+            // {
+            //     throw new ArgumentException($"Invalid page number {pageNumber}. Total pages: {totalPages}");
+            // }
+
+            Document document = new Document(reader.GetPageSizeWithRotation(1));
+            PdfWriter writer = PdfWriter.GetInstance(document, outputPdfStream);
+            document.Open();
+            PdfContentByte contentByte = writer.DirectContent;
+
+            for (int i = 1; i <= totalPages; i++)
+            {
+                document.SetPageSize(reader.GetPageSizeWithRotation(i));
+                document.NewPage();
+                PdfImportedPage importedPage = writer.GetImportedPage(reader, i);
+                contentByte.AddTemplate(importedPage, 0, 0);
+
+                AddWatermark(contentByte, reader.GetPageSize(i), watermarkText);
+            }
+
+            document.Close();
+            writer.Close();
+            reader.Close();
+
+            outputPdfStream.Position = 0;
+            return outputPdfStream;
+        }
+        catch
+        {
+            outputPdfStream.Dispose();
+            throw;
+        }
     }
+
     private void AddWatermark(PdfContentByte contentByte, Rectangle pageSize, string watermarkText)
     {
-        float fontSize = pageSize.Height * 0.03f;
-
+        float fontSize = pageSize.Height * 0.05f;
         BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
-        contentByte.SetFontAndSize(baseFont, fontSize);
-        contentByte.SetColorFill(BaseColor.Gray);
 
-        float textWidth = baseFont.GetWidthPoint(watermarkText, fontSize);
-        float xPosition = (pageSize.Width - textWidth) / 2; 
-        float yPosition = 0;
+        // Settings watermark
+        contentByte.SaveState();
+        contentByte.SetGState(new PdfGState { FillOpacity = 0.3f });
+        contentByte.SetFontAndSize(baseFont, fontSize);
+        contentByte.SetColorFill(BaseColor.Red);
+
+        // Settings margin
+        float marginX = pageSize.Width * 0.1f;
+        float marginY = pageSize.Height * 0.1f;
+
+        float xPosition = pageSize.Left + marginX;
+        float yPosition = pageSize.Bottom + marginY;
 
         contentByte.BeginText();
-        contentByte.SetTextMatrix(xPosition, yPosition);
-        contentByte.ShowText(watermarkText);
+        contentByte.ShowTextAligned(Element.ALIGN_LEFT, watermarkText, xPosition, yPosition, 0); // Không xoay
         contentByte.EndText();
+
+        contentByte.RestoreState();
     }
 }
