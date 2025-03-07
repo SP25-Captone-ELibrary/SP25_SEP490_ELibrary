@@ -17,4 +17,6 @@ public interface IAIClassificationService
     Task<IServiceResult> PredictAsync(IFormFile image);
     Task<IServiceResult> RecommendBook(IFormFile image);
     Task<IServiceResult> RecommendBook(int currentItemId);
+    Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(int rootItemId);
+    Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(List<int> selectedItemIds);
 }

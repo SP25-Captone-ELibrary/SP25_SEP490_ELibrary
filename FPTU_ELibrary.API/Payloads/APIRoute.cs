@@ -305,10 +305,14 @@
 		/// </summary>
 		public static class Group
 		{
+			//[GET]
+			public const string GetSuitableItemsForGrouping = Base + "/management/groups/suitable-items/{rootItemId}";
 			// [POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
-			public const string DefineGroup = Base + "/management/groups/define-group"; 
+			public const string DefineGroup = Base + "/management/groups/define-group";
+			public const string GroupedItems = Base + "/management/groups/grouped-items";
+			
 		}
 		
 		/// <summary>

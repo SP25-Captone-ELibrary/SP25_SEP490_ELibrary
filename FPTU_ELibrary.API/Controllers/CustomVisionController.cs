@@ -2,9 +2,11 @@ using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
+using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
     
@@ -71,5 +73,15 @@ public class CustomVisionController : ControllerBase
     public async Task<IActionResult> Recommendation([FromForm] PredictRequest req)
     {
         return Ok(await _aiClassificationService.RecommendBook(req.ImageToPredict));
+    }
+    [HttpGet(APIRoute.Group.GetSuitableItemsForGrouping, Name = nameof(GetSuitableItemsForGrouping))]
+    public async Task<IActionResult> GetSuitableItemsForGrouping([FromRoute] int rootItemId)
+    {
+        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(rootItemId));
+    }
+    [HttpGet(APIRoute.Group.GroupedItems,Name = nameof(GroupedItems))]
+    public async Task<IActionResult> GroupedItems([FromBody] GroupAllItemsRequest req)
+    {
+        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(req.SelectedItemIds));
     }
 }

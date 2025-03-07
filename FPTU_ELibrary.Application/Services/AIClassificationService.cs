@@ -20,6 +20,7 @@ using SixLabors.ImageSharp;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications;
+using iTextSharp.text;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -154,7 +155,7 @@ public class AIClassificationService : IAIClassificationService
             }
 
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 10, groupCode=tag}
+                "AIProcessMessage", new { message = 10, groupCode = tag }
             );
             //Get group and item in group
             var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
@@ -187,16 +188,16 @@ public class AIClassificationService : IAIClassificationService
                 memoryStream.Position = 0;
                 memoryStreams.Add((memoryStream, $"{groupValueLibraryItem.LibraryItemId}_cover.jpg"));
             }
-            
+
             // upload images with dynamic field names and filenames
             await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 20, groupCode=tag}
+                "AIProcessMessage", new { message = 20, groupCode = tag }
             );
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 30, groupCode=tag}
+                "AIProcessMessage", new { message = 30, groupCode = tag }
             );
             if (iteration is null)
             {
@@ -206,25 +207,25 @@ public class AIClassificationService : IAIClassificationService
             // Wait until the training is completed before publishing
             await WaitForTrainingCompletionAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 40, groupCode=tag}
+                "AIProcessMessage", new { message = 40, groupCode = tag }
             );
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 50, groupCode=tag}
+                "AIProcessMessage", new { message = 50, groupCode = tag }
             );
             // Publish the new iteration and update appsettings.json
             await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message =  60, groupCode=tag}
+                "AIProcessMessage", new { message = 60, groupCode = tag }
             );
             await libraryItemService.UpdateTrainingStatusAsync(libraryItemIds);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message =  80, groupCode=tag}
+                "AIProcessMessage", new { message = 80, groupCode = tag }
             );
             //Send notification when finish
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new{ message = 100, groupCode=tag}
+                "AIProcessMessage", new { message = 100, groupCode = tag }
             );
         }
         catch (Exception ex)
@@ -367,6 +368,277 @@ public class AIClassificationService : IAIClassificationService
     // create a function with List<int> libraryItemIds as parameter and check if their field could be able to be in a group or not
     // base on CutterNumber,ClassificationNumber,mainAuthor,Title
 
+    public async Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(int rootItemId)
+    {
+        try
+        {
+            // Get selected item
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == rootItemId);
+            baseSpec.EnableSplitQuery();
+            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author));
+            var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+            var rootLibraryItemValue = (LibraryItemDto)libraryItem.Data!;
+            var mainAuthor = rootLibraryItemValue.LibraryItemAuthors
+                .First(x => x.LibraryItemId == rootItemId)!.Author.FullName;
+            // Create list of checked properties compare to root item
+            var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
+            var listPropertiesChecked = new List<CheckedGroupDetailDto<string>>();
+            listPropertiesChecked.Add(new CheckedGroupDetailDto<string>()
+            {
+                PropertiesChecked = new Dictionary<string, int>()
+                {
+                    { nameof(rootLibraryItemValue.CutterNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
+                    { nameof(rootLibraryItemValue.ClassificationNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
+                    { nameof(Author), (int)FieldGroupCheckedStatus.GroupSuccess },
+                    { nameof(rootLibraryItemValue.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
+                    { nameof(rootLibraryItemValue.SubTitle), (int)FieldGroupCheckedStatus.GroupSuccess }
+                },
+                Item = rootLibraryItemValue,
+                IsRoot = true
+            });
+
+
+            var candidateItemsSpec = new BaseSpecification<LibraryItem>
+            (li => li.CutterNumber!.Equals(rootLibraryItemValue.CutterNumber) &&
+                   li.ClassificationNumber!.Equals(rootLibraryItemValue.ClassificationNumber)
+                   && li.LibraryItemAuthors.Any(lia => lia.Author.FullName.Equals(mainAuthor))
+                   && li.LibraryItemId != rootItemId
+            );
+
+            candidateItemsSpec.EnableSplitQuery();
+            candidateItemsSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author));
+            var candidateItems = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(candidateItemsSpec);
+            if (candidateItems.Data is null)
+            {
+                // only root item in the group
+                var responseData = new CheckedGroupResponseDto<string>()
+                {
+                    IsAbleToCreateGroup = (int)FieldGroupCheckedStatus.GroupSuccess,
+                    ListCheckedGroupDetail = listPropertiesChecked
+                };
+                return new ServiceResult(ResultCodeConst.AIService_Success0005,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005), responseData);
+            }
+            else
+            {
+                var candidateItemsValue = (List<LibraryItemDto>)candidateItems.Data!;
+
+                foreach (var libraryItemDto in candidateItemsValue)
+                {
+                    var itemCheckedResult = new CheckedGroupDetailDto<string>()
+                    {
+                        PropertiesChecked = new Dictionary<string, int>()
+                    };
+                    var titleStatus = CompareFieldStatus(
+                        StringUtils.RemoveSpecialCharacter(libraryItemDto.Title),
+                        StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
+
+                    int subTitleStatus;
+                    if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle is null)
+                    {
+                        subTitleStatus = titleStatus;
+                    }
+                    else if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle != null)
+                    {
+                        subTitleStatus = CompareFieldStatus(
+                            StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                            StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
+                    }
+                    else if (rootLibraryItemValue.SubTitle != null && libraryItemDto.SubTitle != null)
+                    {
+                        subTitleStatus = CompareFieldStatus(
+                            StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                            StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""));
+                    }
+                    else
+                    {
+                        subTitleStatus = CompareFieldStatus(
+                            StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""),
+                            StringUtils.RemoveSpecialCharacter(libraryItemDto.Title));
+                    }
+
+                    var isSubTitleNull = string.IsNullOrEmpty(rootLibraryItemValue.SubTitle);
+
+                    var titleSubTitleStatus = CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
+
+                    itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.CutterNumber)
+                        , (int)FieldGroupCheckedStatus.GroupSuccess);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.ClassificationNumber)
+                        , (int)FieldGroupCheckedStatus.GroupSuccess);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(Author)
+                        , (int)FieldGroupCheckedStatus.GroupSuccess);
+                    itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
+                    determineOverallStatus.Add(itemCheckedResult);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.Title), titleStatus);
+                    itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.SubTitle), subTitleStatus);
+                    itemCheckedResult.Item = libraryItemDto;
+                    itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
+                    listPropertiesChecked.Add(itemCheckedResult);
+                }
+
+                var overallStatus = DetermineOverallStatus(determineOverallStatus);
+
+                var responseData = new CheckedGroupResponseDto<string>()
+                {
+                    IsAbleToCreateGroup = overallStatus,
+                    ListCheckedGroupDetail = listPropertiesChecked
+                };
+
+                return new ServiceResult(
+                    ResultCodeConst.AIService_Success0005,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005),
+                    responseData);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.Error(e.Message);
+            throw new Exception("Error invoke when Get and Grade All Suitable Items For Grouping");
+        }
+    }
+
+    public async Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(List<int> selectedItemIds)
+    {
+        try
+        {
+            var response = new List<CheckedGroupResponseDto<string>>();
+            foreach (var selectedItemId in selectedItemIds)
+            {
+                // Get selected item
+                var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == selectedItemId);
+                baseSpec.EnableSplitQuery();
+                baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author));
+                var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
+                var rootLibraryItemValue = (LibraryItemDto)libraryItem.Data!;
+                var mainAuthor = rootLibraryItemValue.LibraryItemAuthors
+                    .First(x => x.LibraryItemId == selectedItemId)!.Author.FullName;
+                // Create list of checked properties compare to root item
+                var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
+                var listPropertiesChecked = new List<CheckedGroupDetailDto<string>>();
+                listPropertiesChecked.Add(new CheckedGroupDetailDto<string>()
+                {
+                    PropertiesChecked = new Dictionary<string, int>()
+                    {
+                        { nameof(rootLibraryItemValue.CutterNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
+                        {
+                            nameof(rootLibraryItemValue.ClassificationNumber), (int)FieldGroupCheckedStatus.GroupSuccess
+                        },
+                        { nameof(Author), (int)FieldGroupCheckedStatus.GroupSuccess },
+                        { nameof(rootLibraryItemValue.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
+                        { nameof(rootLibraryItemValue.SubTitle), (int)FieldGroupCheckedStatus.GroupSuccess }
+                    },
+                    Item = rootLibraryItemValue,
+                    IsRoot = true
+                });
+
+
+                var candidateItemsSpec = new BaseSpecification<LibraryItem>
+                (li => li.CutterNumber!.Equals(rootLibraryItemValue.CutterNumber) &&
+                       li.ClassificationNumber!.Equals(rootLibraryItemValue.ClassificationNumber)
+                       && li.LibraryItemAuthors.Any(lia => lia.Author.FullName.Equals(mainAuthor))
+                       && li.LibraryItemId != selectedItemId
+                );
+
+                candidateItemsSpec.EnableSplitQuery();
+                candidateItemsSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author));
+                var candidateItems = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(candidateItemsSpec);
+                if (candidateItems.Data is null)
+                {
+                    // only root item in the group
+                    var responseData = new CheckedGroupResponseDto<string>()
+                    {
+                        IsAbleToCreateGroup = (int)FieldGroupCheckedStatus.GroupSuccess,
+                        ListCheckedGroupDetail = listPropertiesChecked
+                    };
+                    return new ServiceResult(ResultCodeConst.AIService_Success0005,
+                        await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005), responseData);
+                }
+                else
+                {
+                    var candidateItemsValue = (List<LibraryItemDto>)candidateItems.Data!;
+
+                    foreach (var libraryItemDto in candidateItemsValue)
+                    {
+                        var itemCheckedResult = new CheckedGroupDetailDto<string>()
+                        {
+                            PropertiesChecked = new Dictionary<string, int>()
+                        };
+                        var titleStatus = CompareFieldStatus(
+                            StringUtils.RemoveSpecialCharacter(libraryItemDto.Title),
+                            StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
+
+                        int subTitleStatus;
+                        if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle is null)
+                        {
+                            subTitleStatus = titleStatus;
+                        }
+                        else if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle != null)
+                        {
+                            subTitleStatus = CompareFieldStatus(
+                                StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                                StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
+                        }
+                        else if (rootLibraryItemValue.SubTitle != null && libraryItemDto.SubTitle != null)
+                        {
+                            subTitleStatus = CompareFieldStatus(
+                                StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                                StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""));
+                        }
+                        else
+                        {
+                            subTitleStatus = CompareFieldStatus(
+                                StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""),
+                                StringUtils.RemoveSpecialCharacter(libraryItemDto.Title));
+                        }
+
+                        var isSubTitleNull = string.IsNullOrEmpty(rootLibraryItemValue.SubTitle);
+
+                        var titleSubTitleStatus =
+                            CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
+
+                        itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.CutterNumber)
+                            , (int)FieldGroupCheckedStatus.GroupSuccess);
+                        itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.ClassificationNumber)
+                            , (int)FieldGroupCheckedStatus.GroupSuccess);
+                        itemCheckedResult.PropertiesChecked.Add(nameof(Author)
+                            , (int)FieldGroupCheckedStatus.GroupSuccess);
+                        itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
+                        determineOverallStatus.Add(itemCheckedResult);
+                        itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.Title), titleStatus);
+                        itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.SubTitle), subTitleStatus);
+                        itemCheckedResult.Item = libraryItemDto;
+                        itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
+                        listPropertiesChecked.Add(itemCheckedResult);
+                    }
+
+                    var overallStatus = DetermineOverallStatus(determineOverallStatus);
+
+                    var responseData = new CheckedGroupResponseDto<string>()
+                    {
+                        IsAbleToCreateGroup = overallStatus,
+                        ListCheckedGroupDetail = listPropertiesChecked
+                    };
+                    response.Add(responseData);
+                }
+            }
+
+            return new ServiceResult(
+                ResultCodeConst.AIService_Success0005,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005),
+                response);
+        }
+        catch (Exception e)
+        {
+            _logger.Error(e.Message);
+            throw new Exception("Error invoke when Get and Grade All Suitable Items For Grouping");
+        }
+    }
+
+
     #region IsAbleToCreateGroup func
 
     public async Task<IServiceResult> IsAbleToCreateGroup(int rootItemId, List<int>? otherItemIds)
@@ -450,8 +722,8 @@ public class AIClassificationService : IAIClassificationService
                     }
 
                     var isSubTitleNull = string.IsNullOrEmpty(libraryItemValue.SubTitle);
-                    var titleSubTitleStatus = CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
-
+                    var titleSubTitleStatus =
+                        CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
                     itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
                     determineOverallStatus.Add(itemCheckedResult);
                     itemCheckedResult.PropertiesChecked.Add(nameof(libraryItemValue.Title), titleStatus);
@@ -495,56 +767,56 @@ public class AIClassificationService : IAIClassificationService
 
     private int CombineTitleSubTitleStatus(int titleStatus, int subTitleStatus, bool isSubTitleNull)
     {
-        if (isSubTitleNull)
+        // if (isSubTitleNull)
+        // {
+        return (titleStatus, subTitleStatus) switch
         {
-            return (titleStatus, subTitleStatus) switch
-            {
-                ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
-                    FieldGroupCheckedStatus.GroupFailed),
-                ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
-                    FieldGroupCheckedStatus.GroupSuccess),
-                ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
-                    FieldGroupCheckedStatus.GroupFailed),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
-                    (int)(FieldGroupCheckedStatus.GroupFailed),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
-                    => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
-                    FieldGroupCheckedStatus.GroupSuccess),
-                _ => (int)(FieldGroupCheckedStatus.GroupFailed)
-            };
-        }
-        else
-        {
-            return (titleStatus, subTitleStatus) switch
-            {
-                ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupFailed) => (int)
-                    FieldGroupCheckedStatus.GroupFailed,
-                ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupSuccess) => (int)
-                    FieldGroupCheckedStatus.GroupSuccess,
-                ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
-                    FieldGroupCheckedStatus.GroupSuccess),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
-                    => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-                    (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-                ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
-                    FieldGroupCheckedStatus.GroupSuccess),
-                _ => (int)(FieldGroupCheckedStatus.GroupFailed)
-            };
-        }
+            ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
+                FieldGroupCheckedStatus.GroupFailed),
+            ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
+                FieldGroupCheckedStatus.GroupSuccess),
+            ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
+                (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
+                FieldGroupCheckedStatus.GroupFailed),
+            ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
+                (int)(FieldGroupCheckedStatus.GroupFailed),
+            ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
+                => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
+                (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
+                (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
+                FieldGroupCheckedStatus.GroupSuccess),
+            _ => (int)(FieldGroupCheckedStatus.GroupFailed)
+        };
+        // }
+        // else
+        // {
+        //     return (titleStatus, subTitleStatus) switch
+        //     {
+        //         ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupFailed) => (int)
+        //             FieldGroupCheckedStatus.GroupFailed,
+        //         ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupSuccess) => (int)
+        //             FieldGroupCheckedStatus.GroupSuccess,
+        //         ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
+        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
+        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
+        //             FieldGroupCheckedStatus.GroupSuccess),
+        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
+        //             => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
+        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
+        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
+        //             FieldGroupCheckedStatus.GroupSuccess),
+        //         _ => (int)(FieldGroupCheckedStatus.GroupFailed)
+        //     };
+        // }
     }
 
     private int DetermineOverallStatus(List<CheckedGroupDetailDto<string>> listPropertiesChecked)
@@ -571,8 +843,9 @@ public class AIClassificationService : IAIClassificationService
                 .ThenInclude(lia => lia.Author));
             var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
             var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
-            var mainAuthor = libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
-                .Author.FullName;
+            var mainAuthor =
+                libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
+                    .Author.FullName;
 
             var groupSpec = new BaseSpecification<LibraryItemGroup>(lig =>
                 lig.CutterNumber == libraryItemValue.CutterNumber &&
@@ -612,7 +885,8 @@ public class AIClassificationService : IAIClassificationService
                 }
 
                 // combine Title and SubTitle status
-                var combinedStatus = CombineTitleSubTitleStatus(titleStatus, subTitleStatus, group.SubTitle == null);
+                var combinedStatus =
+                    CombineTitleSubTitleStatus(titleStatus, subTitleStatus, group.SubTitle == null);
 
                 double groupScore = combinedStatus switch
                 {
@@ -811,7 +1085,8 @@ public class AIClassificationService : IAIClassificationService
                                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
                             .Select(r => r.Box)
                             .FirstOrDefault();
-                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                        itemCountObjects =
+                            _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
                     }
                     else
                     {
@@ -927,7 +1202,8 @@ public class AIClassificationService : IAIClassificationService
                                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
                             .Select(r => r.Box)
                             .FirstOrDefault();
-                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                        itemCountObjects =
+                            _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
                     }
                     else
                     {
@@ -981,7 +1257,8 @@ public class AIClassificationService : IAIClassificationService
             if (allItem.Data is null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "items"));
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),
+                        "items"));
             }
 
             var allItemValue = (List<LibraryItemDto>)allItem.Data!;
@@ -1363,7 +1640,8 @@ public class AIClassificationService : IAIClassificationService
                                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
                             .Select(r => r.Box)
                             .FirstOrDefault();
-                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                        itemCountObjects =
+                            _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
                     }
                     else
                     {
@@ -1467,7 +1745,8 @@ public class AIClassificationService : IAIClassificationService
                                 r.Name.Equals("book", StringComparison.OrdinalIgnoreCase))
                             .Select(r => r.Box)
                             .FirstOrDefault();
-                        itemCountObjects = _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
+                        itemCountObjects =
+                            _aiDetectionService.CountObjectsInImage(itemObjectsDetected, itemBookBox);
                     }
                     else
                     {
@@ -1480,7 +1759,7 @@ public class AIClassificationService : IAIClassificationService
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
                     var matchRate = (double)matchCount / totalObject * 100;
-    
+
                     // ocr check
                     List<string> mainAuthor = new List<string>();
                     mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
