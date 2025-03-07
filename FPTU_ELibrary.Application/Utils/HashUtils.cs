@@ -25,15 +25,14 @@ namespace FPTU_ELibrary.Application.Utils
             const string uppercaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // Uppercase letters
             const string lowercaseChars = "abcdefghijklmnopqrstuvwxyz"; // Lowercase letters
             const string digitChars = "0123456789"; // Numbers
-            const string specialChars = "@$!%*?&"; // Special characters
-            const string allChars = uppercaseChars + lowercaseChars + digitChars + specialChars; // Combined character pool
+            const string specialChars = "@"; // Special character
+            const string allChars = uppercaseChars + digitChars; // Combined character pool
 
             Random random = new Random();
             StringBuilder password = new StringBuilder();
 
-            // Ensure at least one uppercase letter, one digit, and one special character
+            // Ensure at least one uppercase letter and one special character
             password.Append(uppercaseChars[random.Next(uppercaseChars.Length)]);
-            password.Append(digitChars[random.Next(digitChars.Length)]);
             password.Append(specialChars[random.Next(specialChars.Length)]);
 
             // Fill the remaining characters randomly from all character pools

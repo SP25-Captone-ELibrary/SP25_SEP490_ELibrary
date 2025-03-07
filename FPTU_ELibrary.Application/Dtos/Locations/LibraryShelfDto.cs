@@ -13,6 +13,12 @@ public class LibraryShelfDto
     
     // Shelf detail
     public string ShelfNumber { get; set; } = null!;
+    public string? EngShelfName { get; set; }
+    public string? VieShelfName { get; set; }
+    
+    // DDC Range
+    public decimal ClassificationNumberRangeFrom { get; set; }
+    public decimal ClassificationNumberRangeTo { get; set; }
 
     // Creation and update datetime
     public DateTime CreateDate { get; set; }
@@ -22,7 +28,8 @@ public class LibraryShelfDto
     public bool IsDeleted { get; set; }
 
     [JsonIgnore]
-    public ICollection<LibraryItemDto> LibraryItems { get; set; } = new List<LibraryItemDto>();
-
     public LibrarySectionDto Section { get; set; } = null!;
+    
+    [JsonIgnore]
+    public ICollection<LibraryItemDto> LibraryItems { get; set; } = new List<LibraryItemDto>();
 }

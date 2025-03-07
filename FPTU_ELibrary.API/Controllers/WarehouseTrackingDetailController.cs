@@ -80,6 +80,13 @@ public class WarehouseTrackingDetailController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet(APIRoute.WarehouseTrackingDetail.GetRangeBarcodeById, Name = nameof(GetRangeTrackingDetailBarcodeByIdAsync))]
+    public async Task<IActionResult> GetRangeTrackingDetailBarcodeByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _trackingDetailService.GetRangeBarcodeByIdAsync(trackingDetailId: id));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.WarehouseTrackingDetail.GetById, Name = nameof(GetWarehouseTrackingDetailByIdAsync))]
     public async Task<IActionResult> GetWarehouseTrackingDetailByIdAsync([FromRoute] int id)
     {

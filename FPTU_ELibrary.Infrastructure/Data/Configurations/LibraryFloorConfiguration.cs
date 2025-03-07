@@ -16,13 +16,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.CreateDate)
                 .HasColumnType("datetime")
                 .HasColumnName("create_date");
-            builder.Property(e => e.FloorNumber)
-                .HasMaxLength(50)
-                .HasColumnName("floor_number");
             builder.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             builder.Property(e => e.UpdateDate)
                 .HasColumnType("datetime")
                 .HasColumnName("update_date");
+
+            #region Update at 28/02/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.FloorNumber)
+            //     .HasMaxLength(50)
+            //     .HasColumnName("floor_number");
+            #endregion
         }
     }
 }

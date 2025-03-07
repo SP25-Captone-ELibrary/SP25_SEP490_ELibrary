@@ -13,6 +13,7 @@ public static class WarehouseTrackingDetailCombinedDtoExtensions
 {
     public static WarehouseTrackingDetailCombinedDto ToDetailCombinedDto(
         this List<WarehouseTrackingDetailDto> dtos,
+        List<WarehouseTrackingDetailDto> actualTrackingDetails,
         WarehouseTrackingDto trackingDto,
         List<CategoryDto> categories,
         int pageIndex, int pageSize, int totalPage, int totalActualItem)
@@ -24,7 +25,7 @@ public static class WarehouseTrackingDetailCombinedDtoExtensions
         foreach (var cate in categories)
         {
             // Group warehouse tracking detail by category
-            var statisticSummary = dtos
+            var statisticSummary = actualTrackingDetails
                 .Where(g => g.CategoryId == cate.CategoryId)
                 .GroupBy(g => g.CategoryId)
                 .Select(g => g.ToList().ToSummaryDto(category: g.First().Category))

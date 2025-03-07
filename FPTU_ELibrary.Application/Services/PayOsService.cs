@@ -194,8 +194,14 @@ public class PayOsService : IPayOsService
                     // {
                     // }
                     
+                    // Initialize different datetime format
+                    string[] formats = { 
+                        "yyyy-MM-dd HH:mm:ss",      
+                        "yyyy-MM-ddTHH:mm:sszzz" 
+                    };
+                    
                     DateTimeOffset parsedDateTimeOffset = DateTimeOffset.ParseExact(
-                        req.Data.Transactions[0].TransactionDateTime, "yyyy-MM-dd HH:mm:ss", null);
+                        req.Data.Transactions[0].TransactionDateTime, formats, null);
                     // Transaction datetime
                     transactionDate = parsedDateTimeOffset.DateTime;
                     // Transaction status
@@ -300,12 +306,20 @@ public class PayOsService : IPayOsService
                 if (confirmRes.Data is false) return confirmRes;
             }   
        
+            // Determine which user to send
+            var emailToSend = !string.IsNullOrEmpty(transactionDtos[0].CreatedBy) &&
+                              !Equals(userDto.Email, transactionDtos[0].CreatedBy) // Created by is different 
+                ? transactionDtos[0].CreatedBy // Prioritize to select created by
+                : userDto.Email; // Otherwise get user's email
             // Send payment status to realtime hub
-            await _hubContext.Clients.User(userDto.Email).SendAsync(Hub_Method, new
+            if (emailToSend != null)
             {
-                Messsage = successMsg,
-                Status = status
-            });
+                await _hubContext.Clients.User(emailToSend).SendAsync(Hub_Method, new
+                {
+                    Message = successMsg,
+                    Status = status
+                });
+            }
             
             // Msg: Verify payment transaction successfully
             return new ServiceResult(ResultCodeConst.Transaction_Success0002, successMsg);

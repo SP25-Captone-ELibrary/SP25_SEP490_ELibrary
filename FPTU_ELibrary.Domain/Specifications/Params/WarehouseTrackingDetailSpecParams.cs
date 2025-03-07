@@ -5,6 +5,9 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 
 public class WarehouseTrackingDetailSpecParams : BaseSpecParams
 {
+    // Filter fields
+    public bool? HasGlueBarcode { get; set; }
+    
     #region Basic search properties
     public string? ItemName { get; set; }
     public int? ItemTotal { get; set; }

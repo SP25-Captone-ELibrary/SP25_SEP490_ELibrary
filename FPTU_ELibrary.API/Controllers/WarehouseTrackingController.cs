@@ -1,5 +1,6 @@
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.WarehouseTracking;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -18,13 +19,17 @@ namespace FPTU_ELibrary.API.Controllers;
 public class WarehouseTrackingController : ControllerBase
 {
     private readonly IWarehouseTrackingService<WarehouseTrackingDto> _warehouseTrackSvc;
+    private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _warehouseTrackDetailSvc;
+        
     private readonly AppSettings _appSettings;
 
     public WarehouseTrackingController(
         IWarehouseTrackingService<WarehouseTrackingDto> warehouseTrackSvc,
+        IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> warehouseTrackDetailSvc,
         IOptionsMonitor<AppSettings> monitor)
     {
         _warehouseTrackSvc = warehouseTrackSvc;
+        _warehouseTrackDetailSvc = warehouseTrackDetailSvc;
         _appSettings = monitor.CurrentValue;
     }
     
@@ -72,6 +77,17 @@ public class WarehouseTrackingController : ControllerBase
         [FromQuery] WarehouseTrackingStatus status)
     {
         return Ok(await _warehouseTrackSvc.UpdateStatusAsync(id, status));
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.WarehouseTracking.UpdateRangeUniqueBarcodeRegistration,
+        Name = nameof(UpdateRangeUniqueBarcodeRegistrationAsync))]
+    public async Task<IActionResult> UpdateRangeUniqueBarcodeRegistrationAsync(
+        [FromRoute] int id, [FromBody] RangeRequest<int> req)
+    {
+        return Ok(await _warehouseTrackDetailSvc.UpdateRangeBarcodeRegistrationAsync(
+            trackingId: id,
+            whDetailIds: req.Ids.ToList()));
     }
 
     [Authorize]

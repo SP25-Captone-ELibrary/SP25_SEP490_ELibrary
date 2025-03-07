@@ -15,11 +15,21 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.LibraryItemId)
                 .ValueGeneratedNever()
                 .HasColumnName("library_item_id");
-            builder.Property(e => e.AvailableUnits).HasColumnName("available_units");
-            builder.Property(e => e.RequestUnits).HasColumnName("request_units");
-            builder.Property(e => e.BorrowedUnits).HasColumnName("borrowed_units");
-            builder.Property(e => e.ReservedUnits).HasColumnName("reserved_units");
-            builder.Property(e => e.TotalUnits).HasColumnName("total_units");
+            builder.Property(e => e.AvailableUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("available_units");
+            builder.Property(e => e.RequestUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("request_units");
+            builder.Property(e => e.BorrowedUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("borrowed_units");
+            builder.Property(e => e.ReservedUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("reserved_units");
+            builder.Property(e => e.TotalUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("total_units");
 
             builder.HasOne(d => d.LibraryItem).WithOne(p => p.LibraryItemInventory)
                 .HasForeignKey<LibraryItemInventory>(d => d.LibraryItemId)

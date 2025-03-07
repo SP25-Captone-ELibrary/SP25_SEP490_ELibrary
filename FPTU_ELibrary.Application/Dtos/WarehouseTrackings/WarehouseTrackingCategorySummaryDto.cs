@@ -28,7 +28,7 @@ public static class WarehouseTrackingCategorySummaryDtoExtensions
         var totalCatalogedItem = groupedDetail.Count(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId > 0);
         // Total instance of cataloged item  
         var totalCatalogedInstanceItem = groupedDetail
-            .Where(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId > 0)
+            .Where(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId > 0 && wtd.HasGlueBarcode)
             .Select(wtd => wtd.ItemTotal).Sum();
         
         // Total price

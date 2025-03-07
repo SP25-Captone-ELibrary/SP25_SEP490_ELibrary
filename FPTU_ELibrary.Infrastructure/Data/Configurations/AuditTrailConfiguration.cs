@@ -36,13 +36,13 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
             .HasColumnType("nvarchar(800)")
             .HasColumnName("changed_columns");
         builder.Property(e => e.OldValues)
-            .HasColumnType("nvarchar(2500)")
+            .HasColumnType("nvarchar(3000)")
             .HasColumnName("old_values")
             .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved
             // .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(e => e.NewValues)
-            .HasColumnType("nvarchar(2500)")
+            .HasColumnType("nvarchar(3000)")
             .HasColumnName("new_values")
             .HasConversion(new DictionaryToJsonConverter());
             // Mark as read only after saved

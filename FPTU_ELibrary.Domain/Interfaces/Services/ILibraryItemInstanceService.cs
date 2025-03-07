@@ -9,6 +9,7 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
 {
     Task<IServiceResult> GenerateBarcodeRangeAsync(int categoryId, int totalItem, int? skipItem);
     Task<IServiceResult> GetByBarcodeAsync(string barcode);
+    Task<IServiceResult> GetByBarcodeToConfirmUpdateShelfAsync(string barcode);
     Task<IServiceResult> CheckExistBarcodeAsync(string barcode);
     Task<IServiceResult> AddRangeToLibraryItemAsync(int libraryItemId, List<TDto> libraryItemInstances);
     Task<IServiceResult> AddRangeBarcodeWithoutSaveChangesAsync(string isbn, int conditionId, string barcodeRangeFrom, string barcodeRangeTo);
@@ -20,6 +21,10 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
     Task<IServiceResult> DeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
     Task<IServiceResult> CountTotalItemInstanceAsync(int libraryItemId);
     Task<IServiceResult> CountTotalItemInstanceAsync(List<int> libraryItemIds);
+    Task<IServiceResult> UpdateInShelfAsync(string barcode);
+    Task<IServiceResult> UpdateOutOfShelfAsync(string barcode);
+    Task<IServiceResult> UpdateRangeInShelfAsync(List<string> barcodes);
+    Task<IServiceResult> UpdateRangeOutOfShelfAsync(List<string> barcodes);
     Task<IServiceResult> UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(List<int> libraryItemInstanceIds,
         LibraryItemInstanceStatus status, bool isProcessBorrowRequest);
 }
