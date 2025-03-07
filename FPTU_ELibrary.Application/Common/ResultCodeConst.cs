@@ -481,6 +481,22 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region Library Item
 		/// <summary>
+		/// [SUCCESS] Item has been shelved successfully
+		/// </summary>
+		public const string LibraryItem_Success0001 = "LibraryItem.Success0001";
+		/// <summary>
+		/// [SUCCESS] Total {0} item have been shelved successfully
+		/// </summary>
+		public const string LibraryItem_Success0002 = "LibraryItem.Success0002";
+		/// <summary>
+        /// [SUCCESS] Item has been unshelved successfully
+        /// </summary>
+        public const string LibraryItem_Success0003 = "LibraryItem.Success0003";
+        /// <summary>
+        /// [SUCCESS] Total {0} item have been unshelved successfully
+        /// </summary>
+        public const string LibraryItem_Success0004 = "LibraryItem.Success0004";
+		/// <summary>
 		/// [WARNING] Some authors are unavailable or do not exist
 		/// </summary>
 		public const string LibraryItem_Warning0001 = "LibraryItem.Warning0001";
@@ -537,10 +553,33 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryItem_Warning0014 = "LibraryItem.Warning0014";
 		/// <summary>
-		/// [WARNING] The number of instance item is exceed than default config threshold. Please modify system configuration to continue
+		/// [WARNING] The number of instance item exceed than default config threshold. Please modify system configuration to continue
 		/// </summary>
 		public const string LibraryItem_Warning0015 = "LibraryItem.Warning0015";
-
+		/// <summary>
+		/// [WARNING] The number of instance item exceed than default config threshold. Please modify system configuration to continue
+		/// </summary>
+		public const string LibraryItem_Warning0016 = "LibraryItem.Warning0016";
+		/// <summary>
+		/// [WARNING] Unable to place item {0} on shelf {1}
+		/// </summary>
+		public const string LibraryItem_Warning0017 = "LibraryItem.Warning0017";
+		/// <summary>
+		/// [WARNING] No suitable shelf found for the requested item
+		/// </summary>
+		public const string LibraryItem_Warning0018 = "LibraryItem.Warning0018";
+		/// <summary>
+		/// [WARNING] The item's status cannot be updated because it has not been shelved yet
+		/// </summary>
+		public const string LibraryItem_Warning0019 = "LibraryItem.Warning0019";
+		/// <summary>
+        /// [WARNING] Cannot update item's shelf status to 'in-shelf' as {0}
+        /// </summary>
+        public const string LibraryItem_Warning0020 = "LibraryItem.Warning0020";
+        /// <summary>
+        /// [WARNING] Cannot update item's shelf status to 'out-of-shelf' as {0}
+        /// </summary>
+        public const string LibraryItem_Warning0021 = "LibraryItem.Warning0021";
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
@@ -549,6 +588,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] The action cannot be performed. Please switch to draft status to proceed
 		/// </summary>
 		public const string LibraryItem_Fail0002 = "LibraryItem.Fail0002";
+		/// <summary>
+		/// [FAIL] Shelving the item was unsuccessful
+		/// </summary>
+		public const string LibraryItem_Fail0003 = "LibraryItem.Fail0003";
+		/// <summary>
+		/// [FAIL] Unshelving the item was unsuccessful
+		/// </summary>
+		public const string LibraryItem_Fail0004 = "LibraryItem.Fail0004";
 		#endregion
 
 		#region Library Card
@@ -718,6 +765,10 @@ namespace FPTU_ELibrary.Application.Common
 
         #region Warehouse Tracking
         /// <summary>
+        /// [SUCCESS] Total {0} warehouse tracking detail has been registered unique barcode success
+        /// </summary>
+        public const string WarehouseTracking_Success0001 = "WarehouseTracking.Success0001";
+        /// <summary>
         /// [WARNING] Do not allow to change status from {0} to {1}
         /// </summary>
         public const string WarehouseTracking_Warning0001 = "WarehouseTracking.Warning0001";
@@ -782,6 +833,30 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Cannot change item when tracking type is stock out or transfer
         /// </summary>
         public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
+        /// <summary>
+        /// [WARNING] Warehouse tracking detail has already been registered unique barcode
+        /// </summary>
+        public const string WarehouseTracking_Warning0017 = "WarehouseTracking.Warning0017";
+        /// <summary>
+        /// [WARNING] Cannot register unique barcode for warehouse tracking detail as it has not been cataloged yet
+        /// </summary>
+        public const string WarehouseTracking_Warning0018 = "WarehouseTracking.Warning0018";
+        /// <summary>
+        /// [WARNING] Stock transaction type {0} is not valid to registering unique barcode for item
+        /// </summary>
+        public const string WarehouseTracking_Warning0019 = "WarehouseTracking.Warning0019";
+        /// <summary>
+        /// [WARNING] Not found range unique registration barcode. Please update to continue
+        /// </summary>
+        public const string WarehouseTracking_Warning0020 = "WarehouseTracking.Warning0020";
+        /// <summary>
+        /// [WARNING] Unique barcode range of warehouse tracking detail is not valid. Please modify and try again
+        /// </summary>
+        public const string WarehouseTracking_Warning0021 = "WarehouseTracking.Warning0021";
+        /// <summary>
+        /// [FAIL] Failed to register unique barcode for warehouse tracking detail
+        /// </summary>
+        public const string WarehouseTracking_Fail0001 = "WarehouseTracking.Fail0001";
         #endregion
 
         #region Transaction

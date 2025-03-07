@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -78,15 +79,15 @@ public class PaymentController : ControllerBase
     }
         
     [Authorize]
-    [HttpGet(APIRoute.Payment.GetPayOsPaymentLinkInformation, Name = nameof(GetPayOsPaymentLinkInformation))]
-    public async Task<IActionResult> GetPayOsPaymentLinkInformation([FromRoute] string paymentLinkId)
+    [HttpGet(APIRoute.Payment.GetPayOsPaymentLinkInformation, Name = nameof(GetPayOsPaymentLinkInformationAsync))]
+    public async Task<IActionResult> GetPayOsPaymentLinkInformationAsync([FromRoute] string paymentLinkId)
     {
         return Ok(await _payOsService.GetLinkInformationAsync(paymentLinkId));
     }
     
     [Authorize]
-    [HttpPost(APIRoute.Payment.CancelPayment, Name = nameof(CancelPayment))]
-    public async Task<IActionResult> CancelPayment([FromRoute] string paymentLinkId, [FromBody] PayOSCancelPaymentRequest req)
+    [HttpPost(APIRoute.Payment.CancelPayment, Name = nameof(CancelPaymentAsync))]
+    public async Task<IActionResult> CancelPaymentAsync([FromRoute] string paymentLinkId, [FromBody] PayOSCancelPaymentRequest req)
     {
         return Ok(await _payOsService.CancelPaymentAsync(
             paymentLinkId: paymentLinkId, 
@@ -95,20 +96,20 @@ public class PaymentController : ControllerBase
     }
     
     [Authorize]
-    [HttpPost(APIRoute.Payment.VerifyPayment, Name = nameof(VerifyPayment))]
-    public async Task<IActionResult> VerifyPayment ([FromBody] PayOSPaymentLinkInformationResponseDto req)
+    [HttpPost(APIRoute.Payment.VerifyPayment, Name = nameof(VerifyPaymentAsync))]
+    public async Task<IActionResult> VerifyPaymentAsync ([FromBody] PayOSPaymentLinkInformationResponseDto req)
     {
         return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req));
     }
 
-    [HttpPost(APIRoute.Payment.WebhookPayOsReturn)]
+    [HttpPost(APIRoute.Payment.WebhookPayOsReturn, Name = nameof(WebhookPayOsReturnAsync))]
     public async Task<IActionResult> WebhookPayOsReturnAsync([FromBody] WebhookType req)
     {
         return Ok(await _payOsService.VerifyPaymentWebhookDataAsync(req.ToPayOsResponseDto(TransactionStatus.Paid)));
     }
     
-    [HttpPost(APIRoute.Payment.SendWebhookConfirm)]
-    public async Task<IActionResult> TestAsync([FromBody] SendWebhookConfirmRequest req)
+    [HttpPost(APIRoute.Payment.SendWebhookConfirm, Name = nameof(SendWebhookConfirmAsync))]
+    public async Task<IActionResult> SendWebhookConfirmAsync([FromBody] SendWebhookConfirmRequest req)
     {
         PayOS payOs = new PayOS(_payOsSettings.ClientId, _payOsSettings.ApiKey, _payOsSettings.ChecksumKey);
         return Ok(await payOs.confirmWebhook(req.WebhookUrl));

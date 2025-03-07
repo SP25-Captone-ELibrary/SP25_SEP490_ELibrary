@@ -45,8 +45,8 @@ public class WarehouseTrackingDetailDto
     public string? UpdatedBy { get; set; }
     
     // Barcode range 
-    public string? BarcodeRangeFrom { get; set; } = null!;
-    public string? BarcodeRangeTo { get; set; }
+    public string BarcodeRangeFrom { get; set; } = null!;
+    public string BarcodeRangeTo { get; set; } = null!;
 
     // Mark as is glue barcode 
     public bool HasGlueBarcode { get; set; }

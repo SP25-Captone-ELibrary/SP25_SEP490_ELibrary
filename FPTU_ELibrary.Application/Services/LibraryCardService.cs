@@ -486,8 +486,10 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 			        await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
 	        }
 	        
+            // Initialize expired offset unix seconds
+            var expiredAtOffsetUnixSeconds = 0;
             // Initialize payOS response
-            PayOSPaymentResponseDto? payOsResp = null; 
+            PayOSPaymentResponseDto? payOsResp = null;
 	        // Initialize transaction 
 	        TransactionDto? transactionDto = null;
 	        // Generate transaction code
@@ -559,6 +561,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         CreatedBy = processedByEmail
                     };
                     
+                    // Assign expired at 
+                    expiredAtOffsetUnixSeconds = (int)((DateTimeOffset)transactionDto.ExpiredAt).ToUnixTimeSeconds();
                     // Generate payment link
                     var payOsPaymentRequest = new PayOSPaymentRequestDto()
                     {
@@ -579,7 +583,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         ],
                         CancelUrl = _payOsSettings.CancelUrl,
                         ReturnUrl = _payOsSettings.ReturnUrl,
-                        ExpiredAt = (int)((DateTimeOffset) transactionDto.ExpiredAt).ToUnixTimeSeconds()
+                        ExpiredAt = expiredAtOffsetUnixSeconds
                     };
                     
                     // Generate signature
@@ -696,7 +700,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     case TransactionMethod.DigitalPayment:
                         // Msg: Create payment link successfully
                         return new ServiceResult(ResultCodeConst.Transaction_Success0001,
-                            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), payOsResp);
+                            await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), 
+                            new PayOSPaymentLinkResponseDto()
+                            {
+                                PayOsResponse = payOsResp!,
+                                ExpiredAtOffsetUnixSeconds = expiredAtOffsetUnixSeconds
+                            });
                 }
 	        }
 	        
@@ -910,6 +919,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
+            // Initialize random password
+            var randPass = string.Empty;
 			// Check whether user has been created by employee or not 
             if (userDto.IsEmployeeCreated)
             {
@@ -920,6 +931,11 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 libCardEntity.ExpiryDate = currentLocalDateTime.AddMonths(
                     // Months defined in specific library card package 
                     transactionDto.LibraryCardPackage!.DurationInMonths);
+                
+                // Generate random password
+                randPass = HashUtils.GenerateRandomPassword();
+                // Process update user password without saves
+                await _userSvc.UpdatePasswordWithoutSaveChangesAsync(userId: userDto.UserId, password: randPass);
             }
             else
             {
@@ -940,6 +956,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             	// Send card has been activated email
             	await SendActivatedEmailAsync(
             		email: userDto.Email,
+                    password: randPass,
             		cardDto: _mapper.Map<LibraryCardDto>(libCardEntity),
             		transactionDto: transactionDto,
             		libName: _appSettings.LibraryName,
@@ -1608,6 +1625,11 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 // Card status 
                 switch (existingEntity.Status)
                 {
+                    case LibraryCardStatus.UnPaid:
+                        return new ServiceResult(ResultCodeConst.LibraryCard_Warning0006,
+                            StringUtils.Format(errMsg, isEng 
+                                ? "library card has not paid yet" 
+                                : "thẻ vẫn chưa được thanh toán"), false);
                     case LibraryCardStatus.Active:
                         if (currentLocalDateTime < existingEntity.ExpiryDate)
                         {
@@ -2162,8 +2184,9 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
     
-    private async Task<bool> SendActivatedEmailAsync(string email, LibraryCardDto cardDto,
-        TransactionDto transactionDto, string libName, string libContact, bool isEmployeeCreated = false)
+    private async Task<bool> SendActivatedEmailAsync(
+        string email, LibraryCardDto cardDto, TransactionDto transactionDto,
+        string libName, string libContact, bool isEmployeeCreated = false, string? password = null)
     {
         try
         {
@@ -2182,7 +2205,9 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     transactionDto: transactionDto,
                     libName: libName,
                     libContact:libContact,
-                    isEmployeeCreated: isEmployeeCreated)
+                    isEmployeeCreated: isEmployeeCreated,
+                    email: email,
+                    password: password)
             );
                             
             // Process send email
@@ -2227,12 +2252,28 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
     
-    private string GetLibraryCardActivatedEmailBody(
+    private string GetLibraryCardActivatedEmailBody(string? email, string? password,
          LibraryCardDto cardDto, TransactionDto transactionDto, 
          string libName, string libContact, bool isEmployeeCreated = false)
      {
          // Custom message based on who performed
-         string employeeMessage = !isEmployeeCreated ? "Vui lòng chờ để được xét duyệt." : "";
+         string employeeMessage = !isEmployeeCreated ? "Vui lòng chờ để được xét duyệt." : string.Empty;
+         
+         // Try to add sign in content when card is created by employee
+         string signInContent = isEmployeeCreated && !string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(password)
+             ? $$"""
+                 
+                     <p><strong>Thông Tin Đăng Nhập:</strong></p>
+                     <div class="login-info">
+                         <ul>
+                           <li><strong>Email:</strong> {{email}}</li>
+                           <li><strong>Mật khẩu:</strong> {{password}}</li>
+                         </ul>
+                         <p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p>
+                     </div>
+                     
+                 """
+         : string.Empty;
          
          var culture = new CultureInfo("vi-VN");
          
@@ -2278,6 +2319,12 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                               color: #f39c12;
                               font-weight: bold;
                           }
+                          .login-info {
+                              background-color: #eef5ff;
+                              padding: 10px;
+                              border-left: 4px solid #3498db;
+                              font-weight: bold;
+                          }
                           .footer {
                               margin-top: 20px;
                               font-size: 14px;
@@ -2289,7 +2336,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                       <p class="header">Thông Báo Kích Hoạt Thẻ Thư Viện</p>
                       <p>Xin chào {{cardDto.FullName}},</p>
                       <p>Thẻ thư viện của bạn đã được kích hoạt thành công. {{employeeMessage}}</p>
-                      
+                      {{signInContent}}
                       <p><strong>Chi Tiết Thẻ Thư Viện:</strong></p>
                       <div class="details">
                           <ul>

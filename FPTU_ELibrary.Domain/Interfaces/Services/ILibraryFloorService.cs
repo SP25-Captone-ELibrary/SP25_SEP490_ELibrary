@@ -6,4 +6,5 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryFloorService<TDto> : IGenericService<LibraryFloor, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> GetMapByFloorIdAsync(int floorId);
 }

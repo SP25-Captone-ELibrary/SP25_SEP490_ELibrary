@@ -913,6 +913,36 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public async Task<IServiceResult> UpdatePasswordWithoutSaveChangesAsync(Guid userId, string password)
+		{
+			try
+			{
+				// Retrieve user by id
+				var existingEntity = await _unitOfWork.Repository<User, Guid>().GetByIdAsync(userId);
+				if (existingEntity == null) // Not found 
+				{
+					// Mark as failed to update
+					return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+				}
+				
+				// Assign and hash the password
+				existingEntity.PasswordHash = HashUtils.HashPassword(password);
+				
+				// Process update without save
+				await _unitOfWork.Repository<User, Guid>().UpdateAsync(existingEntity);
+				
+				// Mark as update success
+				return new ServiceResult(ResultCodeConst.SYS_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process update password without save changes");
+			}
+		}
+		
 		public async Task<IServiceResult> SoftDeleteAsync(Guid userId)
 		{
 			try
@@ -1431,6 +1461,10 @@ namespace FPTU_ELibrary.Application.Services
 						await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0002));
 				}
 				
+				// Initialize expired offset unix seconds
+				var expiredAtOffsetUnixSeconds = 0;
+				// Initialize random password field (use when method as Cash)
+				var rndPass = string.Empty;
 				// Initialize payOS response
                 PayOSPaymentResponseDto? payOsResp = null; 
                 // Initialize transaction 
@@ -1462,6 +1496,11 @@ namespace FPTU_ELibrary.Application.Services
 		                dto.LibraryCard.ExpiryDate = currentLocalDateTime.AddMonths(
                             // Months defined in specific library card package 
                             libCardPackageDto.DurationInMonths);
+		                
+		                // Generate random password
+                        rndPass = HashUtils.GenerateRandomPassword();
+                        // Hash password
+                        dto.PasswordHash = HashUtils.HashPassword(rndPass);
                 		break;
                 	// Digital payment
                 	case TransactionMethod.DigitalPayment:
@@ -1502,6 +1541,8 @@ namespace FPTU_ELibrary.Application.Services
                             CreatedBy = createdByEmail
                         };
                         
+		                // Assign expired at 
+		                expiredAtOffsetUnixSeconds = (int)((DateTimeOffset)transactionDto.ExpiredAt).ToUnixTimeSeconds();
                         // Generate payment link
                         var payOsPaymentRequest = new PayOSPaymentRequestDto()
                         {
@@ -1566,11 +1607,6 @@ namespace FPTU_ELibrary.Application.Services
 				dto.CreateDate = currentLocalDateTime;
 				dto.RoleId = roleDto.RoleId;
 				dto.IsEmployeeCreated = true;
-				
-				// Generate random password
-				var rndPass = HashUtils.GenerateRandomPassword();
-				// Hash password
-				dto.PasswordHash = HashUtils.HashPassword(rndPass);
 
 				// Add library card necessary props
 				dto.LibraryCard.Barcode = LibraryCardUtils.GenerateBarcode(_appSettings.LibraryCardBarcodePrefix);
@@ -1616,7 +1652,6 @@ namespace FPTU_ELibrary.Application.Services
 								libName: _appSettings.LibraryName,
 								libContact: _appSettings.LibraryContact,
 								isEmployeeCreated: true);
-                        
 							if (isSent)
 							{
 								var successMsg = isEng ? "Announcement email has sent to patron" : "Email thông báo đã gửi đến bạn đọc"; 
@@ -1634,7 +1669,12 @@ namespace FPTU_ELibrary.Application.Services
 						case TransactionMethod.DigitalPayment:
 							// Msg: Create payment link successfully
 							return new ServiceResult(ResultCodeConst.SYS_Success0001,
-								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), payOsResp);
+								await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), 
+								new PayOSPaymentLinkResponseDto()
+								{
+									PayOsResponse = payOsResp!,
+									ExpiredAtOffsetUnixSeconds = expiredAtOffsetUnixSeconds
+								});
 					}
 					
 					// Msg: Create successfully
@@ -1973,10 +2013,13 @@ namespace FPTU_ELibrary.Application.Services
 								u.UserFavorites.Any())))); // exist any user favourites
 					if (hasConstraints)
 					{
+						// Msg: Cannot delete because it is bound to other data
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007), false);
 						// Add error 
-						customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-							key: $"ids[{i}]",
-							msg: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+						// customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						// 	key: $"ids[{i}]",
+						// 	msg: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
 					}
 					else
 					{

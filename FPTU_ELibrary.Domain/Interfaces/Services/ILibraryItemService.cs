@@ -10,6 +10,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     where TDto : class
 {
     Task<IServiceResult> CreateAsync(TDto dto, int trackingDetailId);
+    Task<IServiceResult> AddRangeInstancesWithoutSaveChangesAsync(List<TDto> itemListIncludeInstances);
     Task<IServiceResult> GetEnumValueAsync();
     Task<IServiceResult> GetDetailAsync(int id);
     Task<IServiceResult> GetByBarcodeAsync(string barcode);

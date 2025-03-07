@@ -9,6 +9,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -26,12 +27,13 @@ namespace FPTU_ELibrary.API.Controllers;
 public class LibraryItemController : ControllerBase
 {
     private readonly AppSettings _appSettings;
+    
     private readonly IAuthorService<AuthorDto> _authorService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
     private readonly ILibraryItemAuthorService<LibraryItemAuthorDto> _itemAuthorService;
     private readonly IAIDetectionService _aiDetectionService;
-
+    private readonly ILibraryShelfService<LibraryShelfDto> _shelfService;
     private readonly ISearchService _searchService;
     private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
 
@@ -40,6 +42,7 @@ public class LibraryItemController : ControllerBase
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceService,
         ILibraryItemAuthorService<LibraryItemAuthorDto> itemAuthorService,
+        ILibraryShelfService<LibraryShelfDto> shelfService,
         IAIDetectionService aiDetectionService,
         ISearchService searchService,
         ILibraryResourceService<LibraryResourceDto> libraryResourceService,
@@ -50,6 +53,7 @@ public class LibraryItemController : ControllerBase
         _itemInstanceService = itemInstanceService;
         _itemAuthorService = itemAuthorService;
         _aiDetectionService = aiDetectionService;
+        _shelfService = shelfService;
         _searchService = searchService;
         _libraryResourceService = libraryResourceService;
         _appSettings = monitor.CurrentValue;
@@ -119,6 +123,22 @@ public class LibraryItemController : ControllerBase
         return Ok(await _libraryItemService.GetDetailAsync(id));
     }
 
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetShelf, Name = nameof(GetItemAppropriateShelfAsync))]
+    public async Task<IActionResult> GetItemAppropriateShelfAsync([FromRoute] int id,
+        [FromQuery] bool? isReferenceSection,
+        [FromQuery] bool? isChildrenSection,
+        [FromQuery] bool? isJournalSection,
+        [FromQuery] bool? isMostAppropriate)
+    {
+        return Ok(await _shelfService.GetItemAppropriateShelfAsync(
+            libraryItemId: id, 
+            isReferenceSection: isReferenceSection,
+            isChildrenSection: isChildrenSection,
+            isJournalSection: isJournalSection,
+            isMostAppropriate: isMostAppropriate));
+    }
+    
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.CountTotalInstance, Name = nameof(CountTotalInstanceAsync))]
     public async Task<IActionResult> CountTotalInstanceAsync([FromRoute] int id)

@@ -35,6 +35,13 @@ public class LibraryItemInstanceController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet(APIRoute.LibraryItemInstance.GetByBarcodeToConfirmUpdateShelf, Name = nameof(GetByBarcodeToConfirmUpdateShelfAsync))]
+    public async Task<IActionResult> GetByBarcodeToConfirmUpdateShelfAsync([FromRoute] string barcode)
+    {
+        return Ok(await _itemInstanceService.GetByBarcodeToConfirmUpdateShelfAsync(barcode: barcode));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.LibraryItemInstance.GenerateBarcodeRange, Name = nameof(GenerateBarcodeRangeAsync))]
     public async Task<IActionResult> GenerateBarcodeRangeAsync([FromQuery] int categoryId,
         [FromQuery] int totalItem, [FromQuery] int? skipItem = 0)
@@ -75,6 +82,34 @@ public class LibraryItemInstanceController : ControllerBase
         [FromBody] UpdateRangeItemInstanceRequest req)
     {
          return Ok(await _itemInstanceService.UpdateRangeAsync(libraryItemId, req.ToListLibraryItemInstanceDto()));
+    }
+
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.UpdateRangeInShelf, Name = nameof(UpdateRangeItemInstanceInShelfAsync))]
+    public async Task<IActionResult> UpdateRangeItemInstanceInShelfAsync([FromBody] UpdateRangeItemInstanceShelfRequest req)
+    {
+        return Ok(await _itemInstanceService.UpdateRangeInShelfAsync(barcodes: req.Barcodes));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.UpdateRangeOutOfShelf, Name = nameof(UpdateRangeItemInstanceOutOfShelfAsync))]
+    public async Task<IActionResult> UpdateRangeItemInstanceOutOfShelfAsync([FromBody] UpdateRangeItemInstanceShelfRequest req)
+    {
+        return Ok(await _itemInstanceService.UpdateRangeOutOfShelfAsync(barcodes: req.Barcodes));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.UpdateInShelf, Name = nameof(UpdateItemInstanceInShelfAsync))]
+    public async Task<IActionResult> UpdateItemInstanceInShelfAsync([FromRoute] string barcode)
+    {
+        return Ok(await _itemInstanceService.UpdateInShelfAsync(barcode: barcode));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.UpdateOutOfShelf, Name = nameof(UpdateItemInstanceOutOfShelfAsync))]
+    public async Task<IActionResult> UpdateItemInstanceOutOfShelfAsync([FromRoute] string barcode)
+    {
+        return Ok(await _itemInstanceService.UpdateOutOfShelfAsync(barcode: barcode));
     }
     
     [Authorize]

@@ -20,9 +20,12 @@ using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
+using OpenCvSharp;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -40,11 +43,13 @@ public class WarehouseTrackingDetailService :
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceSvc;
     private readonly IWarehouseTrackingService<WarehouseTrackingDto> _trackingSvc;
+    private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
 
     public WarehouseTrackingDetailService(
 	    IAuthorService<AuthorDto> authorSvc,
 	    ICategoryService<CategoryDto> cateSvc,
 	    ILibraryItemService<LibraryItemDto> itemSvc,
+	    ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
 	    ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceSvc,
 	    ILibraryItemConditionService<LibraryItemConditionDto> conditionSvc,
 	    IWarehouseTrackingService<WarehouseTrackingDto> trackingSvc,
@@ -58,6 +63,7 @@ public class WarehouseTrackingDetailService :
 	    _appSettings = monitor.CurrentValue;
 	    _authorSvc = authorSvc;
 	    _cateSvc = cateSvc;
+	    _inventorySvc = inventorySvc;
 	    _cloudSvc = cloudSvc;
 	    _itemSvc = itemSvc;
 	    _itemInstanceSvc = itemInstanceSvc;
@@ -489,14 +495,323 @@ public class WarehouseTrackingDetailService :
 		    throw new Exception("Error invoke when process delete warehouse tracking detail");
 	    }
     }
-	
+
+    public async Task<IServiceResult> GetRangeBarcodeByIdAsync(int trackingDetailId)
+    {
+	    try
+	    {
+		    // Build spec
+		    var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(wd => wd.TrackingDetailId == trackingDetailId);
+		    // Apply include
+		    baseSpec.ApplyInclude(q => q.Include(w => w.Category));
+			// Check exist tracking detail
+			var trackingDetailDto = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().GetWithSpecAsync(baseSpec);
+			if (trackingDetailDto == null ||
+			    string.IsNullOrEmpty(trackingDetailDto.BarcodeRangeFrom) ||
+			    string.IsNullOrEmpty(trackingDetailDto.BarcodeRangeTo))
+			{
+				// Not found or empty
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+					new List<string>());
+			}
+			
+			// Extract num from
+			var numFrom = StringUtils.ExtractNumber(
+				input: trackingDetailDto.BarcodeRangeFrom, 
+				prefix: trackingDetailDto.Category.Prefix, 
+				length: _appSettings.InstanceBarcodeNumLength);
+			// Extract num to
+			var numTo = StringUtils.ExtractNumber(
+				input: trackingDetailDto.BarcodeRangeTo, 
+				prefix: trackingDetailDto.Category.Prefix, 
+				length: _appSettings.InstanceBarcodeNumLength);
+
+			return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+				// Generate range barcode
+				StringUtils.AutoCompleteBarcode(
+						prefix: trackingDetailDto.Category.Prefix, 
+						length: _appSettings.InstanceBarcodeNumLength, 
+						min: numFrom, max: numTo));
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process generate range barcode by tracking detail id");
+	    }
+    }
+    
+    public async Task<IServiceResult> GetLatestBarcodeByCategoryIdAsync(int categoryId)
+    {
+	    try
+	    {
+			// Build spec
+			var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(x => x.CategoryId == categoryId);
+			// Retrieve with spec and selector
+			var barcodes = (await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
+				.GetAllWithSpecAndSelectorAsync(baseSpec, selector: w => w.BarcodeRangeTo)).ToList();
+			if (barcodes.Any())
+			{
+				// Retrieve category
+				var category = (await _cateSvc.GetByIdAsync(categoryId)).Data as CategoryDto;
+				if (category != null)
+				{
+					// Retrieve largest barcode
+					var latestBarcodeNum = barcodes
+						.Select(barcode => StringUtils.ExtractNumber(
+							input: barcode ?? "0",
+							prefix: category.Prefix,
+							length: _appSettings.InstanceBarcodeNumLength))
+						.OrderByDescending(num => num)
+						.FirstOrDefault();
+					
+					if (latestBarcodeNum != -1)
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0002,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+							// Convert back to string
+							StringUtils.AutoCompleteBarcode(
+									prefix: category.Prefix, 
+									length: _appSettings.InstanceBarcodeNumLength, 
+									number: latestBarcodeNum));
+					}
+				}
+			}
+			
+			// Not found or empty
+			return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get latest barcode of warehouse tracking detail by category");
+	    }
+    }
+    
+    public async Task<IServiceResult> UpdateRangeBarcodeRegistrationAsync(int trackingId, List<int> whDetailIds)
+    {
+	    try
+	    {
+		    // Determine current system lang 
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+		    
+		    // Check exist warehouse tracking
+		    var trackingSpec = new BaseSpecification<WarehouseTracking>(x => x.TrackingId == trackingId);
+		    // Apply include 
+		    trackingSpec.ApplyInclude(q => q.Include(w => w.WarehouseTrackingInventory));
+		    var trackingDto = (await _trackingSvc.GetWithSpecAsync(trackingSpec)).Data as WarehouseTrackingDto;
+		    if (trackingDto == null || trackingDto.WarehouseTrackingInventory == null!)
+		    {
+			    // Not found {0}
+			    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				    StringUtils.Format(errMsg, isEng ? "warehouse tracking" : "lịch sử theo dõi kho"));
+		    }
+		    else
+		    {
+			    // Check for change detail of completed or cancelled warehouse tracking 
+			    if (trackingDto.Status == WarehouseTrackingStatus.Completed ||
+			        trackingDto.Status == WarehouseTrackingStatus.Cancelled)
+			    {
+				    // Msg: Cannot change data as warehouse tracking was completed or cancelled
+				    return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0009,
+					    await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0009));
+			    }
+		    }
+		    
+		    // Build spec
+		    var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(wd =>
+			    wd.TrackingId == trackingId && whDetailIds.Contains(wd.TrackingDetailId) && !wd.HasGlueBarcode);
+		    // Apply include 
+		    baseSpec.ApplyInclude(q => q
+			    .Include(wd => wd.Category)
+			    .Include(wd => wd.WarehouseTracking)
+					.ThenInclude(w => w.WarehouseTrackingInventory)
+		    );
+		    // Initialize library item that contains collection of instances
+		    var libItems = new List<LibraryItemDto>();
+		    // Retrieve all data with spec
+		    var entities = (await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
+			    .GetAllWithSpecAsync(baseSpec)).ToList();
+		    if (entities.Any())
+		    {
+			    // Try to extract warehouse tracking inventory from first ele
+			    var whTrackingInven = trackingDto.WarehouseTrackingInventory;
+			    
+			    // Initialize custom errors
+				var customErrors = new Dictionary<string, string[]>();
+				
+			    // Iterate each wh detail to check whether it has registered barcode
+			    for (int i = 0; i < entities.Count; ++i)
+			    {
+				    var whDetail = entities[i];
+				    
+				    // Validate stock transaction type to check whether allowing to register unique barcode or not
+				    if (whDetail.StockTransactionType != StockTransactionType.New &&
+				        whDetail.StockTransactionType != StockTransactionType.Additional)
+				    {
+					    // Msg: Stock transaction type {0} is not valid to registering unique barcode for item
+					    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0019);
+					    // Add error 
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"ids[{i}]",
+						    msg: StringUtils.Format(errMsg, isEng
+								? whDetail.StockTransactionType.ToString()
+								: whDetail.StockTransactionType.GetDescription()));
+				    }
+				    
+				    // Check whether warehouse tracking detail contains cataloged item or not
+				    if (whDetail.LibraryItemId == null)
+				    {
+					    // Add error 
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"ids[{i}]",
+						    // Msg: Cannot register unique barcode for warehouse tracking detail as it has not been cataloged yet
+						    msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0018));
+				    }
+				    
+				    // Has already registered barcode
+				    if (whDetail.HasGlueBarcode) 
+				    {
+						// Add error 
+						customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							key: $"ids[{i}]",
+							// Msg: Warehouse tracking detail has already been registered unique barcode
+							msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0017));
+				    }
+				    
+				    // Check exist barcode range and valid barcode range
+				    var numFrom = 0;
+				    var numTo = 0;
+				    if (!string.IsNullOrEmpty(whDetail.BarcodeRangeFrom) &&
+				        !string.IsNullOrEmpty(whDetail.BarcodeRangeTo))
+				    {
+					    // Try to extract from-to num
+					    numFrom = StringUtils.ExtractNumber(
+						    input: whDetail.BarcodeRangeFrom,
+						    prefix: whDetail.Category.Prefix,
+						    length: _appSettings.InstanceBarcodeNumLength);
+					    numTo = StringUtils.ExtractNumber(
+						    input: whDetail.BarcodeRangeTo,
+						    prefix: whDetail.Category.Prefix,
+						    length: _appSettings.InstanceBarcodeNumLength);
+
+					    if (numFrom == -1 || numTo == -1)
+					    {
+						    // Add error 
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                                key: $"ids[{i}]",
+                                msg: isEng 
+	                                ? "Invalid unique registration barcode range"
+	                                : "Khoảng đăng ký cá biệt của tài liệu nhập kho không hợp lệ");
+					    }
+				    }
+				    else
+				    {
+					    // Add error 
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                        	key: $"ids[{i}]",
+                        	// Msg: Not found range unique registration barcode. Please update to continue
+                        	msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0020));
+				    }
+				    
+				    // Process update inventory
+				    if (numFrom != 0 && numTo != 0)
+				    {
+					    // Increase cataloged instance item 
+					    whTrackingInven.TotalCatalogedInstanceItem += numTo - numFrom + 1;
+					    // Update wh detail status
+					    whDetail.HasGlueBarcode = true;
+				    }
+				    
+				    // Process update whDetail status
+				    await _unitOfWork.Repository<WarehouseTrackingDetail, int>().UpdateAsync(whDetail);
+				    
+				    // Initialize list barcodes based on num from-to 
+				    var rangeBarcodes = StringUtils.AutoCompleteBarcode(
+					    prefix: whDetail.Category.Prefix,
+					    length: _appSettings.InstanceBarcodeNumLength,
+					    min: numFrom,
+					    max: numTo
+				    );
+				    // Add lib item to process add range instances
+				    libItems.Add(new LibraryItemDto()
+				    {
+					    LibraryItemId = whDetail.LibraryItemId ?? 0,
+					    LibraryItemInstances = rangeBarcodes.Select(barcode => new LibraryItemInstanceDto()
+					    {
+						    // Barcode
+						    Barcode = barcode,
+						    // Default status
+						    Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
+						    // Initialize default condition history for item
+						    LibraryItemConditionHistories = new List<LibraryItemConditionHistoryDto>()
+						    {
+							    new()
+							    {
+								    ConditionId = whDetail.ConditionId
+							    }
+						    }
+					    }).ToList()
+				    });
+			    }
+			    
+			    // Check whether invoke any error
+			    if(customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
+			    
+		    }
+		    
+		    // Process update warehouse tracking inventory without save
+		    await _trackingSvc.UpdateInventoryWithoutSaveChanges(trackingId, _mapper.Map<WarehouseTrackingDto>(trackingDto));
+		    // Process add library item instances to item without save
+		    await _itemSvc.AddRangeInstancesWithoutSaveChangesAsync(libItems);
+		    // Save DB
+		    var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+		    if (isSaved)
+		    {
+			    // Msg: Total {0} warehouse tracking detail has been registered unique barcode success
+			    var successMsg = await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Success0001);
+				return new ServiceResult(ResultCodeConst.WarehouseTracking_Success0001,
+					StringUtils.Format(successMsg, entities.Count.ToString()));    
+		    }
+
+		    // Msg: Failed to register unique barcode for warehouse tracking detail
+		    return new ServiceResult(ResultCodeConst.WarehouseTracking_Fail0001,
+			    await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Fail0001));
+
+		    // Msg: Failed to update
+		    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+	    }
+	    catch (UnprocessableEntityException)
+	    {
+		    throw;
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process update range warehouse tracking detail barcode registration");
+	    }
+    }
+    
     public async Task<IServiceResult> UpdateItemFromInternalAsync(int trackingDetailId, int libraryItemId)
     {
 	    try
 	    {
-            // Retrieve by id
+            // Build spec 
+            var baseSpec = new BaseSpecification<WarehouseTrackingDetail>(wd => wd.TrackingDetailId == trackingDetailId);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+	            .Include(wd => wd.WarehouseTracking)
+					.ThenInclude(w => w.WarehouseTrackingInventory)
+            );
+		    // Retrieve by id
             var existingEntity =
-	            await _unitOfWork.Repository<WarehouseTrackingDetail, int>().GetByIdAsync(trackingDetailId);
+	            await _unitOfWork.Repository<WarehouseTrackingDetail, int>().GetWithSpecAsync(baseSpec);
             if (existingEntity == null)
             {
 	            // Logging
@@ -543,6 +858,12 @@ public class WarehouseTrackingDetailService :
 	            
 	            // Process update item
 	            existingEntity.LibraryItemId = libraryItemId;
+	            
+	            // Process update warehouse tracking inventory
+	            existingEntity.WarehouseTracking.WarehouseTrackingInventory.TotalCatalogedItem++;
+	            existingEntity.WarehouseTracking.WarehouseTrackingInventory.TotalCatalogedInstanceItem += existingEntity.ItemTotal;
+	            // Mark as has glue barcode
+	            existingEntity.HasGlueBarcode = true;
             }
 			
             // Check if there are any differences between the original and the updated entity
@@ -551,6 +872,22 @@ public class WarehouseTrackingDetailService :
 	            // Update success
 	            return new ServiceResult(ResultCodeConst.SYS_Success0003,
 		            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            
+            // Update inventory total
+            // Get inventory by library item id
+            var getInventoryRes = await _inventorySvc.GetWithSpecAsync(
+	            new BaseSpecification<LibraryItemInventory>(
+		            x => x.LibraryItemId == libraryItemId), tracked: false);
+            if (getInventoryRes.Data is LibraryItemInventoryDto inventoryDto) // Get data success
+            {
+	            // Set relations to null
+	            inventoryDto.LibraryItem = null!;
+	            // Update total
+	            inventoryDto.TotalUnits += existingEntity.ItemTotal;
+
+	            // Update without save
+	            await _inventorySvc.UpdateWithoutSaveChangesAsync(inventoryDto);
             }
             
             // Perform update 
@@ -1392,8 +1729,12 @@ public class WarehouseTrackingDetailService :
 						    : "phân loại để lấy thông tin nhập kho"));
 			    }
 			    
+			    // Try to retrieve all current tracking details 
+			    var allActualDetails = await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
+				    .GetAllWithSpecAsync(new BaseSpecification<WarehouseTrackingDetail>(wd => wd.TrackingId == trackingId));
 			    // Convert to combined dto 
 			    var combinedDto = detailDtos.ToDetailCombinedDto(
+				    actualTrackingDetails: _mapper.Map<List<WarehouseTrackingDetailDto>>(allActualDetails),
 				    trackingDto: trackingDto,
 				    categories: categoryDtos,
 				    pageIndex: detailSpec.PageIndex,
@@ -1409,7 +1750,7 @@ public class WarehouseTrackingDetailService :
 		    // Not found data or empty
 		    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
 			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-			    _mapper.Map<List<WarehouseTrackingDetailCombinedDto>>(entities));
+			    new List<WarehouseTrackingDetailCombinedDto>());
 	    }
 	    catch (Exception ex)
 	    {

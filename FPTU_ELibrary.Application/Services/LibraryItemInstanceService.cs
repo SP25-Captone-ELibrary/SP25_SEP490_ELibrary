@@ -2,6 +2,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -25,6 +26,9 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryItemInstanceService : GenericService<LibraryItemInstance, LibraryItemInstanceDto, int>,
     ILibraryItemInstanceService<LibraryItemInstanceDto>
 {
+    // Lazy services    
+    private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingDetailService;
+    
     private readonly AppSettings _appSettings;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
@@ -35,6 +39,9 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     private readonly ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto> _conditionHistoryService;
 
     public LibraryItemInstanceService(
+        // Lazy services
+        Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingDetailService,
+        
         IBorrowRequestService<BorrowRequestDto> borrowReqService,
         IBorrowRecordService<BorrowRecordDto> borrowRecService,
         ICategoryService<CategoryDto> categoryService,
@@ -55,6 +62,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         _categoryService = categoryService;
         _libItemService = libItemService;
         _inventoryService = inventoryService;
+        _whTrackingDetailService = whTrackingDetailService;
         _conditionHistoryService = conditionHistoryService;
     }
 
@@ -431,9 +439,15 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             var instanceSpec = new BaseSpecification<LibraryItemInstance>(li => 
                 li.LibraryItem.CategoryId == categoryId); // All instance's item that match with specific category id
             var existingBarcodes = (await _unitOfWork.Repository<LibraryItemInstance, int>()
-                    .GetAllWithSpecAndSelectorAsync(instanceSpec, selector: li => li.Barcode)).ToArray(); // Convert result to array
+                    .GetAllWithSpecAndSelectorAsync(instanceSpec, selector: li => li.Barcode)).ToList(); // Convert result to array
             if (existingBarcodes.Any()) // At least one found
             {
+                // Try to retrieve latest barcode in warehouse tracking detail 
+                var latestBarcode =
+                    (await _whTrackingDetailService.Value.GetLatestBarcodeByCategoryIdAsync(categoryId: categoryId)).Data as string;
+                // Append latest warehouse tracking detail barcode (if exist)
+                if(!string.IsNullOrEmpty(latestBarcode)) existingBarcodes.Add(latestBarcode);
+                
                 // Convert existing barcodes to list of int to retrieve the highest one
                 startIndex = existingBarcodes
                     // Iterate each barcode, converting them to number
@@ -615,6 +629,79 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         }
     }
 
+    public async Task<IServiceResult> GetByBarcodeToConfirmUpdateShelfAsync(string barcode)
+    {
+        try
+        {   
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(li => Equals(li.Barcode, barcode));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "item to process update shelf status" 
+                        : "tài liệu để cập nhật trạng thái"));
+            }
+            else if (existingEntity.LibraryItem.ShelfId == null)
+            {
+                // Msg: The item's status cannot be updated because it has not been shelved yet
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0019,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0019));
+            }
+            
+            // Error msg: The item's shelf status cannot be updated as {0}
+            var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0020); 
+            // Check constraint
+            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.InShelf))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item has been shelved" 
+                        : "tài liệu ở tình trạng đã được xếp lên kệ"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'borrowed'" 
+                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'reserved'" 
+                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+            }
+            
+            // Map to instance dto
+            var instanceDto = _mapper.Map<LibraryItemInstanceDto>(existingEntity);
+            // Msg: Get data successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                // Convert to library item instance detail
+                instanceDto.ToItemInstanceDetailDtoAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get library item instance by barcode to confirm update shelf");
+        }
+    }
+    
     public async Task<IServiceResult> CheckExistBarcodeAsync(string barcode)
     {
         try
@@ -1206,6 +1293,368 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         }
     }
 
+    public async Task<IServiceResult> UpdateInShelfAsync(string barcode)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(li => Equals(li.Barcode, barcode));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "item to process update shelf status" 
+                        : "tài liệu để cập nhật trạng thái"));
+            }
+            else if (existingEntity.LibraryItem.ShelfId == null)
+            {
+                // Msg: The item's status cannot be updated because it has not been shelved yet
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0019,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0019));
+            }
+         
+            // Error msg: Cannot update item's shelf status to 'in-shelf' as {0}
+            var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0020); 
+            // Check constraint
+            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.InShelf))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item has been shelved" 
+                        : "tài liệu ở tình trạng đã được xếp lên kệ"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'borrowed'" 
+                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'reserved'" 
+                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+            }
+            
+            // Change status
+            existingEntity.Status = nameof(LibraryItemInstanceStatus.InShelf);
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Item has been shelved successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0001));
+            }
+            
+            // Msg: Shelving the item was unsuccessfully
+            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range library instance in shelf");
+        }
+    }
+
+    public async Task<IServiceResult> UpdateOutOfShelfAsync(string barcode)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(li => Equals(li.Barcode, barcode));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "item to process update shelf status" 
+                        : "tài liệu để cập nhật trạng thái"));
+            }
+            else if (existingEntity.LibraryItem.ShelfId == null)
+            {
+                // Msg: The item's status cannot be updated because it has not been shelved yet
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0019,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0019));
+            }
+         
+            // Error msg: Cannot update item's shelf status to 'out-of-shelf' as {0}
+            var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0021); 
+            // Check constraint
+            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.OutOfShelf))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item has been shelved" 
+                        : "tài liệu đang không nằm trên kệ"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'borrowed'" 
+                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'reserved'" 
+                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+            }
+            
+            // Change status
+            existingEntity.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Item has been shelved successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0003));
+            }
+            
+            // Msg: Unshelving the item was unsuccessfully
+            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range library instance in shelf");
+        }
+    }
+    
+    public async Task<IServiceResult> UpdateRangeInShelfAsync(List<string> barcodes)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(
+                li => barcodes.Contains(li.Barcode));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+            );
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<LibraryItemInstance, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (!entities.Any())
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "any items to process shelving"
+                        : "tài liệu để tiến hành xếp kệ"));
+            }
+
+            // Initialize custom errors
+            var customErrs = new Dictionary<string, string[]>();
+            // Iterate item instances
+            for (int i = 0; i < entities.Count; ++i)
+            {
+                var instance = entities[i];
+                
+                // Error msg: The item's shelf status cannot be updated as {0}
+                var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0020);
+                // Check constraint
+                if (instance.Status == nameof(LibraryItemInstanceStatus.InShelf))
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
+                        key: $"barcodes[{i}]", 
+                        msg: StringUtils.Format(constraintMsg, isEng
+                            ? "the item has been shelved"
+                            : "tài liệu ở tình trạng đã được xếp lên kệ"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
+                        key: $"barcodes[{i}]", 
+                        msg: StringUtils.Format(constraintMsg, isEng
+                            ? "the item's status is currently 'borrowed'"
+                            : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Reserved))
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
+                        key: $"barcodes[{i}]", 
+                        msg: StringUtils.Format(constraintMsg, isEng
+                            ? "the item's status is currently 'reserved'"
+                            : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                }
+
+                // Change status
+                instance.Status = nameof(LibraryItemInstanceStatus.InShelf);
+                // Process update
+                await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(instance);
+            }
+
+            // Check whether invoke any error
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid Data", customErrs);
+            
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Total {0} item have been shelved successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0002,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0002),
+                        entities.Count.ToString()));
+            }
+
+            // Msg: Shelving the item was unsuccessfully
+            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0003));
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range item instance status");
+        }
+    }
+    
+    public async Task<IServiceResult> UpdateRangeOutOfShelfAsync(List<string> barcodes)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItemInstance>(
+                li => barcodes.Contains(li.Barcode));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItem)
+            );
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<LibraryItemInstance, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (!entities.Any())
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "any items to process shelving"
+                        : "tài liệu để tiến hành xếp kệ"));
+            }
+
+            // Initialize custom errors
+            var customErrs = new Dictionary<string, string[]>();
+            // Iterate item instances
+            for (int i = 0; i < entities.Count; ++i)
+            {
+                var instance = entities[i];
+                
+                // Error msg: Cannot update item's shelf status to 'out-of-shelf' as {0}
+                var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0021); 
+                // Check constraint
+                if (instance.Status == nameof(LibraryItemInstanceStatus.OutOfShelf))
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                        StringUtils.Format(constraintMsg, isEng 
+                            ? "the item has been shelved" 
+                            : "tài liệu đang không nằm trên kệ"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                        StringUtils.Format(constraintMsg, isEng 
+                            ? "the item's status is currently 'borrowed'" 
+                            : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Reserved))
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                        StringUtils.Format(constraintMsg, isEng 
+                            ? "the item's status is currently 'reserved'" 
+                            : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                }
+
+                // Change status
+                instance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+                // Process update
+                await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(instance);
+            }
+
+            // Check whether invoke any error
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid Data", customErrs);
+            
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Total {0} item have been unshelved successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0004,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0004),
+                        entities.Count.ToString()));
+            }
+
+            // Msg: Unshelving the item was unsuccessfully
+            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0004));
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range item instance status");
+        }
+    }
+    
     public async Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId)
     {
         try
@@ -1666,7 +2115,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             throw new Exception("Error invoke when process count total copy");
         }
     }
-
+    
     public async Task<IServiceResult> UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
         List<int> libraryItemInstanceIds,
         LibraryItemInstanceStatus status,

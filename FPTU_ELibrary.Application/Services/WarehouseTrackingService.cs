@@ -605,11 +605,11 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 			var uniqueIsbnSet = new HashSet<string>();
 			// Initialize skip item dic 
 			var skipItemDic = new Dictionary<int, int>(); // KeyPair (categoryId, totalSkipVal)
+			// Initialize dictionary to accumulating skip item
+			var accumulateDic = new Dictionary<int, int>();
 			
 		    // Iterate each warehouse tracking detail (if any) to validate data
 		    var wTrackingDetailList = dto.WarehouseTrackingDetails.ToList();
-		    // Initialize default item to skip 
-		    var accumulatedSkipItem = 0;
 		    for (int i = 0; i < wTrackingDetailList.Count; ++i)
 		    {
 			    var wDetail = wTrackingDetailList[i];
@@ -629,12 +629,13 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                 {
 	                // Add default skip val
 	                skipItemDic[wDetail.CategoryId] = 0;
-	                accumulatedSkipItem = wDetail.ItemTotal;
+	                // Add default accumulate val
+	                accumulateDic[wDetail.CategoryId] = 0;
                 }
                 else
                 {
 	                // Increase skip val based on warehouse tracking item total
-	                skipItemDic[wDetail.CategoryId] += accumulatedSkipItem;
+	                skipItemDic[wDetail.CategoryId] = accumulateDic[wDetail.CategoryId];
                 }
                 
                 var skipVal = skipItemDic[wDetail.CategoryId];
@@ -998,6 +999,9 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		                : "Lỗi xảy ra khi tạo số ĐKCB cho 1 hoặc nhiều tài liệu đăng ký nhập kho";
 	                return new ServiceResult(ResultCodeConst.SYS_Fail0001, $"{msg}.{customMsg}");
                 }
+                
+                // Add accumulate skip
+                accumulateDic[wDetail.CategoryId] += wDetail.ItemTotal;
 		    }
 
 		    // Check if any error invoke
@@ -1373,8 +1377,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 							: "danh sách tình trạng sách để tiến hành import"));
 				}
 				
-				// Retrieve all library shelf & authors to add to lib item (if any)
-				var libraryShelves = (await _shelfService.GetAllAsync()).Data as List<LibraryShelfDto>;
+				// Retrieve all authors to add to lib item (if any)
 				var authors = (await _authorService.GetAllAsync()).Data as List<AuthorDto>;
 				
 				// Convert warehouse tracking csv record to dto
@@ -1383,7 +1386,6 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 						r.ToLibraryItemDto(
 							imageUrlDic: imageUrlDic, 
 							categories: categories, 
-							shelves: libraryShelves, 
 							authors: authors)).ToList();
 				// Convert library item csv record to dto 
                 var warehouseTrackingDetailDtos = readWhResp.Records
@@ -1408,11 +1410,10 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 				// Add range unknown items (if any)
 				if(compareRes.UnknownItems.Any()) unknownItems.AddRange(compareRes.UnknownItems);
 				
-				// Initialize skip item dic (used when transaction type is 'Additional')
+				// Initialize skip item dic
 				var skipItemDic = new Dictionary<int, int>(); // KeyPair (categoryId, totalSkipVal)
-				
-				// Initialize default item to skip 
-				var accumulatedSkipItem = 0;
+				// Initialize dictionary to accumulating skip item
+				var accumulateDic = new Dictionary<int, int>();
 				// Progress import warehouse tracking detail
 				foreach (var whDetailDto in warehouseTrackingDetailDtos)
 				{
@@ -1421,12 +1422,13 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 					{
 						// Add default skip val
 						skipItemDic[whDetailDto.CategoryId] = 0;
-						accumulatedSkipItem = whDetailDto.ItemTotal;
+						// Add default accumulate val
+						accumulateDic[whDetailDto.CategoryId] = 0;
 					}
 					else
 					{
 						// Increase skip val based on warehouse tracking item total
-						skipItemDic[whDetailDto.CategoryId] += accumulatedSkipItem;
+						skipItemDic[whDetailDto.CategoryId] = accumulateDic[whDetailDto.CategoryId];
 					}
 					
 					var skipVal = skipItemDic[whDetailDto.CategoryId];
@@ -1547,24 +1549,18 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 					// Total cataloged item <- Any tracking detail request along with libraryItemId > 0 or libraryItem != null
 					var totalCatalogedItem = dto.WarehouseTrackingDetails
 						.Count(wtd => (wtd.LibraryItemId != null && wtd.LibraryItemId > 0) || wtd.LibraryItem != null);
-					// Total instance cataloged item  
-					var totalCatalogedInstanceItem = dto.WarehouseTrackingDetails
-						.Where(wtd => wtd.LibraryItemId != null && wtd.LibraryItemId != 0)
-						.Select(wtd => wtd.ItemTotal).Sum();
-					// Sum of number of library item instances in each warehouse tracking detail's item
-					var totalItemToBeCataloged = dto.WarehouseTrackingDetails.Count != 0
-						? dto.WarehouseTrackingDetails
-							.Where(wtd => wtd.LibraryItem != null)
-							.Select(wtd => wtd.LibraryItem?.LibraryItemInstances?.Count)
-							.Sum()
-						: 0;
+					
+					// Initialize warehouse tracking inventory
 					dto.WarehouseTrackingInventory = new()
 					{
 						TotalItem = totalItem,
 						TotalInstanceItem = totalInstanceItem,
 						TotalCatalogedItem = totalCatalogedItem,
-						TotalCatalogedInstanceItem = totalCatalogedInstanceItem + totalItemToBeCataloged ?? 0
+						TotalCatalogedInstanceItem = 0
 					};
+					
+					// Add accumulate skip
+					accumulateDic[whDetailDto.CategoryId] += whDetailDto.ItemTotal;
 				}     
             }
 

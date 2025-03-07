@@ -11,6 +11,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;

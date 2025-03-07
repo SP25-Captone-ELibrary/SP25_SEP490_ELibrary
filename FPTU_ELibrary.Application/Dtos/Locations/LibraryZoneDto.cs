@@ -11,10 +11,16 @@ public class LibraryZoneDto
     public int FloorId { get; set; }
     
     // Zone detail
-    public string? ZoneName { get; set; }
-    public double XCoordinate { get; set; }
-    public double YCoordinate { get; set; }
-
+    public string EngZoneName { get; set; } = null!;
+    public string VieZoneName { get; set; } = null!;
+    
+    // Description 
+    public string? EngDescription { get; set; }
+    public string? VieDescription { get; set; }
+    
+    // Total count
+    public int TotalCount { get; set; }
+    
     // Creation and update datetime
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
@@ -25,12 +31,5 @@ public class LibraryZoneDto
     [JsonIgnore]
     public LibraryFloorDto Floor { get; set; } = null!;
 
-    [JsonIgnore]
-    public ICollection<LibraryPathDto> LibraryPathFromZones { get; set; } = new List<LibraryPathDto>();
-
-    [JsonIgnore]
-    public ICollection<LibraryPathDto> LibraryPathToZones { get; set; } = new List<LibraryPathDto>();
-
-    [JsonIgnore]
     public ICollection<LibrarySectionDto> LibrarySections { get; set; } = new List<LibrarySectionDto>();
 }
