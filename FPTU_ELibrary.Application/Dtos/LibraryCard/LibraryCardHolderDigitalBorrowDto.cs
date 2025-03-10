@@ -1,6 +1,8 @@
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Domain.Common.Enums;
+using FPTU_ELibrary.Domain.Entities;
 
 namespace FPTU_ELibrary.Application.Dtos.LibraryCard;
 
@@ -14,14 +16,14 @@ public class LibraryCardHolderDigitalBorrowDto
     public bool IsExtended { get; set; }
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
-
     public LibraryResourceDto LibraryResource { get; set; } = null!;
+    
+    public List<DigitalBorrowExtensionHistoryDto> DigitalBorrowExtensionHistories { get; set; } = new();
     public List<TransactionDto> Transactions { get; set; } = new();
 }
 
 public static class LibraryCardHolderDigitalBorrowExtensions
 {
-    // TODO: Add payment history for digital borrow
     public static LibraryCardHolderDigitalBorrowDto ToCardHolderDigitalBorrowDto(this DigitalBorrowDto dto)
     {
         return new()
@@ -34,7 +36,10 @@ public static class LibraryCardHolderDigitalBorrowExtensions
             IsExtended = dto.IsExtended,
             ExtensionCount = dto.ExtensionCount,
             Status = dto.Status,
-            LibraryResource = dto.LibraryResource
+            LibraryResource = dto.LibraryResource,
+            DigitalBorrowExtensionHistories = dto.DigitalBorrowExtensionHistories.Any()
+                ? dto.DigitalBorrowExtensionHistories.ToList()
+                : new()
         };
     }
 }

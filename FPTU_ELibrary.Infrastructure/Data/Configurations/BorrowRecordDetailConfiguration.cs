@@ -42,7 +42,7 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
         builder.Property(e => e.ReturnConditionId).HasColumnName("return_condition_id");
         #endregion
 
-        #region Update at: 13/02/2025
+        #region Update at: 13/02/2025 by Le Xuan Phuoc
         // builder.Property(e => e.BorrowCondition)
         //     .HasMaxLength(50)
         //     .HasColumnName("borrow_condition");
@@ -52,6 +52,25 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
             .HasForeignKey(d => d.ConditionId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_BorrowRecordDetail_ConditionId");
+        #endregion
+
+        #region Updated at: 03/10/2025 by Le Xuan Phuoc
+        builder.Property(e => e.IsReminderSent)
+            .HasDefaultValue(false)
+            .HasColumnName("is_reminder_sent");
+        builder.Property(e => e.ReturnDate)
+            .HasColumnType("datetime")
+            .HasColumnName("return_date");
+        builder.Property(e => e.DueDate)
+            .HasColumnType("datetime")
+            .HasColumnName("due_date");
+        builder.Property(e => e.Status)
+            .HasConversion<string>()
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("status");
+        builder.Property(e => e.TotalExtension)
+            .HasDefaultValue(0)
+            .HasColumnName("total_extension");
         #endregion
     }
 }

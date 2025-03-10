@@ -9,6 +9,9 @@ public class UserFavoriteDto
     public Guid UserId { get; set; }
 
     public int LibraryItemId { get; set; }
+    
+    public bool WantsToBorrow { get; set; }
+    public bool WantsToBorrowAfterRequestFailed { get; set; }
 
     public LibraryItemDto LibraryItem { get; set; } = null!;
 

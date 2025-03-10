@@ -11,4 +11,5 @@ public interface IBorrowRecordService<TDto> : IGenericService<BorrowRecord, TDto
     Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, TDto dto);
     Task<IServiceResult> CreateAsync(string processedByEmail, TDto dto);
     Task<IServiceResult> SelfCheckoutAsync(Guid libraryCardId, TDto dto);
+    Task<IServiceResult> ExtendAsync(string email, int borrowRecordId, List<int> borrowRecordDetailIds);
 }

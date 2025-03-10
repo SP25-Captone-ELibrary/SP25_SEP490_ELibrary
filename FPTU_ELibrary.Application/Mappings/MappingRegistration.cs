@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -24,11 +25,16 @@ namespace FPTU_ELibrary.Application.Mappings
 		{
 			// From [Entity] to [Dto]
 			config.NewConfig<Author, AuthorDto>();
+			config.NewConfig<AITrainingSession, AITrainingSessionDto>();
+			config.NewConfig<AITrainingDetail, AITrainingDetailDto>();
+			config.NewConfig<AITrainingImage, AITrainingImageDto>();
 			config.NewConfig<BorrowRecord, BorrowRecordDto>();
 			config.NewConfig<BorrowRecordDetail, BorrowRecordDetailDto>();
+			config.NewConfig<BorrowDetailExtensionHistory, BorrowDetailExtensionHistoryDto>();
 			config.NewConfig<BorrowRequest, BorrowRequestDto>();
 			config.NewConfig<BorrowRequestDetail, BorrowRequestDetailDto>();
 			config.NewConfig<DigitalBorrow, DigitalBorrowDto>();
+			config.NewConfig<DigitalBorrowExtensionHistory, DigitalBorrowExtensionHistoryDto>();
 			config.NewConfig<Employee, EmployeeDto>();
 			config.NewConfig<FinePolicy, FinePolicyDto>();
 			config.NewConfig<Fine, FineDto>();

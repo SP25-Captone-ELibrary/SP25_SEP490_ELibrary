@@ -1687,7 +1687,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"), false);
             }
             
             // Current local datetime
@@ -1704,11 +1704,11 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 case LibraryCardStatus.UnPaid:
                     // Library card has not paid yet
                     return new ServiceResult(ResultCodeConst.LibraryCard_Warning0014,
-                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0014));
+                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0014), false);
                 case LibraryCardStatus.Pending or LibraryCardStatus.Rejected:
                     // Library card is not activated yet. Please contact library to activate your card
                     return new ServiceResult(ResultCodeConst.LibraryCard_Warning0001,
-                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0001));
+                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0001), false);
                 case LibraryCardStatus.Expired:
                     // Check for expiry date
                     if (existingEntity.ExpiryDate != null &&
@@ -1716,7 +1716,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     {
                         // Library card has expired. Please renew it to continue using library services
                         return new ServiceResult(ResultCodeConst.LibraryCard_Warning0002,
-                            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0002));
+                            await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0002), false);
                     }
                     break;
                 case LibraryCardStatus.Suspended:
@@ -1727,14 +1727,14 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                         var msg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0003);
                         // Library card has been suspended due to a violation or administrative action. Please contact the library for assistance
                         return new ServiceResult(ResultCodeConst.LibraryCard_Warning0003,
-                            StringUtils.Format(msg, existingEntity.SuspensionEndDate.Value.ToString("dd/MM/yyyy")));
+                            StringUtils.Format(msg, existingEntity.SuspensionEndDate.Value.ToString("dd/MM/yyyy")), false);
                     }
                     break;
             }
             
             // Valid card
             return new ServiceResult(ResultCodeConst.LibraryCard_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0001));
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Success0001), true);
         }
         catch (Exception ex)
         {

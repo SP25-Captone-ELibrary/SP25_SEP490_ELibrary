@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Payments;
 
 namespace FPTU_ELibrary.Application.Dtos.LibraryItems;

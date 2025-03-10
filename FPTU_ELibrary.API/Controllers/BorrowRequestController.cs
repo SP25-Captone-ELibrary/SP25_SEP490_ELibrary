@@ -79,7 +79,11 @@ public class BorrowRequestController : ControllerBase
     public async Task<IActionResult> CreateBorrowRequestAsync([FromBody] CreateBorrowRequest req)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _borrowReqSvc.CreateAsync(email ?? string.Empty, req.ToBorrowRequestDto()));
+        return Ok(await _borrowReqSvc.CreateAsync(
+            email: email ?? string.Empty,
+            dto: req.ToBorrowRequestDto(),
+            reservationIds: req.ReservationItemIds,
+            userFavoriteIds: req.UserFavoriteItemIds));
     }
     
     [Authorize]    

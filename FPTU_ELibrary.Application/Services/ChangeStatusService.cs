@@ -197,20 +197,19 @@ public class ChangeStatusService : BackgroundService
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
         
         // Build specification
-        var baseSpec = new BaseSpecification<BorrowRecord>(br =>
-            br.ReturnDate != null && // Not include borrow record exist return date
+        var baseSpec = new BaseSpecification<BorrowRecordDetail>(br =>
             br.DueDate <= currentLocalDateTime && // Exceed than due date (expected return date)
             br.Status == BorrowRecordStatus.Borrowing); // Is in borrowing status
         // Retrieve all with spec
-        var entities = await unitOfWork.Repository<BorrowRecord, int>()
+        var entities = await unitOfWork.Repository<BorrowRecordDetail, int>()
             .GetAllWithSpecAsync(baseSpec);
-        foreach (var br in entities)
+        foreach (var brd in entities)
         {
             // Change borrow status to expired
-            br.Status = BorrowRecordStatus.Overdue;
+            brd.Status = BorrowRecordStatus.Overdue;
             
             // Progress update 
-            await unitOfWork.Repository<BorrowRecord, int>().UpdateAsync(br);
+            await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(brd);
             
             // Mark as changed
             hasChanges = true;

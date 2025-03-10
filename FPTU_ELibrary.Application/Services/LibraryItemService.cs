@@ -2,6 +2,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -38,6 +39,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
     private readonly Lazy<IElasticService> _elasticService;
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingService;
+    private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationQueueService;
 
     private readonly ICloudinaryService _cloudService;
     private readonly ICategoryService<CategoryDto> _cateService;
@@ -55,10 +57,11 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> itemGroupService,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
         Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingService,
+        Lazy<IReservationQueueService<ReservationQueueDto>> reservationQueueService,
         // Normal service
+        ICloudinaryService cloudService,
         IAuthorService<AuthorDto> authorService,
         ICategoryService<CategoryDto> cateService,
-        ICloudinaryService cloudService,
         ILibraryShelfService<LibraryShelfDto> libShelfService,
         ILibraryItemConditionService<LibraryItemConditionDto> conditionService,
         IOptionsMonitor<AppSettings> monitor,
@@ -77,6 +80,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _resourceService = resourceService;
         _itemGroupService = itemGroupService;
         _itemInstanceService = itemInstanceService;
+        _reservationQueueService = reservationQueueService;
         _itemAuthorService = itemAuthorService;
         _whTrackingService = whTrackingService;
         _appSettings = monitor.CurrentValue;
@@ -1930,6 +1934,75 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> CheckUnvailableForBorrowRequestAsync(int[] ids)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => 
+                ids.Contains(li.LibraryItemId) && // include id in requested list
+                li.LibraryItemInventory != null &&
+                li.LibraryItemInventory.AvailableUnits == 0 // No item is available
+            );
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemInventory)
+                .Include(li => li.Category)
+                .Include(li => li.Shelf)
+                .Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author)
+                .Include(li => li.LibraryItemReviews)
+            );
+            
+            // Retrieve all data with spec
+            var entities = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+            if (entities.Any())
+            {
+                // Map to home page item dto
+                var homePageItemDtos = 
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                
+                // Initialize response collections
+                var allowToReserveItems = new List<HomePageItemDto>();
+                var notAllowToReserveItems = new List<HomePageItemDto>();
+                
+                // Iterate each library item to check for allowing to reserve
+                foreach (var dto in homePageItemDtos)
+                {
+                    // Check exist any pending reservation by item instance id
+                    var isAllowToReserve = (await _reservationQueueService.Value.CheckAllowToReserveByItemIdAsync(
+                        itemId: dto.LibraryItemId)).Data is true;
+                    if (isAllowToReserve) // Is allow to reservice
+                    {
+                        allowToReserveItems.Add(dto);
+                    }
+                    else // Is not allow to reserve
+                    {
+                        notAllowToReserveItems.Add(dto);
+                    }
+                }
+                
+                // Get successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new
+                    {
+                        AllowToReserveItems = allowToReserveItems,
+                        NotAllowToReserveItems = notAllowToReserveItems
+                    });
+            }
+            
+            // Response empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<HomePageItemDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process check unavailable items");
+        }
+    }
+    
     public async Task<IServiceResult> UpdateStatusAsync(int id)
     {
         try

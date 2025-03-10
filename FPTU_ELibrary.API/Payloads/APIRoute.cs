@@ -90,7 +90,8 @@
 			public const string Create = Base + "/management/borrows/records";
 			#endregion
 			
-			public const string SelfCheckout = Base + "/management/borrows/records/self-checkout";
+			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
+			public const string Extend = Base + "/borrows/records/{id}/extend";
 		}
 		
 		/// <summary>
@@ -141,6 +142,7 @@
 			public const string GetRelatedItems = Base + "/library-items/{id}/related-items";
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
+			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 		}
 
 		/// <summary>

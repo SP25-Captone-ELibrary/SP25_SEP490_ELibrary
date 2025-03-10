@@ -19,9 +19,6 @@ public class LibraryCardHolderBorrowRecordDto
     
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
-    public DateTime DueDate { get; set; }
-    public DateTime? ReturnDate { get; set; }
-    public BorrowRecordStatus Status { get; set; } 
     
     // Borrow type
     public BorrowType BorrowType { get; set; }
@@ -31,9 +28,6 @@ public class LibraryCardHolderBorrowRecordDto
     
     // True if return via kiosk 
     public bool? SelfServiceReturn { get; set; }
-
-    // Total extension time  
-    public int TotalExtension { get; set; }
     
     // Count total request item
     public int TotalRecordItem { get; set; }
@@ -59,13 +53,9 @@ public static class LibraryCardHolderBorrowRecordExtensions
             BorrowRequestId = dto.BorrowRequestId,
             LibraryCardId = dto.LibraryCardId,
             BorrowDate = dto.BorrowDate,
-            DueDate = dto.DueDate,
-            ReturnDate = dto.ReturnDate,
-            Status = dto.Status,
             SelfServiceBorrow = dto.SelfServiceBorrow,
             SelfServiceReturn = dto.SelfServiceReturn,
             BorrowType = dto.BorrowType,
-            TotalExtension = dto.TotalExtension,
             TotalRecordItem = dto.TotalRecordItem,
             ProcessedBy = dto.ProcessedBy,
             // References, Navigations
@@ -82,6 +72,11 @@ public static class LibraryCardHolderBorrowRecordExtensions
                     ConditionCheckDate = brd.ConditionCheckDate,
                     ConditionImages = brd.ImagePublicIds?.Split(',').ToList() ?? new(),
                     Condition = brd.Condition,
+                    ReturnDate = brd.ReturnDate,
+                    DueDate = brd.DueDate,
+                    Status = brd.Status,
+                    TotalExtension = brd.TotalExtension,
+                    IsReminderSent = brd.IsReminderSent,
                     ReturnCondition = conditions != null && conditions.Any() 
                         ? conditions.FirstOrDefault(c => c.ConditionId == brd.ReturnConditionId) 
                         : null,
@@ -133,6 +128,9 @@ public static class LibraryCardHolderBorrowRecordExtensions
                             }
                         }
                         : null!,
+                    BorrowDetailExtensionHistories = brd.BorrowDetailExtensionHistories.Any()
+                        ? brd.BorrowDetailExtensionHistories.ToList() 
+                        : new(),
                 }).ToList()
                 : new()
         };

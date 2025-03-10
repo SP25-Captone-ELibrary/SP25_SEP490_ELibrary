@@ -12,7 +12,7 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     Task<IServiceResult> GetCardHolderBorrowRequestByIdAsync(Guid userId, int id);
     Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec);
     Task<IServiceResult> GetAllCardHolderBorrowRequestByUserIdAsync(Guid userId, int pageIndex, int pageSize);
-    Task<IServiceResult> CreateAsync(string email, TDto dto);
+    Task<IServiceResult> CreateAsync(string email, TDto dto, List<int> reservationIds, List<int> userFavoriteIds);
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
     Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);

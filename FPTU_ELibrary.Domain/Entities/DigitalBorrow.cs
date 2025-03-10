@@ -14,8 +14,11 @@ public class DigitalBorrow
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
     
-    public LibraryResource LibraryResource { get; set; } = null!;
-    
+    // References
     [JsonIgnore]
     public User User { get; set; } = null!;
+    public LibraryResource LibraryResource { get; set; } = null!;
+    
+    // Navigations
+    public ICollection<DigitalBorrowExtensionHistory> DigitalBorrowExtensionHistories { get; set; } = new List<DigitalBorrowExtensionHistory>();
 }

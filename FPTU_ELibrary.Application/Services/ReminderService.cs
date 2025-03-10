@@ -59,7 +59,7 @@ public class ReminderService : BackgroundService
                                 // Define subject
                                 subject: subject,
                                 // Add email body content
-                                content: GetBorrowReminderEmailBody(
+                                content: GetBorrowExpiryReminderEmailBody(
                                     user: userInfo,
                                     borrowReq: br, 
                                     libName: appSettingMonitor.CurrentValue.LibraryName,
@@ -81,6 +81,48 @@ public class ReminderService : BackgroundService
                         _logger.Error("Not found user information to send borrow reminders.");
                     }
 
+                    var borrowRecRemindersToSend = await GetAllBorrowRecordReminderToSendAsync(unitOfWork);
+                    foreach (var br in borrowRecRemindersToSend)
+                    {
+                        // Retrieve user info
+                        var userInfo = await GetUserInfoFromLibCardAsync(br.LibraryCardId, unitOfWork);
+                        if (userInfo != null)
+                        {
+                            // Email subject
+                            var subject = "[ELIBRARY] Nhắc nhở trả sách";
+
+                            // Progress send confirmation email
+                            var emailMessageDto = new EmailMessageDto( // Define email message
+                                // Define Recipient
+                                to: new List<string>() { userInfo.Email },
+                                // Define subject
+                                subject: subject,
+                                // Add email body content
+                                content: GetBorrowRecordSuccessEmailBody(
+                                    user: userInfo,
+                                    borrowRecord: br, 
+                                    libName: appSettingMonitor.CurrentValue.LibraryName,
+                                    libLocation: appSettingMonitor.CurrentValue.LibraryLocation,
+                                    libContact:appSettingMonitor.CurrentValue.LibraryContact)
+                            );
+                            
+                            // Process send email
+                            var isSent = await emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+                            if (isSent)
+                            {
+                                foreach (var brd in br.BorrowRecordDetails)
+                                {
+                                    // Update borrow reminder status 
+                                    var isUpdated = await UpdateBorrowRecordDetailReminderStatusAsync(brd.BorrowRecordDetailId, unitOfWork);
+                                    if(isUpdated) _logger.Information($"Update reminder status for borrow record detail '{brd.LibraryItemInstance.LibraryItem.Title}' success");
+                                    else _logger.Error($"Fail to Update reminder borrow status for borrow record detail '{brd.LibraryItemInstance.LibraryItem.Title}'");
+                                }
+                            }
+                        }
+                        
+                        _logger.Error("Not found user information to send borrow record reminders.");
+                    }
+                    
                     var libCardRemindersToSend = await GetAllLibCardReminderToSendAsync(unitOfWork);
                     foreach (var libCard in libCardRemindersToSend)
                     {
@@ -127,7 +169,8 @@ public class ReminderService : BackgroundService
             _logger.Information("ReminderService task doing background work.");
         
             // Delay 10m for each time execution
-            await Task.Delay(600000, cancellationToken);
+            // await Task.Delay(600000, cancellationToken);
+            await Task.Delay(10000, cancellationToken);
         }
         
         _logger.Information("ReminderService background task is stopping.");
@@ -288,6 +331,34 @@ public class ReminderService : BackgroundService
         // Response
         return borrowReqs.ToList();
     }
+
+    private async Task<List<BorrowRecord>> GetAllBorrowRecordReminderToSendAsync(IUnitOfWork unitOfWork)
+    {
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Calculate the reminder threshold (24 hours before expiration)
+        var reminderThreshold = currentLocalDateTime.AddHours(24); 
+        
+        // Build specification 
+        var baseSpec = new BaseSpecification<BorrowRecord>(
+            br => br.BorrowRecordDetails.Any(brd => // Has any detail in borrow record
+                    brd.DueDate <= reminderThreshold && // Expiration time before 24 hours compared to now
+                    brd.IsReminderSent == false)); // Not send reminder yet
+        // Apply include
+        baseSpec.ApplyInclude(q => q
+            .Include(br => br.BorrowRecordDetails)
+                .ThenInclude(brd => brd.LibraryItemInstance)
+                    .ThenInclude(li => li.LibraryItem)
+        );
+        // Retrieve all with spec
+        var borrowRecords = 
+            await unitOfWork.Repository<BorrowRecord, int>().GetAllWithSpecAsync(baseSpec, tracked: false);
+        
+        return borrowRecords.ToList();
+    }
     
     private async Task<bool> UpdateBorrowRequestReminderStatusAsync(int borrowRequestId, IUnitOfWork unitOfWork)
     {
@@ -306,45 +377,213 @@ public class ReminderService : BackgroundService
         return false;
     }
 
-    private string GetBorrowReminderEmailBody(User user, BorrowRequest borrowReq, string libName, string libLocation, string libContact)
+    private async Task<bool> UpdateBorrowRecordDetailReminderStatusAsync(int borrowRecordDetailId, IUnitOfWork unitOfWork)
     {
-        var itemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail => $"<li>{detail.LibraryItem.Title}</li>"));
+        // Retrieve by id 
+        var existingEntity = await unitOfWork.Repository<BorrowRecordDetail, int>().GetByIdAsync(borrowRecordDetailId);
+        if (existingEntity != null)
+        {
+            existingEntity.IsReminderSent = true;
+            
+            // Progress update
+            await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(existingEntity);
+            return await unitOfWork.SaveChangesAsync() > 0;
+        }
+        
+        _logger.Error("Failed to update the borrow record detail reminder status");
+        return false;
+    }
+    
+    private string GetBorrowExpiryReminderEmailBody(User user, BorrowRequest borrowReq, string libName, string libLocation, string libContact)
+    {
+        var itemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail => 
+            $"""
+             <li>
+                 <p><strong>Tiêu đề:</strong> <span class="title">{detail.LibraryItem.Title}</span></p>
+                 <p><strong>ISBN:</strong> <span class="isbn">{detail.LibraryItem.Isbn}</span></p>
+                 <p><strong>Năm Xuất Bản:</strong> {detail.LibraryItem.PublicationYear}</p>
+                 <p><strong>Nhà Xuất Bản:</strong> {detail.LibraryItem.Publisher}</p>
+             </li>
+             """));
+        
+        return $$"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Nhắc Nhở Mượn Sách</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                    }
+                    .header {
+                        font-size: 18px;
+                        color: #2c3e50;
+                        font-weight: bold;
+                    }
+                    .details {
+                        margin: 15px 0;
+                        padding: 10px;
+                        background-color: #f9f9f9;
+                        border-left: 4px solid #27ae60;
+                    }
+                    .details ul {
+                        list-style-type: disc;
+                        padding-left: 20px;
+                    }
+                    .details li {
+                        margin: 5px 0;
+                    }
+                    .footer {
+                        margin-top: 20px;
+                        font-size: 14px;
+                        color: #7f8c8d;
+                    }
+                    .isbn{
+                        color: #2980b9;
+                        font-weight: bold;
+                    }
+                    .title{
+                        color: #f39c12;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body>
+                <p class="header">Nhắc Nhở Mượn Sách</p>
+                <p>Xin chào {{user.LastName}} {{user.FirstName}},</p>
+                <p>Bạn cần đến thư viện để nhận các tài liệu đã yêu cầu trước ngày hết hạn.</p>
+                
+                <p><strong>Chi Tiết Yêu Cầu Mượn:</strong></p>
+                <div class="details">
+                    <ul>
+                        <li><strong>Ngày Hết Hạn Nhận Sách:</strong> {{borrowReq.ExpirationDate:dd/MM/yyyy HH:mm}}</li>
+                        <li><strong>Địa Điểm Nhận Sách:</strong> {{libLocation}}</li>
+                    </ul>
+                </div>
+                
+                <p><strong>Các Tài Liệu Đã Yêu Cầu:</strong></p>
+                <div class="details">
+                    <ul>
+                        {{itemList}}
+                    </ul>
+                </div>
+                
+                <p>Vui lòng đến nhận các tài liệu trước ngày hết hạn để tránh việc yêu cầu bị tự động hủy.</p>
+                <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ thư viện qua số <strong>{{libContact}}</strong>.</p>
+                <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện!</p>
+                
+                <p class="footer"><strong>Trân trọng,</strong></p>
+                <p class="footer">{{libName}}</p>
+            </body>
+            </html>
+            """;
+    }
+    
+    private string GetBorrowRecordSuccessEmailBody(User user, BorrowRecord borrowRecord, string libName, string libLocation, string libContact)
+    {
+        var itemDetails = string.Join("", borrowRecord.BorrowRecordDetails.Select(detail => 
+           $"""
+           <li>
+               <p><strong>Tiêu đề:</strong> <span class="title">{detail.LibraryItemInstance.LibraryItem.Title}</span></p>
+               <p><strong>Mã Vạch:</strong> <span class="barcode">{detail.LibraryItemInstance.Barcode}</span></p>
+               <p><strong>Ngày Hẹn Trả:</strong> <span class="expiry-date">{detail.DueDate:dd/MM/yyyy HH:mm}</span></p>
+               <p><strong>Tình Trạng:</strong> <span class="status-text">{detail.Status.GetDescription()}</span></p>
+               <p><strong>Năm Xuất Bản:</strong> {detail.LibraryItemInstance.LibraryItem.PublicationYear}</p>
+               <p><strong>Nhà Xuất Bản:</strong> {detail.LibraryItemInstance.LibraryItem.Publisher}</p>
+           </li>
+           """));
 
-        return $"""
+        return $$"""
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Nhắc Nhở Mượn Sách</title>
+                    <title>Nhắc Nhở Trả Sách Đúng Hạn</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                        }
+                        .header {
+                            font-size: 18px;
+                            color: #2c3e50;
+                            font-weight: bold;
+                        }
+                        .details {
+                            margin: 15px 0;
+                            padding: 10px;
+                            background-color: #f9f9f9;
+                            border-left: 4px solid #27ae60;
+                        }
+                        .details ul {
+                            list-style-type: disc;
+                            padding-left: 20px;
+                        }
+                        .details li {
+                            margin: 5px 0;
+                        }
+                        .barcode {
+                            color: #2980b9;
+                            font-weight: bold;
+                        }
+                        .expiry-date {
+                            color: #27ae60;
+                            font-weight: bold;
+                        }
+                        .status-text {
+                            color: #c0392b;
+                            font-weight: bold;
+                        }
+                        .footer {
+                            margin-top: 20px;
+                            font-size: 14px;
+                            color: #7f8c8d;
+                        }
+                        .title{
+                            color: #f39c12;
+                            font-weight: bold;
+                        }
+                    </style>
                 </head>
                 <body>
-                    <p><strong>Nhắc Nhở Mượn Sách</strong></p>
-                    <p>Xin chào {user.LastName} {user.FirstName},</p>
-                    <p>Đây là lời nhắc thân thiện rằng bạn cần đến thư viện để nhận các tài liệu đã yêu cầu trước ngày hết hạn.</p>
+                    <p class="header">Nhắc Nhở Trả Sách Đúng Hạn</p>
+                    <p>Xin chào {{user.LastName}} {{user.FirstName}},</p>
+                    <p>Vui lòng kiểm tra lại thông tin mượn sách của bạn dưới đây:</p>
                     
-                    <p><strong>Chi Tiết Yêu Cầu Mượn:</strong></p>
-                    <ul>
-                        <li>Mã Yêu Cầu: {borrowReq.BorrowRequestId}</li>
-                        <li>Ngày Hết Hạn Nhận Sách: {borrowReq.ExpirationDate:dd/MM/yyyy HH:mm}</li>
-                        <li>Địa Điểm Nhận Sách: {libLocation}</li>
-                    </ul>
+                    <p><strong>Thông Tin Mượn Sách:</strong></p>
+                    <div class="details">
+                        <ul>
+                            <li><strong>Ngày Mượn:</strong> {{borrowRecord.BorrowDate:dd/MM/yyyy HH:mm}}</li>
+                            <li><strong>Số Lượng Tài Liệu:</strong> {{borrowRecord.TotalRecordItem}}</li>
+                            <li><strong>Loại Mượn:</strong> {{borrowRecord.BorrowType.GetDescription()}}</li>
+                            <li><strong>Địa Điểm Mượn:</strong> {{libLocation}}</li>
+                        </ul>
+                    </div>
                     
-                    <p><strong>Các Tài Liệu Đã Yêu Cầu:</strong></p>
-                    <ul>
-                        {itemList}
-                    </ul>
+                    <p><strong>Chi Tiết Sách Cần Trả:</strong></p>
+                    <div class="details">
+                        <ul>
+                            {{itemDetails}}
+                        </ul>
+                    </div>
                     
-                    <p>Vui lòng đến nhận các tài liệu trước ngày hết hạn để tránh việc yêu cầu bị tự động hủy.</p>
+                    <p><em>Lưu ý:</em> Vui lòng trả sách trước ngày hẹn trả để tránh bị phạt phí.</p>
                     
-                    <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ thư viện qua số {libContact}.</p>
+                    <p>Nếu có bất kỳ thắc mắc nào, xin vui lòng liên hệ với thư viện qua số <strong>{{libContact}}</strong>.</p>
                     
-                    <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện!</p>
+                    <p>Cảm ơn bạn đã hợp tác!</p>
                     
-                    <p><strong>Trân trọng,</strong></p>
-                    <p>{libName}</p>
+                    <p class="footer"><strong>Trân trọng,</strong></p>
+                    <p class="footer">{{libName}}</p>
                 </body>
                 </html>
                 """;
     }
+
+
     #endregion
 }

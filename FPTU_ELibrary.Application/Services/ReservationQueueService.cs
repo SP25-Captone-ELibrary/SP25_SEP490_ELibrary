@@ -2,6 +2,8 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -17,17 +19,116 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
     IReservationQueueService<ReservationQueueDto>
 {
     private readonly IUserService<UserDto> _userSvc;
+    private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
 
     public ReservationQueueService(
         IUserService<UserDto> userSvc,
+        ILibraryItemService<LibraryItemDto> libItemSvc,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _userSvc = userSvc;
+        _libItemSvc = libItemSvc;
     }
 
+    public async Task<IServiceResult> CheckPendingByItemInstanceIdAsync(int itemInstanceId)
+    {
+        try
+        {
+            // Build spec
+            var libSpec = new BaseSpecification<LibraryItem>(
+                li => li.LibraryItemInstances.Any(l => l.LibraryItemInstanceId == itemInstanceId));
+            // Retrieve library item by instance id
+            var getRes = (await _libItemSvc.GetWithSpecAndSelectorAsync(
+                libSpec, selector: lib => lib.LibraryItemId)).Data;
+            if (getRes == null || !int.TryParse(getRes.ToString(), out var validItemId))
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
+                    rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
+                    rq.LibraryItemId == validItemId); // Equals item id
+            // Retrieve with spec
+            var entities = await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+        }   
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all reservation queue by item instance ids");
+        }
+    }
+
+    public async Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId)
+    {
+        try
+        {
+            // Retrieve library item
+            var libSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+            // Apply include
+            libSpec.ApplyInclude(q => q.Include(li => li.LibraryItemInventory!));
+            var libItemDto = (await _libItemSvc.GetWithSpecAsync(libSpec)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                // Not allow to reserve
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
+                rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
+                rq.LibraryItemId == libItemDto.LibraryItemId); // Equals item id
+            // Retrieve with spec
+            var entities = (await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+            if (entities.Any())
+            {
+                // Check allow to reserve
+                if (entities.Count >= libItemDto.LibraryItemInventory?.TotalUnits || // Total reservation exceed or equals to total units
+                    libItemDto.LibraryItemInventory?.AvailableUnits > 0) // Still exist available items 
+                {
+                    // Not allow to reserve
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+                }
+            }
+            
+            // Allow to reserve whether item total units > 0 and available == 0
+            if (libItemDto.LibraryItemInventory != null && 
+                libItemDto.LibraryItemInventory.TotalUnits > 0 &&
+                libItemDto.LibraryItemInventory.AvailableUnits == 0)
+            {
+                // Allow to reserve
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), true);
+            }
+            
+            // Not allow to reserve
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process check allow to reserve by item id");
+        }
+    }
+    
     public async Task<IServiceResult> GetAllCardHolderReservationByUserIdAsync(Guid userId, int pageIndex, int pageSize)
     {
         try

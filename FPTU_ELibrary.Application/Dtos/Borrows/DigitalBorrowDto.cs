@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
-using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryItems;
+namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
 public class DigitalBorrowDto
 {
@@ -15,7 +15,11 @@ public class DigitalBorrowDto
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
     
+    // References
     [JsonIgnore]
     public LibraryResourceDto LibraryResource { get; set; } = null!;
     public UserDto User { get; set; } = null!;
+    
+    // Navigations
+    public ICollection<DigitalBorrowExtensionHistoryDto> DigitalBorrowExtensionHistories { get; set; } = new List<DigitalBorrowExtensionHistoryDto>();
 }

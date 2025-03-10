@@ -446,7 +446,8 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
 
-    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto)
+    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto,
+        List<int> reservationIds, List<int> userFavoriteIds)
     {
         try
         {
@@ -464,7 +465,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 var errors = validationResult.ToProblemDetails().Errors;
                 throw new UnprocessableEntityException("Invalid Validations", errors);
             }
-
+            
             // Retrieve user information
             // Build spec
             var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));

@@ -336,6 +336,12 @@ public class LibraryItemController : ControllerBase
             pageSize: pageSize ?? _appSettings.PageSize));
     }
 
+    [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]
+    public async Task<IActionResult> CheckUnavailableItemsAsync([FromQuery] RangeRequest<int> req)
+    {
+        return Ok(await _libraryItemService.CheckUnvailableForBorrowRequestAsync(ids: req.Ids));
+    }
+
     #region Archived Function
     // [Authorize]
     // [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]

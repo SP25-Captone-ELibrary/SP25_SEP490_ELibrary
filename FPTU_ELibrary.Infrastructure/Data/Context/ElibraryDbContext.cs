@@ -62,6 +62,9 @@ public class ElibraryDbContext : DbContext
     public DbSet<UserFavorite> UserFavorites { get; set; }
     public DbSet<WarehouseTracking> WarehouseTrackings { get; set; }
     public DbSet<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; }
+    public DbSet<AITrainingSession> TrainingSessions { get; set; }
+    public DbSet<AITrainingDetail> TrainingDetails { get; set; }
+    public DbSet<AITrainingImage> TrainingImages { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		=> optionsBuilder.UseSqlServer(GetConnectionString(), o

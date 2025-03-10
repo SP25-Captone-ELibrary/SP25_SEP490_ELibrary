@@ -2,6 +2,7 @@ using System.Globalization;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
@@ -60,6 +61,9 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         {
             // Build spec
             var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.UserId == userId);   
+            
+            // Apply include
+            baseSpec.ApplyInclude(q => q.Include(d => d.DigitalBorrowExtensionHistories));
             
             // Add default order by
             baseSpec.AddOrderByDescending(br => br.RegisterDate);
@@ -446,7 +450,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             
             // Extend expiration date
             // Subtract expiration date to now
-            var remainDays = existingEntity.ExpiryDate.Subtract(currentLocalDateTime);
+            var oldExpiryDate = existingEntity.ExpiryDate;
+            var remainDays = oldExpiryDate.Subtract(currentLocalDateTime);
             if (remainDays.Days > 0) // If expiry date still exceed than current date
             {
                 existingEntity.ExpiryDate = 
@@ -459,10 +464,18 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             }
             // Change status to active
             existingEntity.Status = BorrowDigitalStatus.Active;
-            // Increase extension count
-            existingEntity.ExtensionCount++;
             // Mark as extend
             existingEntity.IsExtended = true;
+            // Increase extension count
+            existingEntity.ExtensionCount++;
+            // Add extension history
+            existingEntity.DigitalBorrowExtensionHistories.Add(new()
+            {
+                ExtensionDate = oldExpiryDate,
+                NewExpiryDate = existingEntity.ExpiryDate,
+                ExtensionFee = existingEntity.LibraryResource.BorrowPrice,
+                ExtensionNumber = existingEntity.ExtensionCount
+            });
             
             // Process update
             await _unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(existingEntity);

@@ -50,7 +50,7 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
         // Add filter 
         if (specParams.Status != null) // Status
         {
-            AddFilter(br => br.Status == specParams.Status);
+            AddFilter(br => br.BorrowRecordDetails.Any(brd => brd.Status == specParams.Status));
         }
         if (specParams.BorrowType != null) // Borrow type
         {
@@ -86,16 +86,19 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
         {
             if (specParams.DueDateRange[0].HasValue && specParams.DueDateRange[1].HasValue)
             {
-                AddFilter(x => x.DueDate.Date >= specParams.DueDateRange[0]!.Value.Date
-                               && x.DueDate.Date <= specParams.DueDateRange[1]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails.Any(brd =>
+                    brd.DueDate.Date >= specParams.DueDateRange[0]!.Value.Date &&
+                    brd.DueDate.Date <= specParams.DueDateRange[1]!.Value.Date));
             }
             else if ((specParams.DueDateRange[0] is null && specParams.DueDateRange[1].HasValue))
             {
-                AddFilter(x => x.DueDate.Date <= specParams.DueDateRange[1]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails.Any(brd =>
+                    brd.DueDate.Date <= specParams.DueDateRange[1]!.Value.Date));
             }
             else if (specParams.DueDateRange[0].HasValue && specParams.DueDateRange[1] is null)
             {
-                AddFilter(x => x.DueDate.Date >= specParams.DueDateRange[0]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails.Any(brd =>
+                    brd.DueDate.Date >= specParams.DueDateRange[0]!.Value.Date));
             }
         }
         if (specParams.ReturnDateRange != null
@@ -103,16 +106,19 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
         {
             if (specParams.ReturnDateRange[0].HasValue && specParams.ReturnDateRange[1].HasValue)
             {
-                AddFilter(x => x.ReturnDate!.Value.Date >= specParams.ReturnDateRange[0]!.Value.Date
-                               && x.ReturnDate!.Value.Date <= specParams.ReturnDateRange[1]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails
+                    .Any(brd => brd.ReturnDate!.Value.Date >= specParams.ReturnDateRange[0]!.Value.Date &&
+                                brd.ReturnDate!.Value.Date <= specParams.ReturnDateRange[1]!.Value.Date));
             }
             else if ((specParams.ReturnDateRange[0] is null && specParams.ReturnDateRange[1].HasValue))
             {
-                AddFilter(x => x.ReturnDate!.Value.Date <= specParams.ReturnDateRange[1]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails
+                    .Any(brd => brd.ReturnDate!.Value.Date <= specParams.ReturnDateRange[1]!.Value.Date));
             }
             else if (specParams.ReturnDateRange[0].HasValue && specParams.ReturnDateRange[1] is null)
             {
-                AddFilter(x => x.ReturnDate!.Value.Date >= specParams.ReturnDateRange[0]!.Value.Date);
+                AddFilter(x => x.BorrowRecordDetails
+                    .Any(brd => brd.ReturnDate!.Value.Date >= specParams.ReturnDateRange[0]!.Value.Date));
             }
         }
         

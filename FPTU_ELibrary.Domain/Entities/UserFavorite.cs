@@ -10,6 +10,9 @@ public class UserFavorite
 
     public int LibraryItemId { get; set; }
 
+    public bool WantsToBorrow { get; set; }
+    public bool WantsToBorrowAfterRequestFailed { get; set; }
+
     public LibraryItem LibraryItem { get; set; } = null!;
 
     [JsonIgnore]
