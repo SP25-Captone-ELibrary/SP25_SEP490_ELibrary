@@ -1,0 +1,23 @@
+using FPTU_ELibrary.Application.Dtos.AIServices;
+using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Entities;
+using FPTU_ELibrary.Domain.Interfaces;
+using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using MapsterMapper;
+using Serilog;
+
+namespace FPTU_ELibrary.Application.Services;
+
+public class AITrainingImageService : GenericService<AITrainingImage, AITrainingImageDto, int>,
+    IAITraningImageService<AITrainingImageDto>
+{
+    public AITrainingImageService(
+        ISystemMessageService msgService, 
+        IUnitOfWork unitOfWork, 
+        IMapper mapper, 
+        ILogger logger)
+        : base(msgService, unitOfWork, mapper, logger)
+    {
+    }
+}

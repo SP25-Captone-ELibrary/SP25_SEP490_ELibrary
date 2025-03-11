@@ -5,7 +5,6 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;

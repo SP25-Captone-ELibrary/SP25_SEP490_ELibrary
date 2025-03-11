@@ -5,7 +5,6 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
-using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;

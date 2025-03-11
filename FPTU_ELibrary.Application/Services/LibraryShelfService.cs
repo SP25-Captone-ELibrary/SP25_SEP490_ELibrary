@@ -1,4 +1,3 @@
-using System.Diagnostics.Tracing;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
@@ -13,7 +12,6 @@ using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Nest;
 using Serilog;
 using Exception = System.Exception;
 

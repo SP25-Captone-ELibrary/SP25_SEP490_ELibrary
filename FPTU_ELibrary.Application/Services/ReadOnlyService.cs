@@ -1,12 +1,9 @@
 ﻿using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
-using Nest;
 using System.Linq.Expressions;
-using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using Serilog;
 

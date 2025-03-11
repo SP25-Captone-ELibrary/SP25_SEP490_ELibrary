@@ -1,4 +1,4 @@
-using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -7,15 +7,15 @@ using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
 
-public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryItemGroupDto, int>,
-    ILibraryItemGroupService<LibraryItemGroupDto>
+public class AITrainingDetailService: GenericService<AITrainingDetail, AITrainingDetailDto, int>,
+    IAITrainingDetailService<AITrainingDetailDto>
 {
-    public LibraryItemGroupService(
+    public AITrainingDetailService(
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
-        ILogger logger) 
-    : base(msgService, unitOfWork, mapper, logger)
+        ILogger logger)
+        : base(msgService, unitOfWork, mapper, logger)
     {
     }
 }

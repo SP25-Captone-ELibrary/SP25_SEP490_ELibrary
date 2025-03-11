@@ -1,6 +1,4 @@
-﻿using FPTU_ELibrary.Domain.Interfaces.Services.Base;
-
-namespace FPTU_ELibrary.Domain.Interfaces.Services
+﻿namespace FPTU_ELibrary.Domain.Interfaces.Services
 {
 	public interface IElasticService
 	{

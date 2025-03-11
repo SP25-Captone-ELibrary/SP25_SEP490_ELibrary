@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Serilog;
 using System.Net.Http.Headers;
-using System.Text;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -14,16 +13,9 @@ using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using OpenCvSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Processing;
 using MultipartFormDataContent = System.Net.Http.MultipartFormDataContent;
-using Path = System.IO.Path;
 
 namespace FPTU_ELibrary.Application.Services;
 

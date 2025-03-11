@@ -67,7 +67,6 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<WarehouseTracking, WarehouseTrackingDto>();
 			config.NewConfig<WarehouseTrackingDetail, WarehouseTrackingDetailDto>();
 			config.NewConfig<WarehouseTrackingInventory, WarehouseTrackingInventoryDto>();
-			
 			// Config special mapping
 			config.NewConfig<LibraryShelf, LibraryShelfDto>()
 				.Map(dest => dest.ClassificationNumberRangeFrom, 
@@ -99,6 +98,12 @@ namespace FPTU_ELibrary.Application.Mappings
 				.IgnoreNullValues(false);
 			config.NewConfig<TransactionDto, Transaction>()
 				.IgnoreNullValues(true);
+			config.NewConfig<AITrainingDetailDto, AITrainingDetail>()
+				.Ignore(dest => dest.TrainingSession)
+				.Ignore(dest => dest.LibraryItem);
+			config.NewConfig<AITrainingImageDto, AITrainingImage>()
+				.Ignore(dest => dest.TrainingDetail);
+
 		}
 		
 		private string RemoveTrailingZeros(decimal value)

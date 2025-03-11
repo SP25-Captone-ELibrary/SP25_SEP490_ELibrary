@@ -4,7 +4,9 @@ using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
 using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
 
@@ -84,4 +86,14 @@ public class CustomVisionController : ControllerBase
     {
         return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(req.SelectedItemIds));
     }
+
+    [HttpPost(APIRoute.AIServices.Training, Name = nameof(ExtendTrainingProgress))]
+    [Authorize]
+    public async Task<IActionResult> ExtendTrainingProgress([FromBody] ExtendTrainingProgressRequest req)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var reqBody = req.ToTrainingData();
+        return Ok(await _aiClassificationService.ExtendModelTraining(reqBody.Item1,reqBody.Item2,email));
+    }
+
 }

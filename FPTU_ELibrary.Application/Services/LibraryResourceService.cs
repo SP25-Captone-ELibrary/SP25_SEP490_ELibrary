@@ -1,4 +1,3 @@
-using System.Threading.Tasks.Sources;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
@@ -19,7 +18,6 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using MapsterMapper;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

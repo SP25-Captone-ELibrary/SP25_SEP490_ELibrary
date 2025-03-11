@@ -1,9 +1,5 @@
 ﻿using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
-using FPTU_ELibrary.Application.Extensions;
-using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -13,7 +9,6 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using Mapster;
 using MapsterMapper;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SystemRole = FPTU_ELibrary.Domain.Entities.SystemRole;
 namespace FPTU_ELibrary.Application.Services
