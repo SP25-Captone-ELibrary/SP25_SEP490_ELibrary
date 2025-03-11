@@ -13,6 +13,8 @@ public class UserFavorite
     public bool WantsToBorrow { get; set; }
     public bool WantsToBorrowAfterRequestFailed { get; set; }
 
+    public DateTime CreatedAt { get; set; }
+    
     public LibraryItem LibraryItem { get; set; } = null!;
 
     [JsonIgnore]

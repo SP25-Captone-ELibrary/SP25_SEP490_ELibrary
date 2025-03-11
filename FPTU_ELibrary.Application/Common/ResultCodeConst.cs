@@ -355,6 +355,13 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string Borrow_Fail0007 = "Borrow.Fail0007";
 		#endregion
+
+		#region Reservatation
+		/// <summary>
+		/// Cannot create item reservation as {0}
+		/// </summary>
+		public const string Reservation_Warning0001 = "Reservation.Warning0001";
+		#endregion
 		
 		#region Role
 		/// <summary>

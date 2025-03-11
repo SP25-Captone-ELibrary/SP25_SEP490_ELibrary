@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250310144446_Initial Database")]
+    [Migration("20250311044029_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -2673,6 +2673,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FavoriteId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
                     b.Property<int>("LibraryItemId")
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
@@ -2680,6 +2684,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("user_id");
+
+                    b.Property<bool>("WantsToBorrow")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("wants_to_borrow");
+
+                    b.Property<bool>("WantsToBorrowAfterRequestFailed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("wants_to_borrow_after_request_failed");
 
                     b.HasKey("FavoriteId")
                         .HasName("PK_UserFavorite_FavoriteId");

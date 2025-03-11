@@ -3,6 +3,7 @@ using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -33,11 +34,15 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     ILibraryItemService<LibraryItemDto>
 {
     // Configure lazy service
+    private readonly Lazy<IElasticService> _elasticService;
+    private readonly Lazy<IUserService<UserDto>> _userService;
+    private readonly Lazy<ILibraryCardService<LibraryCardDto>> _cardService;
+    private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordService;
+    private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowRequestService;
     private readonly Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> _itemAuthorService;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceService;
     private readonly Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> _itemGroupService;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
-    private readonly Lazy<IElasticService> _elasticService;
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingService;
     private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationQueueService;
 
@@ -52,6 +57,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     public LibraryItemService(
         // Lazy service
         Lazy<IElasticService> elasticService,
+        Lazy<IUserService<UserDto>> userService,
+        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordService,
+        Lazy<IBorrowRequestService<BorrowRequestDto>> borrowRequestService,
+        Lazy<ILibraryCardService<LibraryCardDto>> cardService,
         Lazy<ILibraryItemAuthorService<LibraryItemAuthorDto>> itemAuthorService,
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceService,
         Lazy<ILibraryItemGroupService<LibraryItemGroupDto>> itemGroupService,
@@ -72,6 +81,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         : base(msgService, unitOfWork, mapper, logger)
     {
         _authorService = authorService;
+        _userService = userService;
+        _cardService = cardService;
+        _borrowRecordService = borrowRecordService;
+        _borrowRequestService = borrowRequestService;
         _cloudService = cloudService;
         _cateService = cateService;
         _libShelfService = libShelfService;
@@ -1934,23 +1947,54 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
-    public async Task<IServiceResult> CheckUnvailableForBorrowRequestAsync(int[] ids)
+    public async Task<IServiceResult> CheckUnavailableForBorrowRequestAsync(string email, int[] ids)
     {
         try
         {
+            // Determine current system lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Check exist user with card
+            var userSpec = new BaseSpecification<User>(u => u.Email == email);
+            // Apply include
+            userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+            // Retrieve user with spec
+            var userDto = (await _userService.Value.GetWithSpecAsync(userSpec)).Data as UserDto;
+            if (userDto == null) throw new ForbiddenException();
+            
+            // Check whether user card is exist
+            Guid validCardId = Guid.Empty;
+            if (userDto.LibraryCardId != null && Guid.TryParse(userDto.LibraryCardId.ToString(), out validCardId))
+            {
+                // Try to validate card
+                var checkCardRes = await _cardService.Value.CheckCardValidityAsync(validCardId);
+                if (checkCardRes.ResultCode != ResultCodeConst.LibraryCard_Success0001)
+                {
+                    // Custom message for not found
+                    if (checkCardRes.ResultCode == ResultCodeConst.SYS_Warning0002)
+                    {
+                        var customMsg = isEng
+                            ? "Please register library card to create borrow request"
+                            : "Vui lòng đăng ký kẻ thư viện để có thể mượn sách";
+                        return new ServiceResult(ResultCodeConst.SYS_Warning0002, customMsg);
+                    }
+                    
+                    // Return handled message
+                    return checkCardRes;
+                }
+            }
+            
             // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>(li => 
-                ids.Contains(li.LibraryItemId) && // include id in requested list
-                li.LibraryItemInventory != null &&
-                li.LibraryItemInventory.AvailableUnits == 0 // No item is available
-            );
+            var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId)); // include id in requested list
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(li => li.LibraryItemInventory)
                 .Include(li => li.Category)
                 .Include(li => li.Shelf)
                 .Include(li => li.LibraryItemAuthors)
-                    .ThenInclude(lia => lia.Author)
+                .ThenInclude(lia => lia.Author)
                 .Include(li => li.LibraryItemReviews)
             );
             
@@ -1958,21 +2002,95 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             var entities = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec)).ToList();
             if (entities.Any())
             {
-                // Map to home page item dto
-                var homePageItemDtos = 
-                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto());
+                // Initialize amount calculation props
+                var totalRequestAmount = 0;
+                var totalBorrowingAmount = 0;
+                
+                // Build spec
+                var borrowReqSpec = new BaseSpecification<BorrowRequest>(br =>
+                    br.LibraryCardId == validCardId && // with specific library card
+                    br.Status == BorrowRequestStatus.Created); // In created status
+                // Count requesting amount to check for threshold
+                var listRequestAmount = (await _unitOfWork.Repository<BorrowRequest, int>()
+                    .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count)).ToList();
+                totalRequestAmount = listRequestAmount?.Select(i => i).Sum() ?? 0;
+                
+                // Build spec
+                var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId); 
+                // Count borrowed amount to check for threshold
+                var listBorrowingAmount = (await _borrowRecordService.Value
+                        .GetAllWithSpecAndSelectorAsync(borrowRecSpec, 
+                            selector: s => s.BorrowRecordDetails
+                                .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
+                                              brd.ReturnDate == null)) // Has not return yet
+                    ).Data as List<int>;
+                totalBorrowingAmount = listBorrowingAmount?.Select(i => i).Sum() ?? 0;
+                
+                // Check whether request + borrowed amount is exceed than borrow threshold 
+                IServiceResult? validateAmountRes = null;
+                if(totalBorrowingAmount > 0 || totalRequestAmount > 0)
+                {
+                    // Sum requested + borrowed + item to borrow 
+                    var sumTotal = totalRequestAmount + totalBorrowingAmount + ids.Length; 
+                    // Validate borrow amount
+                    validateAmountRes = await _borrowRequestService.Value.ValidateBorrowAmountAsync(
+                        totalItem: sumTotal,
+                        libraryCardId: validCardId);
+                }
                 
                 // Initialize response collections
+                var alreadyBorrowedItems = new List<HomePageItemDto>();
+                var alreadyRequestedItems = new List<HomePageItemDto>();
                 var allowToReserveItems = new List<HomePageItemDto>();
                 var notAllowToReserveItems = new List<HomePageItemDto>();
                 
-                // Iterate each library item to check for allowing to reserve
+                // Map to home page item dto
+                var homePageItemDtos =
+                    _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto()).ToList();
+
+                // Iterate all items to check for borrowed item
                 foreach (var dto in homePageItemDtos)
+                {
+                    // Check whether item has been borrowed
+                    var hasBorrowRecordConstraint = (await _borrowRecordService.Value.AnyAsync(bRec =>
+                                bRec.LibraryCardId == userDto.LibraryCardId && 
+                                bRec.BorrowRecordDetails.Any(brd =>
+                                    brd.LibraryItemInstance.LibraryItemId == dto.LibraryItemId && // Exist in any borrow record details
+                                    brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
+                        ).Data is true; // Convert object to boolean 
+                    // Has constraint
+                    if (hasBorrowRecordConstraint)
+                    {
+                        // Add to already borrowed list
+                        alreadyBorrowedItems.Add(dto);
+                    }
+
+                    // Check whether item has been requested to borrow
+                    var hasBorrowReqConstraint = (await _borrowRequestService.Value.AnyAsync(
+                        br => br.BorrowRequestDetails.Any(brd => brd.LibraryItemId == dto.LibraryItemId))).Data is true;
+                    // Has constraint
+                    if (hasBorrowReqConstraint)
+                    {
+                        // Add to already requested list
+                        alreadyRequestedItems.Add(dto);
+                    }
+                }
+                
+                // Extract all already borrowed item ids
+                var alreadyBorrowedItemIds = alreadyBorrowedItems.Select(x => x.LibraryItemId).ToList();
+                // Filter all items which available units is zero to process create reservation
+                var unavailableFilteredItems = homePageItemDtos.Where(li => 
+                    li.LibraryItemInventory != null && 
+                    li.LibraryItemInventory.AvailableUnits == 0 && // item is unavailable 
+                    !alreadyBorrowedItemIds.Contains(li.LibraryItemId));           
+    
+                // Iterate each library item to check for allowing to reserve
+                foreach (var dto in unavailableFilteredItems)
                 {
                     // Check exist any pending reservation by item instance id
                     var isAllowToReserve = (await _reservationQueueService.Value.CheckAllowToReserveByItemIdAsync(
                         itemId: dto.LibraryItemId)).Data is true;
-                    if (isAllowToReserve) // Is allow to reservice
+                    if (isAllowToReserve) // Is allow to reserve
                     {
                         allowToReserveItems.Add(dto);
                     }
@@ -1981,20 +2099,32 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         notAllowToReserveItems.Add(dto);
                     }
                 }
+
+                // Only process response for amount exceed than threshold when not exist any reserve items
+                if (allowToReserveItems.Count == 0 && notAllowToReserveItems.Count == 0)
+                {
+                    if (validateAmountRes != null) return validateAmountRes;
+                }
                 
                 // Get successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new
                     {
+                        AlreadyRequestedItems = alreadyRequestedItems,
+                        AlreadyBorrowedItems = alreadyBorrowedItems,
                         AllowToReserveItems = allowToReserveItems,
                         NotAllowToReserveItems = notAllowToReserveItems
                     });
             }
-            
+
             // Response empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
                 new List<HomePageItemDto>());
+        }
+        catch (ForbiddenException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

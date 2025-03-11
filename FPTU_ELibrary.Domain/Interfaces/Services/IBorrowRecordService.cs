@@ -8,6 +8,7 @@ public interface IBorrowRecordService<TDto> : IGenericService<BorrowRecord, TDto
 {
     Task<IServiceResult> GetAllCardHolderBorrowRecordByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> GetCardHolderBorrowRecordByIdAsync(Guid userId, int borrowRecordId);
+    Task<IServiceResult> GetAllBorrowingByItemIdAsync(int itemId);
     Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, TDto dto);
     Task<IServiceResult> CreateAsync(string processedByEmail, TDto dto);
     Task<IServiceResult> SelfCheckoutAsync(Guid libraryCardId, TDto dto);

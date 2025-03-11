@@ -29,8 +29,10 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
     IBorrowRecordService<BorrowRecordDto>
 {
     // Lazy services
+    private readonly Lazy<ILibraryItemService<LibraryItemDto>> _libItemSvc;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqSvc;
+    private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationQueueSvc;
     
     private readonly ICloudinaryService _cloudSvc;
     private readonly IUserService<UserDto> _userSvc;
@@ -38,14 +40,15 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ICategoryService<CategoryDto> _cateSvc;
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
-    private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
 
     private readonly BorrowSettings _borrowSettings;
 
     public BorrowRecordService(
         // Lazy services
+        Lazy<ILibraryItemService<LibraryItemDto>> libItemSvc,
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqSvc,
+        Lazy<IReservationQueueService<ReservationQueueDto>> reservationQueueSvc,
         
         // Normal services
         ICategoryService<CategoryDto> cateSvc,
@@ -53,7 +56,6 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         ILibraryItemConditionService<LibraryItemConditionDto> conditionSvc,
         IEmployeeService<EmployeeDto> employeeSvc,
         IUserService<UserDto> userSvc,
-        IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         ICloudinaryService cloudSvc,
         IOptionsMonitor<BorrowSettings> monitor,
         ISystemMessageService msgService, 
@@ -68,6 +70,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         _userSvc = userSvc;
         _employeeSvc = employeeSvc;
         _borrowReqSvc = borrowReqSvc;
+        _libItemSvc = libItemSvc;
         _itemInstanceSvc = itemInstanceSvc;
         _reservationQueueSvc = reservationQueueSvc;
         _borrowSettings = monitor.CurrentValue;
@@ -541,6 +544,54 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
             _logger.Error(ex.Message);
             throw new Exception("Error invoke while process get all borrow record by user id");
         }
+    }
+
+    public async Task<IServiceResult> GetAllBorrowingByItemIdAsync(int itemId)
+    {
+	    try
+	    {
+			// Check exist library item
+			var isItemExist = (await _libItemSvc.Value.AnyAsync(li => li.LibraryItemId == itemId)).Data is true;
+			if (!isItemExist)
+			{
+				// Mark as not found or empty
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+					new List<BorrowRecordDto>());
+			}
+			
+			// Build spec
+			var baseSpec = new BaseSpecification<BorrowRecord>(br => 
+					br.BorrowRecordDetails.Any(brd => 
+						brd.LibraryItemInstance.LibraryItemId == itemId && // Contain item instance of requested item
+						brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing
+						brd.ReturnDate == null && // Not return yet
+						brd.ReturnConditionId == null));
+			// Apply include
+			baseSpec.ApplyInclude(q => q
+				.Include(br => br.BorrowRecordDetails)
+					.ThenInclude(brd => brd.LibraryItemInstance)
+			);
+			// Retrieve all borrowing record containing specific item id
+			var entities = await _unitOfWork.Repository<BorrowRecord, int>().GetAllWithSpecAsync(baseSpec);
+			if (entities.Any())
+			{
+				// Get data successfully
+				return new ServiceResult(ResultCodeConst.SYS_Success0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+					_mapper.Map<List<BorrowRecordDto>>(entities));
+			}
+			
+			// Mark as not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+            	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+            	new List<BorrowRecordDto>());
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get all borrowing record by item id");
+	    }
     }
     
     public async Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, BorrowRecordDto dto)
@@ -1518,7 +1569,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 					}
 
 					// Check exist any pending reservation by item instance id
-					var isExistPendingReserved = (await _reservationQueueSvc.CheckPendingByItemInstanceIdAsync(
+					var isExistPendingReserved = (await _reservationQueueSvc.Value.CheckPendingByItemInstanceIdAsync(
 						borrowRecordDetailEntity.LibraryItemInstanceId)).Data is true;
 					if (isExistPendingReserved && borrowRecordDetailEntity.TotalExtension == 1)
 					{

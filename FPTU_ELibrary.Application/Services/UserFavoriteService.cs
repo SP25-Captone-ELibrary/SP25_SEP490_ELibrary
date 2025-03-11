@@ -73,10 +73,16 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                     ));
             }
 
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
             var dto = new UserFavoriteDto()
             {
                 LibraryItemId = libraryItemId,
-                UserId = (user.Data as UserDto)!.UserId
+                UserId = (user.Data as UserDto)!.UserId,
+                CreatedAt = currentLocalDateTime
             };
             var entity = _mapper.Map<UserFavorite>(dto);
             await _unitOfWork.Repository<UserFavorite, int>().AddAsync(entity);
@@ -96,6 +102,105 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
         }
     }
 
+    public async Task<IServiceResult> CreateRangeFavAfterRequestFailedWithoutSaveChangesAsync(
+        int[] libraryItemIds,
+        string email,
+        bool isForceToReplaceWhenExist = false)
+    {
+        try
+        {   
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+            // Check exist user by email
+            var userDto = (await _userService.GetByEmailAsync(email)).Data as UserDto;
+            if (userDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "user to process add favorite" 
+                        : "bạn đọc để tiến hành thêm vào danh sách yêu thích"));
+            }
+            
+            // Iterate each item id
+            foreach (var libraryItemId in libraryItemIds)
+            {
+                // Check exist library item
+                var isItemExist = (await _libraryItemService.AnyAsync(li => li.LibraryItemId == libraryItemId)).Data is true;
+                if (!isItemExist)
+                {
+                    // Not found {0}
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                        StringUtils.Format(errMsg, isEng 
+                            ? "item to process add favorite" 
+                            : "tài liệu để tiến hành thêm vào danh sách yêu thích"));
+                }
+                
+                // Build spec
+                var baseSpec = new BaseSpecification<UserFavorite>(u => 
+                    u.LibraryItemId == libraryItemId && // with specific item
+                    u.UserId == userDto.UserId);
+                // Check user already add this item
+                var existingEntity = await _unitOfWork.Repository<UserFavorite, int>().GetWithSpecAsync(baseSpec);
+                if (existingEntity != null && !isForceToReplaceWhenExist) // Item exist and not allow to force add
+                {
+                    // Msg: Cannot progress {0} as {1} already exist
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0003,
+                        StringUtils.Format(errMsg,
+                            isEng 
+                                ? "add item wanting to borrow" 
+                                : "thêm tài liệu mong muốn mượn"),
+                            isEng 
+                                ? "user favorite" 
+                                : "mục yêu thích");
+                }
+                else if (existingEntity != null && isForceToReplaceWhenExist) // Item exist but force to add
+                {
+                    // Change status
+                    existingEntity.WantsToBorrowAfterRequestFailed = true;
+                    existingEntity.WantsToBorrow = false;
+                    // Update date
+                    existingEntity.CreatedAt = currentLocalDateTime;
+                    
+                    // Process update
+                    await _unitOfWork.Repository<UserFavorite, int>().UpdateAsync(existingEntity);
+                }
+                else if (existingEntity == null) // Not exist
+                {
+                    // Initialize new 
+                    await _unitOfWork.Repository<UserFavorite, int>().AddAsync(new UserFavorite()
+                    {
+                        LibraryItemId = libraryItemId,
+                        UserId = userDto.UserId,
+                        WantsToBorrow = false,
+                        WantsToBorrowAfterRequestFailed = true,
+                        CreatedAt = currentLocalDateTime
+                    });
+                }
+            }
+            
+            // Mark as create successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process add want to borrow favorite");
+        }
+    }
+    
     public async Task<IServiceResult> RemoveFavoriteAsync(int libraryItemId, string email)
     {
         try
@@ -207,7 +312,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 .GetAllWithSpecAndSelectorAsync(itemSpecification, uf=> new UserFavorite()
                     {
                         FavoriteId = uf.FavoriteId,
-                        //References
+                        // References
                         LibraryItem = new LibraryItem()
                         {
                             LibraryItemId = uf.LibraryItem.LibraryItemId,
@@ -249,7 +354,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                             UpdatedAt = uf.LibraryItem.UpdatedAt,
                             UpdatedBy = uf.LibraryItem.UpdatedBy,
                             CreatedBy = uf.LibraryItem.CreatedBy,
-                            //References
+                            // References
                             Category = uf.LibraryItem.Category,
                             Shelf = uf.LibraryItem.Shelf,
                             LibraryItemGroup = uf.LibraryItem.LibraryItemGroup,
@@ -264,8 +369,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                                 Author = ba.Author
                             }).ToList()
                         }
-                    }
-                    );
+                    });
             var enumerable = userFavorites.ToList();
             if (enumerable.Any())
             {
@@ -287,10 +391,10 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 _mapper.Map<IEnumerable<UserFavoriteDto>>(userFavorites));
 
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Console.WriteLine(e);
-            throw;
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all user favorite");
         }
     }
 }

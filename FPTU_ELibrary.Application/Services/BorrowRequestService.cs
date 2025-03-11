@@ -15,7 +15,6 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
-using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -29,20 +28,27 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     private readonly Lazy<IUserService<UserDto>> _userSvc;
+    private readonly Lazy<IUserFavoriteService<UserFavoriteDto>> _userFavoriteSvc;
+    private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecSvc;
 
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
     private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
+    private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
+    
     private readonly BorrowSettings _borrowSettings;
 
     public BorrowRequestService(
         // Lazy services
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
         Lazy<IUserService<UserDto>> userSvc,
+        Lazy<IUserFavoriteService<UserFavoriteDto>> userFavoriteSvc,
+        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
 
         ILibraryCardService<LibraryCardDto> cardSvc,
         ILibraryItemService<LibraryItemDto> libItemSvc,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
+        IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         IOptionsMonitor<BorrowSettings> monitor,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
@@ -51,9 +57,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     {
         _cardSvc = cardSvc;
         _userSvc = userSvc;
+        _userFavoriteSvc = userFavoriteSvc;
         _libItemSvc = libItemSvc;
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
+        _borrowRecSvc = borrowRecSvc;
+        _reservationQueueSvc = reservationQueueSvc;
         _borrowSettings = monitor.CurrentValue;
     }
 
@@ -513,7 +522,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 // Validate borrow amount before handling each request detail 
                 var validateAmountRes = await ValidateBorrowAmountAsync(
                     totalItem: dto.BorrowRequestDetails.Count,
-                    libCard: libCard);
+                    libraryCardId: libCard.LibraryCardId);
                 if (validateAmountRes != null) return validateAmountRes;
             }
 
@@ -554,8 +563,8 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                             msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0003));
                     }
 
-                    // Check already borrowed the item 
-                    var isAlreadyBorrowed = await _unitOfWork.Repository<BorrowRequest, int>()
+                    // Check already requested the item 
+                    var isAlreadyRequested = await _unitOfWork.Repository<BorrowRequest, int>()
                         .AnyAsync(br =>
                                 br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
                                 br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
@@ -563,7 +572,13 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                                 br.BorrowRequestDetails.Any(brd =>
                                     brd.LibraryItemId == detail.LibraryItemId) // With specific item
                         );
-                    if (isAlreadyBorrowed)
+                    // Check already borrowed the item
+                    var isAlreadyBorrowedItem = (await _borrowRecSvc.Value.AnyAsync(
+                        br => br.BorrowRecordDetails.Any(brd =>
+                            brd.Status != BorrowRecordStatus.Returned &&
+                            brd.LibraryItemInstance.LibraryItemId == detail.LibraryItemId))).Data is true;
+                    
+                    if (isAlreadyRequested || isAlreadyBorrowedItem)
                     {
                         // Add error
                         customErrs = DictionaryUtils.AddOrUpdate(customErrs,
@@ -615,39 +630,39 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Check if any error invoke
             if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
 
-            // Count request amount with borrowed or requested amount to check for threshold
-            // Check for total borrowing items in DB
+            // Initialize amount calculation props
+            var totalRequestAmount = 0;
+            var totalBorrowingAmount = 0;
+            
             // Build spec
             var borrowReqSpec = new BaseSpecification<BorrowRequest>(br =>
                 br.LibraryCardId == validCardId && // with specific library card
-                (br.Status == BorrowRequestStatus.Borrowed || // In borrowed status OR 
-                 br.Status == BorrowRequestStatus.Created)); // In created status
-            // Apply include
-            borrowReqSpec.ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-            );
-            // Retrieve all borrow request of specific library card with spec
-            var borrowReqEntities = await _unitOfWork.Repository<BorrowRequest, int>()
-                .GetAllWithSpecAsync(borrowReqSpec);
-            // Convert to list 
-            var borrowReqList = borrowReqEntities.ToList();
-            if (borrowReqList.Any())
+                br.Status == BorrowRequestStatus.Created); // In created status
+            // Count requesting amount to check for threshold
+            var listRequestAmount = await _unitOfWork.Repository<BorrowRequest, int>()
+                .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count);
+            totalRequestAmount = listRequestAmount?.Select(i => i).Sum() ?? 0;
+            
+            // Build spec
+            var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId); 
+            // Count borrowed amount to check for threshold
+            var listBorrowingAmount = (await _borrowRecSvc.Value
+                    .GetAllWithSpecAndSelectorAsync(borrowRecSpec, 
+                        selector: s => s.BorrowRecordDetails
+                            .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
+                                          brd.ReturnDate == null)) // Has not return yet
+                ).Data as List<int>;
+            totalBorrowingAmount = listBorrowingAmount?.Select(i => i).Sum() ?? 0;
+            
+            // Check whether request + borrowed amount is exceed than borrow threshold 
+            if(totalBorrowingAmount > 0 || totalRequestAmount > 0)
             {
-                // Check total borrowing items
-                var totalBorrowingAmount = 0;
-                foreach (var borrowReq in borrowReqList)
-                {
-                    totalBorrowingAmount += borrowReq.BorrowRequestDetails.Count;
-                }
-
-                // Borrow request detail reach the threshold
-                var sumTotal =
-                    totalBorrowingAmount +
-                    dto.BorrowRequestDetails.Count; // Sum current borrowing amount with total request amount
-                // Validate borrow amount 
+                // Sum requested + borrowed + item to borrow 
+                var sumTotal = totalRequestAmount + totalBorrowingAmount + dto.BorrowRequestDetails.Count; 
+                // Validate borrow amount
                 var validateAmountRes = await ValidateBorrowAmountAsync(
                     totalItem: sumTotal,
-                    libCard: libCard);
+                    libraryCardId: validCardId);
                 if (validateAmountRes != null) return validateAmountRes;
             }
 
@@ -669,6 +684,21 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             };
             await _unitOfWork.Repository<BorrowRequest, int>().AddAsync(_mapper.Map<BorrowRequest>(borrowReqDto));
 
+            // Create reservations (if any)
+            var reservationDtos = reservationIds.Select(id => new ReservationQueueDto()
+            {
+                LibraryItemId = id
+            });
+            // Add range without save changes
+            var createRes = await _reservationQueueSvc.CreateRangeWithoutSaveChangesAsync(validCardId, reservationDtos.ToList());
+            if (createRes.ResultCode != ResultCodeConst.SYS_Success0001) return createRes;
+            
+            // Add user favourite (if any)
+            var createFavRes = await _userFavoriteSvc.Value.CreateRangeFavAfterRequestFailedWithoutSaveChangesAsync(
+                libraryItemIds: userFavoriteIds.ToArray(),
+                email: email, 
+                isForceToReplaceWhenExist: true);
+            
             // Update library item borrow more status if it true in current request
             if (libCard.IsAllowBorrowMore)
             {
@@ -923,10 +953,25 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
     
-    private async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, LibraryCardDto libCard)
+    public async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId)
     {
+        // Determine current lang context
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+        
+        // Retrieve card by id 
+        var libCardDto = (await _cardSvc.GetByIdAsync(libraryCardId)).Data as LibraryCardDto;
+        if (libCardDto == null)
+        {
+            // Not found {0}
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+        }
+        
         // Max amount to borrow (if any)
-        var maxAmountToBorrow = libCard.MaxItemOnceTime;
+        var maxAmountToBorrow = libCardDto.MaxItemOnceTime;
         // Default Threshold amount
         var defaultThresholdTotal = _borrowSettings.BorrowAmountOnceTime;
         
@@ -936,12 +981,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Msg: You can borrow up to {0} items at a time
             var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0005);
             
-            if (!libCard.IsAllowBorrowMore) // Is not allow to borrow more
+            if (!libCardDto.IsAllowBorrowMore) // Is not allow to borrow more
             {
                 return new ServiceResult(ResultCodeConst.Borrow_Warning0005, StringUtils.Format(msg, defaultThresholdTotal.ToString()));
             }
 
-            if (libCard.IsAllowBorrowMore && // Is allow to borrow more
+            if (libCardDto.IsAllowBorrowMore && // Is allow to borrow more
                 maxAmountToBorrow > 0 && totalItem > maxAmountToBorrow) // Total item borrow not exceed max amount to borrow from lib card
             {
                 return new ServiceResult(ResultCodeConst.Borrow_Warning0005, StringUtils.Format(msg, maxAmountToBorrow.ToString()));

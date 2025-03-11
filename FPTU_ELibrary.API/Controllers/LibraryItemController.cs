@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
@@ -339,7 +340,10 @@ public class LibraryItemController : ControllerBase
     [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]
     public async Task<IActionResult> CheckUnavailableItemsAsync([FromQuery] RangeRequest<int> req)
     {
-        return Ok(await _libraryItemService.CheckUnvailableForBorrowRequestAsync(ids: req.Ids));
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _libraryItemService.CheckUnavailableForBorrowRequestAsync(
+            email: email ?? string.Empty,
+            ids: req.Ids));
     }
 
     #region Archived Function

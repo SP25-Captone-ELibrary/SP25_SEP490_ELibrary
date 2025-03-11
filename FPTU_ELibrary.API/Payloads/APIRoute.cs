@@ -658,6 +658,7 @@
 			// [PUT]
 			public const string Update = Base + "/management/warehouse-trackings/details/{id}";
 			public const string UpdateItem = Base + "/management/warehouse-trackings/details/{id}/item";
+			public const string UpdateBarcodeRegistration = Base + "/management/warehouse-trackings/details/{id}/unique-barcode-registration";
 			// [DELETE]
 			public const string DeleteItem = Base + "/management/warehouse-trackings/details/{id}/item";
 			public const string Delete = Base + "/management/warehouse-trackings/details/{id}";

@@ -35,6 +35,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.WantsToBorrowAfterRequestFailed)
                 .HasDefaultValue(false)
                 .HasColumnName("wants_to_borrow_after_request_failed");
+            builder.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
             #endregion
         }
     }

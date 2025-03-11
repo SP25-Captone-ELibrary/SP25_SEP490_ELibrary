@@ -16,4 +16,5 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
     Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);
+    Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId);
 }

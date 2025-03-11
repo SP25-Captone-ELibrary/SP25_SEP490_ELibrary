@@ -1113,7 +1113,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     favorite_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    library_item_id = table.Column<int>(type: "int", nullable: false)
+                    library_item_id = table.Column<int>(type: "int", nullable: false),
+                    wants_to_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    wants_to_borrow_after_request_failed = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false)
                 },
                 constraints: table =>
                 {
