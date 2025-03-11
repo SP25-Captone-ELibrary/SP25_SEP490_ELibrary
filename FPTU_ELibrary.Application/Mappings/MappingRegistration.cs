@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -10,6 +11,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
+using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -24,6 +26,9 @@ namespace FPTU_ELibrary.Application.Mappings
 		{
 			// From [Entity] to [Dto]
 			config.NewConfig<Author, AuthorDto>();
+			config.NewConfig<AITrainingSession, AITrainingSessionDto>();
+			config.NewConfig<AITrainingDetail, AITrainingDetailDto>();
+			config.NewConfig<AITrainingImage, AITrainingImageDto>();
 			config.NewConfig<BorrowRecord, BorrowRecordDto>();
 			config.NewConfig<BorrowRecordDetail, BorrowRecordDetailDto>();
 			config.NewConfig<BorrowRequest, BorrowRequestDto>();
@@ -62,7 +67,6 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<WarehouseTracking, WarehouseTrackingDto>();
 			config.NewConfig<WarehouseTrackingDetail, WarehouseTrackingDetailDto>();
 			config.NewConfig<WarehouseTrackingInventory, WarehouseTrackingInventoryDto>();
-			
 			// Config special mapping
 			config.NewConfig<LibraryShelf, LibraryShelfDto>()
 				.Map(dest => dest.ClassificationNumberRangeFrom, 
@@ -94,6 +98,12 @@ namespace FPTU_ELibrary.Application.Mappings
 				.IgnoreNullValues(false);
 			config.NewConfig<TransactionDto, Transaction>()
 				.IgnoreNullValues(true);
+			config.NewConfig<AITrainingDetailDto, AITrainingDetail>()
+				.Ignore(dest => dest.TrainingSession)
+				.Ignore(dest => dest.LibraryItem);
+			config.NewConfig<AITrainingImageDto, AITrainingImage>()
+				.Ignore(dest => dest.TrainingDetail);
+
 		}
 		
 		private string RemoveTrailingZeros(decimal value)

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
@@ -78,4 +79,7 @@ public class LibraryItemDto
     
     [JsonIgnore]
     public ICollection<WarehouseTrackingDetailDto> WarehouseTrackingDetails { get; set; } = new List<WarehouseTrackingDetailDto>();
+    
+    [JsonIgnore]
+    public ICollection<AITrainingDetailDto> TrainingDetails { get; set; } = new List<AITrainingDetailDto>();
 }

@@ -21,15 +21,11 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
-using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using OfficeOpenXml;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;

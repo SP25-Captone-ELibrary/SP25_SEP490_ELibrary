@@ -3,8 +3,6 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 public class UserFavoriteSpecParams :BaseSpecParams
 {
     public bool? CanBorrow { get; set; }
-    public bool? IsDeleted { get; set; }
-    public bool? IsTrained { get; set; }
     
     // Basic search
     public string? Title { get; set; }

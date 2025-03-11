@@ -2,9 +2,13 @@ using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
+using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
     
@@ -72,4 +76,24 @@ public class CustomVisionController : ControllerBase
     {
         return Ok(await _aiClassificationService.RecommendBook(req.ImageToPredict));
     }
+    [HttpGet(APIRoute.Group.GetSuitableItemsForGrouping, Name = nameof(GetSuitableItemsForGrouping))]
+    public async Task<IActionResult> GetSuitableItemsForGrouping([FromRoute] int rootItemId)
+    {
+        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(rootItemId));
+    }
+    [HttpGet(APIRoute.Group.GroupedItems,Name = nameof(GroupedItems))]
+    public async Task<IActionResult> GroupedItems([FromBody] GroupAllItemsRequest req)
+    {
+        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(req.SelectedItemIds));
+    }
+
+    [HttpPost(APIRoute.AIServices.Training, Name = nameof(ExtendTrainingProgress))]
+    [Authorize]
+    public async Task<IActionResult> ExtendTrainingProgress([FromBody] ExtendTrainingProgressRequest req)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var reqBody = req.ToTrainingData();
+        return Ok(await _aiClassificationService.ExtendModelTraining(reqBody.Item1,reqBody.Item2,email));
+    }
+
 }

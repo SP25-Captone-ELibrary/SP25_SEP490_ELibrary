@@ -1,4 +1,3 @@
-using CloudinaryDotNet.Core;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
