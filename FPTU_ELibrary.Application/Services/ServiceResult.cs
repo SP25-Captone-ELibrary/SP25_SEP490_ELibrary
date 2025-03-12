@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+﻿using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 
 namespace FPTU_ELibrary.Application.Services
 {

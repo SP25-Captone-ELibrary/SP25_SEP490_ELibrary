@@ -1,6 +1,5 @@
 ﻿using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -9,7 +8,6 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Nest;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services

@@ -1,5 +1,4 @@
 using FPTU_ELibrary.Application.Common;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -9,7 +8,6 @@ using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
-using Microsoft.Extensions.Caching.Distributed;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;

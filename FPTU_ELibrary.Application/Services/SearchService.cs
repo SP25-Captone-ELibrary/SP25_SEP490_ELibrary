@@ -11,7 +11,6 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.Extensions.Options;
 using Nest;
-using Org.BouncyCastle.Ocsp;
 
 namespace FPTU_ELibrary.Application.Services
 {

@@ -3,7 +3,7 @@ using FPTU_ELibrary.Domain.Entities.Base;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
-public class User : BaseUser
+public class  User : BaseUser
 {
     // Key
     public Guid UserId { get; set; }

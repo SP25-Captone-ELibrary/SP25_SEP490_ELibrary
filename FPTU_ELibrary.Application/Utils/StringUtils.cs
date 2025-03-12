@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Dtos.AIServices;
+using FPTU_ELibrary.Domain.Common.Enums;
 using MimeKit.Tnef;
 using Org.BouncyCastle.Asn1.X509;
 
@@ -548,6 +549,25 @@ namespace FPTU_ELibrary.Application.Utils
         {
             if (!string.IsNullOrEmpty(input) && char.IsPunctuation(input[^1])) input = input[..^1];
             return input;
+        }
+        public static string DecodeSecretPrefix(string secretName)
+        {
+            var result = new List<string>();
+            var split = secretName.Split('-');
+            return split.First();
+        }
+        public static PropertyDataType  GetPropertyDataType(Type  dataType)
+        {
+            return Type.GetTypeCode(dataType) switch
+            {
+                TypeCode.Int32 => PropertyDataType.Integer,
+                TypeCode.String => PropertyDataType.String,
+                TypeCode.Boolean => PropertyDataType.Boolean,
+                TypeCode.Double => PropertyDataType.Double,
+                TypeCode.DateTime => PropertyDataType.DateTime,
+                TypeCode.Decimal => PropertyDataType.Decimal,
+                _ => dataType == typeof(Guid) ? PropertyDataType.Guid : PropertyDataType.Unknown
+            };
         }
     }
 }

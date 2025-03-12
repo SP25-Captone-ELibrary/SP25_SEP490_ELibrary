@@ -326,6 +326,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0021 = "Borrow.Warning0021";
 		/// <summary>
+		/// Digital resource has not been borrowed. Please create borrow form for this resource before accessing
+		/// </summary>
+		public const string Borrow_Warning0018 = "Borrow.Warning0018";
+		/// <summary>
+		/// Digital resource was borrowed unsuccessfully or expired
+		/// </summary>
+		public const string Borrow_Warning0019 = "Borrow.Warning0019";
+		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
 		public const string Borrow_Fail0001 = "Borrow.Fail0001";

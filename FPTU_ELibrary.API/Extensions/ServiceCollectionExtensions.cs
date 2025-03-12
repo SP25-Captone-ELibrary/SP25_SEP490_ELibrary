@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Data.Common;
+﻿using System.Data.Common;
 using System.Reflection;
 using FPTU_ELibrary.Application.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,184 +8,203 @@ using System.Text;
 using Azure.Identity;
 using CloudinaryDotNet;
 using FluentValidation;
-using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.HealthChecks;
 using FPTU_ELibrary.Application.Services;
-using FPTU_ELibrary.Application.Services.IServices;
-using Mapster;
-using MapsterMapper;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog.Core;
 using StackExchange.Redis;
+using Azure.Security.KeyVault.Secrets;
+using System.Text.Json;
+using System.Linq.Expressions;
+using FPTU_ELibrary.Domain.Entities;
+using Expression = System.Linq.Expressions.Expression;
 
 namespace FPTU_ELibrary.API.Extensions
 {
-	//  Summary:
-	//      This class is to configure services for presentation layer 
-	public static class ServiceCollectionExtensions
-	{
-		public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
-		{
-			// Add controllers
-			services.AddControllers();
-			// Configures ApiExplorer
-			services.AddEndpointsApiExplorer();
-			// Add swagger
-			services.AddSwaggerGen();
-			// Add HttpContextAccessor
-			services.AddHttpContextAccessor();
-			// Add HttpClient
-			services.AddHttpClient();
-			
-			return services;
-		}
-
-		public static IServiceCollection ConfigureSerilog(this IServiceCollection services,
-			WebApplicationBuilder builder)
-		{
-			Log.Logger = new LoggerConfiguration()
-				.Enrich.FromLogContext()
-				.WriteTo.Debug()
-				.WriteTo.Console()
-				.Enrich.WithProperty("Environment", builder.Environment)
-				.ReadFrom.Configuration(builder.Configuration)
-				.CreateLogger();
-
-			builder.Host.UseSerilog();
-
-			// Register the Serilog logger
-			services.AddSingleton(Log.Logger);
-
-			return services;
-		}
-
-		public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-			IConfiguration configuration,
-			IWebHostEnvironment env)
-		{
-			// Configure AppSettings
-			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
-			// Configure BorrowSettings
-			services.Configure<BorrowSettings>(configuration.GetSection("BorrowSettings"));
-			// Configure ElasticSettings
-			services.Configure<ElasticSettings>(configuration.GetSection("ElasticSettings"));
-			// Configure WebTokenSettings
-			services.Configure<WebTokenSettings>(configuration.GetSection("WebTokenSettings"));
-			// Configure GoogleAuthSettings
-			services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuthSettings"));
-			// Configure FacebookAuthSettings
-			services.Configure<FacebookAuthSettings>(configuration.GetSection("FacebookAuthSettings"));
-			// Configure CloudinarySettings
-			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
-			// Configure AzureSettings
-			services.Configure<AzureSettings>(configuration.GetSection("AzureSettings"));
-			// Configure OCRSettings
-			services.Configure<AISettings>(configuration.GetSection("AISettings"));
-			// Configure CustomVisionSettings
-			services.Configure<CustomVisionSettings>(configuration.GetSection("CustomVision"));
-			// Configure DetectSettings
-			services.Configure<DetectSettings>(configuration.GetSection("DetectSettings"));
-			// Configure AzureSpeechSettings
-			services.Configure<AzureSpeechSettings>(configuration.GetSection("AzureSpeechSettings"));
-			// Configure FaceDetectionSettings
-			services.Configure<FaceDetectionSettings>(configuration.GetSection("FaceDetectionSettings"));
-			// Configure PayOS
-			services.Configure<PayOSSettings>(configuration.GetSection("PayOSSettings"));
-			// Configure Payment
-			services.Configure<PaymentSettings>(configuration.GetSection("PaymentSettings"));
-			
-			#region Development stage
-			if (env.IsDevelopment()) // Is Development env
-			{
-				// Config payOS
-				var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
-				if (payOsConfig != null)
-				{
-	                var payGate = "https://api-merchant.payos.vn";
-	                var paymentUrl = $"{payGate}/v2/payment-requests";
-	                var getPaymentLinkInformation = payGate + "/v2/payment-requests/{0}";
-	                var cancelPaymentUrl = payGate + "/v2/payment-requests/{0}/cancel";
-	                var confirmWebHookUrl = payGate + "/confirm-webhook";
-	                var returnUrl = "http://localhost:3000/payment-return";
-	                var cancelUrl = "http://localhost:3000/payment-cancel";
-
-	                services.Configure<PayOSSettings>(options =>
-	                {
-	                    options.ClientId = payOsConfig.ClientId;
-	                    options.ApiKey = payOsConfig.ApiKey;
-	                    options.ChecksumKey = payOsConfig.ChecksumKey;
-	                    options.ReturnUrl = returnUrl;
-	                    options.CancelUrl = cancelUrl;
-	                    options.PaymentUrl = paymentUrl;
-	                    options.GetPaymentLinkInformationUrl = getPaymentLinkInformation;
-	                    options.CancelPaymentUrl = cancelPaymentUrl;
-	                    options.ConfirmWebHookUrl = confirmWebHookUrl;
-	                });
-				}
-			}
-
-			#endregion
-
-			#region Production stage
-
-			else if (env.IsProduction()) // Is Production env
-			{
-				// Config payOS
-				var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
-				if (payOsConfig != null)
-				{
-					var payGate = "https://api-merchant.payos.vn";
-					var paymentUrl = $"{payGate}/v2/payment-requests";
-					var getPaymentLinkInformation = payGate + "/v2/payment-requests/{0}";
-					var cancelPaymentUrl = payGate + "/v2/payment-requests/{0}/cancel";
-					var confirmWebHookUrl = payGate + "/confirm-webhook";
-					var returnUrl = "https://prep4ielts.vercel.app/payment-return";
-					var cancelUrl = "https://prep4ielts.vercel.app/payment-cancel";
-
-					services.Configure<PayOSSettings>(options =>
-					{
-						options.ClientId = payOsConfig.ClientId;
-						options.ApiKey = payOsConfig.ApiKey;
-						options.ChecksumKey = payOsConfig.ChecksumKey;
-						options.ReturnUrl = returnUrl;
-						options.CancelUrl = cancelUrl;
-						options.PaymentUrl = paymentUrl;
-						options.GetPaymentLinkInformationUrl = getPaymentLinkInformation;
-						options.CancelPaymentUrl = cancelPaymentUrl;
-						options.ConfirmWebHookUrl = confirmWebHookUrl;
-					});
-				}
-			}
-
-			#endregion
-
-			#region Staging
-
-			else if (env.IsStaging()) // Is Staging env
-			{
-
-			}
-
-			#endregion
-
-			return services;
-		}
-		
-		public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
-			IConfiguration configuration)
-		{
-			services.AddScoped(provider =>
-			{
-				var subscriptionKey = configuration["AzureSpeechSettings:SubscriptionKey"];
-				var serviceRegion = configuration["AzureSpeechSettings:Region"];
-				return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
-			});
+    //  Summary:
+    //      This class is to configure services for presentation layer 
+    public static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection ConfigureEndpoints(this IServiceCollection services)
+        {
+            // Add controllers
+            services.AddControllers();
+            // Configures ApiExplorer
+            services.AddEndpointsApiExplorer();
+            // Add swagger
+            services.AddSwaggerGen();
+            // Add HttpContextAccessor
+            services.AddHttpContextAccessor();
+            // Add HttpClient
+            services.AddHttpClient();
 
             return services;
         }
+
+        public static IServiceCollection ConfigureSerilog(this IServiceCollection services,
+            WebApplicationBuilder builder)
+        {
+            Log.Logger = new LoggerConfiguration()
+                .Enrich.FromLogContext()
+                .WriteTo.Debug()
+                .WriteTo.Console()
+                .Enrich.WithProperty("Environment", builder.Environment)
+                .ReadFrom.Configuration(builder.Configuration)
+                .CreateLogger();
+
+            builder.Host.UseSerilog();
+
+            // Register the Serilog logger
+            services.AddSingleton(Log.Logger);
+
+            return services;
+        }
+
+        public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+        	IConfiguration configuration,
+        	IWebHostEnvironment env)
+        {
+            //Get KeyVault settings
+            var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
+            var clientId = configuration["AzureSettings:KeyVaultClientId"];
+            var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+            var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+            
+            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+            var client = new SecretClient(new Uri(keyVaultUrl), credential);
+
+            // dictionary to store key vault secrets
+            var keyVaultSecrets = new Dictionary<string, string>();
+
+            var secretProperties =  client.GetPropertiesOfSecrets();
+            foreach (var secretProperty in secretProperties)
+            {
+                var secret = secretProperty.Name;
+                var secretValue = client.GetSecret(secret).Value.Value;
+                
+                // Convert "Class-Property" to "Class:Property" for IConfiguration mapping
+                var formattedKey = secret.Replace("-", ":");
+                keyVaultSecrets[formattedKey] = secretValue;
+            }
+            
+            //  override Iconfiguration with key vault secrets
+            var configBuilder = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddInMemoryCollection(keyVaultSecrets); // Override with Key Vault values
+
+            var updatedConfiguration = configBuilder.Build();
+            
+        	// Configure AppSettings
+        	services.Configure<AppSettings>(updatedConfiguration.GetSection("AppSettings"));
+        	// Configure BorrowSettings
+        	services.Configure<BorrowSettings>(updatedConfiguration.GetSection("BorrowSettings"));
+        	// Configure ElasticSettings
+        	services.Configure<ElasticSettings>(updatedConfiguration.GetSection("ElasticSettings"));
+        	// Configure WebTokenSettings
+        	services.Configure<WebTokenSettings>(updatedConfiguration.GetSection("WebTokenSettings"));
+        	// Configure GoogleAuthSettings
+        	services.Configure<GoogleAuthSettings>(updatedConfiguration.GetSection("GoogleAuthSettings"));
+        	// Configure FacebookAuthSettings
+        	services.Configure<FacebookAuthSettings>(updatedConfiguration.GetSection("FacebookAuthSettings"));
+        	// Configure CloudinarySettings
+        	services.Configure<CloudinarySettings>(updatedConfiguration.GetSection("CloudinarySettings"));
+        	// Configure AzureSettings
+        	services.Configure<AzureSettings>(updatedConfiguration.GetSection("AzureSettings"));
+        	// Configure OCRSettings
+        	services.Configure<AISettings>(updatedConfiguration.GetSection("AISettings"));
+        	// Configure CustomVisionSettings
+        	services.Configure<CustomVisionSettings>(updatedConfiguration.GetSection("CustomVision"));
+        	// Configure DetectSettings
+        	services.Configure<DetectSettings>(updatedConfiguration.GetSection("DetectSettings"));
+        	// Configure AzureSpeechSettings
+        	services.Configure<AzureSpeechSettings>(updatedConfiguration.GetSection("AzureSpeechSettings"));
+        	// Configure FaceDetectionSettings
+        	services.Configure<FaceDetectionSettings>(updatedConfiguration.GetSection("FaceDetectionSettings"));
+        	// Configure PayOS
+        	services.Configure<PayOSSettings>(updatedConfiguration.GetSection("PayOSSettings"));
+            // Configure PayOS
+            services.Configure<PaymentSettings>(updatedConfiguration.GetSection("PaymentSettings"));
+        	//Configure DigitalBorrowSettings
+            services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
+        	
+            #region Development stage
+        
+        	if (env.IsDevelopment()) // Is Development env
+        	{
+        
+        	}
+        	#endregion
+        
+        	#region Production stage
+        
+        	else if (env.IsProduction()) // Is Production env
+        	{
+        
+        	}
+        
+        	#endregion
+        
+        	#region Staging
+        
+        	else if (env.IsStaging()) // Is Staging env
+        	{
+        
+        	}
+        
+        	#endregion
+        
+        	return services;
+        }
+
+        public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            services.AddScoped(provider =>
+            {
+                var subscriptionKey = configuration["AzureSpeechSettings:SubscriptionKey"];
+                var serviceRegion = configuration["AzureSpeechSettings:Region"];
+                return SpeechConfig.FromSubscription(subscriptionKey, serviceRegion);
+            });
+
+            return services;
+        }
+
+      public static IServiceCollection EstablishApplicationConfiguration(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IWebHostEnvironment env)
+        {
+            // Cấu hình PayOS
+            var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
+            if (payOsConfig != null)
+            {
+                var payGate = "https://api-merchant.payos.vn";
+                var returnUrl = env.IsDevelopment()
+                    ? "http://localhost:3000/payment-return"
+                    : "https://prep4ielts.vercel.app/payment-return";
+                var cancelUrl = env.IsDevelopment()
+                    ? "http://localhost:3000/payment-cancel"
+                    : "https://prep4ielts.vercel.app/payment-cancel";
+
+                services.Configure<PayOSSettings>(options =>
+                {
+                    options.ClientId = payOsConfig.ClientId;
+                    options.ApiKey = payOsConfig.ApiKey;
+                    options.ChecksumKey = payOsConfig.ChecksumKey;
+                    options.ReturnUrl = returnUrl;
+                    options.CancelUrl = cancelUrl;
+                    options.PaymentUrl = $"{payGate}/v2/payment-requests";
+                    options.GetPaymentLinkInformationUrl = $"{payGate}/v2/payment-requests/{{0}}";
+                    options.CancelPaymentUrl = $"{payGate}/v2/payment-requests/{{0}}/cancel";
+                    options.ConfirmWebHookUrl = "https://api-merchant.payos.vn/confirm-webhook";
+                });
+            }
+
+            return services;
+        }
+
 
         public static IServiceCollection ConfigureRedis(this IServiceCollection services,
             IConfiguration configuration,
@@ -271,6 +289,7 @@ namespace FPTU_ELibrary.API.Extensions
 
             return services;
         }
+
 
         public static IServiceCollection AddAuthentication(this IServiceCollection services,
             IConfiguration configuration)
@@ -358,5 +377,101 @@ namespace FPTU_ELibrary.API.Extensions
             {
             }
         }
+        
+        #region KeyVault
+         //      public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+    //     IConfiguration configuration,
+    //     IWebHostEnvironment env)
+    // {
+    //     var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
+    //     var clientId = configuration["AzureSettings:KeyVaultClientId"];
+    //     var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+    //     var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+    //
+    //     var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+    //     var client = new SecretClient(new Uri(keyVaultUrl), credential);
+    //
+    //     //  Load assembly of `FPTU_ELibrary.Application`
+    //     string targetNamespace = "FPTU_ELibrary.Application.Configurations";
+    //     string assemblyName = "FPTU_ELibrary.Application";
+    //     var assembly = LoadAssembly(assemblyName);
+    //
+    //     //  Get all class 
+    //     var configTypes = assembly.GetTypes()
+    //         .Where(t => t.IsClass && t.Namespace == targetNamespace)
+    //         .ToList();
+    //
+    //     foreach (var configType in configTypes)
+    //     {
+    //         var secretName = configType.Name;
+    //         var secretResponse = client.GetSecret(secretName);
+    //
+    //         if (secretResponse?.Value?.Value != null)
+    //         {
+    //             // parse json in key vault to object
+    //             var configInstance = JsonSerializer.Deserialize(secretResponse.Value.Value, configType);
+    //
+    //             if (configInstance != null)
+    //             {
+    //                 // Get Configure<TOptions> method
+    //                 var configureGenericMethod = typeof(OptionsServiceCollectionExtensions)
+    //                     .GetMethods()
+    //                     .FirstOrDefault(m =>
+    //                         m.Name == "Configure" &&
+    //                         m.IsGenericMethodDefinition &&
+    //                         m.GetParameters().Length == 2 &&
+    //                         m.GetParameters()[0].ParameterType == typeof(IServiceCollection) &&
+    //                         m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Action<>))
+    //                     ?.MakeGenericMethod(configType);
+    //
+    //                 if (configureGenericMethod != null)
+    //                 {
+    //                     // Create action to assign value from parsed instance to DI container
+    //                     var configureAction = CreateConfigureAction(configType, configInstance);
+    //
+    //                     // Invoke Configure<TOptions> method
+    //                     configureGenericMethod.Invoke(null, new object[] { services, configureAction });
+    //                 }
+    //             }
+    //         }
+    //     }
+    //
+    //     return services;
+    // }
+
+        // /// <summary>
+        // /// Create Action<T> for assigning value from parsed instance to DI container.
+        // /// </summary>
+        // private static object CreateConfigureAction(Type configType, object instance)
+        // {
+        //     var method = typeof(ServiceCollectionExtensions)
+        //         .GetMethod(nameof(CreateConfigureActionGeneric), BindingFlags.NonPublic | BindingFlags.Static)
+        //         ?.MakeGenericMethod(configType);
+        //
+        //     return method?.Invoke(null, new object[] { instance });
+        // }
+        //
+        // /// <summary>
+        // /// Create Action for Configure<TOptions> method.
+        // /// </summary>
+        // private static Action<T> CreateConfigureActionGeneric<T>(T instance)
+        // {
+        //     return options =>
+        //     {
+        //         foreach (var property in typeof(T).GetProperties())
+        //         {
+        //             property.SetValue(options, property.GetValue(instance));
+        //         }
+        //     };
+        // }
+        //
+        // /// <summary>
+        // /// Load assembly by name.
+        // /// </summary>
+        // private static Assembly LoadAssembly(string assemblyName)
+        // {
+        //     return Assembly.Load(assemblyName) ?? throw new Exception($"Cannot load assembly {assemblyName}");
+        // }
+        #endregion
     }
 }

@@ -1,12 +1,9 @@
-using System.Collections;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
-using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
-using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
@@ -17,12 +14,9 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
-using FPTU_ELibrary.Domain.Specifications.Params;
 using MapsterMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Org.BouncyCastle.Crypto.Agreement.Srp;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services.IServices;

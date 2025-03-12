@@ -5,6 +5,7 @@ using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.OCR;
+using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -31,10 +32,10 @@ public class LibraryItemController : ControllerBase
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
     private readonly ILibraryItemAuthorService<LibraryItemAuthorDto> _itemAuthorService;
-    private readonly ILibraryShelfService<LibraryShelfDto> _shelfService;
-
-    private readonly ISearchService _searchService;
     private readonly IAIDetectionService _aiDetectionService;
+    private readonly ILibraryShelfService<LibraryShelfDto> _shelfService;
+    private readonly ISearchService _searchService;
+    private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
 
     public LibraryItemController(
         IAuthorService<AuthorDto> authorService,
@@ -44,6 +45,7 @@ public class LibraryItemController : ControllerBase
         ILibraryShelfService<LibraryShelfDto> shelfService,
         IAIDetectionService aiDetectionService,
         ISearchService searchService,
+        ILibraryResourceService<LibraryResourceDto> libraryResourceService,
         IOptionsMonitor<AppSettings> monitor)
     {
         _authorService = authorService;
@@ -53,6 +55,7 @@ public class LibraryItemController : ControllerBase
         _aiDetectionService = aiDetectionService;
         _shelfService = shelfService;
         _searchService = searchService;
+        _libraryResourceService = libraryResourceService;
         _appSettings = monitor.CurrentValue;
     }
 
@@ -335,6 +338,19 @@ public class LibraryItemController : ControllerBase
             authorId: authorId,
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
+    }
+    [HttpGet(APIRoute.LibraryItem.GetOwnResource,Name = nameof(GetOwnResourceAsync))]
+    public async Task<IActionResult> GetOwnResourceAsync( [FromRoute] int resourceId
+        , [FromQuery] int? latestMinute)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId, latestMinute);
+        
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        {
+            return File(result.Data, "application/pdf", $"Watermarked_{resourceId}.pdf");
+        }
+        return Ok(result);
     }
 
     [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]

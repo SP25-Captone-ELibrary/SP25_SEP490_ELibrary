@@ -1,20 +1,15 @@
 using System.Globalization;
-using Azure.Core;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.AIServices.Speech;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
-using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
-using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
-using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.AspNetCore.Http;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
 

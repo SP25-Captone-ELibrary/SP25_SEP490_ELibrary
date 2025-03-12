@@ -141,6 +141,7 @@
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
+			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
 		}
 
 		/// <summary>
@@ -308,10 +309,14 @@
 		/// </summary>
 		public static class Group
 		{
+			//[GET]
+			public const string GetSuitableItemsForGrouping = Base + "/management/groups/suitable-items/{rootItemId}";
 			// [POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
-			public const string DefineGroup = Base + "/management/groups/define-group"; 
+			public const string DefineGroup = Base + "/management/groups/define-group";
+			public const string GroupedItems = Base + "/management/groups/grouped-items";
+			
 		}
 		
 		/// <summary>
@@ -431,6 +436,7 @@
 			// [POST]
 			public const string UploadImage = Base + "/management/resources/images/upload";
 			public const string UploadVideo = Base + "/management/resources/videos/upload";
+			public const string UploadBigVideo = Base + "/management/resources/big-videos/upload";
 			// [PUT]
 			public const string UpdateImage = Base + "/management/resources/images/update";
 			public const string UpdateVideo = Base + "/management/resources/videos/update";
@@ -606,6 +612,7 @@
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
+			public const string Training = Base + "/management/library-items/ai/extend-train";
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string RecommendationWithId = Base + "/library-items/ai/recommendation/{id}";
@@ -738,5 +745,19 @@
 			// [GET]
 			public const string GetAll = Base + "/user-favorite";
 		}
+		/// <summary>
+		/// AdminConfiguration endpoints
+		/// </summary>
+		public static class AdminConfiguration
+		{
+			// [GET]
+			public const string GetAll = Base + "/admin-configuration";
+
+			public const string GetDetail = Base + "/admin-configuration/{name}";
+			// [PUT]
+			public const string Update = Base + "/admin-configuration";
+			
+		}
+		
 	}
 }

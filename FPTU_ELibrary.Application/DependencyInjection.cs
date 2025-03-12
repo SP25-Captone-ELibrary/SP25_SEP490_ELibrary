@@ -11,6 +11,7 @@ using Nest;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.AuditTrail;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
@@ -52,7 +53,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IVoiceService, VoiceService>(); 
 			services.AddScoped<IFaceDetectionService, FaceDetectionService>(); 
 			services.AddScoped<IPayOsService, PayOsService>(); 
-			
+			services.AddScoped<IAdminConfigurationService, AdminConfigurationService>();
 			// Register application services
 			services.AddScoped(typeof(IGenericService<,,>), typeof(GenericService<,,>));
 			services.AddScoped(typeof(IReadOnlyService<,,>), typeof(ReadOnlyService<,,>));
@@ -96,6 +97,10 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ITransactionService<TransactionDto>, TransactionService>();
             services.AddScoped<IFineService<FineDto>,FineService>();
             services.AddScoped<IUserFavoriteService<UserFavoriteDto>,UserFavoriteService>();
+            services.AddScoped<IAITraningImageService<AITrainingImageDto>,AITrainingImageService>();
+            services.AddScoped<IAITrainingDetailService<AITrainingDetailDto>,AITrainingDetailService>();
+            services.AddScoped<IAITrainingSessionService<AITrainingSessionDto>,AITrainingSessionService>();
+            
             services
                 .ConfigureMapster() // Add mapster
                 .ConfigureCloudinary() // Add cloudinary
