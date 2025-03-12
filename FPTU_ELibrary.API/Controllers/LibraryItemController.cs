@@ -292,9 +292,9 @@ public class LibraryItemController : ControllerBase
     }
     
     [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemDetailAsync))]
-    public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id)
+    public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id, [FromQuery] string? email = null)
     {
-        return Ok(await _libraryItemService.GetDetailAsync(id));
+        return Ok(await _libraryItemService.GetDetailAsync(email: email, id: id));
     }
 
     [HttpGet(APIRoute.LibraryItem.GetDetailEditions, Name = nameof(GetLibraryItemEditionsAsync))]

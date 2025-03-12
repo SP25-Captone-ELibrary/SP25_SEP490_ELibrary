@@ -141,32 +141,25 @@ public class LibraryCardHolderController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderBorrowRequestById,
-        Name = nameof(GetCardHolderBorrowRequestByIdAsync))]
-    public async Task<IActionResult> GetCardHolderBorrowRequestByIdAsync([FromRoute] Guid userId,
-        [FromRoute] int requestId)
+    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderBorrowRequestById, Name = nameof(GetCardHolderBorrowRequestByIdAsync))]
+    public async Task<IActionResult> GetCardHolderBorrowRequestByIdAsync([FromRoute] Guid userId, [FromRoute] int requestId)
     {
-        return Ok(await _borrowReqSvc.GetCardHolderBorrowRequestByIdAsync(userId: userId, id: requestId));
+        return Ok(await _borrowReqSvc.GetByIdAsync(id: requestId, userId: userId));
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderBorrowRecordById,
-        Name = nameof(GetCardHolderBorrowRecordByIdAsync))]
-    public async Task<IActionResult> GetCardHolderBorrowRecordByIdAsync([FromRoute] Guid userId,
-        [FromRoute] int borrowRecordId)
+    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderBorrowRecordById, Name = nameof(GetCardHolderBorrowRecordByIdAsync))]
+    public async Task<IActionResult> GetCardHolderBorrowRecordByIdAsync([FromRoute] Guid userId, [FromRoute] int borrowRecordId)
     {
-        return Ok(
-            await _borrowRecSvc.GetCardHolderBorrowRecordByIdAsync(userId: userId, borrowRecordId: borrowRecordId));
+        return Ok(await _borrowRecSvc.GetByIdAsync(id: borrowRecordId, userId: userId));
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderDigitalBorrowById,
-        Name = nameof(GetCardHolderDigitalBorrowByIdAsync))]
+    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderDigitalBorrowById, Name = nameof(GetCardHolderDigitalBorrowByIdAsync))]
     public async Task<IActionResult> GetCardHolderDigitalBorrowByIdAsync([FromRoute] Guid userId,
         [FromRoute] int digitalBorrowId)
     {
-        return Ok(await _digitalBorrowSvc.GetCardHolderDigitalBorrowByIdAsync(userId: userId,
-            digitalBorrowId: digitalBorrowId));
+        return Ok(await _digitalBorrowSvc.GetByIdAsync(id: digitalBorrowId, userId: userId));
     }
 
     [Authorize]
@@ -179,38 +172,40 @@ public class LibraryCardHolderController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderBorrowRequest,
-        Name = nameof(GetAllCardHolderBorrowRequestAsync))]
+    [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderBorrowRequest, Name = nameof(GetAllCardHolderBorrowRequestAsync))]
     public async Task<IActionResult> GetAllCardHolderBorrowRequestAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+        [FromQuery] BorrowRequestSpecParams specParams)
     {
-        return Ok(await _borrowReqSvc.GetAllCardHolderBorrowRequestByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _borrowReqSvc.GetAllWithSpecAsync(
+            new BorrowRequestSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                userId: userId)));
     }
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderBorrowRecord, Name = nameof(GetAllCardHolderBorrowRecordAsync))]
-    public async Task<IActionResult> GetAllCardHolderBorrowRecordAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetAllCardHolderBorrowRecordAsync([FromRoute] Guid userId, [FromQuery] BorrowRecordSpecParams specParams)
     {
-        return Ok(await _borrowRecSvc.GetAllCardHolderBorrowRecordByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _borrowRecSvc.GetAllWithSpecAsync(
+            new BorrowRecordSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                userId: userId)));
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderDigitalBorrow,
-        Name = nameof(GetAllCardHolderDigitalBorrowAsync))]
-    public async Task<IActionResult> GetAllCardHolderDigitalBorrowAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderDigitalBorrow, Name = nameof(GetAllCardHolderDigitalBorrowAsync))]
+    public async Task<IActionResult> GetAllCardHolderDigitalBorrowAsync([FromRoute] Guid userId, [FromQuery] DigitalBorrowSpecParams specParams)
     {
-        return Ok(await _digitalBorrowSvc.GetAllCardHolderDigitalBorrowByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _digitalBorrowSvc.GetAllWithSpecAsync(
+            new DigitalBorrowSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                userId: userId)));
     }
 
     [Authorize]

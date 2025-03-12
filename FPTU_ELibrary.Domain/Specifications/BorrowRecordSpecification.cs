@@ -11,7 +11,8 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
     
-    public BorrowRecordSpecification(BorrowRecordSpecParams specParams, int pageIndex, int pageSize)
+    public BorrowRecordSpecification(BorrowRecordSpecParams specParams, int pageIndex, int pageSize,
+        string? email = null, Guid? userId = null)
         :base(br => 
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) || 
@@ -48,6 +49,14 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
         EnableSplitQuery();
         
         // Add filter 
+        if (!string.IsNullOrEmpty(email))
+        {
+            AddFilter(br => br.LibraryCard.Users.Any(u => u.Email == email));
+        }
+        if (userId.HasValue && userId != Guid.Empty)
+        {
+            AddFilter(br => br.LibraryCard.Users.Any(u => u.UserId == userId));
+        }
         if (specParams.Status != null) // Status
         {
             AddFilter(br => br.BorrowRecordDetails.Any(brd => brd.Status == specParams.Status));

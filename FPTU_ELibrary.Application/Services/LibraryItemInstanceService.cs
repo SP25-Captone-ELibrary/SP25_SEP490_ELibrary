@@ -264,21 +264,13 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     }
                 }
 
-                // Check whether item instance is borrowed or reserved
-                var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
-                    br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
-                          br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
-                          br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
-                              brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == id)) // With specific instance 
-                )).Data is true; // Convert object to boolean 
-                
                 var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(bRec => 
                             bRec.BorrowRecordDetails.Any(brd => 
                                 brd.LibraryItemInstanceId == id && // Exist in any borrow record details
                                 brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
                     ).Data is true; // Convert object to boolean 
                 
-                if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
+                if (hasBorrowRecordConstraint) // Has any constraint 
                 {
                     // Cannot change data that is on borrowing or reserved
                     return new ServiceResult(ResultCodeConst.LibraryItem_Warning0008,
@@ -1152,21 +1144,13 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                             }
                         }
                         
-                        // Check whether item instance is borrowed or reserved
-                        var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
-                            br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
-                                  br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
-                                  br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
-                                      brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == itemInstanceEntity.LibraryItemInstanceId)) // With specific instance 
-                        )).Data is true; // Convert object to boolean  
-                        
                         var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(bRec => 
                                     bRec.BorrowRecordDetails.Any(brd => 
                                         brd.LibraryItemInstanceId == itemInstanceEntity.LibraryItemInstanceId && // Exist in any borrow record details
                                         brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
                             ).Data is true; // Convert object to boolean 
                         
-                        if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
+                        if (hasBorrowRecordConstraint) // Has any constraint 
                         {
                             // Error key
                             var key = $"libraryItemInstances.[{i}]";
@@ -1679,21 +1663,13 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     StringUtils.Format(errMsg, isEng ? "library item instance" : "bản sao"));
             }
 
-            // Check whether item instance is borrowed or reserved
-            var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
-                br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
-                      br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
-                      br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
-                          brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == libraryItemInstanceId)) // With specific instance 
-            )).Data is true; // Convert object to boolean  
-                
             var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(bRec => 
                         bRec.BorrowRecordDetails.Any(brd => 
                             brd.LibraryItemInstanceId == libraryItemInstanceId && // Exist in any borrow record details
                             brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
                 ).Data is true; // Convert object to boolean 
                         
-            if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
+            if (hasBorrowRecordConstraint) // Has any constraint 
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0008,
                     await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0008));
@@ -1785,21 +1761,13 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             {
                 var ec = itemInstanceList[i];
 
-                // Check whether item instance is borrowed or reserved
-                var hasBorrowRequestConstraint = (await _borrowReqService.AnyAsync(
-                    br => br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
-                          br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
-                          br.BorrowRequestDetails.Any(brd => // Exist in any borrow request details
-                              brd.LibraryItem.LibraryItemInstances.Any(li => li.LibraryItemInstanceId == ec.LibraryItemInstanceId)) // With specific instance 
-                )).Data is true; // Convert object to boolean  
-                
                 var hasBorrowRecordConstraint = (await _borrowRecService.AnyAsync(bRec => 
                             bRec.BorrowRecordDetails.Any(brd => 
                                 brd.LibraryItemInstanceId == ec.LibraryItemInstanceId && // Exist in any borrow record details
                                 brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
                     ).Data is true; // Convert object to boolean 
                 
-                if (hasBorrowRequestConstraint || hasBorrowRecordConstraint) // Has any constraint 
+                if (hasBorrowRecordConstraint) // Has any constraint 
                 {
                     // Add error
                     customErrs.Add($"ids[{i}]",

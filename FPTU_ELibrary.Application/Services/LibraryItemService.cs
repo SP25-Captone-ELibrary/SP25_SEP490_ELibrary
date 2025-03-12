@@ -3,6 +3,7 @@ using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
@@ -21,6 +22,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
+using Mapster;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +38,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     // Configure lazy service
     private readonly Lazy<IElasticService> _elasticService;
     private readonly Lazy<IUserService<UserDto>> _userService;
+    private readonly Lazy<IEmployeeService<EmployeeDto>> _employeeService;
     private readonly Lazy<ILibraryCardService<LibraryCardDto>> _cardService;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordService;
     private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowRequestService;
@@ -58,6 +61,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         // Lazy service
         Lazy<IElasticService> elasticService,
         Lazy<IUserService<UserDto>> userService,
+        Lazy<IEmployeeService<EmployeeDto>> employeeService,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordService,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowRequestService,
         Lazy<ILibraryCardService<LibraryCardDto>> cardService,
@@ -83,6 +87,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _authorService = authorService;
         _userService = userService;
         _cardService = cardService;
+        _employeeService = employeeService;
         _borrowRecordService = borrowRecordService;
         _borrowRequestService = borrowRequestService;
         _cloudService = cloudService;
@@ -98,7 +103,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _whTrackingService = whTrackingService;
         _appSettings = monitor.CurrentValue;
     }
-
+    
+    // TODO: Implement synchronize data with elastic when soft delete, undo delete, delete
+    
     public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
     {
         try
@@ -982,7 +989,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         return await base.GetAllWithSpecAsync(specification, tracked);
     }
     
-    public async Task<IServiceResult> GetDetailAsync(int id)
+    public async Task<IServiceResult> GetDetailAsync(int id, string? email = null)
     {
         try
         {
@@ -1072,17 +1079,62 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         LibraryItemId = lir.LibraryItemId,
                         ResourceId = lir.ResourceId,
                         LibraryResource = lir.LibraryResource
-                    }).ToList(),
+                    }).ToList()
                 });
 
             if (itemEntity != null)
             {
+                // Define a local mapping configuration
+                var localConfig = new TypeAdapterConfig();
+                localConfig.NewConfig<LibraryItem, LibraryItemDto>()
+                    .Map(dest => dest.LibraryItemResources, 
+                        src => src.LibraryItemResources.Adapt<List<LibraryItemResourceDto>>(localConfig)) // Explicitly map LibraryItemResources
+                    .AfterMapping((src, dest) => 
+                    {
+                        foreach (var resource in dest.LibraryItemResources)
+                        {
+                            // Ignore ResourceUrl
+                            resource.LibraryResource.ResourceUrl = null!; 
+                        }
+                    });
+                
                 // Map to dto
-                var dto = _mapper.Map<LibraryItemDto>(itemEntity);
+                var dto = itemEntity.Adapt<LibraryItemDto>(localConfig);
+                
+                // Initialize collection of digital borrow
+                var digitalBorrows = new List<DigitalBorrowDto>();
+                // Extract all item's resource ids
+                var resourceIds = dto.LibraryItemResources.Select(lir => lir.ResourceId).ToArray();
+                // Try to retrieve user and their digital borrows
+                var userSpec = new BaseSpecification<User>(u => 
+                    u.Email == email &&
+                    u.DigitalBorrows.Any(db => resourceIds.Contains(db.ResourceId)));
+                // Apply include
+                userSpec.ApplyInclude(q => q
+                    .Include(u => u.DigitalBorrows)
+                        .ThenInclude(d => d.DigitalBorrowExtensionHistories)
+                );
+                if ((await _userService.Value.GetWithSpecAsync(userSpec)).Data is UserDto userDto)
+                {
+                    // Order by digital borrow id 
+                    userDto.DigitalBorrows = userDto.DigitalBorrows.OrderBy(db => db.DigitalBorrowId).ToList();
+                    
+                    // Group by ResourceId and select the newest (last item in the ordered list)
+                    var newestBorrows = userDto.DigitalBorrows
+                        .GroupBy(db => db.ResourceId)
+                        .Select(g => g.Last())
+                        .ToList();
+                    
+                    // Remove user information in each digital borrow
+                    newestBorrows.ForEach(db => db.User = null!);
+                    
+                    // Add range new digital borrows
+                    digitalBorrows.AddRange(newestBorrows);
+                }
 
                 // Convert to library item detail dto
-                var itemDetailDto = dto.ToLibraryItemDetailDto();
-
+                var itemDetailDto = dto.ToLibraryItemDetailDto(digitalBorrows: digitalBorrows);
+                
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);
             }
@@ -1985,6 +2037,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     return checkCardRes;
                 }
             }
+            else
+            {
+                // Msg: You need a library card to access this service
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0004));
+            }
             
             // Build spec
             var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId)); // include id in requested list
@@ -2041,6 +2099,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Initialize response collections
                 var alreadyBorrowedItems = new List<HomePageItemDto>();
                 var alreadyRequestedItems = new List<HomePageItemDto>();
+                var alreadyReservedItems = new List<HomePageItemDto>();
                 var allowToReserveItems = new List<HomePageItemDto>();
                 var notAllowToReserveItems = new List<HomePageItemDto>();
                 
@@ -2051,6 +2110,23 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Iterate all items to check for borrowed item
                 foreach (var dto in homePageItemDtos)
                 {
+                    // Check whether item has been reserved
+                    var hasReservedConstraint = (await _reservationQueueService.Value.AnyAsync(r => 
+                        r.LibraryItemId == dto.LibraryItemId &&
+                        r.LibraryCardId == userDto.LibraryCardId &&
+                        r.QueueStatus != ReservationQueueStatus.Expired &&
+                        r.QueueStatus != ReservationQueueStatus.Cancelled && 
+                        r.QueueStatus != ReservationQueueStatus.Collected)).Data is true;
+                    // Has constraint
+                    if (hasReservedConstraint)
+                    {
+                        // Add to already reserved list
+                        alreadyReservedItems.Add(dto);
+                        
+                        // Skip to next item
+                        continue;
+                    }
+                    
                     // Check whether item has been borrowed
                     var hasBorrowRecordConstraint = (await _borrowRecordService.Value.AnyAsync(bRec =>
                                 bRec.LibraryCardId == userDto.LibraryCardId && 
@@ -2063,11 +2139,16 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         // Add to already borrowed list
                         alreadyBorrowedItems.Add(dto);
+                        
+                        // Skip to next item
+                        continue;
                     }
 
                     // Check whether item has been requested to borrow
                     var hasBorrowReqConstraint = (await _borrowRequestService.Value.AnyAsync(
-                        br => br.BorrowRequestDetails.Any(brd => brd.LibraryItemId == dto.LibraryItemId))).Data is true;
+                        br => br.LibraryCardId == userDto.LibraryCardId &&
+                              br.Status == BorrowRequestStatus.Created &&
+                              br.BorrowRequestDetails.Any(brd => brd.LibraryItemId == dto.LibraryItemId))).Data is true;
                     // Has constraint
                     if (hasBorrowReqConstraint)
                     {
@@ -2078,18 +2159,23 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 
                 // Extract all already borrowed item ids
                 var alreadyBorrowedItemIds = alreadyBorrowedItems.Select(x => x.LibraryItemId).ToList();
+                var alreadyRequestedItemIds = alreadyRequestedItems.Select(x => x.LibraryItemId).ToList();
+                var alreadyReservedItemIds = alreadyReservedItems.Select(x => x.LibraryItemId).ToList();
                 // Filter all items which available units is zero to process create reservation
                 var unavailableFilteredItems = homePageItemDtos.Where(li => 
                     li.LibraryItemInventory != null && 
                     li.LibraryItemInventory.AvailableUnits == 0 && // item is unavailable 
-                    !alreadyBorrowedItemIds.Contains(li.LibraryItemId));           
+                    !alreadyBorrowedItemIds.Contains(li.LibraryItemId) && 
+                    !alreadyRequestedItemIds.Contains(li.LibraryItemId) && 
+                    !alreadyReservedItemIds.Contains(li.LibraryItemId));           
     
                 // Iterate each library item to check for allowing to reserve
                 foreach (var dto in unavailableFilteredItems)
                 {
                     // Check exist any pending reservation by item instance id
                     var isAllowToReserve = (await _reservationQueueService.Value.CheckAllowToReserveByItemIdAsync(
-                        itemId: dto.LibraryItemId)).Data is true;
+                        itemId: dto.LibraryItemId,
+                        email: email)).Data is true;
                     if (isAllowToReserve) // Is allow to reserve
                     {
                         allowToReserveItems.Add(dto);
@@ -2112,6 +2198,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         AlreadyRequestedItems = alreadyRequestedItems,
                         AlreadyBorrowedItems = alreadyBorrowedItems,
+                        AlreadyReservedItems = alreadyReservedItems,
                         AllowToReserveItems = allowToReserveItems,
                         NotAllowToReserveItems = notAllowToReserveItems
                     });
@@ -2931,7 +3018,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
 	    }
     }
 
-    public async Task<IServiceResult> DetectWrongImportDataInternalAsync<TCsvRecord>(
+    private async Task<IServiceResult> DetectWrongImportDataInternalAsync<TCsvRecord>(
         int startRowIndex,
         List<TCsvRecord> records,
         List<string> coverImageNames) where TCsvRecord : LibraryItemCsvRecordDto
@@ -3306,7 +3393,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             coverImageNames: coverImageNames);
     }
     
-    public async Task<IServiceResult> DetectDuplicatesInFileInternalAsync<TCsvRecord>(
+    private async Task<IServiceResult> DetectDuplicatesInFileInternalAsync<TCsvRecord>(
         List<TCsvRecord> records, string[] scanningFields) where TCsvRecord : LibraryItemCsvRecordDto
     {
         // Determine current system language

@@ -6,8 +6,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IDigitalBorrowService<TDto> : IGenericService<DigitalBorrow, TDto, int>
     where TDto : class
 {
-    Task<IServiceResult> GetAllCardHolderDigitalBorrowByUserIdAsync(Guid userId, int pageIndex, int pageSize);
-    Task<IServiceResult> GetCardHolderDigitalBorrowByIdAsync(Guid userId, int digitalBorrowId);
+    Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
     Task<IServiceResult> ConfirmDigitalBorrowAsync(string email, string transactionToken);
     Task<IServiceResult> ConfirmDigitalExtensionAsync(string email, string transactionToken);
 }

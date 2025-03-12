@@ -54,26 +54,6 @@ public class BorrowRequestController : ControllerBase
     }
     #endregion
     
-    [Authorize]
-    [HttpGet(APIRoute.BorrowRequest.GetAll, Name = nameof(GetAllBorrowRequestWithEmailAsync))]
-    public async Task<IActionResult> GetAllBorrowRequestWithEmailAsync([FromQuery] BorrowRequestSpecParams specParams)
-    {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _borrowReqSvc.GetAllByEmailAsync(
-            email: email ?? string.Empty,
-            spec: new BorrowRequestSpecification(
-                specParams: specParams,
-                pageIndex: specParams.PageIndex ?? 1,
-                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
-    }
-
-    [HttpGet(APIRoute.BorrowRequest.GetById, Name = nameof(GetBorrowRequestByIdWithEmailAsync))]
-    public async Task<IActionResult> GetBorrowRequestByIdWithEmailAsync([FromRoute] int id)
-    {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _borrowReqSvc.GetByIdAsync(id: id, email: email ?? string.Empty));
-    }
-    
     [Authorize]    
     [HttpPost(APIRoute.BorrowRequest.Create, Name = nameof(CreateBorrowRequestAsync))]
     public async Task<IActionResult> CreateBorrowRequestAsync([FromBody] CreateBorrowRequest req)

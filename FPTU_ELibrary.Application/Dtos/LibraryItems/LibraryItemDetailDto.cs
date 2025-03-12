@@ -1,4 +1,5 @@
 using FPTU_ELibrary.Application.Dtos.Authors;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -70,11 +71,13 @@ public class LibraryItemDetailDto
     public List<AuthorDto> Authors { get; set; } = new();
     // Instances
     public List<LibraryItemInstanceDto> LibraryItemInstances { get; set; } = new();
+    // Digital borrows
+    public List<DigitalBorrowDto> DigitalBorrows { get; set; } = new();
 }
 
 public static class LibraryItemDetailDtoExtensions
 {
-    public static LibraryItemDetailDto ToLibraryItemDetailDto(this LibraryItemDto dto)
+    public static LibraryItemDetailDto ToLibraryItemDetailDto(this LibraryItemDto dto, List<DigitalBorrowDto>? digitalBorrows = null)
     {
         return new LibraryItemDetailDto()
         {
@@ -135,10 +138,13 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Digital borrows
+            DigitalBorrows = digitalBorrows ?? new()
         };
     }
 
-    public static LibraryItemDetailDto ToLibraryItemDetailWithoutGroupDto(this LibraryItemDto dto)
+    public static LibraryItemDetailDto ToLibraryItemDetailWithoutGroupDto(this LibraryItemDto dto,
+        List<DigitalBorrowDto>? digitalBorrows = null)
     {
         return new LibraryItemDetailDto()
         {
@@ -198,10 +204,13 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Digital borrows
+            DigitalBorrows = digitalBorrows ?? new()
         };
     }
 
-    public static LibraryItemDetailDto ToLibraryItemGroupedDetailDto(this LibraryItemDto dto)
+    public static LibraryItemDetailDto ToLibraryItemGroupedDetailDto(this LibraryItemDto dto, 
+        List<DigitalBorrowDto>? digitalBorrows = null)
     {
         return new LibraryItemDetailDto()
         {
@@ -262,6 +271,8 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Digital borrows
+            DigitalBorrows = digitalBorrows ?? new()
         };
     }
 }

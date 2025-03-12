@@ -358,9 +358,21 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region Reservatation
 		/// <summary>
-		/// Cannot create item reservation as {0}
+		/// [WARNING] Cannot create item reservation as {0}
 		/// </summary>
 		public const string Reservation_Warning0001 = "Reservation.Warning0001";
+		/// <summary>
+		/// [WARNING] Cannot reserve for item {0} as you are requesting for this item
+		/// </summary>
+		public const string Reservation_Warning0002 = "Reservation.Warning0002";
+		/// <summary>
+		/// [WARNING] Cannot reserve for item {0} as you are borrowing this item
+		/// </summary>
+		public const string Reservation_Warning0003 = "Reservation.Warning0003";
+		/// <summary>
+		/// [WARNING] You has already reserved item {0}
+		/// </summary>
+		public const string Reservation_Warning0004 = "Reservation.Warning0004";
 		#endregion
 		
 		#region Role

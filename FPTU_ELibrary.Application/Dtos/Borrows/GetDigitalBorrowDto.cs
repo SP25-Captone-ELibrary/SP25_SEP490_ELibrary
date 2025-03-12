@@ -1,12 +1,10 @@
-using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Domain.Common.Enums;
-using FPTU_ELibrary.Domain.Entities;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryCard;
+namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
-public class LibraryCardHolderDigitalBorrowDto
+public class GetDigitalBorrowDto
 {
     public int DigitalBorrowId { get; set; }
     public int ResourceId { get; set; }
@@ -22,11 +20,12 @@ public class LibraryCardHolderDigitalBorrowDto
     public List<TransactionDto> Transactions { get; set; } = new();
 }
 
-public static class LibraryCardHolderDigitalBorrowExtensions
+public static class GetDigitalBorrowDtoExtensions
 {
-    public static LibraryCardHolderDigitalBorrowDto ToCardHolderDigitalBorrowDto(this DigitalBorrowDto dto)
+    public static GetDigitalBorrowDto ToGetDigitalBorrowDto(this DigitalBorrowDto dto,
+        List<TransactionDto>? transactions = null)
     {
-        return new()
+        return new ()
         {
             DigitalBorrowId = dto.DigitalBorrowId,
             ResourceId = dto.ResourceId,
@@ -39,6 +38,9 @@ public static class LibraryCardHolderDigitalBorrowExtensions
             LibraryResource = dto.LibraryResource,
             DigitalBorrowExtensionHistories = dto.DigitalBorrowExtensionHistories.Any()
                 ? dto.DigitalBorrowExtensionHistories.ToList()
+                : new(),
+            Transactions = transactions != null && transactions.Any() 
+                ? transactions 
                 : new()
         };
     }

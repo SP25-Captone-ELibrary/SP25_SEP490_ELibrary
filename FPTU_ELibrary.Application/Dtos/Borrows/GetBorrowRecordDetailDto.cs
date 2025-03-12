@@ -1,15 +1,17 @@
-using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryCard;
+namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
-public class LibraryCardHolderBorrowRecordDetailDto
+public class GetBorrowRecordDetailDto
 {
     public int BorrowRecordDetailId { get; set; }
     
     // Specific borrow record
     public int BorrowRecordId { get; set; }
+    
+    // Specific library item instance
+    public int LibraryItemInstanceId { get; set; }
 
     // Borrow record details
     public int ConditionId { get; set; } 
@@ -26,7 +28,7 @@ public class LibraryCardHolderBorrowRecordDetailDto
     public int TotalExtension { get; set; }
     
     // References
-    public LibraryItemDto LibraryItem { get; set; } = null!;
+    public LibraryItemDetailDto LibraryItem { get; set; } = null!;
     public LibraryItemConditionDto Condition { get; set; } = null!;
     public LibraryItemConditionDto? ReturnCondition { get; set; } = null!;
     

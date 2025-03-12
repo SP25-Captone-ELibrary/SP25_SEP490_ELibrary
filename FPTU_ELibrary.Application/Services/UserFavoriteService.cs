@@ -192,7 +192,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
             
             // Mark as create successfully
             return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
         }
         catch (Exception ex)
         {

@@ -9,5 +9,5 @@ public interface IReservationQueueService<TDto> : IGenericService<ReservationQue
     Task<IServiceResult> CreateRangeWithoutSaveChangesAsync(Guid libraryCardId, List<TDto> dtos);
     Task<IServiceResult> GetAllCardHolderReservationByUserIdAsync(Guid userId, int pageIndex, int pageSize);
     Task<IServiceResult> CheckPendingByItemInstanceIdAsync(int itemInstanceId);
-    Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId);
+    Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId, string email);
 }
