@@ -66,7 +66,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             }
 
             if (userSpecParams.DobRange != null
-                && userSpecParams.DobRange.Count > 1) // With range of dob
+                && userSpecParams.DobRange.Length > 1) // With range of dob
             {
                 if (userSpecParams.DobRange[0] is null && userSpecParams.DobRange[1].HasValue)
                 {
@@ -86,7 +86,7 @@ namespace FPTU_ELibrary.Domain.Specifications
 
             // With range of create date like dob
             if (userSpecParams.CreateDateRange != null
-                && userSpecParams.CreateDateRange.Count > 1)
+                && userSpecParams.CreateDateRange.Length > 1)
             {
                 if (userSpecParams.CreateDateRange[0] is null && userSpecParams.CreateDateRange[1].HasValue)
                 {
@@ -106,7 +106,7 @@ namespace FPTU_ELibrary.Domain.Specifications
 
             // With range of modified date like dob
             if (userSpecParams.ModifiedDateRange != null
-                && userSpecParams.ModifiedDateRange.Count > 1)
+                && userSpecParams.ModifiedDateRange.Length > 1)
             {
                 if (userSpecParams.ModifiedDateRange[0] is null && userSpecParams.ModifiedDateRange[1].HasValue)
                 {

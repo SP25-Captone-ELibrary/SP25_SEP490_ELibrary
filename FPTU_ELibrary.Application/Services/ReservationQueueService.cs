@@ -1,7 +1,15 @@
+using CloudinaryDotNet.Core;
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -9,6 +17,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -16,18 +25,198 @@ namespace FPTU_ELibrary.Application.Services;
 public class ReservationQueueService : GenericService<ReservationQueue, ReservationQueueDto, int>,
     IReservationQueueService<ReservationQueueDto>
 {
+    // Lazy services
+    private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordSvc;
+    private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowRequestSvc;
+    private readonly Lazy<ILibraryItemInventoryService<LibraryItemInventoryDto>> _inventorySvc;
+    
     private readonly IUserService<UserDto> _userSvc;
+    private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
+    private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
+    
+    private readonly BorrowSettings _borrowSettings;
 
     public ReservationQueueService(
+        // Lazy services
+        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordSvc,
+        Lazy<IBorrowRequestService<BorrowRequestDto>> borrowRequestSvc,
+        Lazy<ILibraryItemInventoryService<LibraryItemInventoryDto>> inventorySvc,
+        
         IUserService<UserDto> userSvc,
+        ILibraryItemService<LibraryItemDto> libItemSvc,
+        ILibraryCardService<LibraryCardDto> cardSvc,
+        IOptionsMonitor<BorrowSettings> monitor,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+        _cardSvc = cardSvc;
         _userSvc = userSvc;
+        _libItemSvc = libItemSvc;
+        _inventorySvc = inventorySvc;
+        _borrowRecordSvc = borrowRecordSvc;
+        _borrowRequestSvc = borrowRequestSvc;
+        _borrowSettings = monitor.CurrentValue;
     }
 
+    public async Task<IServiceResult> CheckPendingByItemInstanceIdAsync(int itemInstanceId)
+    {
+        try
+        {
+            // Build spec
+            var libSpec = new BaseSpecification<LibraryItem>(
+                li => li.LibraryItemInstances.Any(l => l.LibraryItemInstanceId == itemInstanceId));
+            // Retrieve library item by instance id
+            var getRes = (await _libItemSvc.GetWithSpecAndSelectorAsync(
+                libSpec, selector: lib => lib.LibraryItemId)).Data;
+            if (getRes == null || !int.TryParse(getRes.ToString(), out var validItemId))
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
+                    rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
+                    rq.LibraryItemId == validItemId); // Equals item id
+            // Retrieve with spec
+            var entities = await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec);
+            if (entities.Any())
+            {
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+        }   
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all reservation queue by item instance ids");
+        }
+    }
+
+    public async Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId, string email)
+    {
+        try
+        {
+            // Retrieve library item
+            var libSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+            // Apply include
+            libSpec.ApplyInclude(q => q.Include(li => li.LibraryItemInventory!));
+            var libItemDto = (await _libItemSvc.GetWithSpecAsync(libSpec)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                // Not allow to reserve
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            }
+            
+            // Retrieve user 
+            var userDto = (await _userSvc.GetByEmailAsync(email)).Data as UserDto;
+            if (userDto == null)
+            {
+                // Msg: Not allow to reserve
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            }else if (userDto.LibraryCardId == null)
+            {
+                // Msg: You need a library card to access this service
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0004), false);
+            }
+            
+            // Check whether user has already reserved item
+            var isAlreadyReserved = await _unitOfWork.Repository<ReservationQueue, int>().AnyAsync(r =>
+                r.LibraryItemId == itemId &&
+                r.LibraryCardId == userDto.LibraryCardId &&
+                r.QueueStatus != ReservationQueueStatus.Expired &&
+                r.QueueStatus != ReservationQueueStatus.Cancelled &&
+                r.QueueStatus != ReservationQueueStatus.Collected);
+            if (isAlreadyReserved)
+            {
+                // Msg: You have already reserved item {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0004);
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0004,
+                    StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
+            }
+            
+            // Check whether user has already borrowed item
+            var isAlreadyBorrowed = (await _borrowRecordSvc.Value.AnyAsync(bRec =>
+                bRec.LibraryCardId == userDto.LibraryCardId &&
+                bRec.BorrowRecordDetails.Any(brd =>
+                    brd.LibraryItemInstance.LibraryItemId == itemId && // Exist in any borrow record details
+                    brd.Status != BorrowRecordStatus.Returned))).Data is true; // Exclude elements with returned status
+            if (isAlreadyBorrowed)
+            {
+                // Msg: Cannot reserve for item {0} as you are borrowing this item
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0003);
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0003,
+                    StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
+            }
+            
+            // Check whether user has already requested item
+            var isAlreadyRequested = (await _borrowRequestSvc.Value.AnyAsync(
+                br => br.LibraryCardId == userDto.LibraryCardId &&
+                      br.Status == BorrowRequestStatus.Created &&
+                      br.BorrowRequestDetails.Any(brd => brd.LibraryItemId == itemId))).Data is true;
+            if (isAlreadyRequested)
+            {
+                // Msg: Cannot reserve for item {0} as you are borrowing this item
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0003);
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0003,
+                    StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
+            }
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
+                rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
+                rq.LibraryItemId == libItemDto.LibraryItemId); // Equals item id
+            // Retrieve with spec
+            var entities = (await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+            if (entities.Any())
+            {
+                // Check allow to reserve
+                if (entities.Count >= libItemDto.LibraryItemInventory?.TotalUnits || // Total reservation exceed or equals to total units
+                    libItemDto.LibraryItemInventory?.AvailableUnits > 0 ||
+                    libItemDto.LibraryItemInventory?.BorrowedUnits == 0) // Still exist available items 
+                {
+                    // Not allow to reserve
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+                }
+            }
+            
+            // Allow to reserve whether item total units > 0 and available == 0
+            if (libItemDto.LibraryItemInventory != null && 
+                libItemDto.LibraryItemInventory.TotalUnits > 0 &&
+                libItemDto.LibraryItemInventory.TotalUnits > entities.Count && // Total current reservation must smaller than total units of item  
+                libItemDto.LibraryItemInventory.AvailableUnits == 0 &&
+                // Only allow to reserve when at least one item is borrowing
+                libItemDto.LibraryItemInventory.BorrowedUnits > 0 && 
+                libItemDto.LibraryItemInventory.BorrowedUnits > libItemDto.LibraryItemInventory.ReservedUnits)
+            {
+                // Allow to reserve
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), true);
+            }
+            
+            // Not allow to reserve
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process check allow to reserve by item id");
+        }
+    }
+    
     public async Task<IServiceResult> GetAllCardHolderReservationByUserIdAsync(Guid userId, int pageIndex, int pageSize)
     {
         try
@@ -95,7 +284,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             // Not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderBorrowRequestDto>());
+                new List<LibraryCardHolderReservationQueueDto>());
         }
         catch (Exception ex)
         {
@@ -103,5 +292,147 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             throw new Exception("Error invoke when process get all reservation queue by user id");
         }
     }
-    
+
+    public async Task<IServiceResult> CreateRangeWithoutSaveChangesAsync(Guid libraryCardId, List<ReservationQueueDto> dtos)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+            // Check exist card
+            var cardDto = (await _cardSvc.GetByIdAsync(libraryCardId)).Data as LibraryCardDto;
+            if (cardDto == null)
+            {
+                // Msg: Cannot create item reservation as {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0001);
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0001,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "not found library card" 
+                        : "không tìm thấy thẻ thư viện"));
+            }
+            
+            // Check card validity
+            var checkCardRes = await _cardSvc.CheckCardValidityAsync(cardDto.LibraryCardId);
+            if (checkCardRes.ResultCode != ResultCodeConst.LibraryCard_Success0001) return checkCardRes;
+            
+            // Look up for the duplicate item
+            var libItemIdSet = new HashSet<int>();
+            foreach (var libItemId in dtos.Select(r => r.LibraryItemId).ToList())
+            {
+                if(!libItemIdSet.Add(libItemId))
+                {
+                    // Msg: Cannot create item reservation as {0}
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0001);
+                    return new ServiceResult(ResultCodeConst.Reservation_Warning0001,
+                        StringUtils.Format(errMsg, isEng
+                            ? "exist duplicate item"
+                            : "tồn tại tài liệu bị trùng"));
+                }
+            }
+            
+            // Initialize reservation entities
+            var entities = new List<ReservationQueue>();
+            // Iterate each reservation queue
+            foreach (var reservationDto in dtos)
+            {
+                 // Generate expected available date range for libItemId in requested reservation           
+                 var generateResp = await GenerateExpectedAvailableDateAsync(libItemId: reservationDto.LibraryItemId);
+                 if (generateResp.ExpectedAvailableDateMin.HasValue &&
+                     generateResp.ExpectedAvailableDateMax.HasValue &&
+                     generateResp.ExpectedAvailableDateMin.Value < generateResp.ExpectedAvailableDateMax.Value)
+                 {
+                     // Assign expected date range
+                     reservationDto.ExpectedAvailableDateMin = generateResp.ExpectedAvailableDateMin;
+                     reservationDto.ExpectedAvailableDateMax = generateResp.ExpectedAvailableDateMax;
+                     
+                     // Add necessary fields
+                     reservationDto.LibraryCardId = cardDto.LibraryCardId;
+                     reservationDto.ReservationDate = currentLocalDateTime;
+                     reservationDto.QueueStatus = ReservationQueueStatus.Pending;
+
+                     // Add to entity list
+                     entities.Add(_mapper.Map<ReservationQueue>(reservationDto));
+                     
+                     // Retrieving item inventory 
+                     var itemIven =
+                         (await _inventorySvc.Value.GetByIdAsync(id: reservationDto.LibraryItemId)).Data as LibraryItemInventoryDto;
+                     if (itemIven == null)
+                     {
+                         // Unknown error
+                         return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                     }
+                     
+                     // Increase reservation value
+                     itemIven.ReservedUnits++;
+                     // Process update without save change
+                     await _inventorySvc.Value.UpdateWithoutSaveChangesAsync(itemIven);
+                 }
+            }
+            
+            // Try to add range without save changes
+            await _unitOfWork.Repository<ReservationQueue, int>().AddRangeAsync(entities);
+            
+            // Mark as create successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when create range reservation queue");
+        }
+    }
+
+    private async Task<(int LibItemId, DateTime? ExpectedAvailableDateMin, DateTime? ExpectedAvailableDateMax)>
+        GenerateExpectedAvailableDateAsync(int libItemId)
+    {
+        // Retrieve all borrow record, which has record detail containing item instance with specific libItemId 
+        var borrowRecords = (await _borrowRecordSvc.Value.GetAllBorrowingByItemIdAsync(itemId: libItemId)
+            ).Data as List<BorrowRecordDto>;
+        // Extract all active details that belongs to specific libItemId
+        var activeDetails = borrowRecords?
+            .SelectMany(br => br.BorrowRecordDetails.Where(brd => brd.LibraryItemInstance.LibraryItemId == libItemId))
+            .OrderBy(brd => brd.DueDate) // Order by due date
+            .ToList();
+        // Retrieve all reservation with specific libItemId
+        var reserveSpec = new BaseSpecification<ReservationQueue>(rq => rq.LibraryItemId == libItemId);
+        var reservations = (await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(reserveSpec)).ToList();
+        
+        // Required exist at least borrow record to generate expected date range
+        if(activeDetails != null && activeDetails.Any() &&
+           // Total borrowing record detail must greater than current total reservation 
+           activeDetails.Count > reservations.Count)
+        {
+            // Sort reservations by reservation date (assuming earlier reservations should be served first)
+            reservations = reservations.OrderBy(r => r.ReservationDate).ToList();
+            
+            // reservation.Count as borrow record detail start index
+            for (int i = reservations.Count; i < activeDetails.Count; i++)
+            {
+                // Extract max extension date
+                var maxExtensionDays = _borrowSettings.TotalBorrowExtensionInDays;
+                // Extract handling days after returning book
+                var handlingDays = _borrowSettings.OverdueOrLostHandleInDays;
+                
+                // Assuming expected date range for lib item
+                var expectedAvailableDateMin = activeDetails[i].DueDate.AddDays(1); // 1 day after returning book
+                var expectedAvailableDateMax = activeDetails[i].DueDate.AddDays(maxExtensionDays + handlingDays); // Sum of max extension days and handling days
+                
+                // Response
+                return (libItemId, expectedAvailableDateMin, expectedAvailableDateMax);
+            }
+        }
+        
+        // Add default value to response
+        return (libItemId, null, null);
+    }
 }

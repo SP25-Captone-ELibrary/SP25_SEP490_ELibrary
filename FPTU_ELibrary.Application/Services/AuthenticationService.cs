@@ -1986,7 +1986,6 @@ namespace FPTU_ELibrary.Application.Services
 		{
 			if (string.IsNullOrEmpty(storedHash))
 			{
-				// TODO: Change into sign-in with OTP
 				throw new UnauthorizedException("Your password is not set. Please sign in with an external provider to update it.");
 			}
 

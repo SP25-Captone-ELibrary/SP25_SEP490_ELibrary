@@ -31,9 +31,11 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<AITrainingImage, AITrainingImageDto>();
 			config.NewConfig<BorrowRecord, BorrowRecordDto>();
 			config.NewConfig<BorrowRecordDetail, BorrowRecordDetailDto>();
+			config.NewConfig<BorrowDetailExtensionHistory, BorrowDetailExtensionHistoryDto>();
 			config.NewConfig<BorrowRequest, BorrowRequestDto>();
 			config.NewConfig<BorrowRequestDetail, BorrowRequestDetailDto>();
 			config.NewConfig<DigitalBorrow, DigitalBorrowDto>();
+			config.NewConfig<DigitalBorrowExtensionHistory, DigitalBorrowExtensionHistoryDto>();
 			config.NewConfig<Employee, EmployeeDto>();
 			config.NewConfig<FinePolicy, FinePolicyDto>();
 			config.NewConfig<Fine, FineDto>();

@@ -68,8 +68,6 @@
 			#endregion
 			
 			// [GET]
-			public const string GetAll = Base + "/borrows/requests";
-			public const string GetById = Base + "/borrows/requests/{id}";
 			// [POST]
 			public const string Create = Base + "/borrows/requests";
 			// [PATCH]
@@ -90,7 +88,8 @@
 			public const string Create = Base + "/management/borrows/records";
 			#endregion
 			
-			public const string SelfCheckout = Base + "/management/borrows/records/self-checkout";
+			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
+			public const string Extend = Base + "/borrows/records/{id}/extend";
 		}
 		
 		/// <summary>
@@ -141,6 +140,7 @@
 			public const string GetRelatedItems = Base + "/library-items/{id}/related-items";
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
+			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
 		}
 
@@ -246,14 +246,12 @@
 			public const string GetCardHolderBorrowRequestById = Base + "/management/library-card-holders/{userId}/borrows/requests/{requestId}";
 			public const string GetCardHolderBorrowRecordById = Base + "/management/library-card-holders/{userId}/borrows/records/{borrowRecordId}";
 			public const string GetCardHolderDigitalBorrowById = Base + "/management/library-card-holders/{userId}/borrows/digital/{digitalBorrowId}";
-			public const string GetCardHolderInvoiceById = Base + "/management/library-card-holders/{userId}/borrows/invoices/{invoiceId}";
 			public const string GetCardHolderTransactionById = Base + "/management/library-card-holders/{userId}/borrows/transactions/{transactionId}";
 			public const string GetAllCardHolders = Base + "/management/library-card-holders";
 			public const string GetAllCardHolderBorrowRequest = Base + "/management/library-card-holders/{userId}/borrows/requests";
 			public const string GetAllCardHolderBorrowRecord = Base + "/management/library-card-holders/{userId}/borrows/records";
 			public const string GetAllCardHolderDigitalBorrow = Base + "/management/library-card-holders/{userId}/borrows/digital";
 			public const string GetAllCardHolderReservation = Base + "/management/library-card-holders/{userId}/reservations";
-			public const string GetAllCardHolderInvoice = Base + "/management/library-card-holders/{userId}/invoices";
 			public const string GetAllCardHolderTransaction = Base + "/management/library-card-holders/{userId}/transactions";
 			public const string GetAllCardHolderNotification = Base + "/management/library-card-holders/{userId}/notifications";
 			// [PUT] OR [PATCH]
@@ -352,9 +350,18 @@
 			#endregion
 			
 			// [GET]
+			public const string CalculateBorrowReturnSummary = Base + "/users/borrows/calculate-summary";
+			public const string GetAllUserBorrowRequest = Base + "/users/borrows/requests";
+			public const string GetAllUserBorrowRecord = Base + "/users/borrows/records";
+			public const string GetAllUserDigitalBorrow = Base + "/users/borrows/digital";
+			public const string GetAllUserReservation = Base + "/users/reservations";
+			public const string GetAllUserTransaction = Base + "/users/transactions";
+			public const string GetAllUserNotification = Base + "/users/notifications";
+			public const string GetBorrowRequestById = Base + "/users/borrows/requests/{id}";
+			public const string GetBorrowRecordById = Base + "/users/borrows/records/{id}";
+			public const string GetDigitalBorrowById = Base + "/users/borrows/digital/{id}";
 			// [POST]
 			// [PATCH]
-			// public const string Update = Base + "/profile/{id}"; //users update their own account
 			// [PUT]
 			// [PATCH]
 			// [DELETE]
@@ -663,6 +670,7 @@
 			// [PUT]
 			public const string Update = Base + "/management/warehouse-trackings/details/{id}";
 			public const string UpdateItem = Base + "/management/warehouse-trackings/details/{id}/item";
+			public const string UpdateBarcodeRegistration = Base + "/management/warehouse-trackings/details/{id}/unique-barcode-registration";
 			// [DELETE]
 			public const string DeleteItem = Base + "/management/warehouse-trackings/details/{id}/item";
 			public const string Delete = Base + "/management/warehouse-trackings/details/{id}";
@@ -750,7 +758,6 @@
 			public const string Update = Base + "/admin-configuration";
 			
 		}
-		
 		
 	}
 }

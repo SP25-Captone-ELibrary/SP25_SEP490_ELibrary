@@ -107,16 +107,16 @@ public class EmployeeSpecification : BaseSpecification<Employee>
             if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1].HasValue)
             {
                 AddFilter(x =>
-                    x.CreateDate >= specParams.CreateDateRange[0]!.Value.Date
-                    && x.CreateDate <= specParams.CreateDateRange[1]!.Value.Date);
+                    x.CreateDate.Date >= specParams.CreateDateRange[0]!.Value.Date
+                    && x.CreateDate.Date <= specParams.CreateDateRange[1]!.Value.Date);
             }
             else if (specParams.CreateDateRange[0] is null && specParams.CreateDateRange[1].HasValue)
             {
-                AddFilter(x => x.CreateDate <= specParams.CreateDateRange[1]);
+                AddFilter(x => x.CreateDate.Date <= specParams.CreateDateRange[1]);
             }
             else if (specParams.CreateDateRange[0].HasValue && specParams.CreateDateRange[1] is null)
             {
-                AddFilter(x => x.CreateDate >= specParams.CreateDateRange[0]);
+                AddFilter(x => x.CreateDate.Date >= specParams.CreateDateRange[0]);
             }
         }
         

@@ -28,8 +28,7 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
                     (!string.IsNullOrEmpty(w.Supplier.ContactPhone) && w.Supplier.ContactPhone.Contains(specParams.Search)) ||
                     (!string.IsNullOrEmpty(w.Supplier.Address) && w.Supplier.Address.Contains(specParams.Search)) ||
                     (!string.IsNullOrEmpty(w.Supplier.Country) && w.Supplier.Country.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.City) && w.Supplier.City.Contains(specParams.Search)) ||
-                    w.Supplier.SupplierType.ToString().Contains(specParams.Search)
+                    (!string.IsNullOrEmpty(w.Supplier.City) && w.Supplier.City.Contains(specParams.Search))
                 ) 
             )
         )

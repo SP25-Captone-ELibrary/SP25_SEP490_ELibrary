@@ -133,7 +133,8 @@ public static class LibraryShelfDetailDtoExtensions
             .Select(lii => lii.BorrowRecordDetails.Select(rd => rd.BorrowRecord).FirstOrDefault());
         var totalOverdueUnits = borrowRecords
             .Where(br => br != null)
-            .Count(br => br?.Status == BorrowRecordStatus.Overdue);
+            .Select(br => br?.BorrowRecordDetails.Where(brd => brd.Status == BorrowRecordStatus.Overdue))
+            .Count();
         // Total can borrow
         var totalCanBorrow = dto.LibraryItems.Count(li => li.CanBorrow);
         // Total damaged units

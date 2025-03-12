@@ -12,6 +12,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "AI_Training_Session",
+                columns: table => new
+                {
+                    training_session_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    model = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    total_trained_item = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    total_trained_time = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    training_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    error_message = table.Column<string>(type: "nvarchar(250)", nullable: true),
+                    train_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    train_by = table.Column<string>(type: "nvarchar(250)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingSession_TrainingSessionId", x => x.training_session_id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Audit_Trail",
                 columns: table => new
                 {
@@ -592,13 +611,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     borrow_request_id = table.Column<int>(type: "int", nullable: true),
                     library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     borrow_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    due_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    return_date = table.Column<DateTime>(type: "datetime", nullable: true),
-                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     borrow_type = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     self_service_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     self_service_return = table.Column<bool>(type: "bit", nullable: true),
-                    total_extension = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     total_record_item = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     proceesed_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
@@ -792,6 +807,28 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Digital_Borrow_Extension_History",
+                columns: table => new
+                {
+                    digital_extension_history_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DigitalBorrowId = table.Column<int>(type: "int", nullable: false),
+                    extension_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    new_expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    extension_fee = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    extension_number = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DigitalBorrowExtensionHistory_DigitalExtensionHistoryId", x => x.digital_extension_history_id);
+                    table.ForeignKey(
+                        name: "FK_DigitalBorrowExtensionHistory_DigitalBorrowId",
+                        column: x => x.DigitalBorrowId,
+                        principalTable: "Digital_Borrow",
+                        principalColumn: "digital_borrow_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Library_Item",
                 columns: table => new
                 {
@@ -910,6 +947,30 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.user_id,
                         principalTable: "User",
                         principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AI_Training_Detail",
+                columns: table => new
+                {
+                    training_detail_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    training_session_id = table.Column<int>(type: "int", nullable: false),
+                    library_item_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingDetail_TrainingDetailId", x => x.training_detail_id);
+                    table.ForeignKey(
+                        name: "FK_AITrainingDetail_LibraryItemId",
+                        column: x => x.library_item_id,
+                        principalTable: "Library_Item",
+                        principalColumn: "library_item_id");
+                    table.ForeignKey(
+                        name: "FK_AITrainingDetail_TrainingSessionId",
+                        column: x => x.training_session_id,
+                        principalTable: "AI_Training_Session",
+                        principalColumn: "training_session_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1052,7 +1113,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     favorite_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    library_item_id = table.Column<int>(type: "int", nullable: false)
+                    library_item_id = table.Column<int>(type: "int", nullable: false),
+                    wants_to_borrow = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    wants_to_borrow_after_request_failed = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    created_at = table.Column<DateTime>(type: "datetime", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1120,6 +1184,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AI_Training_Image",
+                columns: table => new
+                {
+                    training_image_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    training_detail_id = table.Column<int>(type: "int", nullable: false),
+                    ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingImage_TrainingImageId", x => x.training_image_id);
+                    table.ForeignKey(
+                        name: "FK_AITrainingImage_TrainingDetailId",
+                        column: x => x.training_detail_id,
+                        principalTable: "AI_Training_Detail",
+                        principalColumn: "training_detail_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Borrow_Record_Detail",
                 columns: table => new
                 {
@@ -1130,7 +1213,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     image_public_ids = table.Column<string>(type: "nvarchar(200)", nullable: true),
                     condition_id = table.Column<int>(type: "int", nullable: false),
                     return_condition_id = table.Column<int>(type: "int", nullable: true),
-                    condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true)
+                    status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    due_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    return_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    is_reminder_sent = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    total_extension = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {
@@ -1250,6 +1338,47 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         principalColumn: "library_item_instance_id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Borrow_Detail_Extension_History",
+                columns: table => new
+                {
+                    borrow_detail_extension_history_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BorrowRecordDetailId = table.Column<int>(type: "int", nullable: false),
+                    extension_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    new_expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    extension_number = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BorrowDetailExtensionHistory_BorrowDetailExtensionHistoryId", x => x.borrow_detail_extension_history_id);
+                    table.ForeignKey(
+                        name: "FK_BorrowDetailExtensionHistory_BorrowRecordDetailId",
+                        column: x => x.BorrowRecordDetailId,
+                        principalTable: "Borrow_Record_Detail",
+                        principalColumn: "borrow_record_detail_id");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Detail_library_item_id",
+                table: "AI_Training_Detail",
+                column: "library_item_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Detail_training_session_id",
+                table: "AI_Training_Detail",
+                column: "training_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Image_training_detail_id",
+                table: "AI_Training_Image",
+                column: "training_detail_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Detail_Extension_History_BorrowRecordDetailId",
+                table: "Borrow_Detail_Extension_History",
+                column: "BorrowRecordDetailId");
+
             migrationBuilder.CreateIndex(
                 name: "IX_Borrow_Record_borrow_request_id",
                 table: "Borrow_Record",
@@ -1311,6 +1440,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "IX_Digital_Borrow_user_id",
                 table: "Digital_Borrow",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Digital_Borrow_Extension_History_DigitalBorrowId",
+                table: "Digital_Borrow_Extension_History",
+                column: "DigitalBorrowId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Employee_role_id",
@@ -1548,16 +1682,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "AI_Training_Image");
+
+            migrationBuilder.DropTable(
                 name: "Audit_Trail");
 
             migrationBuilder.DropTable(
-                name: "Borrow_Record_Detail");
+                name: "Borrow_Detail_Extension_History");
 
             migrationBuilder.DropTable(
                 name: "Borrow_Request_Detail");
 
             migrationBuilder.DropTable(
-                name: "Digital_Borrow");
+                name: "Digital_Borrow_Extension_History");
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Author");
@@ -1602,13 +1739,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Warehouse_Tracking_Inventory");
 
             migrationBuilder.DropTable(
+                name: "AI_Training_Detail");
+
+            migrationBuilder.DropTable(
+                name: "Borrow_Record_Detail");
+
+            migrationBuilder.DropTable(
+                name: "Digital_Borrow");
+
+            migrationBuilder.DropTable(
                 name: "Author");
 
             migrationBuilder.DropTable(
                 name: "Notification");
-
-            migrationBuilder.DropTable(
-                name: "Library_Item_Instance");
 
             migrationBuilder.DropTable(
                 name: "System_Feature");
@@ -1626,19 +1769,22 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Payment_Method");
 
             migrationBuilder.DropTable(
-                name: "Library_Resource");
+                name: "Warehouse_Tracking");
 
             migrationBuilder.DropTable(
-                name: "User");
+                name: "AI_Training_Session");
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Condition");
 
             migrationBuilder.DropTable(
-                name: "Warehouse_Tracking");
+                name: "Library_Item_Instance");
 
             migrationBuilder.DropTable(
-                name: "Library_Item");
+                name: "Library_Resource");
+
+            migrationBuilder.DropTable(
+                name: "User");
 
             migrationBuilder.DropTable(
                 name: "Borrow_Record");
@@ -1650,6 +1796,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Supplier");
 
             migrationBuilder.DropTable(
+                name: "Library_Item");
+
+            migrationBuilder.DropTable(
+                name: "Borrow_Request");
+
+            migrationBuilder.DropTable(
+                name: "Employee");
+
+            migrationBuilder.DropTable(
                 name: "Category");
 
             migrationBuilder.DropTable(
@@ -1659,19 +1814,13 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Library_Shelf");
 
             migrationBuilder.DropTable(
-                name: "Borrow_Request");
-
-            migrationBuilder.DropTable(
-                name: "Employee");
-
-            migrationBuilder.DropTable(
-                name: "Library_Section");
-
-            migrationBuilder.DropTable(
                 name: "Library_Card");
 
             migrationBuilder.DropTable(
                 name: "System_Role");
+
+            migrationBuilder.DropTable(
+                name: "Library_Section");
 
             migrationBuilder.DropTable(
                 name: "Library_Zone");

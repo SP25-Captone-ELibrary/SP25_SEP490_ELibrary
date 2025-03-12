@@ -28,20 +28,27 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     private readonly Lazy<IUserService<UserDto>> _userSvc;
+    private readonly Lazy<IUserFavoriteService<UserFavoriteDto>> _userFavoriteSvc;
+    private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecSvc;
 
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
     private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
+    private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
+    
     private readonly BorrowSettings _borrowSettings;
 
     public BorrowRequestService(
         // Lazy services
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
         Lazy<IUserService<UserDto>> userSvc,
+        Lazy<IUserFavoriteService<UserFavoriteDto>> userFavoriteSvc,
+        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
 
         ILibraryCardService<LibraryCardDto> cardSvc,
         ILibraryItemService<LibraryItemDto> libItemSvc,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
+        IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         IOptionsMonitor<BorrowSettings> monitor,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
@@ -50,9 +57,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     {
         _cardSvc = cardSvc;
         _userSvc = userSvc;
+        _userFavoriteSvc = userFavoriteSvc;
         _libItemSvc = libItemSvc;
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
+        _borrowRecSvc = borrowRecSvc;
+        _reservationQueueSvc = reservationQueueSvc;
         _borrowSettings = monitor.CurrentValue;
     }
 
@@ -124,7 +134,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
 
-    public override async Task<IServiceResult> GetByIdAsync(int id)
+    public async Task<IServiceResult> GetByIdAsync(int id, string? email, Guid? userId)
     {
         try
         {
@@ -135,33 +145,106 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
 
             // Build specification
             var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-                .ThenInclude(brd => brd.LibraryItem)
-                .ThenInclude(li => li.Shelf)
-                .Include(br => br.BorrowRequestDetails)
-                .ThenInclude(brd => brd.LibraryItem)
-                .ThenInclude(li => li.Category)
-                .Include(br => br.BorrowRequestDetails)
-                .ThenInclude(brd => brd.LibraryItem)
-                .ThenInclude(li => li.LibraryItemInstances)
-                .Include(br => br.LibraryCard)
-            );
-            // Retrieve with spec
-            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(baseSpec);
-            if (existingEntity == null)
+            // Add filter (if any)
+            if (!string.IsNullOrWhiteSpace(email))
             {
-                // Msg: Not found {0}
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "borrow request" : "lịch sử đăng ký mượn"));
+                baseSpec.AddFilter(br => br.LibraryCard.Users.Any(u => u.Email == email));
             }
-
-            // Get data success
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                _mapper.Map<BorrowRequestDto>(existingEntity));
+            if (userId.HasValue && userId != Guid.Empty)
+            {
+                baseSpec.AddFilter(br => br.LibraryCard.Users.Any(u => u.UserId == userId));
+            }
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: br => new BorrowRequest()
+                {
+                    BorrowRequestId = br.BorrowRequestId,
+                    LibraryCardId = br.LibraryCardId,
+                    RequestDate = br.RequestDate,
+                    ExpirationDate = br.ExpirationDate,
+                    Status = br.Status,
+                    Description = br.Description,
+                    CancelledAt = br.CancelledAt,
+                    CancellationReason = br.CancellationReason,
+                    IsReminderSent = br.IsReminderSent,
+                    TotalRequestItem = br.TotalRequestItem,
+                    BorrowRequestDetails = br.BorrowRequestDetails.Select(brd => new BorrowRequestDetail()
+                    {
+                        BorrowRequestDetailId = brd.BorrowRequestDetailId,
+                        BorrowRequestId = brd.BorrowRequestId,
+                        LibraryItemId = brd.LibraryItemId,
+                        LibraryItem = new LibraryItem()
+                        {
+                            LibraryItemId = brd.LibraryItem.LibraryItemId,
+                            Title = brd.LibraryItem.Title,
+                            SubTitle = brd.LibraryItem.SubTitle,
+                            Responsibility = brd.LibraryItem.Responsibility,
+                            Edition = brd.LibraryItem.Edition,
+                            EditionNumber = brd.LibraryItem.EditionNumber,
+                            Language = brd.LibraryItem.Language,
+                            OriginLanguage = brd.LibraryItem.OriginLanguage,
+                            Summary = brd.LibraryItem.Summary,
+                            CoverImage = brd.LibraryItem.CoverImage,
+                            PublicationYear = brd.LibraryItem.PublicationYear,
+                            Publisher = brd.LibraryItem.Publisher,
+                            PublicationPlace = brd.LibraryItem.PublicationPlace,
+                            ClassificationNumber = brd.LibraryItem.ClassificationNumber,
+                            CutterNumber = brd.LibraryItem.CutterNumber,
+                            Isbn = brd.LibraryItem.Isbn,
+                            Ean = brd.LibraryItem.Ean,
+                            EstimatedPrice = brd.LibraryItem.EstimatedPrice,
+                            PageCount = brd.LibraryItem.PageCount,
+                            PhysicalDetails = brd.LibraryItem.PhysicalDetails,
+                            Dimensions = brd.LibraryItem.Dimensions,
+                            AccompanyingMaterial = brd.LibraryItem.AccompanyingMaterial,
+                            Genres = brd.LibraryItem.Genres,
+                            GeneralNote = brd.LibraryItem.GeneralNote,
+                            BibliographicalNote = brd.LibraryItem.BibliographicalNote,
+                            TopicalTerms = brd.LibraryItem.TopicalTerms,
+                            AdditionalAuthors = brd.LibraryItem.AdditionalAuthors,
+                            CategoryId = brd.LibraryItem.CategoryId,
+                            ShelfId = brd.LibraryItem.ShelfId,
+                            GroupId = brd.LibraryItem.GroupId,
+                            Status = brd.LibraryItem.Status,
+                            IsDeleted = brd.LibraryItem.IsDeleted,
+                            IsTrained = brd.LibraryItem.IsTrained,
+                            CanBorrow = brd.LibraryItem.CanBorrow,
+                            TrainedAt = brd.LibraryItem.TrainedAt,
+                            CreatedAt = brd.LibraryItem.CreatedAt,
+                            UpdatedAt = brd.LibraryItem.UpdatedAt,
+                            UpdatedBy = brd.LibraryItem.UpdatedBy,
+                            CreatedBy = brd.LibraryItem.CreatedBy,
+                            // References
+                            Category = brd.LibraryItem.Category,
+                            Shelf = brd.LibraryItem.Shelf,
+                            LibraryItemInventory = brd.LibraryItem.LibraryItemInventory,
+                            LibraryItemReviews = brd.LibraryItem.LibraryItemReviews,
+                            LibraryItemAuthors = brd.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                            {
+                                LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                                LibraryItemId = ba.LibraryItemId,
+                                AuthorId = ba.AuthorId,
+                                Author = ba.Author
+                            }).ToList()
+                        },
+                    }).ToList()
+                });
+            if (existingEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<BorrowRequestDto>(existingEntity);
+                // Convert to GetBorrowRequestDto
+                var getBorrowReqDto = dto.ToGetBorrowRequestDto();
+                    
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getBorrowReqDto);
+            }
+            
+            // Msg: Not found {0}
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "borrow request" : "lịch sử đăng ký mượn"));
         }
         catch (Exception ex)
         {
@@ -170,282 +253,8 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
 
-    public async Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec)
-    {
-        try
-        {
-            // Retrieve user information
-            // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) // Not found user
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    new List<BorrowRequestDto>());
-            }
-
-            if (userDto.LibraryCardId == null)
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    new List<BorrowRequestDto>());
-            }
-
-            // Check for proper specification
-            var borrowReqSpec = spec as BorrowRequestSpecification;
-            if (borrowReqSpec == null) // is null specification
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
-            }
-
-            // Add filter 
-            borrowReqSpec.AddFilter(br => br.LibraryCardId == userDto.LibraryCardId);
-
-            // Count total borrow request
-            var totalBorrowReqWithSpec = await _unitOfWork.Repository<BorrowRequest, int>().CountAsync(borrowReqSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalBorrowReqWithSpec / borrowReqSpec.PageSize);
-
-            // Set pagination to specification after count total borrow req
-            if (borrowReqSpec.PageIndex > totalPage
-                || borrowReqSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                borrowReqSpec.PageIndex = 1; // Set default to first page
-            }
-
-            // Apply pagination
-            borrowReqSpec.ApplyPaging(
-                skip: borrowReqSpec.PageSize * (borrowReqSpec.PageIndex - 1),
-                take: borrowReqSpec.PageSize);
-
-            // Get all with spec
-            var entities = await _unitOfWork.Repository<BorrowRequest, int>()
-                .GetAllWithSpecAsync(borrowReqSpec, tracked: false);
-
-            if (entities.Any()) // Exist data
-            {
-                // Convert to dto collection 
-                var borrowReqDtos = _mapper.Map<IEnumerable<BorrowRequestDto>>(entities);
-
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<BorrowRequestDto>(borrowReqDtos,
-                    borrowReqSpec.PageIndex, borrowReqSpec.PageSize, totalPage, totalBorrowReqWithSpec);
-
-                // Response with pagination 
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-
-            // Not found any data
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                // Mapping entities to dto 
-                _mapper.Map<IEnumerable<BorrowRequestDto>>(entities));
-        }
-        catch (ForbiddenException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception($"Error invoke when progress get all borrow for email: {email}");
-        }
-    }
-
-    public async Task<IServiceResult> GetAllCardHolderBorrowRequestByUserIdAsync(Guid userId, int pageIndex,
-        int pageSize)
-    {
-        try
-        {
-            // Retrieve user information
-            // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) // Not found user
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    new List<BorrowRequestDto>());
-            }
-
-            // Build spec
-            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.LibraryCardId == userDto.LibraryCardId);
-            // Add default order by
-            baseSpec.AddOrderByDescending(br => br.RequestDate);
-
-            // Count total borrow request
-            var totalReqWithSpec = await _unitOfWork.Repository<BorrowRequest, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalReqWithSpec / pageSize);
-
-            // Set pagination to specification after count total borrow request
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                pageIndex = 1; // Set default to first page
-            }
-
-            // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
-
-            // Retrieve data with spec
-            var entities = await _unitOfWork.Repository<BorrowRequest, int>()
-                .GetAllWithSpecAsync(baseSpec);
-            if (entities.Any())
-            {
-                // Convert to dto collection
-                var reqDtos = _mapper.Map<List<BorrowRequestDto>>(entities);
-
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderBorrowRequestDto>(
-                    reqDtos.Select(br => br.ToLibraryCardBorrowRequestDto()),
-                    pageIndex, pageSize, totalPage, totalReqWithSpec);
-
-                // Response with pagination 
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-
-            // Not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderBorrowRequestDto>());
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke while process get all borrow request by user id");
-        }
-    }
-
-    public async Task<IServiceResult> GetByIdAsync(string email, int id)
-    {
-        try
-        {
-            // Retrieve user information
-            // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null || userDto.LibraryCardId == null) // Not found user
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-            }
-
-            // Build borrow spec
-            var borrowReqSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id &&
-                                                                           br.LibraryCardId == userDto.LibraryCardId);
-            // Apply include 
-            borrowReqSpec.ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-                .ThenInclude(brd => brd.LibraryItem)
-                .ThenInclude(li => li.LibraryItemInstances)
-            );
-            // Retrieve with spec
-            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(borrowReqSpec);
-            if (existingEntity != null)
-            {
-                // Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                    _mapper.Map<BorrowRequestDto>(existingEntity));
-            }
-
-            // Data not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-        }
-        catch (ForbiddenException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception($"Error invoke when progress get borrow by id for email: {email}");
-        }
-    }
-
-    public async Task<IServiceResult> GetCardHolderBorrowRequestByIdAsync(Guid userId, int id)
-    {
-        try
-        {
-            // Determine current system lang
-            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-            
-            // Retrieve user information
-            // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null || userDto.LibraryCardId == null) // Not found user
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
-            }
-            
-            // Build spec
-            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.LibraryCardId == userDto.LibraryCardId);
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-                    .ThenInclude(brd => brd.LibraryItem)
-                        .ThenInclude(brd => brd.Category)
-                .Include(br => br.BorrowRequestDetails)
-                    .ThenInclude(brd => brd.LibraryItem)
-                        .ThenInclude(brd => brd.LibraryItemAuthors)
-                            .ThenInclude(lia => lia.Author)
-            );
-            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(baseSpec);
-            if (existingEntity != null)
-            {
-                // Convert to dto 
-                var dto = _mapper.Map<BorrowRequestDto>(existingEntity);
-                
-                // Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                    dto.ToLibraryCardBorrowRequestDto());
-            }
-            
-            // Data not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get card holder borrow request by id");
-        }
-    }
-
-    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto)
+    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto, 
+        List<int> reservationIds, List<int> userFavoriteIds)
     {
         try
         {
@@ -463,7 +272,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 var errors = validationResult.ToProblemDetails().Errors;
                 throw new UnprocessableEntityException("Invalid Validations", errors);
             }
-
+            
             // Retrieve user information
             // Build spec
             var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
@@ -511,7 +320,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 // Validate borrow amount before handling each request detail 
                 var validateAmountRes = await ValidateBorrowAmountAsync(
                     totalItem: dto.BorrowRequestDetails.Count,
-                    libCard: libCard);
+                    libraryCardId: libCard.LibraryCardId);
                 if (validateAmountRes != null) return validateAmountRes;
             }
 
@@ -552,16 +361,22 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                             msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0003));
                     }
 
-                    // Check already borrowed the item 
-                    var isAlreadyBorrowed = await _unitOfWork.Repository<BorrowRequest, int>()
+                    // Check already requested the item 
+                    var isAlreadyRequested = await _unitOfWork.Repository<BorrowRequest, int>()
                         .AnyAsync(br =>
-                                br.Status != BorrowRequestStatus.Expired && // Exclude elements with expired status
-                                br.Status != BorrowRequestStatus.Cancelled && // Exclude elements with cancelled status
+                                br.Status == BorrowRequestStatus.Created && // Elements with expired status
                                 br.LibraryCardId == libCard.LibraryCardId && // With specific library card 
                                 br.BorrowRequestDetails.Any(brd =>
                                     brd.LibraryItemId == detail.LibraryItemId) // With specific item
                         );
-                    if (isAlreadyBorrowed)
+                    // Check already borrowed the item
+                    var isAlreadyBorrowedItem = (await _borrowRecSvc.Value.AnyAsync(
+                        br => br.LibraryCardId == validCardId && 
+                              br.BorrowRecordDetails.Any(brd =>
+                                brd.Status != BorrowRecordStatus.Returned &&
+                                brd.LibraryItemInstance.LibraryItemId == detail.LibraryItemId))).Data is true;
+                    
+                    if (isAlreadyRequested || isAlreadyBorrowedItem)
                     {
                         // Add error
                         customErrs = DictionaryUtils.AddOrUpdate(customErrs,
@@ -613,39 +428,39 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Check if any error invoke
             if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
 
-            // Count request amount with borrowed or requested amount to check for threshold
-            // Check for total borrowing items in DB
+            // Initialize amount calculation props
+            var totalRequestAmount = 0;
+            var totalBorrowingAmount = 0;
+            
             // Build spec
             var borrowReqSpec = new BaseSpecification<BorrowRequest>(br =>
                 br.LibraryCardId == validCardId && // with specific library card
-                (br.Status == BorrowRequestStatus.Borrowed || // In borrowed status OR 
-                 br.Status == BorrowRequestStatus.Created)); // In created status
-            // Apply include
-            borrowReqSpec.ApplyInclude(q => q
-                .Include(br => br.BorrowRequestDetails)
-            );
-            // Retrieve all borrow request of specific library card with spec
-            var borrowReqEntities = await _unitOfWork.Repository<BorrowRequest, int>()
-                .GetAllWithSpecAsync(borrowReqSpec);
-            // Convert to list 
-            var borrowReqList = borrowReqEntities.ToList();
-            if (borrowReqList.Any())
+                br.Status == BorrowRequestStatus.Created); // In created status
+            // Count requesting amount to check for threshold
+            var listRequestAmount = await _unitOfWork.Repository<BorrowRequest, int>()
+                .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count);
+            totalRequestAmount = listRequestAmount?.Select(i => i).Sum() ?? 0;
+            
+            // Build spec
+            var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId); 
+            // Count borrowed amount to check for threshold
+            var listBorrowingAmount = (await _borrowRecSvc.Value
+                    .GetAllWithSpecAndSelectorAsync(borrowRecSpec, 
+                        selector: s => s.BorrowRecordDetails
+                            .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
+                                          brd.ReturnDate == null)) // Has not return yet
+                ).Data as List<int>;
+            totalBorrowingAmount = listBorrowingAmount?.Select(i => i).Sum() ?? 0;
+            
+            // Check whether request + borrowed amount is exceed than borrow threshold 
+            if(totalBorrowingAmount > 0 || totalRequestAmount > 0)
             {
-                // Check total borrowing items
-                var totalBorrowingAmount = 0;
-                foreach (var borrowReq in borrowReqList)
-                {
-                    totalBorrowingAmount += borrowReq.BorrowRequestDetails.Count;
-                }
-
-                // Borrow request detail reach the threshold
-                var sumTotal =
-                    totalBorrowingAmount +
-                    dto.BorrowRequestDetails.Count; // Sum current borrowing amount with total request amount
-                // Validate borrow amount 
+                // Sum requested + borrowed + item to borrow 
+                var sumTotal = totalRequestAmount + totalBorrowingAmount + dto.BorrowRequestDetails.Count; 
+                // Validate borrow amount
                 var validateAmountRes = await ValidateBorrowAmountAsync(
                     totalItem: sumTotal,
-                    libCard: libCard);
+                    libraryCardId: validCardId);
                 if (validateAmountRes != null) return validateAmountRes;
             }
 
@@ -667,6 +482,22 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             };
             await _unitOfWork.Repository<BorrowRequest, int>().AddAsync(_mapper.Map<BorrowRequest>(borrowReqDto));
 
+            // Create reservations (if any)
+            var reservationDtos = reservationIds.Select(id => new ReservationQueueDto()
+            {
+                LibraryItemId = id
+            }).ToList();
+            // Add range without save changes
+            var createRes = await _reservationQueueSvc.CreateRangeWithoutSaveChangesAsync(validCardId, reservationDtos.ToList());
+            if (createRes.ResultCode != ResultCodeConst.SYS_Success0001) return createRes;
+            
+            // Add user favourite (if any)
+            var createFavRes = await _userFavoriteSvc.Value.CreateRangeFavAfterRequestFailedWithoutSaveChangesAsync(
+                libraryItemIds: userFavoriteIds.ToArray(),
+                email: email, 
+                isForceToReplaceWhenExist: true);
+            if (createFavRes.ResultCode != ResultCodeConst.SYS_Success0001) return createFavRes;
+            
             // Update library item borrow more status if it true in current request
             if (libCard.IsAllowBorrowMore)
             {
@@ -677,11 +508,51 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
             if (isSaved)
             {
-                // Total {0} item(s) have been borrowed successfully
-                return new ServiceResult(ResultCodeConst.Borrow_Success0001,
-                    StringUtils.Format(
-                        await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0001),
-                        detailList.Count.ToString()));
+                // Custom message
+                var customMsg = isEng 
+                    ? $"Total {detailList.Count.ToString()} items borrowed"
+                    : $"Tổng {detailList.Count.ToString()} tài liệu được mượn";
+                var customMsgA = reservationDtos.Any() && createRes.Data is true
+                    ? isEng
+                        ? $"{reservationDtos.Count.ToString()} items reserved" 
+                        : $"{reservationDtos.Count.ToString()} tài liệu được đặt mượn"
+                    : string.Empty;
+                var customMsgB = userFavoriteIds.Any() && createFavRes.Data is true
+                    ? isEng
+                        ? $"{reservationDtos.Count.ToString()} items added to user favorites"
+                        : $"{reservationDtos.Count.ToString()} tài liệu được thêm vào danh sách mong muốn mượn"
+                    : string.Empty;
+                
+                // Check for different cases
+                if (string.IsNullOrEmpty(customMsgA) && string.IsNullOrEmpty(customMsgB))
+                {
+                    // Total {0} item(s) have been borrowed successfully
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0001,
+                        StringUtils.Format(
+                            await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0001),
+                            detailList.Count.ToString()));
+                }
+                else if (!string.IsNullOrEmpty(customMsgA) && !string.IsNullOrEmpty(customMsgB))
+                {
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, 
+                        isEng 
+                            ? $"{customMsg}, {customMsgA} and {customMsgB}" 
+                            : $"{customMsg}, {customMsgA} và {customMsgB}");
+                }
+                else if (string.IsNullOrEmpty(customMsgA))
+                {
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, 
+                        isEng 
+                            ? $"{customMsg} and {customMsgA}" 
+                            : $"{customMsg} và {customMsgA}");
+                }
+                else if (string.IsNullOrEmpty(customMsgB))
+                {
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, 
+                        isEng 
+                            ? $"{customMsg} and {customMsgB}" 
+                            : $"{customMsg} và {customMsgB}");
+                }
             }
 
             // An error occurred, the item borrowing registration failed
@@ -921,10 +792,25 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
     
-    private async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, LibraryCardDto libCard)
+    public async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId)
     {
+        // Determine current lang context
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+        
+        // Retrieve card by id 
+        var libCardDto = (await _cardSvc.GetByIdAsync(libraryCardId)).Data as LibraryCardDto;
+        if (libCardDto == null)
+        {
+            // Not found {0}
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+        }
+        
         // Max amount to borrow (if any)
-        var maxAmountToBorrow = libCard.MaxItemOnceTime;
+        var maxAmountToBorrow = libCardDto.MaxItemOnceTime;
         // Default Threshold amount
         var defaultThresholdTotal = _borrowSettings.BorrowAmountOnceTime;
         
@@ -934,12 +820,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Msg: You can borrow up to {0} items at a time
             var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0005);
             
-            if (!libCard.IsAllowBorrowMore) // Is not allow to borrow more
+            if (!libCardDto.IsAllowBorrowMore) // Is not allow to borrow more
             {
                 return new ServiceResult(ResultCodeConst.Borrow_Warning0005, StringUtils.Format(msg, defaultThresholdTotal.ToString()));
             }
 
-            if (libCard.IsAllowBorrowMore && // Is allow to borrow more
+            if (libCardDto.IsAllowBorrowMore && // Is allow to borrow more
                 maxAmountToBorrow > 0 && totalItem > maxAmountToBorrow) // Total item borrow not exceed max amount to borrow from lib card
             {
                 return new ServiceResult(ResultCodeConst.Borrow_Warning0005, StringUtils.Format(msg, maxAmountToBorrow.ToString()));

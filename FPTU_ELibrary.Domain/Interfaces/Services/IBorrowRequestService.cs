@@ -8,12 +8,10 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TDto, int>
     where TDto : class
 {
-    Task<IServiceResult> GetByIdAsync(string email, int id);
-    Task<IServiceResult> GetCardHolderBorrowRequestByIdAsync(Guid userId, int id);
-    Task<IServiceResult> GetAllByEmailAsync(string email, ISpecification<BorrowRequest> spec);
-    Task<IServiceResult> GetAllCardHolderBorrowRequestByUserIdAsync(Guid userId, int pageIndex, int pageSize);
-    Task<IServiceResult> CreateAsync(string email, TDto dto);
+    Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
+    Task<IServiceResult> CreateAsync(string email, TDto dto, List<int> reservationIds, List<int> userFavoriteIds);
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
     Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);
+    Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId);
 }

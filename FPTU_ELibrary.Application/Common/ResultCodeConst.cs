@@ -246,6 +246,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0005 = "Borrow.Success0005";
 		/// <summary>
+		/// [SUCCESS] Total {0} Item(s) extended successfully
+		/// </summary>
+		public const string Borrow_Success0006 = "Borrow.Success0006";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -314,6 +318,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0017 = "Borrow.Warning0017";
 		/// <summary>
+		/// [WARNING] Cannot process extend borrow record expiration as this item has already been reserved. Please return the item by {0} to ensure its continued circulations
+		/// </summary>
+		public const string Borrow_Warning0020 = "Borrow.Warning0020";
+		/// <summary>
+		/// [WARNING] Cannot process extend borrow record before date {0}
+		/// </summary>
+		public const string Borrow_Warning0021 = "Borrow.Warning0021";
+		/// <summary>
 		/// Digital resource has not been borrowed. Please create borrow form for this resource before accessing
 		/// </summary>
 		public const string Borrow_Warning0018 = "Borrow.Warning0018";
@@ -346,6 +358,29 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to extend library digital resource expiration date
         /// </summary>
         public const string Borrow_Fail0006 = "Borrow.Fail0006";
+        /// <summary>
+        /// [FAIL] Failed to extend borrow record as {0}
+        /// </summary>
+        public const string Borrow_Fail0007 = "Borrow.Fail0007";
+		#endregion
+
+		#region Reservatation
+		/// <summary>
+		/// [WARNING] Cannot create item reservation as {0}
+		/// </summary>
+		public const string Reservation_Warning0001 = "Reservation.Warning0001";
+		/// <summary>
+		/// [WARNING] Cannot reserve for item {0} as you are requesting for this item
+		/// </summary>
+		public const string Reservation_Warning0002 = "Reservation.Warning0002";
+		/// <summary>
+		/// [WARNING] Cannot reserve for item {0} as you are borrowing this item
+		/// </summary>
+		public const string Reservation_Warning0003 = "Reservation.Warning0003";
+		/// <summary>
+		/// [WARNING] You has already reserved item {0}
+		/// </summary>
+		public const string Reservation_Warning0004 = "Reservation.Warning0004";
 		#endregion
 		
 		#region Role

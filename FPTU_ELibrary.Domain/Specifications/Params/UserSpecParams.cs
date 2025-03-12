@@ -7,7 +7,7 @@ public class UserSpecParams : BaseSpecParams
     public string? Gender { get; set; }
     public bool? IsActive { get; set; }
     public bool? IsDeleted { get; set; }
-    public List<DateTime?>? DobRange { get; set; } 
-    public List<DateTime?>? CreateDateRange { get; set; } 
-    public List<DateTime?>? ModifiedDateRange { get; set; } 
+    public DateTime?[]? DobRange { get; set; } 
+    public DateTime?[]? CreateDateRange { get; set; } 
+    public DateTime?[]? ModifiedDateRange { get; set; } 
 }

@@ -295,9 +295,9 @@ public class LibraryItemController : ControllerBase
     }
     
     [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemDetailAsync))]
-    public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id)
+    public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id, [FromQuery] string? email = null)
     {
-        return Ok(await _libraryItemService.GetDetailAsync(id));
+        return Ok(await _libraryItemService.GetDetailAsync(email: email, id: id));
     }
 
     [HttpGet(APIRoute.LibraryItem.GetDetailEditions, Name = nameof(GetLibraryItemEditionsAsync))]
@@ -351,6 +351,15 @@ public class LibraryItemController : ControllerBase
             return File(result.Data, "application/pdf", $"Watermarked_{resourceId}.pdf");
         }
         return Ok(result);
+    }
+
+    [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]
+    public async Task<IActionResult> CheckUnavailableItemsAsync([FromQuery] RangeRequest<int> req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _libraryItemService.CheckUnavailableForBorrowRequestAsync(
+            email: email ?? string.Empty,
+            ids: req.Ids));
     }
 
     #region Archived Function

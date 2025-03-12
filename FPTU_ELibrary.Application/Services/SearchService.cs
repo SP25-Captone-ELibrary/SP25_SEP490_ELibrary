@@ -1422,11 +1422,6 @@ namespace FPTU_ELibrary.Application.Services
 							}
 						}
 					}
-					// Apply filters
-					if (advancedMustClauses.Any())
-					{
-						// TODO: Apply advanced here...
-					}
 					break;
 			}
 			

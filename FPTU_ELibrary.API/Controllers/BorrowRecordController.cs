@@ -62,6 +62,7 @@ public class BorrowRecordController : ControllerBase
         var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowRecSvc.CreateAsync(processedByEmail: email ?? string.Empty, dto: req.ToBorrowRecordDto()));
     }
+    #endregion
 
     [Authorize]
     [HttpPost(APIRoute.BorrowRecord.SelfCheckout, Name = nameof(SelfCheckoutBorrowAsync))]
@@ -70,5 +71,15 @@ public class BorrowRecordController : ControllerBase
         return Ok(await _borrowRecSvc.SelfCheckoutAsync(
             libraryCardId: req.LibraryCardId, dto: req.ToBorrowRecordDto()));
     }
-    #endregion
+    
+    [Authorize]
+    [HttpPut(APIRoute.BorrowRecord.Extend, Name = nameof(ExtendBorrowRecordAsync))]
+    public async Task<IActionResult> ExtendBorrowRecordAsync([FromRoute] int id, [FromBody] ExtendBorrowRecordRequest req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.ExtendAsync(
+            email: email ?? string.Empty, 
+            borrowRecordId: id,
+            borrowRecordDetailIds: req.BorrowRecordDetailIds));   
+    }
 }

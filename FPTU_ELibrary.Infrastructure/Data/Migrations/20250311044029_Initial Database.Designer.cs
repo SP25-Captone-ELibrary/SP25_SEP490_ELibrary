@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250305154149_Initial Database")]
+    [Migration("20250311044029_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -24,6 +24,106 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.Property<int>("TrainingDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_detail_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingDetailId"));
+
+                    b.Property<int>("LibraryItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("library_item_id");
+
+                    b.Property<int>("TrainingSessionId")
+                        .HasColumnType("int")
+                        .HasColumnName("training_session_id");
+
+                    b.HasKey("TrainingDetailId")
+                        .HasName("PK_AITrainingDetail_TrainingDetailId");
+
+                    b.HasIndex("LibraryItemId");
+
+                    b.HasIndex("TrainingSessionId");
+
+                    b.ToTable("AI_Training_Detail", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingImage", b =>
+                {
+                    b.Property<int>("TrainingImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_image_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingImageId"));
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TrainingDetailId")
+                        .HasColumnType("int")
+                        .HasColumnName("training_detail_id");
+
+                    b.HasKey("TrainingImageId")
+                        .HasName("PK_AITrainingImage_TrainingImageId");
+
+                    b.HasIndex("TrainingDetailId");
+
+                    b.ToTable("AI_Training_Image", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingSession", b =>
+                {
+                    b.Property<int>("TrainingSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_session_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingSessionId"));
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("model");
+
+                    b.Property<int>("TotalTrainedItem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_trained_item");
+
+                    b.Property<decimal?>("TotalTrainedTime")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_trained_time");
+
+                    b.Property<string>("TrainBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("train_by");
+
+                    b.Property<DateTime>("TrainDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("train_date");
+
+                    b.Property<string>("TrainingStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("training_status");
+
+                    b.HasKey("TrainingSessionId")
+                        .HasName("PK_AITrainingSession_TrainingSessionId");
+
+                    b.ToTable("AI_Training_Session", (string)null);
+                });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AuditTrail", b =>
                 {
@@ -145,6 +245,38 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Author", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowDetailExtensionHistory", b =>
+                {
+                    b.Property<int>("BorrowDetailExtensionHistoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_detail_extension_history_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BorrowDetailExtensionHistoryId"));
+
+                    b.Property<int>("BorrowRecordDetailId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExtensionDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("extension_date");
+
+                    b.Property<int>("ExtensionNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("extension_number");
+
+                    b.Property<DateTime>("NewExpiryDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("new_expiry_date");
+
+                    b.HasKey("BorrowDetailExtensionHistoryId")
+                        .HasName("PK_BorrowDetailExtensionHistory_BorrowDetailExtensionHistoryId");
+
+                    b.HasIndex("BorrowRecordDetailId");
+
+                    b.ToTable("Borrow_Detail_Extension_History", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecord", b =>
                 {
                     b.Property<int>("BorrowRecordId")
@@ -167,10 +299,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("borrow_type");
 
-                    b.Property<DateTime>("DueDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("due_date");
-
                     b.Property<Guid>("LibraryCardId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("library_card_id");
@@ -178,10 +306,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<Guid?>("ProcessedBy")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("proceesed_by");
-
-                    b.Property<DateTime?>("ReturnDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("return_date");
 
                     b.Property<bool>("SelfServiceBorrow")
                         .ValueGeneratedOnAdd()
@@ -192,17 +316,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<bool?>("SelfServiceReturn")
                         .HasColumnType("bit")
                         .HasColumnName("self_service_return");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status");
-
-                    b.Property<int>("TotalExtension")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0)
-                        .HasColumnName("total_extension");
 
                     b.Property<int>("TotalRecordItem")
                         .ValueGeneratedOnAdd()
@@ -245,9 +358,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("condition_id");
 
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("due_date");
+
                     b.Property<string>("ImagePublicIds")
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("image_public_ids");
+
+                    b.Property<bool>("IsReminderSent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_reminder_sent");
 
                     b.Property<int>("LibraryItemInstanceId")
                         .HasColumnType("int")
@@ -256,6 +379,21 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int?>("ReturnConditionId")
                         .HasColumnType("int")
                         .HasColumnName("return_condition_id");
+
+                    b.Property<DateTime?>("ReturnDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("return_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalExtension")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_extension");
 
                     b.HasKey("BorrowRecordDetailId")
                         .HasName("PK_BorrowRecordDetail_BorrowRecordDetailId");
@@ -453,6 +591,42 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Digital_Borrow", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrowExtensionHistory", b =>
+                {
+                    b.Property<int>("DigitalExtensionHistoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("digital_extension_history_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DigitalExtensionHistoryId"));
+
+                    b.Property<int>("DigitalBorrowId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExtensionDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("extension_date");
+
+                    b.Property<decimal>("ExtensionFee")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("extension_fee");
+
+                    b.Property<int>("ExtensionNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("extension_number");
+
+                    b.Property<DateTime>("NewExpiryDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("new_expiry_date");
+
+                    b.HasKey("DigitalExtensionHistoryId")
+                        .HasName("PK_DigitalBorrowExtensionHistory_DigitalExtensionHistoryId");
+
+                    b.HasIndex("DigitalBorrowId");
+
+                    b.ToTable("Digital_Borrow_Extension_History", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
@@ -2499,6 +2673,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FavoriteId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
                     b.Property<int>("LibraryItemId")
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
@@ -2506,6 +2684,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("user_id");
+
+                    b.Property<bool>("WantsToBorrow")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("wants_to_borrow");
+
+                    b.Property<bool>("WantsToBorrowAfterRequestFailed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("wants_to_borrow_after_request_failed");
 
                     b.HasKey("FavoriteId")
                         .HasName("PK_UserFavorite_FavoriteId");
@@ -2740,6 +2930,47 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Warehouse_Tracking_Inventory", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItem", "LibraryItem")
+                        .WithMany("TrainingDetails")
+                        .HasForeignKey("LibraryItemId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingDetail_LibraryItemId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.AITrainingSession", "TrainingSession")
+                        .WithMany("TrainingDetails")
+                        .HasForeignKey("TrainingSessionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingDetail_TrainingSessionId");
+
+                    b.Navigation("LibraryItem");
+
+                    b.Navigation("TrainingSession");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingImage", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.AITrainingDetail", "TrainingDetail")
+                        .WithMany("TrainingImages")
+                        .HasForeignKey("TrainingDetailId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingImage_TrainingDetailId");
+
+                    b.Navigation("TrainingDetail");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowDetailExtensionHistory", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRecordDetail", "BorrowRecordDetail")
+                        .WithMany("BorrowDetailExtensionHistories")
+                        .HasForeignKey("BorrowRecordDetailId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BorrowDetailExtensionHistory_BorrowRecordDetailId");
+
+                    b.Navigation("BorrowRecordDetail");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecord", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
@@ -2846,6 +3077,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("LibraryResource");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrowExtensionHistory", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.DigitalBorrow", "DigitalBorrow")
+                        .WithMany("DigitalBorrowExtensionHistories")
+                        .HasForeignKey("DigitalBorrowId")
+                        .IsRequired()
+                        .HasConstraintName("FK_DigitalBorrowExtensionHistory_DigitalBorrowId");
+
+                    b.Navigation("DigitalBorrow");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
@@ -3286,6 +3528,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("WarehouseTracking");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.Navigation("TrainingImages");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingSession", b =>
+                {
+                    b.Navigation("TrainingDetails");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Author", b =>
                 {
                     b.Navigation("LibraryItemAuthors");
@@ -3298,6 +3550,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Fines");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecordDetail", b =>
+                {
+                    b.Navigation("BorrowDetailExtensionHistories");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequest", b =>
                 {
                     b.Navigation("BorrowRequestDetails");
@@ -3308,6 +3565,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("LibraryItems");
 
                     b.Navigation("WarehouseTrackingDetails");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrow", b =>
+                {
+                    b.Navigation("DigitalBorrowExtensionHistories");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
@@ -3367,6 +3629,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("LibraryItemReviews");
 
                     b.Navigation("ReservationQueues");
+
+                    b.Navigation("TrainingDetails");
 
                     b.Navigation("UserFavorites");
 

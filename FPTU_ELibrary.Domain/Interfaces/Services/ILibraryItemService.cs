@@ -12,7 +12,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> CreateAsync(TDto dto, int trackingDetailId);
     Task<IServiceResult> AddRangeInstancesWithoutSaveChangesAsync(List<TDto> itemListIncludeInstances);
     Task<IServiceResult> GetEnumValueAsync();
-    Task<IServiceResult> GetDetailAsync(int id);
+    Task<IServiceResult> GetDetailAsync(int id, string? email = null);
     Task<IServiceResult> GetByBarcodeAsync(string barcode);
     Task<IServiceResult> GetByIsbnAsync(string isbn);
     Task<IServiceResult> GetRecentReadByIdsAsync(int[] ids, int pageIndex, int pageSize);
@@ -24,6 +24,7 @@ public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, 
     Task<IServiceResult> GetRelatedItemsAsync(int id, int pageIndex, int pageSize);
     Task<IServiceResult> GetByInstanceBarcodeAsync(string barcode);
     Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(ISpecification<LibraryItem> specification, bool tracked = true);
+    Task<IServiceResult> CheckUnavailableForBorrowRequestAsync(string email, int[] ids);
     Task<IServiceResult> UpdateBorrowStatusWithoutSaveChangesAsync(int id, bool canBorrow);
     Task<IServiceResult> SoftDeleteAsync(int id);
     Task<IServiceResult> SoftDeleteRangeAsync(int[] ids);

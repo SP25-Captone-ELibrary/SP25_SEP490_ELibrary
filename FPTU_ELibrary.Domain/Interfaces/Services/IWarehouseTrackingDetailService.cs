@@ -15,6 +15,7 @@ public interface IWarehouseTrackingDetailService<TDto> : IGenericService<Warehou
     Task<IServiceResult> AddToWarehouseTrackingAsync(int trackingId, TDto dto);
     Task<IServiceResult> DeleteItemAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> UpdateRangeBarcodeRegistrationAsync(int trackingId, List<int> whDetailIds);
+    Task<IServiceResult> UpdateBarcodeRegistrationAsync(int trackingDetailId);
     Task<IServiceResult> UpdateItemFromExternalAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> UpdateItemFromInternalAsync(int trackingDetailId, int libraryItemId);
     Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec);

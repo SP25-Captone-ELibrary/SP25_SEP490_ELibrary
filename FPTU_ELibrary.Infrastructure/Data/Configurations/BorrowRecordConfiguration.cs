@@ -16,15 +16,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.BorrowDate)
                 .HasColumnType("datetime")
                 .HasColumnName("borrow_date");
-            builder.Property(e => e.DueDate)
-                .HasColumnType("datetime")
-                .HasColumnName("due_date");
-            builder.Property(e => e.TotalExtension)
-                .HasDefaultValue(0)
-                .HasColumnName("total_extension");
-            builder.Property(e => e.ReturnDate)
-                .HasColumnType("datetime")
-                .HasColumnName("return_date");
 
 			#region Update at: 11-10-2024 by Le Xuan Phuoc
             builder.Property(e => e.ProcessedBy).HasColumnName("proceesed_by");
@@ -68,11 +59,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             // builder.Property(e => e.RequestDate)
             //     .HasColumnType("datetime")
             //     .HasColumnName("request_date");
-            
-            builder.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasColumnType("nvarchar(50)")
-                .HasColumnName("status");
             
             builder.Property(e => e.SelfServiceBorrow)
                 .HasDefaultValue(false)
@@ -128,6 +114,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.SelfServiceReturn)
                 .IsRequired(false)
                 .HasColumnName("self_service_return");
+            #endregion
+
+            #region Updated at: 10/03/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.TotalExtension)
+            //     .HasDefaultValue(0)
+            //     .HasColumnName("total_extension");
             #endregion
         }
 	}

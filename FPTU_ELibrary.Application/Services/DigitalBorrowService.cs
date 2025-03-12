@@ -2,6 +2,7 @@ using System.Globalization;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
@@ -14,11 +15,13 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Exception = System.Exception;
 
 namespace FPTU_ELibrary.Application.Services;
 
@@ -27,6 +30,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
 {
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<ITransactionService<TransactionDto>> _transactionSvc;
+    private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceSvc;
     
     private readonly IEmailService _emailSvc;
     
@@ -37,6 +41,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         // Lazy services
         Lazy<IUserService<UserDto>> userSvc,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
+        Lazy<ILibraryResourceService<LibraryResourceDto>> resourceSvc,
         
         IEmailService emailSvc,
         IOptionsMonitor<AppSettings> monitor,
@@ -48,48 +53,57 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     {
         _emailSvc = emailSvc;
         _userSvc = userSvc;
+        _resourceSvc = resourceSvc;
         _transactionSvc = transactionSvc;
         _appSettings = monitor.CurrentValue;
         _tokenValidationParams = tokenValidationParams;
     }
 
-    public async Task<IServiceResult> GetAllCardHolderDigitalBorrowByUserIdAsync(Guid userId, int pageIndex, int pageSize)
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<DigitalBorrow> specification, bool tracked = true)
     {
         try
         {
-            // Build spec
-            var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.UserId == userId);   
-            
-            // Add default order by
-            baseSpec.AddOrderByDescending(br => br.RegisterDate);
-            
-            // Count total borrow request
-            var totalDigitalWithSpec = await _unitOfWork.Repository<DigitalBorrow, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalDigitalWithSpec / pageSize);
-
-            // Set pagination to specification after count total digital borrow
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            // Try to parse specification to LibraryItemSpecification
+            var digitalSpecification = specification as DigitalBorrowSpecification;
+            // Check if specification is null
+            if (digitalSpecification == null)
             {
-                pageIndex = 1; // Set default to first page
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
+
+            // Count total library items
+            var totalDigitalWithSpec = await _unitOfWork.Repository<DigitalBorrow, int>().CountAsync(digitalSpecification);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalDigitalWithSpec / digitalSpecification.PageSize);
+
+            // Set pagination to specification after count total library item
+            if (digitalSpecification.PageIndex > totalPage
+                || digitalSpecification.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                digitalSpecification.PageIndex = 1; // Set default to first page
+            }
+
             // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+            digitalSpecification.ApplyPaging(
+                skip: digitalSpecification.PageSize * (digitalSpecification.PageIndex - 1),
+                take: digitalSpecification.PageSize);
             
-            // Retrieve data with spec
             var entities = await _unitOfWork.Repository<DigitalBorrow, int>()
-                .GetAllWithSpecAsync(baseSpec);
+                .GetAllWithSpecAsync(digitalSpecification, tracked);
             if (entities.Any())
             {
-                var digitalDtos = _mapper.Map<List<DigitalBorrowDto>>(entities);
+                // Map to dto
+                var dtoList = _mapper.Map<List<DigitalBorrowDto>>(entities);
+
+                // Convert to get digital borrow dto
+                var getDigitalBorrowList = dtoList.Select(d => d.ToGetDigitalBorrowDto());
                 
                 // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderDigitalBorrowDto>(
-                    digitalDtos.Select(d => d.ToCardHolderDigitalBorrowDto()),
-                    pageIndex, pageSize, totalPage, totalDigitalWithSpec);
-
-                // Response with pagination 
+                var paginationResultDto = new PaginatedResultDto<GetDigitalBorrowDto>(getDigitalBorrowList,
+                    digitalSpecification.PageIndex, digitalSpecification.PageSize, totalPage, totalDigitalWithSpec);
+                
+                // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
             }
@@ -97,16 +111,16 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             // Data not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderDigitalBorrowDto>());
+                new List<GetDigitalBorrowDto>());
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke when get all digital borrow by user id");
+            throw new Exception("Error invoke when process get all digital borrows");
         }
     }
 
-    public async Task<IServiceResult> GetCardHolderDigitalBorrowByIdAsync(Guid userId, int digitalBorrowId)
+    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
     {
         try
         {
@@ -115,40 +129,48 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
             
-            // Retrieve user information
             // Build spec
-            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.UserId, userId));
-            // Apply include
-            userBaseSpec.ApplyInclude(q => q
-                .Include(u => u.LibraryCard)!
-            );
-            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null || userDto.LibraryCardId == null) // Not found user
+            var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.DigitalBorrowId == id);
+            // Add filter (if any)
+            if (!string.IsNullOrWhiteSpace(email))
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    StringUtils.Format(errMsg, isEng ? "patron" : "bạn đọc"));
+                baseSpec.AddFilter(db => db.User.Email == email);
             }
-            
-            // Build spec
-            var baseSpec = new BaseSpecification<DigitalBorrow>(br => 
-                br.UserId == userDto.UserId && br.DigitalBorrowId == digitalBorrowId);
+            if (userId.HasValue && userId != Guid.Empty)
+            {
+                baseSpec.AddFilter(db => db.UserId == userId);
+            }
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(db => db.LibraryResource)
+                .Include(db => db.DigitalBorrowExtensionHistories)
             );
             // Retrieve with spec
             var existingEntity = await _unitOfWork.Repository<DigitalBorrow, int>().GetWithSpecAsync(baseSpec);
             if (existingEntity != null)
             {
-                // Convert to dto
+                // Map to dto
                 var digitalBorrowDto = _mapper.Map<DigitalBorrowDto>(existingEntity);
+                
+                // Try to retrieve all transaction
+                var tranSpec = new BaseSpecification<Transaction>(t =>
+                    (
+                        (!string.IsNullOrEmpty(email) && t.User.Email == email) || // Exist any email match
+                        (userId.HasValue && userId != Guid.Empty && t.UserId == userId) // Exist any userId match
+                    ) &&
+                    // Must equals to specific resource ids
+                    t.ResourceId == existingEntity.ResourceId);
+                // Apply include 
+                tranSpec.ApplyInclude(q => q.Include(t => t.User));
+                // Retrieve all transaction dto with spec
+                var transactionDtos = (await _transactionSvc.Value.GetAllWithSpecAsync(tranSpec)).Data as List<TransactionDto>;
+                
+                // Covert to get digital borrow dto
+                var getDigitalBorrowDto = digitalBorrowDto.ToGetDigitalBorrowDto(transactions: transactionDtos);
                 
                 // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                    digitalBorrowDto.ToCardHolderDigitalBorrowDto());
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getDigitalBorrowDto);
             }
             
             // Not found or empty
@@ -157,6 +179,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         }
         catch (Exception ex)
         {
+            _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get library card holder's digital borrow by id");
         }
     }
@@ -445,7 +468,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             
             // Extend expiration date
             // Subtract expiration date to now
-            var remainDays = existingEntity.ExpiryDate.Subtract(currentLocalDateTime);
+            var oldExpiryDate = existingEntity.ExpiryDate;
+            var remainDays = oldExpiryDate.Subtract(currentLocalDateTime);
             if (remainDays.Days > 0) // If expiry date still exceed than current date
             {
                 existingEntity.ExpiryDate = 
@@ -458,10 +482,18 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             }
             // Change status to active
             existingEntity.Status = BorrowDigitalStatus.Active;
-            // Increase extension count
-            existingEntity.ExtensionCount++;
             // Mark as extend
             existingEntity.IsExtended = true;
+            // Increase extension count
+            existingEntity.ExtensionCount++;
+            // Add extension history
+            existingEntity.DigitalBorrowExtensionHistories.Add(new()
+            {
+                ExtensionDate = oldExpiryDate,
+                NewExpiryDate = existingEntity.ExpiryDate,
+                ExtensionFee = existingEntity.LibraryResource.BorrowPrice,
+                ExtensionNumber = existingEntity.ExtensionCount
+            });
             
             // Process update
             await _unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(existingEntity);
