@@ -40,7 +40,9 @@ builder.Services
     // Configure OCR
     .ConfigureOCR(builder.Configuration)
     // Configure Azure Speech
-    .ConfigureAzureSpeech(builder.Configuration);   
+    .ConfigureAzureSpeech(builder.Configuration)
+    // Establish application configuration based on env
+    .EstablishApplicationConfiguration(builder.Configuration, builder.Environment);   
 
 builder.Services
     // Configure for application layer
