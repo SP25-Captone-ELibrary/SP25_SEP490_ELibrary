@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.CustomVision;
 using FPTU_ELibrary.API.Payloads.Requests.Group;
+using FPTU_ELibrary.Application.Dtos.AIServices.Classification;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Authorization;
@@ -51,6 +52,15 @@ public class CustomVisionController : ControllerBase
     {
         return Ok(await _aiClassificationService.PredictAsync(req.ImageToPredict));
     }
+
+    [HttpPost(APIRoute.AIServices.Training, Name = nameof(ExtendTrainingModel))]
+    [Authorize]
+    public async Task<IActionResult> ExtendTrainingModel([FromForm] ExtendTrainingRequest req)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        return Ok(await _aiClassificationService.ExtendModelTraining(req.ItemIdsDic, req.ImagesDic, email));
+    }
+
     //
     // [HttpPost(APIRoute.BookEdition.Training, Name = nameof(TrainingSingleEdition))]
     // [Authorize]
@@ -82,18 +92,24 @@ public class CustomVisionController : ControllerBase
         return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(rootItemId));
     }
     [HttpGet(APIRoute.Group.GroupedItems,Name = nameof(GroupedItems))]
-    public async Task<IActionResult> GroupedItems([FromBody] GroupAllItemsRequest req)
+    public async Task<IActionResult> GroupedItems()
     {
-        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping(req.SelectedItemIds));
+        return Ok(await _aiClassificationService.GetAndGradeAllSuitableItemsForGrouping());
     }
 
-    [HttpPost(APIRoute.AIServices.Training, Name = nameof(ExtendTrainingProgress))]
+    [HttpGet(APIRoute.Group.AvailableTrainingGroupPerTime, Name = nameof(GetNumberOfGroupToTrain))]
+    public async Task<IActionResult> GetNumberOfGroupToTrain()
+    {
+        return Ok(await _aiClassificationService.NumberOfGroupForTraining());
+    }
+    
+
+    [HttpPost(APIRoute.AIServices.TrainingLatestVersion, Name = nameof(ExtendTrainingProgress))]
     [Authorize]
-    public async Task<IActionResult> ExtendTrainingProgress([FromBody] ExtendTrainingProgressRequest req)
+    public async Task<IActionResult> ExtendTrainingProgress([FromForm] TrainedBookDetailDto req)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        var reqBody = req.ToTrainingData();
-        return Ok(await _aiClassificationService.ExtendModelTraining(reqBody.Item1,reqBody.Item2,email));
+        return Ok(await _aiClassificationService.ExtendModelTraining(req,email));
     }
 
 }

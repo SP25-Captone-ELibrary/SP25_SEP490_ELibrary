@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -11,6 +11,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "AI_Training_Session",
+                columns: table => new
+                {
+                    training_session_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    model = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    total_trained_item = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    total_trained_time = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    training_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    error_message = table.Column<string>(type: "nvarchar(250)", nullable: true),
+                    train_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    train_by = table.Column<string>(type: "nvarchar(250)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingSession_TrainingSessionId", x => x.training_session_id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Audit_Trail",
                 columns: table => new
@@ -913,6 +932,30 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AI_Training_Detail",
+                columns: table => new
+                {
+                    training_detail_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    training_session_id = table.Column<int>(type: "int", nullable: false),
+                    library_item_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingDetail_TrainingDetailId", x => x.training_detail_id);
+                    table.ForeignKey(
+                        name: "FK_AITrainingDetail_LibraryItemId",
+                        column: x => x.library_item_id,
+                        principalTable: "Library_Item",
+                        principalColumn: "library_item_id");
+                    table.ForeignKey(
+                        name: "FK_AITrainingDetail_TrainingSessionId",
+                        column: x => x.training_session_id,
+                        principalTable: "AI_Training_Session",
+                        principalColumn: "training_session_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Library_Item_Author",
                 columns: table => new
                 {
@@ -1120,6 +1163,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AI_Training_Image",
+                columns: table => new
+                {
+                    training_image_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    training_detail_id = table.Column<int>(type: "int", nullable: false),
+                    image_url = table.Column<string>(type: "varchar(2048)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AITrainingImage_TrainingImageId", x => x.training_image_id);
+                    table.ForeignKey(
+                        name: "FK_AITrainingImage_TrainingDetailId",
+                        column: x => x.training_detail_id,
+                        principalTable: "AI_Training_Detail",
+                        principalColumn: "training_detail_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Borrow_Record_Detail",
                 columns: table => new
                 {
@@ -1249,6 +1311,21 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         principalTable: "Library_Item_Instance",
                         principalColumn: "library_item_instance_id");
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Detail_library_item_id",
+                table: "AI_Training_Detail",
+                column: "library_item_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Detail_training_session_id",
+                table: "AI_Training_Detail",
+                column: "training_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AI_Training_Image_training_detail_id",
+                table: "AI_Training_Image",
+                column: "training_detail_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Borrow_Record_borrow_request_id",
@@ -1548,6 +1625,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "AI_Training_Image");
+
+            migrationBuilder.DropTable(
                 name: "Audit_Trail");
 
             migrationBuilder.DropTable(
@@ -1602,6 +1682,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "Warehouse_Tracking_Inventory");
 
             migrationBuilder.DropTable(
+                name: "AI_Training_Detail");
+
+            migrationBuilder.DropTable(
                 name: "Author");
 
             migrationBuilder.DropTable(
@@ -1636,6 +1719,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Warehouse_Tracking");
+
+            migrationBuilder.DropTable(
+                name: "AI_Training_Session");
 
             migrationBuilder.DropTable(
                 name: "Library_Item");

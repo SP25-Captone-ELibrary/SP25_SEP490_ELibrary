@@ -313,11 +313,13 @@
 		{
 			//[GET]
 			public const string GetSuitableItemsForGrouping = Base + "/management/groups/suitable-items/{rootItemId}";
+			public const string GroupedItems = Base + "/management/groups/grouped-items";
+
+			public const string AvailableTrainingGroupPerTime = "/management/groups/available-groups-to-train";
 			// [POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
 			public const string DefineGroup = Base + "/management/groups/define-group";
-			public const string GroupedItems = Base + "/management/groups/grouped-items";
 			
 		}
 		
@@ -606,6 +608,7 @@
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Training = Base + "/management/library-items/ai/extend-train";
+			public const string TrainingLatestVersion = Base+"/management/library-items/ai/extend-train/v2";
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string RecommendationWithId = Base + "/library-items/ai/recommendation/{id}";

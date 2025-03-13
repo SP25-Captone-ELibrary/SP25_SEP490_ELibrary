@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AdminConfiguration;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -51,6 +52,9 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(LibraryItemGroupDto) => (IValidator<T>)new LibraryItemGroupDtoValidator(language),
 				{ } when typeof(T) == typeof(TransactionDto) => (IValidator<T>)new TransactionDtoValidator(language),
 				{ } when typeof(T) == typeof(UpdateKeyVaultDto) => (IValidator<T>)new UpdateKeyVaultDtoValidator(language),
+				{ } when typeof(T) == typeof(AITrainingSessionDto) => (IValidator<T>)new AITrainingSessionDtoValidator(),
+				{ } when typeof(T) == typeof(AITrainingDetailDto) => (IValidator<T>)new AITrainingDetailDtoValidator(),
+				{ } when typeof(T) == typeof(AITrainingImageDto) => (IValidator<T>)new AITrainingImageDtoValidator(),
 				_ => null
 			};
 		}

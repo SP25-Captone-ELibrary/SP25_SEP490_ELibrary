@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -21,6 +21,107 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.Property<int>("TrainingDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_detail_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingDetailId"));
+
+                    b.Property<int>("LibraryItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("library_item_id");
+
+                    b.Property<int>("TrainingSessionId")
+                        .HasColumnType("int")
+                        .HasColumnName("training_session_id");
+
+                    b.HasKey("TrainingDetailId")
+                        .HasName("PK_AITrainingDetail_TrainingDetailId");
+
+                    b.HasIndex("LibraryItemId");
+
+                    b.HasIndex("TrainingSessionId");
+
+                    b.ToTable("AI_Training_Detail", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingImage", b =>
+                {
+                    b.Property<int>("TrainingImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_image_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingImageId"));
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("image_url");
+
+                    b.Property<int>("TrainingDetailId")
+                        .HasColumnType("int")
+                        .HasColumnName("training_detail_id");
+
+                    b.HasKey("TrainingImageId")
+                        .HasName("PK_AITrainingImage_TrainingImageId");
+
+                    b.HasIndex("TrainingDetailId");
+
+                    b.ToTable("AI_Training_Image", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingSession", b =>
+                {
+                    b.Property<int>("TrainingSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("training_session_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrainingSessionId"));
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("model");
+
+                    b.Property<int>("TotalTrainedItem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_trained_item");
+
+                    b.Property<decimal?>("TotalTrainedTime")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_trained_time");
+
+                    b.Property<string>("TrainBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("train_by");
+
+                    b.Property<DateTime>("TrainDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("train_date");
+
+                    b.Property<string>("TrainingStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("training_status");
+
+                    b.HasKey("TrainingSessionId")
+                        .HasName("PK_AITrainingSession_TrainingSessionId");
+
+                    b.ToTable("AI_Training_Session", (string)null);
+                });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AuditTrail", b =>
                 {
@@ -2737,6 +2838,36 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Warehouse_Tracking_Inventory", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItem", "LibraryItem")
+                        .WithMany("TrainingDetails")
+                        .HasForeignKey("LibraryItemId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingDetail_LibraryItemId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.AITrainingSession", "TrainingSession")
+                        .WithMany("TrainingDetails")
+                        .HasForeignKey("TrainingSessionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingDetail_TrainingSessionId");
+
+                    b.Navigation("LibraryItem");
+
+                    b.Navigation("TrainingSession");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingImage", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.AITrainingDetail", "TrainingDetail")
+                        .WithMany("TrainingImages")
+                        .HasForeignKey("TrainingDetailId")
+                        .IsRequired()
+                        .HasConstraintName("FK_AITrainingImage_TrainingDetailId");
+
+                    b.Navigation("TrainingDetail");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecord", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
@@ -3283,6 +3414,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("WarehouseTracking");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingDetail", b =>
+                {
+                    b.Navigation("TrainingImages");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.AITrainingSession", b =>
+                {
+                    b.Navigation("TrainingDetails");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Author", b =>
                 {
                     b.Navigation("LibraryItemAuthors");
@@ -3364,6 +3505,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("LibraryItemReviews");
 
                     b.Navigation("ReservationQueues");
+
+                    b.Navigation("TrainingDetails");
 
                     b.Navigation("UserFavorites");
 
