@@ -394,7 +394,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             // Data not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderDigitalBorrowDto>());
+                new List<LibraryCardHolderNotificationRecipientDto>());
         }
         catch (Exception ex)
         {

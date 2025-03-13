@@ -11,7 +11,8 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
     
-    public BorrowRequestSpecification(BorrowRequestSpecParams specParams, int pageIndex, int pageSize)
+    public BorrowRequestSpecification(BorrowRequestSpecParams specParams, int pageIndex, int pageSize,
+        string? email = null, Guid? userId = null)
         :base(br => 
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) || 
@@ -54,23 +55,30 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
         // Apply include 
         ApplyInclude(q => q
             .Include(br => br.BorrowRequestDetails)
-            .ThenInclude(brd => brd.LibraryItem)
-            .ThenInclude(li => li.Shelf)
+                .ThenInclude(brd => brd.LibraryItem)
+                    .ThenInclude(li => li.Shelf)
             .Include(br => br.BorrowRequestDetails)
-            .ThenInclude(brd => brd.LibraryItem)
-            .ThenInclude(li => li.Category)
+                .ThenInclude(brd => brd.LibraryItem)
+                    .ThenInclude(li => li.Category)
             .Include(br => br.BorrowRequestDetails)
-            .ThenInclude(brd => brd.LibraryItem)
-            .ThenInclude(li => li.LibraryItemInstances)
+                .ThenInclude(brd => brd.LibraryItem)
+                    .ThenInclude(li => li.LibraryItemInstances)
             .Include(br => br.LibraryCard)
         );
         
         // Add filter 
+        if (!string.IsNullOrEmpty(email))
+        {
+            AddFilter(br => br.LibraryCard.Users.Any(u => u.Email == email));
+        }
+        if (userId.HasValue && userId != Guid.Empty)
+        {
+            AddFilter(br => br.LibraryCard.Users.Any(u => u.UserId == userId));
+        }
         if (specParams.Status != null) // Status
         {
             AddFilter(br => br.Status == specParams.Status);
         }
-        
         if (specParams.RequestDateRange != null
             && specParams.RequestDateRange.Length > 1) // With range of request date
         {

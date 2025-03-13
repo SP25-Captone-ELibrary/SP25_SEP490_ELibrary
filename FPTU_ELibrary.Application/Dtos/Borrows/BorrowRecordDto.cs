@@ -18,9 +18,6 @@ public class BorrowRecordDto
 
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
-    public DateTime DueDate { get; set; }
-    public DateTime? ReturnDate { get; set; }
-    public BorrowRecordStatus Status { get; set; } 
     
     // Borrow type
     public BorrowType BorrowType { get; set; }
@@ -30,9 +27,6 @@ public class BorrowRecordDto
     
     // True if return via kiosk 
     public bool? SelfServiceReturn { get; set; }
-    
-    // Total extension time  
-    public int TotalExtension { get; set; }
     
     // Total record item
     public int TotalRecordItem { get; set; }

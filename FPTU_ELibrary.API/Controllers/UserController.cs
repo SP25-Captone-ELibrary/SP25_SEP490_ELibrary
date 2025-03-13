@@ -6,6 +6,7 @@ using FPTU_ELibrary.API.Payloads.Requests.Auth;
 using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -13,6 +14,7 @@ using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -20,16 +22,27 @@ namespace FPTU_ELibrary.API.Controllers;
 public class UserController:ControllerBase
 {
     private readonly IUserService<UserDto> _userService;
+    private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;
+    private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecSvc;
+    private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowSvc;
+    
     private readonly AppSettings _appSettings;
 
     public UserController(
+        IBorrowRequestService<BorrowRequestDto> borrowReqSvc,
+        IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
+        IDigitalBorrowService<DigitalBorrowDto> digitalBorrowSvc,
         IOptionsMonitor<AppSettings> monitor,
         IUserService<UserDto> userService)
     {
         _userService = userService;
+        _borrowReqSvc = borrowReqSvc;
+        _borrowRecSvc = borrowRecSvc;
+        _digitalBorrowSvc = digitalBorrowSvc;
         _appSettings = monitor.CurrentValue;
     }
 
+    #region Management
     [Authorize]
     [HttpGet(APIRoute.User.GetAll, Name = nameof(GetAllUserAsync))]
     public async Task<IActionResult> GetAllUserAsync([FromQuery] UserSpecParams req)
@@ -132,5 +145,77 @@ public class UserController:ControllerBase
         return exportResult.Data is byte[] fileStream
             ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Employees.xlsx")
             : Ok(exportResult);
+    }
+    #endregion
+
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserBorrowRequest, Name = nameof(GetAllUserBorrowRequestAsync))]
+    public async Task<IActionResult> GetAllUserBorrowRequestAsync([FromQuery] BorrowRequestSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.GetAllWithSpecAsync(
+            specification: new BorrowRequestSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetBorrowRequestById, Name = nameof(GetUserBorrowRequestByIdAsync))]
+    public async Task<IActionResult> GetUserBorrowRequestByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.GetByIdAsync(id: id, email: email ?? string.Empty));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserBorrowRecord, Name = nameof(GetAllUserBorrowRecordAsync))]
+    public async Task<IActionResult> GetAllUserBorrowRecordAsync([FromQuery] BorrowRecordSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.GetAllWithSpecAsync(
+            specification: new BorrowRecordSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetBorrowRecordById, Name = nameof(GetUserBorrowRecordByIdAsync))]
+    public async Task<IActionResult> GetUserBorrowRecordByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.GetByIdAsync(id: id, email: email ?? string.Empty));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserDigitalBorrow, Name = nameof(GetAllUserDigitalBorrowAsync))]
+    public async Task<IActionResult> GetAllUserDigitalBorrowAsync([FromQuery] DigitalBorrowSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _digitalBorrowSvc.GetAllWithSpecAsync(
+            specification: new DigitalBorrowSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetDigitalBorrowById, Name = nameof(GetUserDigitalBorrowByIdAsync))]
+    public async Task<IActionResult> GetUserDigitalBorrowByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _digitalBorrowSvc.GetByIdAsync(id: id, email: email ?? string.Empty));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.User.CalculateBorrowReturnSummary, Name = nameof(CalculateBorrowReturnSummaryAsync))]
+    public async Task<IActionResult> CalculateBorrowReturnSummaryAsync()
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.CalculateBorrowReturnSummaryAsync(email: email ?? string.Empty));
     }
 }

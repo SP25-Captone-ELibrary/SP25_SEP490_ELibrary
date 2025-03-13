@@ -162,16 +162,6 @@ public class LibraryCardController : ControllerBase
         return Ok(await _cardSvc.SendRequireToConfirmCardAsync(userEmail: email ?? string.Empty));
     }
     
-    // TODO: Remove this function
-    [Authorize]
-    [HttpGet("generate-code")]
-    public async Task<IActionResult> GenerateCodeAsync()
-    {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await new PaymentUtils(_logger).GenerateTransactionTokenAsync(
-            email: email ?? string.Empty, "CODE123", new DateTime(2025,02,09), _webTokenSettings));
-    }
-
     [Authorize]
     [HttpGet(APIRoute.LibraryCard.CheckCardExtension, Name = nameof(CheckCardExtensionAsync))]
     public async Task<IActionResult> CheckCardExtensionAsync([FromRoute] Guid id)

@@ -59,7 +59,6 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
     //             BorrowRecordId = borrowRecordId,
     //             CreatedAt = DateTime.Now,
     //             CreatedBy = employeeValue.EmployeeId,
-    //             // Todo : use config to get the expiry date
     //             ExpiryAt = DateTime.Now.AddDays(1),
     //             Status = TransactionStatus.Pending.ToString()
     //         };

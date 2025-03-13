@@ -176,7 +176,7 @@ namespace FPTU_ELibrary.API.Extensions
             IConfiguration configuration,
             IWebHostEnvironment env)
         {
-            // Cấu hình PayOS
+            // Config PayOS
             var payOsConfig = configuration.GetSection("PayOSSettings").Get<PayOSSettings>();
             if (payOsConfig != null)
             {
@@ -379,65 +379,65 @@ namespace FPTU_ELibrary.API.Extensions
         }
         
         #region KeyVault
-         //      public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-    //     IConfiguration configuration,
-    //     IWebHostEnvironment env)
-    // {
-    //     var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
-    //     var clientId = configuration["AzureSettings:KeyVaultClientId"];
-    //     var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
-    //     var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
-    //
-    //     var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-    //     var client = new SecretClient(new Uri(keyVaultUrl), credential);
-    //
-    //     //  Load assembly of `FPTU_ELibrary.Application`
-    //     string targetNamespace = "FPTU_ELibrary.Application.Configurations";
-    //     string assemblyName = "FPTU_ELibrary.Application";
-    //     var assembly = LoadAssembly(assemblyName);
-    //
-    //     //  Get all class 
-    //     var configTypes = assembly.GetTypes()
-    //         .Where(t => t.IsClass && t.Namespace == targetNamespace)
-    //         .ToList();
-    //
-    //     foreach (var configType in configTypes)
-    //     {
-    //         var secretName = configType.Name;
-    //         var secretResponse = client.GetSecret(secretName);
-    //
-    //         if (secretResponse?.Value?.Value != null)
-    //         {
-    //             // parse json in key vault to object
-    //             var configInstance = JsonSerializer.Deserialize(secretResponse.Value.Value, configType);
-    //
-    //             if (configInstance != null)
-    //             {
-    //                 // Get Configure<TOptions> method
-    //                 var configureGenericMethod = typeof(OptionsServiceCollectionExtensions)
-    //                     .GetMethods()
-    //                     .FirstOrDefault(m =>
-    //                         m.Name == "Configure" &&
-    //                         m.IsGenericMethodDefinition &&
-    //                         m.GetParameters().Length == 2 &&
-    //                         m.GetParameters()[0].ParameterType == typeof(IServiceCollection) &&
-    //                         m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Action<>))
-    //                     ?.MakeGenericMethod(configType);
-    //
-    //                 if (configureGenericMethod != null)
-    //                 {
-    //                     // Create action to assign value from parsed instance to DI container
-    //                     var configureAction = CreateConfigureAction(configType, configInstance);
-    //
-    //                     // Invoke Configure<TOptions> method
-    //                     configureGenericMethod.Invoke(null, new object[] { services, configureAction });
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     return services;
-    // }
+        //      public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
+        //     IConfiguration configuration,
+        //     IWebHostEnvironment env)
+        // {
+        //     var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
+        //     var clientId = configuration["AzureSettings:KeyVaultClientId"];
+        //     var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
+        //     var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
+        //
+        //     var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+        //     var client = new SecretClient(new Uri(keyVaultUrl), credential);
+        //
+        //     //  Load assembly of `FPTU_ELibrary.Application`
+        //     string targetNamespace = "FPTU_ELibrary.Application.Configurations";
+        //     string assemblyName = "FPTU_ELibrary.Application";
+        //     var assembly = LoadAssembly(assemblyName);
+        //
+        //     //  Get all class 
+        //     var configTypes = assembly.GetTypes()
+        //         .Where(t => t.IsClass && t.Namespace == targetNamespace)
+        //         .ToList();
+        //
+        //     foreach (var configType in configTypes)
+        //     {
+        //         var secretName = configType.Name;
+        //         var secretResponse = client.GetSecret(secretName);
+        //
+        //         if (secretResponse?.Value?.Value != null)
+        //         {
+        //             // parse json in key vault to object
+        //             var configInstance = JsonSerializer.Deserialize(secretResponse.Value.Value, configType);
+        //
+        //             if (configInstance != null)
+        //             {
+        //                 // Get Configure<TOptions> method
+        //                 var configureGenericMethod = typeof(OptionsServiceCollectionExtensions)
+        //                     .GetMethods()
+        //                     .FirstOrDefault(m =>
+        //                         m.Name == "Configure" &&
+        //                         m.IsGenericMethodDefinition &&
+        //                         m.GetParameters().Length == 2 &&
+        //                         m.GetParameters()[0].ParameterType == typeof(IServiceCollection) &&
+        //                         m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Action<>))
+        //                     ?.MakeGenericMethod(configType);
+        //
+        //                 if (configureGenericMethod != null)
+        //                 {
+        //                     // Create action to assign value from parsed instance to DI container
+        //                     var configureAction = CreateConfigureAction(configType, configInstance);
+        //
+        //                     // Invoke Configure<TOptions> method
+        //                     configureGenericMethod.Invoke(null, new object[] { services, configureAction });
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     return services;
+        // }
 
         // /// <summary>
         // /// Create Action<T> for assigning value from parsed instance to DI container.

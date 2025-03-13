@@ -1238,7 +1238,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			// Initialize item group
 			var itemGrp1 = new LibraryItemGroup()
 			{
-				AiTrainingCode = Guid.NewGuid().ToString(),
+				// AiTrainingCode = Guid.NewGuid().ToString(),
+				AiTrainingCode = "c961f808-eb91-411b-a02c-497549692c21",
 				ClassificationNumber = "823",
 				CutterNumber = "H109P",
 				Title = "Harry Potter và phòng chứa bí mật",

@@ -15,9 +15,6 @@ public class BorrowRecord
     
     // Borrow record tracking
     public DateTime BorrowDate { get; set; }
-    public DateTime DueDate { get; set; }
-    public DateTime? ReturnDate { get; set; }
-    public BorrowRecordStatus Status { get; set; } 
     
     // Borrow type
     public BorrowType BorrowType { get; set; }
@@ -28,15 +25,12 @@ public class BorrowRecord
     // True if return via kiosk 
     public bool? SelfServiceReturn { get; set; }
     
-    // Total extension time  
-    public int TotalExtension { get; set; }
-    
     // Total record item
     public int TotalRecordItem { get; set; }
 
     // Borrow record processed by which employee
     public Guid? ProcessedBy { get; set; }
-
+    
     // Mapping entities
     public BorrowRequest? BorrowRequest { get; set; }
     public Employee? ProcessedByNavigation { get; set; } 

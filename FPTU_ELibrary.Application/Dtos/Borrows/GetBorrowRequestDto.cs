@@ -1,10 +1,9 @@
-using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
-namespace FPTU_ELibrary.Application.Dtos.LibraryCard;
+namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
-public class LibraryCardHolderBorrowRequestDto
+public class GetBorrowRequestDto
 {
     // Key
     public int BorrowRequestId { get; set; }
@@ -23,19 +22,19 @@ public class LibraryCardHolderBorrowRequestDto
     // Cancellation properties
     public DateTime? CancelledAt { get; set; }
     public string? CancellationReason { get; set; }
-    
+
     // Remind user before expiration (via email or system notification)
     public bool IsReminderSent { get; set; }
     
     // Count total request item
     public int TotalRequestItem { get; set; }
     
-    public List<LibraryItemDetailDto> LibraryItems { get; set; } = new ();
+    public List<LibraryItemDetailDto> LibraryItems { get; set; } = new();
 }
 
-public static class LibraryCardBorrowRequestDtoExtensions
+public static class GetBorrowRequestDtoExtensions
 {
-    public static LibraryCardHolderBorrowRequestDto ToLibraryCardBorrowRequestDto(this BorrowRequestDto dto)
+    public static GetBorrowRequestDto ToGetBorrowRequestDto(this BorrowRequestDto dto)
     {
         return new()
         {
@@ -49,11 +48,9 @@ public static class LibraryCardBorrowRequestDtoExtensions
             CancellationReason = dto.CancellationReason,
             IsReminderSent = dto.IsReminderSent,
             TotalRequestItem = dto.TotalRequestItem,
-            LibraryItems = dto.BorrowRequestDetails.Any() 
-                ? dto.BorrowRequestDetails
-                    .Select(brd => brd.LibraryItem)
-                    .Select(li => li.ToLibraryItemDetailDto()).ToList()
-                : new()
+            LibraryItems = dto.BorrowRequestDetails
+                .Select(brd => brd.LibraryItem)
+                .Select(li => li.ToLibraryItemDetailDto()).ToList()
         };
     }
 }

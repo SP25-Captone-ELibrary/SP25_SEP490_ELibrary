@@ -56,6 +56,13 @@ public class WarehouseTrackingDetailController : ControllerBase
         return Ok(await _trackingDetailService.UpdateItemFromExternalAsync(
             trackingDetailId: id, libraryItemId: libraryItemId));
     }
+
+    [Authorize]
+    [HttpPut(APIRoute.WarehouseTrackingDetail.UpdateBarcodeRegistration, Name = nameof(UpdateBarcodeRegistrationAsync))]
+    public async Task<IActionResult> UpdateBarcodeRegistrationAsync([FromRoute] int id)
+    {
+        return Ok(await _trackingDetailService.UpdateBarcodeRegistrationAsync(trackingDetailId: id));
+    }
     
     [Authorize]
     [HttpPost(APIRoute.WarehouseTrackingDetail.AddToTracking, Name = nameof(AddToWarehouseTrackingAsync))]
