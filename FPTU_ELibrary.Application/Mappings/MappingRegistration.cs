@@ -26,9 +26,6 @@ namespace FPTU_ELibrary.Application.Mappings
 		{
 			// From [Entity] to [Dto]
 			config.NewConfig<Author, AuthorDto>();
-			config.NewConfig<AITrainingSession, AITrainingSessionDto>();
-			config.NewConfig<AITrainingDetail, AITrainingDetailDto>();
-			config.NewConfig<AITrainingImage, AITrainingImageDto>();
 			config.NewConfig<BorrowRecord, BorrowRecordDto>();
 			config.NewConfig<BorrowRecordDetail, BorrowRecordDetailDto>();
 			config.NewConfig<BorrowDetailExtensionHistory, BorrowDetailExtensionHistoryDto>();
@@ -105,7 +102,10 @@ namespace FPTU_ELibrary.Application.Mappings
 				.Ignore(dest => dest.LibraryItem);
 			config.NewConfig<AITrainingImageDto, AITrainingImage>()
 				.Ignore(dest => dest.TrainingDetail);
-
+			config.NewConfig<AITrainingSessionDto, AITrainingSession>()
+				.IgnoreNullValues(true);
+			config.NewConfig<AITrainingSession, AITrainingSessionDto>()
+				.IgnoreNullValues(true);
 		}
 		
 		private string RemoveTrailingZeros(decimal value)

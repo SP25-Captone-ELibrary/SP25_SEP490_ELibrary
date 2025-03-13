@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250311044029_Initial Database")]
+    [Migration("20250313105408_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -63,7 +63,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("image_url");
 
                     b.Property<int>("TrainingDetailId")
                         .HasColumnType("int")

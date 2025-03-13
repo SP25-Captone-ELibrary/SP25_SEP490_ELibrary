@@ -796,6 +796,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Fail to detect face image
         /// </summary>
         public static string AIService_Warning0007 = "AIService.Warning0007";
+        /// <summary>
+        /// [WARNING] Not import at least 5 pictures each item
+        /// </summary>
+        public static string AIService_Warning0008 = "AIService.Warning0008";
         #endregion
 
         #region Warehouse Tracking

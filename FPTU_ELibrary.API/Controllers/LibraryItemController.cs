@@ -340,6 +340,7 @@ public class LibraryItemController : ControllerBase
             pageSize: pageSize ?? _appSettings.PageSize));
     }
     [HttpGet(APIRoute.LibraryItem.GetOwnResource,Name = nameof(GetOwnResourceAsync))]
+    [Authorize]
     public async Task<IActionResult> GetOwnResourceAsync( [FromRoute] int resourceId
         , [FromQuery] int? latestMinute)
     {
