@@ -35,6 +35,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey<LibraryItemInventory>(d => d.LibraryItemId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_LibraryItemInventory_LibraryItemId");
+
+            #region Updated at 15/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.LostUnits)
+                .HasDefaultValue(0)
+                .HasColumnName("lost_units");
+            #endregion
         }
     }
 }

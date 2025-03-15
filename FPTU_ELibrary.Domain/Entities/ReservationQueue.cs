@@ -20,6 +20,12 @@ public class ReservationQueue
     // Queue status
     public ReservationQueueStatus QueueStatus { get; set; } 
     
+    // Belongs to specific request (if any)
+    public int? BorrowRequestId { get; set; }
+    
+    // Mark as reserved after requested failed
+    public bool IsReservedAfterRequestFailed { get; set; }
+    
     // Forecasting available datetime
     public DateTime? ExpectedAvailableDateMin { get; set; } // Best case scenario
     public DateTime? ExpectedAvailableDateMax { get; set; } // Worst case scenario
@@ -38,7 +44,6 @@ public class ReservationQueue
     public string? CancellationReason { get; set; } 
     
     // Mapping entities
-    [JsonIgnore]
     public LibraryItem LibraryItem { get; set; } = null!;
     
     [JsonIgnore] 
@@ -46,4 +51,7 @@ public class ReservationQueue
 
     [JsonIgnore]
     public LibraryCard LibraryCard { get; set; } = null!;
+    
+    [JsonIgnore] 
+    public BorrowRequest? BorrowRequest { get; set; }
 }

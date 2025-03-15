@@ -82,6 +82,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ReservationQueue_LibraryItemInstanceId");
             #endregion
+
+            #region Updated at: 14/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsReservedAfterRequestFailed)
+                .HasDefaultValue(false)
+                .HasColumnName("is_reserved_after_request_failed");
+            
+            builder.Property(e => e.BorrowRequestId).HasColumnName("borrow_request_id");
+            builder.HasOne(e => e.BorrowRequest).WithMany(p => p.ReservationQueues)
+                .HasForeignKey(e => e.BorrowRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReservationQueue_BorrowRequestId");
+            #endregion
         }
     }
 }

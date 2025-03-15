@@ -82,7 +82,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             if (userDto == null)
             {
                 // Forbid to access
-                throw new ForbiddenException();
+                throw new ForbiddenException("Not allow to access");
             }
             
             // Check whether existing any transaction has pending status

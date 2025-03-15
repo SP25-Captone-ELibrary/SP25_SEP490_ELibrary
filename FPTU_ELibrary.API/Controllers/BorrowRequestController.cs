@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -52,6 +53,31 @@ public class BorrowRequestController : ControllerBase
     {
         return Ok(await _borrowReqSvc.CheckExistBarcodeInRequestAsync(id: id, barcode: barcode));
     }
+    
+    [Authorize]    
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificItemManagement, Name = nameof(CancelSpecificBorrowRequestDetailManagementAsync))]
+    public async Task<IActionResult> CancelSpecificBorrowRequestDetailManagementAsync(
+        [FromRoute] int id, 
+        [FromRoute] int libraryItemId,
+        [FromQuery] Guid libraryCardId)
+    {
+        return Ok(await _borrowReqSvc.CancelSpecificItemManagementAsync(libraryCardId: libraryCardId, id: id, libraryItemId: libraryItemId));
+    }
+
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelManagement, Name = nameof(CancelBorrowRequestManagementAsync))]
+    public async Task<IActionResult> CancelBorrowRequestManagementAsync([FromRoute] int id,
+        [FromQuery] Guid libraryCardId,
+        [FromQuery] bool isConfirmed = false,
+        [FromQuery] string? cancellationReason = null)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.CancelManagementAsync(
+            libraryCardId: libraryCardId,
+            id: id, 
+            isConfirmed: isConfirmed,
+            cancellationReason: cancellationReason));
+    }
     #endregion
     
     [Authorize]    
@@ -62,18 +88,42 @@ public class BorrowRequestController : ControllerBase
         return Ok(await _borrowReqSvc.CreateAsync(
             email: email ?? string.Empty,
             dto: req.ToBorrowRequestDto(),
-            reservationIds: req.ReservationItemIds,
-            userFavoriteIds: req.UserFavoriteItemIds));
+            reservationItemIds: req.ReservationItemIds));
     }
-    
+
+    [Authorize]
+    [HttpPost(APIRoute.BorrowRequest.AddItemToRequest, Name = nameof(AddLibraryItemToRequestAsync))]
+    public async Task<IActionResult> AddLibraryItemToRequestAsync([FromRoute] int id, [FromQuery] int libraryItemId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.AddItemAsync(
+            email: email ?? string.Empty,
+            id: id,
+            libraryItemId: libraryItemId));
+    }
+
     [Authorize]    
     [HttpPatch(APIRoute.BorrowRequest.Cancel, Name = nameof(CancelBorrowRequestAsync))]
-    public async Task<IActionResult> CancelBorrowRequestAsync([FromRoute] int id, [FromQuery] string? cancellationReason = null)
+    public async Task<IActionResult> CancelBorrowRequestAsync([FromRoute] int id, 
+        [FromQuery] bool isConfirmed = false,
+        [FromQuery] string? cancellationReason = null)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowReqSvc.CancelAsync(
             email: email ?? string.Empty,
             id: id, 
+            isConfirmed: isConfirmed,
             cancellationReason: cancellationReason));
+    }
+    
+    [Authorize]    
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificItem, Name = nameof(CancelSpecificBorrowRequestDetailAsync))]
+    public async Task<IActionResult> CancelSpecificBorrowRequestDetailAsync([FromRoute] int id, [FromRoute] int libraryItemId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.CancelSpecificItemAsync(
+            email: email ?? string.Empty,
+            id: id,
+            libraryItemId: libraryItemId));
     }
 }

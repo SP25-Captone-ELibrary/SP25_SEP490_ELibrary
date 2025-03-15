@@ -1,8 +1,10 @@
+using CloudinaryDotNet.Actions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
@@ -20,6 +22,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Options;
 using Serilog;
 using StackExchange.Redis;
@@ -30,11 +33,14 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
     IBorrowRecordService<BorrowRecordDto>
 {
     // Lazy services
+    private readonly Lazy<IFineService<FineDto>> _fineSvc;
+    private readonly Lazy<IFinePolicyService<FinePolicyDto>> _finePolicySvc;
     private readonly Lazy<ILibraryItemService<LibraryItemDto>> _libItemSvc;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqSvc;
     private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationQueueSvc;
     private readonly Lazy<ITransactionService<TransactionDto>> _transactionSvc;
+    
     
     private readonly ICloudinaryService _cloudSvc;
     private readonly IUserService<UserDto> _userSvc;
@@ -52,6 +58,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqSvc,
         Lazy<IReservationQueueService<ReservationQueueDto>> reservationQueueSvc,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
+        Lazy<IFineService<FineDto>> fineSvc,
+        Lazy<IFinePolicyService<FinePolicyDto>> finePolicySvc,
         
         // Normal services
         ICategoryService<CategoryDto> cateSvc,
@@ -71,6 +79,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         _cloudSvc = cloudSvc;
         _conditionSvc = conditionSvc;
         _userSvc = userSvc;
+        _fineSvc = fineSvc;
+        _finePolicySvc = finePolicySvc;
         _employeeSvc = employeeSvc;
         _borrowReqSvc = borrowReqSvc;
         _libItemSvc = libItemSvc;
@@ -124,7 +134,6 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     ProcessedBy = br.ProcessedBy,
                     ProcessedByNavigation = br.ProcessedByNavigation,
                     LibraryCard = br.LibraryCard,
-                    Fines = br.Fines,
                     BorrowRequest = br.BorrowRequest != null
                         ? new BorrowRequest()
                         {
@@ -241,7 +250,6 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     ProcessedByNavigation = br.ProcessedByNavigation,
                     LibraryCard = br.LibraryCard,
                     BorrowType = br.BorrowType,
-                    Fines = br.Fines,
                     BorrowRequest = br.BorrowRequest != null
                         ? new BorrowRequest()
                         {
@@ -315,6 +323,78 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		                                Author = ba.Author
 		                            }).ToList()
 		                        },
+		                    }).ToList(),
+                            ReservationQueues = br.BorrowRequest.ReservationQueues.Select(rq => new ReservationQueue()
+		                    {
+		                        QueueId = rq.QueueId,
+		                        LibraryItemId = rq.LibraryItemId,
+		                        LibraryItemInstanceId = rq.LibraryItemInstanceId,
+		                        LibraryCardId = rq.LibraryCardId,
+		                        QueueStatus = rq.QueueStatus,
+		                        BorrowRequestId = rq.BorrowRequestId,
+		                        IsReservedAfterRequestFailed = rq.IsReservedAfterRequestFailed,
+		                        ExpectedAvailableDateMin = rq.ExpectedAvailableDateMin,
+		                        ExpectedAvailableDateMax = rq.ExpectedAvailableDateMax,
+		                        ReservationDate = rq.ReservationDate,
+		                        ExpiryDate = rq.ExpiryDate,
+		                        IsNotified = rq.IsNotified,
+		                        CancelledBy = rq.CancelledBy,
+		                        CancellationReason = rq.CancellationReason,
+		                        LibraryItem = new LibraryItem()
+		                        {
+		                            LibraryItemId = rq.LibraryItem.LibraryItemId,
+		                            Title = rq.LibraryItem.Title,
+		                            SubTitle = rq.LibraryItem.SubTitle,
+		                            Responsibility = rq.LibraryItem.Responsibility,
+		                            Edition = rq.LibraryItem.Edition,
+		                            EditionNumber = rq.LibraryItem.EditionNumber,
+		                            Language = rq.LibraryItem.Language,
+		                            OriginLanguage = rq.LibraryItem.OriginLanguage,
+		                            Summary = rq.LibraryItem.Summary,
+		                            CoverImage = rq.LibraryItem.CoverImage,
+		                            PublicationYear = rq.LibraryItem.PublicationYear,
+		                            Publisher = rq.LibraryItem.Publisher,
+		                            PublicationPlace = rq.LibraryItem.PublicationPlace,
+		                            ClassificationNumber = rq.LibraryItem.ClassificationNumber,
+		                            CutterNumber = rq.LibraryItem.CutterNumber,
+		                            Isbn = rq.LibraryItem.Isbn,
+		                            Ean = rq.LibraryItem.Ean,
+		                            EstimatedPrice = rq.LibraryItem.EstimatedPrice,
+		                            PageCount = rq.LibraryItem.PageCount,
+		                            PhysicalDetails = rq.LibraryItem.PhysicalDetails,
+		                            Dimensions = rq.LibraryItem.Dimensions,
+		                            AccompanyingMaterial = rq.LibraryItem.AccompanyingMaterial,
+		                            Genres = rq.LibraryItem.Genres,
+		                            GeneralNote = rq.LibraryItem.GeneralNote,
+		                            BibliographicalNote = rq.LibraryItem.BibliographicalNote,
+		                            TopicalTerms = rq.LibraryItem.TopicalTerms,
+		                            AdditionalAuthors = rq.LibraryItem.AdditionalAuthors,
+		                            CategoryId = rq.LibraryItem.CategoryId,
+		                            ShelfId = rq.LibraryItem.ShelfId,
+		                            GroupId = rq.LibraryItem.GroupId,
+		                            Status = rq.LibraryItem.Status,
+		                            IsDeleted = rq.LibraryItem.IsDeleted,
+		                            IsTrained = rq.LibraryItem.IsTrained,
+		                            CanBorrow = rq.LibraryItem.CanBorrow,
+		                            TrainedAt = rq.LibraryItem.TrainedAt,
+		                            CreatedAt = rq.LibraryItem.CreatedAt,
+		                            UpdatedAt = rq.LibraryItem.UpdatedAt,
+		                            UpdatedBy = rq.LibraryItem.UpdatedBy,
+		                            CreatedBy = rq.LibraryItem.CreatedBy,
+		                            // References
+		                            Category = rq.LibraryItem.Category,
+		                            Shelf = rq.LibraryItem.Shelf,
+		                            LibraryItemInventory = rq.LibraryItem.LibraryItemInventory,
+		                            LibraryItemReviews = rq.LibraryItem.LibraryItemReviews,
+		                            LibraryItemAuthors = rq.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+		                            {
+		                                LibraryItemAuthorId = ba.LibraryItemAuthorId,
+		                                LibraryItemId = ba.LibraryItemId,
+		                                AuthorId = ba.AuthorId,
+		                                Author = ba.Author
+		                            }).ToList()
+		                        },
+		                        LibraryItemInstance = rq.LibraryItemInstance
 		                    }).ToList()
                         }
                         : null,
@@ -331,6 +411,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                         Status = brd.Status,
                         ConditionCheckDate = brd.ConditionCheckDate,
                         Condition = brd.Condition,
+                        ReturnCondition = brd.ReturnCondition,
                         TotalExtension = brd.TotalExtension,
                         IsReminderSent = brd.IsReminderSent,
                         LibraryItemInstance = new LibraryItemInstance()
@@ -400,7 +481,9 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	                                Author = ba.Author
 	                            }).ToList()
 	                        },
-                        }
+                        },
+                        BorrowDetailExtensionHistories = brd.BorrowDetailExtensionHistories,
+                        Fines = brd.Fines
                     }).ToList()
 			    });
 		    if (existingEntity != null)
@@ -521,7 +604,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			if (employeeDto == null || employeeDto.Role.RoleType != nameof(RoleType.Employee))
 			{
 				// Forbid 
-				throw new ForbiddenException();
+				throw new ForbiddenException("Not allow to access");
 			}
 						
 			// Retrieve library card information
@@ -734,6 +817,14 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 										? "Item instance is in reserved status"
 										: "Bản sao đang ở trạng thái được đặt trước");
 								break;
+							case LibraryItemInstanceStatus.Lost:
+								// Announce that item has not in borrowing status yet
+								customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+									$"borrowRecordDetails[{i}].libraryItemInstanceId",
+									isEng
+										? "Item instance is in lost status"
+										: "Bản sao đang ở trạng thái bị mất");
+								break;
 						}
 					}
 					else
@@ -828,6 +919,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
 			if (isSaved)
 			{
+				// TODO: Implement send email after extend borrow record success
+				
 				// Msg: Total {0} item(s) have been added to borrow record successfully
 				var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0003);
 				return new ServiceResult(ResultCodeConst.Borrow_Success0003,
@@ -880,7 +973,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			if (employeeDto == null || employeeDto.Role.RoleType != nameof(RoleType.Employee))
 			{
 				// Forbid 
-				throw new ForbiddenException();
+				throw new ForbiddenException("Not allow to access");
 			}
 
 			// Retrieve library card information
@@ -1020,6 +1113,14 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 										? "Item instance is in reserved status"
 										: "Bản sao đang ở trạng thái được đặt trước");
 								break;
+							case LibraryItemInstanceStatus.Lost:
+								// Announce that item has not in borrowing status yet
+                                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                	$"borrowRecordDetails[{i}].libraryItemInstanceId",
+                                	isEng
+                                		? "Item instance is in lost status"
+                                		: "Bản sao đang ở trạng thái bị mất");
+								break;
 						}
 					}
 					else
@@ -1101,6 +1202,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
 			if (isSaved)
 			{
+				// TODO: Implement send email after extend borrow record success
+				
 				// Msg: Total {0} item(s) have been added to borrow record successfully
 				var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0003);
 				return new ServiceResult(ResultCodeConst.Borrow_Success0003,
@@ -1276,6 +1379,14 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 									isEng
 										? "Item instance is in reserved status"
 										: "Bản sao đang ở trạng thái được đặt trước");
+								break;
+							case LibraryItemInstanceStatus.Lost:
+								// Announce that item has not in borrowing status yet
+								customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+									$"borrowRecordDetails[{i}].libraryItemInstanceId",
+									isEng
+										? "Item instance is in lost status"
+										: "Bản sao đang ở trạng thái bị mất");
 								break;
 						}
 					}
@@ -1536,6 +1647,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 			if (isSaved)
 			{
+				// TODO: Implement send email after extend borrow record success
+				
 				// Msg: Total {0} Item(s) extended successfully
 				var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0006);
 				return new ServiceResult(ResultCodeConst.Borrow_Success0006,
@@ -1557,6 +1670,421 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		}
 	}
 
+	public async Task<IServiceResult> ProcessReturnAsync(
+		string processedReturnByEmail, int id, 
+		BorrowRecordDto recordWithReturnItems,
+		BorrowRecordDto recordWithLostItems,
+		bool isConfirmMissing = false)
+	{
+		try
+		{
+			// Determine current system lang 
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			// Check exist process return email
+			var employeeDto = (await _employeeSvc.GetByEmailAsync(email: processedReturnByEmail)).Data as EmployeeDto;
+			// Forbid to access if not found any employee match
+			if (employeeDto == null) throw new ForbiddenException("Not allow to access");
+			
+			// Build specification
+			var baseSpec = new BaseSpecification<BorrowRecord>(br => 
+				br.BorrowRecordId == id &&
+				br.LibraryCardId == recordWithReturnItems.LibraryCardId);
+			// Apply include
+			baseSpec.ApplyInclude(q => q
+				.Include(br => br.BorrowRecordDetails)
+					.ThenInclude(brd => brd.LibraryItemInstance)	
+						.ThenInclude(li => li.LibraryItem)
+			);
+			// Retrieve borrow record by id 
+			var existingEntity = await _unitOfWork.Repository<BorrowRecord, int>().GetWithSpecAsync(baseSpec);
+			if (existingEntity == null)
+			{
+				// Msg: Not found {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMsg, isEng ? "borrow record" : "lịch sử mượn"));
+			}
+			
+			// Initialize custom errors
+			var customErrs = new Dictionary<string, string[]>();
+			// Initialize err key
+			var errKey = StringUtils.ToCamelCase(nameof(BorrowRecord.BorrowRecordDetails));
+			
+			// Extract all lost record detail ids
+			var lostRecordDetailIds = recordWithLostItems.BorrowRecordDetails.Select(brd => brd.BorrowRecordDetailId).ToList();
+			
+			// Try to retrieve all item need to be returned today or being overdue but not exist in return list
+			var needToReturnRecDetails = existingEntity.BorrowRecordDetails
+				.Where(brd => (brd.DueDate.Date == currentLocalDateTime.Date || brd.Status == BorrowRecordStatus.Overdue) &&
+				              recordWithReturnItems.BorrowRecordDetails.All(q => // Exclude all not exist in return list
+					              q.LibraryItemInstanceId != brd.LibraryItemInstanceId) && 
+				              !lostRecordDetailIds.Contains(brd.BorrowRecordDetailId)) // Exclude all not exist in lost list
+				.ToList();
+			if (needToReturnRecDetails.Any() && !isConfirmMissing)
+			{
+				// Msg: Confirm all item need to be returned in day but not exist in return list
+				return new ServiceResult(ResultCodeConst.Borrow_Warning0030,
+					await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0030),
+					new ConfirmMissingReturnItemDto()
+					{
+						BorrowRecordDetails = _mapper.Map<List<BorrowRecordDetailDto>>(needToReturnRecDetails)
+					});
+			}
+			
+			// Process handle items marked as lost
+			// Check if any record detail marked as lost but exist in return list
+			if (recordWithReturnItems.BorrowRecordDetails.Any(
+				    brd => lostRecordDetailIds.Contains(brd.BorrowRecordDetailId)))
+			{
+				// Msg: Items marked as lost must not exist in return list
+				return new ServiceResult(ResultCodeConst.Borrow_Warning0029,
+					await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0029));
+			}
+			// Initialize lost item instance ids
+			var lostItemInstanceIds = new List<int>();
+			for (int i = 0; i < lostRecordDetailIds.Count; ++i)
+			{
+				// Try record detail mark as lost
+				var recDetail = existingEntity.BorrowRecordDetails
+					.FirstOrDefault(brd => brd.BorrowRecordDetailId == lostRecordDetailIds[i]);
+				if (recDetail == null)
+				{
+					// Msg: Not found {0}
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					// Add error
+					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+						msg: StringUtils.Format(errMsg, isEng 
+							? "item marked as lost in borrow record details" 
+							: "tài liệu được đánh dấu bị mất trong danh sách tài liệu mượn"));
+				}
+				else if(recDetail.Status != BorrowRecordStatus.Borrowing ||
+				        recDetail.LibraryItemInstance.Status != nameof(LibraryItemInstanceStatus.Borrowed))
+				{
+					// Add error
+					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+						// Msg: Cannot change item status to lost as item isn't in borrowing status
+						msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0028));
+				}
+				else
+				{
+					// Check existing fine for lost item
+					var lostFines = recordWithLostItems
+						.BorrowRecordDetails.ElementAt(i)
+						.Fines.ToList();
+					if (lostFines == null! || !lostFines.Any())
+					{
+						// Add error
+                        customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+	                        key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+                            // Msg: Please add fines for item marked as lost
+                            msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0031));
+					}
+					else
+					{
+						// Extract all fine policy ids
+						var finePolicyIds = lostFines.Select(f => f.FinePolicyId).ToList();
+						// Build spec
+                        var fineSpec = new BaseSpecification<Fine>(f => 
+	                        finePolicyIds.Contains(f.FinePolicyId) &&
+                            f.FinePolicy.ConditionType == FinePolicyConditionType.Lost);
+                        // Count 
+                        var countRes = (await _fineSvc.Value.CountAsync(fineSpec)).Data;
+                        if (countRes == null)
+                        {
+                            // Add error
+                            customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+                                // Msg: Please add fines for item marked as lost
+                                msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0031));
+                        }
+                        // Try parse count result to integer
+                        else if (int.TryParse(countRes.ToString(), out var validCount)) 
+                        {
+                            if (validCount == 0) // Not found any overdue fine policy 
+                            {
+                                // Add error
+                                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                    key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+                                    // Msg: Please add fines for item marked as lost
+                                    msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0031));
+                            }
+                            else if (validCount > 1)
+                            {
+	                            // Add error
+	                            customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+		                            key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+		                            // Msg: Exist duplicate or inappropriate fines for return item marked as lost
+		                            msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0032));
+                            }
+                        }
+					}
+					
+					// Update borrow record status
+					recDetail.Status = BorrowRecordStatus.Lost;
+					// Add item instance id
+					lostItemInstanceIds.Add(recDetail.LibraryItemInstanceId);
+				}
+			}
+			
+			// Process return item
+			// Convert request details to list
+			var borrowRecDetailList = recordWithReturnItems.BorrowRecordDetails.ToList();
+			// Iterate each borrow record detail
+			for (int i = 0; i < borrowRecDetailList.Count; ++i)
+			{
+				var brDetail = borrowRecDetailList[i];
+				
+				// Check exist library item instance
+				var itemInstanceSpec = new BaseSpecification<LibraryItemInstance>(li =>
+					li.LibraryItemInstanceId == brDetail.LibraryItemInstanceId);
+				var itemInstanceDto = (await _itemInstanceSvc.Value.GetWithSpecAsync(itemInstanceSpec)).Data as LibraryItemInstanceDto;
+				if (itemInstanceDto == null)
+				{
+					// Msg: Not found {0}
+					var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					// Add error
+					customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						key: errKey,
+						msg: StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
+				}
+				else
+				{
+					// Try to retrieve item instance in borrow record details
+					var existingBrDetail = existingEntity.BorrowRecordDetails.FirstOrDefault(brd => 
+                    					brd.LibraryItemInstanceId == itemInstanceDto.LibraryItemInstanceId);
+	                // Not found any record detail match request instance id
+	                if (existingBrDetail == null)
+	                {
+	                    // Msg: Item {0} doesn't exist in borrow record
+	                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0023);
+	                    // Add error
+	                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+	                        key: errKey,
+	                        msg: StringUtils.Format(errMsg, $"'{itemInstanceDto.LibraryItem.Title}'"));
+	                }
+	                else
+	                {
+						// Msg: Cannot process return for item {0} as {1}
+		                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0024);
+	                    // Validate record detail status
+	                    switch (existingBrDetail.Status)
+	                    {
+                    		case BorrowRecordStatus.Borrowing:
+			                    // Skip to check other status
+                    			break;
+                    		case BorrowRecordStatus.Returned:
+			                    // Add error
+			                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+				                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+				                    msg: StringUtils.Format(errMsg, $"'{itemInstanceDto.LibraryItem.Title}'",
+					                    isEng 
+						                    ? "item has been returned" 
+						                    : "tài liệu đã ở trạng thái được trả"));
+			                    break;			                    
+                    		case BorrowRecordStatus.Overdue:
+			                    // Try to check for fines
+			                    if (!brDetail.Fines.Any())
+			                    {
+				                    // Add error
+				                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+					                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+					                    // Msg: Please add fines for overdue item
+					                    msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0025));
+			                    }
+			                    else
+			                    {
+				                    // Extract all fine policy of each record detail
+				                    var finePolicyIds = brDetail.Fines.Select(f => f.FinePolicyId).ToList();
+				                    // Build spec
+				                    var fineSpec = new BaseSpecification<Fine>(f => 
+					                    finePolicyIds.Contains(f.FinePolicyId) &&
+					                    f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue);
+				                    // Count 
+				                    var countRes = (await _fineSvc.Value.CountAsync(fineSpec)).Data;
+				                    if (countRes == null)
+				                    {
+					                    // Add error
+					                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+						                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+						                    // Msg: Please add fines for overdue item
+						                    msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0025));
+				                    }
+				                    // Try parse count result to integer
+				                    else if (int.TryParse(countRes.ToString(), out var validCount)) 
+				                    {
+					                    if (validCount == 0) // Not found any overdue fine policy 
+					                    {
+						                    // Add error
+                                            customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                                key: $"{errKey}[{i}].LibraryItemInstanceId",
+                                                // Msg: Please add fines for overdue item
+                                                msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0025));
+					                    }
+										else if (validCount > 1) // Duplicate fine policy
+					                    {	
+						                    // Add error
+						                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+							                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+							                    // Msg: Fine has been existed in return item
+							                    msg: await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0026));
+					                    }
+				                    }
+			                    }
+                    			break;
+                    		case BorrowRecordStatus.Lost:
+			                    // Add error
+			                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+				                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+				                    msg: StringUtils.Format(errMsg, $"'{itemInstanceDto.LibraryItem.Title}'",
+					                    isEng 
+						                    ? "item has been lost" 
+						                    : "tài liệu đã ở trạng thái bị mất"));
+                    			break;
+	                    }
+	                    
+	                    // Check exist condition images id
+	                    var imagePublicIds = brDetail.ImagePublicIds?.Split(",");
+	                    if (imagePublicIds != null && imagePublicIds.Any()) // Only check when exist at least once
+	                    {
+		                    foreach(var publicId in imagePublicIds)
+		                    {
+			                    // Process check exist on cloud			
+			                    var isImageOnCloud = (await _cloudSvc.IsExistAsync(publicId, FileType.Image)).Data is true;
+
+			                    if (!isImageOnCloud) // Not found image or public id
+			                    {
+				                    // Add error
+				                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+					                    key: $"{errKey}[{i}].LibraryItemInstanceId",
+										// Msg: Not found image resource
+					                    msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0001));
+			                    }
+		                    }
+	                    }
+	                    
+	                    // Check exist return condition
+	                    var isReturnConditionExist = (await _conditionSvc.AnyAsync(c => c.ConditionId == brDetail.ReturnConditionId)).Data is true;
+	                    if (!isReturnConditionExist)
+	                    {
+                            // Add error
+                            customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+	                            key: $"{errKey}[{i}].LibraryItemInstanceId",
+								// Msg: Please update item status for return item
+	                            msg: StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0027)));
+	                    }
+	                    
+	                    // Try parse library item instance status
+	                    Enum.TryParse(typeof(LibraryItemInstanceStatus), existingBrDetail.LibraryItemInstance.Status, true, out var validStatus);
+	                    if (validStatus == null)
+	                    {
+                    		// Mark as unknown error
+                    		return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                    			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+	                    }
+	                    
+	                    // Check for item instance status
+	                    switch (validStatus)
+	                    {
+                    		case LibraryItemInstanceStatus.Borrowed:
+                    			// Skip, continue to check for other status
+                    			break;
+                    		case LibraryItemInstanceStatus.InShelf:
+                    			// Announce that item has not in borrowing status yet
+                    			customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    				key: $"{errKey}[{i}].libraryItemInstanceId",
+                    				msg: isEng
+                    					? "Item instance is in available status, cannot process return"
+                    					: "Trạng thái của bản sao đang ở trạng thái có sẵn, không thể xử lí trả");
+                    			break;
+                    		case LibraryItemInstanceStatus.OutOfShelf:
+                    			// Announce that item has not in borrowing status yet
+                    			customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    				key: $"{errKey}[{i}].libraryItemInstanceId",
+                    				msg: isEng
+                    					? "Item instance is in out-of-shelf status, cannot process return"
+                    					: "Trạng thái của bản sao đang ở trong kho, không thể xử lí trả");
+                    			break;
+                    		case LibraryItemInstanceStatus.Reserved:
+                    			// Announce that item has not in borrowing status yet
+                    			customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                    				key: $"{errKey}[{i}].libraryItemInstanceId",
+                    				msg: isEng
+                    					? "Item instance is in reserved status, cannot process return"
+                    					: "Bản sao đang ở trạng thái được đặt trước, không thể xử lí trả");
+                    			break;
+		                    case LibraryItemInstanceStatus.Lost:
+			                    // Announce that item has not in borrowing status yet
+                                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                	key: $"{errKey}[{i}].libraryItemInstanceId",
+                                	msg: isEng
+                                		? "Item instance is in lost status"
+                                		: "Bản sao đang ở trạng thái bị mất");
+			                    break;
+	                    }
+	                    
+	                    // Process add return fields
+	                    existingBrDetail.ReturnConditionId = brDetail.ReturnConditionId;
+	                    existingBrDetail.Status = BorrowRecordStatus.Returned;
+	                    existingBrDetail.ReturnDate = currentLocalDateTime;
+	                    existingBrDetail.ConditionCheckDate = currentLocalDateTime;
+	                    existingBrDetail.ImagePublicIds = !string.IsNullOrEmpty(brDetail.ImagePublicIds) 
+							? brDetail.ImagePublicIds : null;
+	                }
+				}
+			}
+			
+			// TODO: Add fines and create transaction for borrow record details
+			
+			// Check whether invoke any errors
+			if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+
+			if (borrowRecDetailList.Any()) // Exist at least one borrow record detail to update inventory
+			{
+				// Process update lost items' instance status
+                await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+                	// Extract all return items' instance id
+                	libraryItemInstanceIds: borrowRecDetailList.Select(brd => brd.LibraryItemInstanceId).ToList(),
+                	// Update to out of shelf status (from Borrowed -> OutOfShelf)
+                	status: LibraryItemInstanceStatus.OutOfShelf,
+                	// Not update from request
+                	isProcessBorrowRequest: false);
+			}
+
+			if (lostItemInstanceIds.Any()) // Exist at least one lost item to update inventory
+			{
+				// Process update return items' instance status
+				await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+					// Extract all lost items' instance id
+					libraryItemInstanceIds: lostItemInstanceIds,
+					// Update to lost status (from Borrowed -> Lost)
+					status: LibraryItemInstanceStatus.Lost,
+					// Not update from request
+					isProcessBorrowRequest: false);
+			}
+			
+			return new ServiceResult();
+		}
+		catch (ForbiddenException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process return library item");
+		}
+	}
+	
 	public async Task<IServiceResult> CalculateBorrowReturnSummaryAsync(string email)
 	{
 		try

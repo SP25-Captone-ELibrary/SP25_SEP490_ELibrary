@@ -432,7 +432,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 	        var isEmailExist = (await _employeeSvc.AnyAsync(e => Equals(e.Email, processedByEmail))).Data is true;
 	        if (!isEmailExist) // not found
 	        {
-		        throw new ForbiddenException(); 
+		        throw new ForbiddenException("Not allow to access"); 
 	        }
 	        
 	        // Retrieve user information
@@ -738,7 +738,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 .Include(u => u.LibraryCard)!
             );
             var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException(); // Not found user 
+            if (userDto == null) throw new ForbiddenException("Not allow to access"); // Not found user 
             
             // Try parse card id to Guid type 
             Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId);

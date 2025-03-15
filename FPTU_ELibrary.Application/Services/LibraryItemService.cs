@@ -105,7 +105,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     }
     
     // TODO: Implement synchronize data with elastic when soft delete, undo delete, delete
-    
     public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
     {
         try
@@ -1368,6 +1367,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 nameof(LibraryItemInstanceStatus.OutOfShelf),
                 nameof(LibraryItemInstanceStatus.Borrowed),
                 nameof(LibraryItemInstanceStatus.Reserved),
+                nameof(LibraryItemInstanceStatus.Lost),
             };
 
             // Copy condition statuses
@@ -2007,18 +2007,17 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Check exist user with card
             var userSpec = new BaseSpecification<User>(u => u.Email == email);
             // Apply include
             userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
             // Retrieve user with spec
             var userDto = (await _userService.Value.GetWithSpecAsync(userSpec)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException();
-            
+            if (userDto == null) throw new ForbiddenException("Not allow to access");
+
             // Check whether user card is exist
-            Guid validCardId = Guid.Empty;
-            if (userDto.LibraryCardId != null && Guid.TryParse(userDto.LibraryCardId.ToString(), out validCardId))
+            if (userDto.LibraryCardId != null && Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId))
             {
                 // Try to validate card
                 var checkCardRes = await _cardService.Value.CheckCardValidityAsync(validCardId);
@@ -2032,7 +2031,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                             : "Vui lòng đăng ký kẻ thư viện để có thể mượn sách";
                         return new ServiceResult(ResultCodeConst.SYS_Warning0002, customMsg);
                     }
-                    
+
                     // Return handled message
                     return checkCardRes;
                 }
@@ -2043,9 +2042,11 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0004));
             }
-            
+
             // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId)); // include id in requested list
+            var baseSpec =
+                new BaseSpecification<LibraryItem>(li =>
+                    ids.Contains(li.LibraryItemId)); // include id in requested list
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(li => li.LibraryItemInventory)
@@ -2055,7 +2056,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 .ThenInclude(lia => lia.Author)
                 .Include(li => li.LibraryItemReviews)
             );
-            
+
             // Retrieve all data with spec
             var entities = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec)).ToList();
             if (entities.Any())
@@ -2063,46 +2064,47 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 // Initialize amount calculation props
                 var totalRequestAmount = 0;
                 var totalBorrowingAmount = 0;
-                
+
                 // Build spec
                 var borrowReqSpec = new BaseSpecification<BorrowRequest>(br =>
                     br.LibraryCardId == validCardId && // with specific library card
                     br.Status == BorrowRequestStatus.Created); // In created status
                 // Count requesting amount to check for threshold
                 var listRequestAmount = (await _unitOfWork.Repository<BorrowRequest, int>()
-                    .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count)).ToList();
+                        .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count))
+                    .ToList();
                 totalRequestAmount = listRequestAmount?.Select(i => i).Sum() ?? 0;
-                
+
                 // Build spec
-                var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId); 
+                var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId);
                 // Count borrowed amount to check for threshold
                 var listBorrowingAmount = (await _borrowRecordService.Value
-                        .GetAllWithSpecAndSelectorAsync(borrowRecSpec, 
-                            selector: s => s.BorrowRecordDetails
-                                .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
-                                              brd.ReturnDate == null)) // Has not return yet
+                            .GetAllWithSpecAndSelectorAsync(borrowRecSpec,
+                                selector: s => s.BorrowRecordDetails
+                                    .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
+                                                  brd.ReturnDate == null)) // Has not return yet
                     ).Data as List<int>;
                 totalBorrowingAmount = listBorrowingAmount?.Select(i => i).Sum() ?? 0;
-                
+
                 // Check whether request + borrowed amount is exceed than borrow threshold 
                 IServiceResult? validateAmountRes = null;
-                if(totalBorrowingAmount > 0 || totalRequestAmount > 0)
+                if (totalBorrowingAmount > 0 || totalRequestAmount > 0)
                 {
                     // Sum requested + borrowed + item to borrow 
-                    var sumTotal = totalRequestAmount + totalBorrowingAmount + ids.Length; 
+                    var sumTotal = totalRequestAmount + totalBorrowingAmount + ids.Length;
                     // Validate borrow amount
                     validateAmountRes = await _borrowRequestService.Value.ValidateBorrowAmountAsync(
                         totalItem: sumTotal,
                         libraryCardId: validCardId);
                 }
-                
+
                 // Initialize response collections
                 var alreadyBorrowedItems = new List<HomePageItemDto>();
                 var alreadyRequestedItems = new List<HomePageItemDto>();
                 var alreadyReservedItems = new List<HomePageItemDto>();
                 var allowToReserveItems = new List<HomePageItemDto>();
-                var notAllowToReserveItems = new List<HomePageItemDto>();
-                
+                var allowToBorrowItems = new List<HomePageItemDto>();
+
                 // Map to home page item dto
                 var homePageItemDtos =
                     _mapper.Map<List<LibraryItemDto>>(entities).Select(x => x.ToHomePageItemDto()).ToList();
@@ -2111,25 +2113,25 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 foreach (var dto in homePageItemDtos)
                 {
                     // Check whether item has been reserved
-                    var hasReservedConstraint = (await _reservationQueueService.Value.AnyAsync(r => 
+                    var hasReservedConstraint = (await _reservationQueueService.Value.AnyAsync(r =>
                         r.LibraryItemId == dto.LibraryItemId &&
                         r.LibraryCardId == userDto.LibraryCardId &&
                         r.QueueStatus != ReservationQueueStatus.Expired &&
-                        r.QueueStatus != ReservationQueueStatus.Cancelled && 
+                        r.QueueStatus != ReservationQueueStatus.Cancelled &&
                         r.QueueStatus != ReservationQueueStatus.Collected)).Data is true;
                     // Has constraint
                     if (hasReservedConstraint)
                     {
                         // Add to already reserved list
                         alreadyReservedItems.Add(dto);
-                        
+
                         // Skip to next item
                         continue;
                     }
-                    
+
                     // Check whether item has been borrowed
                     var hasBorrowRecordConstraint = (await _borrowRecordService.Value.AnyAsync(bRec =>
-                                bRec.LibraryCardId == userDto.LibraryCardId && 
+                                bRec.LibraryCardId == userDto.LibraryCardId &&
                                 bRec.BorrowRecordDetails.Any(brd =>
                                     brd.LibraryItemInstance.LibraryItemId == dto.LibraryItemId && // Exist in any borrow record details
                                     brd.Status != BorrowRecordStatus.Returned)) // Exclude elements with returned status
@@ -2139,7 +2141,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         // Add to already borrowed list
                         alreadyBorrowedItems.Add(dto);
-                        
+
                         // Skip to next item
                         continue;
                     }
@@ -2156,19 +2158,18 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         alreadyRequestedItems.Add(dto);
                     }
                 }
-                
+
                 // Extract all already borrowed item ids
                 var alreadyBorrowedItemIds = alreadyBorrowedItems.Select(x => x.LibraryItemId).ToList();
                 var alreadyRequestedItemIds = alreadyRequestedItems.Select(x => x.LibraryItemId).ToList();
                 var alreadyReservedItemIds = alreadyReservedItems.Select(x => x.LibraryItemId).ToList();
                 // Filter all items which available units is zero to process create reservation
-                var unavailableFilteredItems = homePageItemDtos.Where(li => 
-                    li.LibraryItemInventory != null && 
-                    li.LibraryItemInventory.AvailableUnits == 0 && // item is unavailable 
-                    !alreadyBorrowedItemIds.Contains(li.LibraryItemId) && 
-                    !alreadyRequestedItemIds.Contains(li.LibraryItemId) && 
-                    !alreadyReservedItemIds.Contains(li.LibraryItemId));           
-    
+                var unavailableFilteredItems = homePageItemDtos.Where(li =>
+                    li.LibraryItemInventory != null &&
+                    !alreadyBorrowedItemIds.Contains(li.LibraryItemId) &&
+                    !alreadyRequestedItemIds.Contains(li.LibraryItemId) &&
+                    !alreadyReservedItemIds.Contains(li.LibraryItemId));
+
                 // Iterate each library item to check for allowing to reserve
                 foreach (var dto in unavailableFilteredItems)
                 {
@@ -2180,18 +2181,18 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         allowToReserveItems.Add(dto);
                     }
-                    else // Is not allow to reserve
+                    else // Is allow to borrow
                     {
-                        notAllowToReserveItems.Add(dto);
+                        allowToBorrowItems.Add(dto);
                     }
                 }
 
                 // Only process response for amount exceed than threshold when not exist any reserve items
-                if (allowToReserveItems.Count == 0 && notAllowToReserveItems.Count == 0)
+                if (allowToReserveItems.Count == 0)
                 {
                     if (validateAmountRes != null) return validateAmountRes;
                 }
-                
+
                 // Get successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), new
@@ -2200,7 +2201,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         AlreadyBorrowedItems = alreadyBorrowedItems,
                         AlreadyReservedItems = alreadyReservedItems,
                         AllowToReserveItems = allowToReserveItems,
-                        NotAllowToReserveItems = notAllowToReserveItems
+                        AllowToBorrowItems = allowToBorrowItems
                     });
             }
 

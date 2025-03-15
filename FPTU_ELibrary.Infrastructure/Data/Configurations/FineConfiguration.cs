@@ -13,25 +13,19 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.ToTable("Fine");
 
             builder.Property(e => e.FineId).HasColumnName("fine_id");
-            builder.Property(e => e.BorrowRecordId).HasColumnName("borrow_record_id");
             builder.Property(e => e.FineNote)
                 .HasMaxLength(255)
                 .HasColumnName("fine_note");
             builder.Property(e => e.FinePolicyId).HasColumnName("fine_policy_id");
-            builder.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasColumnName("status");
             builder.Property(e => e.CreatedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
-            builder.Property(e => e.ExpiryAt)
-                .HasColumnType("datetime")
-                .HasColumnName("expiry_at");
 
-            builder.HasOne(d => d.BorrowRecord).WithMany(p => p.Fines)
-                .HasForeignKey(d => d.BorrowRecordId)
+            builder.Property(e => e.BorrowRecordDetailId).HasColumnName("borrow_record_detail_id");
+            builder.HasOne(d => d.BorrowRecordDetail).WithMany(p => p.Fines)
+                .HasForeignKey(d => d.BorrowRecordDetailId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Fine_BorrowRecordId");
+                .HasConstraintName("FK_Fine_BorrowRecordDetailId");
 
             builder.HasOne(d => d.CreateByNavigation).WithMany(p => p.FineCreateByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
@@ -68,6 +62,20 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             //     .HasColumnType("datetime")
             //     .HasColumnName("payment_date");
 
+            #endregion
+
+            #region Updated at 14/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.ExpiryAt)
+                .IsRequired(false)
+                .HasColumnType("datetime")
+                .HasColumnName("expiry_at");
+            builder.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(50)
+                .HasColumnName("status");
+            builder.Property(e => e.FineAmount)
+                .HasColumnType("decimal(10,2)")
+                .HasColumnName("fine_amount");
             #endregion
         }
     }

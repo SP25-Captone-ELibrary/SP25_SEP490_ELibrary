@@ -40,7 +40,9 @@ public class BorrowRecordDetail
     
     public LibraryItemInstance LibraryItemInstance { get; set; } = null!;
     public LibraryItemCondition Condition { get; set; } = null!;
+    public LibraryItemCondition? ReturnCondition { get; set; }
     
     // Navigations
     public ICollection<BorrowDetailExtensionHistory> BorrowDetailExtensionHistories { get; set; } = new List<BorrowDetailExtensionHistory>();
+    public ICollection<Fine> Fines { get; set; } = new List<Fine>();
 }

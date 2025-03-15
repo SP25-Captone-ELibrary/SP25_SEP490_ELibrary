@@ -39,10 +39,9 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
         builder.Property(e => e.ConditionCheckDate)
             .HasColumnType("datetime")
             .HasColumnName("condition_check_date");
-        builder.Property(e => e.ReturnConditionId).HasColumnName("return_condition_id");
         #endregion
 
-        #region Update at: 13/02/2025 by Le Xuan Phuoc
+        #region Updated at: 13/02/2025 by Le Xuan Phuoc
         // builder.Property(e => e.BorrowCondition)
         //     .HasMaxLength(50)
         //     .HasColumnName("borrow_condition");
@@ -71,6 +70,14 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
         builder.Property(e => e.TotalExtension)
             .HasDefaultValue(0)
             .HasColumnName("total_extension");
+        #endregion
+
+        #region Updated at: 14/03/2025 by Le Xuan Phuoc
+        builder.Property(e => e.ReturnConditionId).HasColumnName("return_condition_id");
+        builder.HasOne(e => e.ReturnCondition).WithMany(p => p.BorrowRecordDetailsReturn)
+            .HasForeignKey(e => e.ReturnConditionId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_BorrowRecordDetail_ReturnConditionId");
         #endregion
     }
 }

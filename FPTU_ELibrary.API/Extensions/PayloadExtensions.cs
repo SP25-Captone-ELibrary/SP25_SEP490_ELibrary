@@ -174,6 +174,43 @@ namespace FPTU_ELibrary.API.Extensions
 					LibraryItemInstanceId = brd.LibraryItemInstanceId
 				}).ToList()
 			};
+		
+		// Mapping from (ReturnBorrowRecordRequest) to typeof(BorrowRecordDto)
+		public static BorrowRecordDto ToBorrowRecordWithReturnDto(this ReturnBorrowRecordRequest req)
+		{
+			return new()
+			{
+				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
+				{
+					LibraryItemInstanceId = brd.LibraryItemInstanceId,
+					ReturnConditionId = brd.ReturnConditionId,
+					ImagePublicIds = brd.ConditionImages != null && brd.ConditionImages.Any() 
+						? String.Join(",", brd.ConditionImages)
+						: null,
+					Fines = brd.Fines.Select(f => new FineDto()
+					{
+						FinePolicyId = f.FinePolicyId
+					}).ToList()
+				}).ToList()
+			};
+		}
+		// Mapping from (LostBorrowRecordRequest) to typeof(BorrowRecordDto)
+		public static BorrowRecordDto ToBorrowRecordWithLostDto(this ReturnBorrowRecordRequest req)
+		{
+			return new()
+			{
+				BorrowRecordDetails = req.LostBorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
+				{
+					BorrowRecordDetailId = brd.BorrowRecordDetailId,
+					Fines = brd.Fines.Select(f => new FineDto()
+					{
+						FinePolicyId = f.FinePolicyId,
+						FineAmount = f.FineAmount,
+						FineNote = f.FineNote
+					}).ToList()
+				}).ToList()
+			};
+		}
 		#endregion
 		
 		#region Library Item
@@ -225,7 +262,8 @@ namespace FPTU_ELibrary.API.Extensions
 					AvailableUnits = 0,
 					BorrowedUnits = 0,
 					RequestUnits = 0,
-					ReservedUnits = 0
+					ReservedUnits = 0,
+					LostUnits = 0
 				},
 				// Authors
 				LibraryItemAuthors = req.AuthorIds.Any()
@@ -620,7 +658,6 @@ namespace FPTU_ELibrary.API.Extensions
 		#endregion
 
 		#region FinePolicy
-
 		public static FinePolicyDto ToFinePolicyDto(this CreateFinePolicyRequest req)
 		{
 			return new FinePolicyDto()
@@ -846,7 +883,8 @@ namespace FPTU_ELibrary.API.Extensions
 					AvailableUnits = 0,
 					BorrowedUnits = 0,
 					RequestUnits = 0,
-					ReservedUnits = 0
+					ReservedUnits = 0,
+					LostUnits = 0
 				},
 				// Authors
 				LibraryItemAuthors = req.AuthorIds.Any()

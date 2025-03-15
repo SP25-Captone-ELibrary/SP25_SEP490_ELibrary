@@ -6,6 +6,7 @@ using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
@@ -61,6 +62,19 @@ public class BorrowRecordController : ControllerBase
     {
         var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowRecSvc.CreateAsync(processedByEmail: email ?? string.Empty, dto: req.ToBorrowRecordDto()));
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.BorrowRecord.ProcessReturn, Name = nameof(ProcessReturnBorrowRecordAsync))]
+    public async Task<IActionResult> ProcessReturnBorrowRecordAsync([FromRoute] int id, [FromBody] ReturnBorrowRecordRequest req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.ProcessReturnAsync(
+            processedReturnByEmail: email ?? string.Empty,
+            id: id,
+            recordWithReturnItems: req.ToBorrowRecordWithReturnDto(),
+            recordWithLostItems: req.ToBorrowRecordWithLostDto(),
+            isConfirmMissing: req.IsConfirmMissing));
     }
     #endregion
 

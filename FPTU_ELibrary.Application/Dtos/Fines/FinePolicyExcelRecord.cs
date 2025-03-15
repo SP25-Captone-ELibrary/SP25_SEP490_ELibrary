@@ -28,7 +28,7 @@ public static class FinePolicyExcelRecordExtension
         {
             FinePolicyTitle = req.FinePolicyTitle,
             ConditionType = (FinePolicyConditionType) validEnum!,
-            FineAmountPerDay = req.FineAmountPerDay ??0,
+            FineAmountPerDay = req.FineAmountPerDay ?? 0,
             FixedFineAmount = req.FixedFineAmount,
             Description = req.Description
         };

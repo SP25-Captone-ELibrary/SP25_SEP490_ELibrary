@@ -27,6 +27,13 @@ public class FinePolicyDtoValidator : AbstractValidator<FinePolicyDto>
             .InclusiveBetween(1000, 9999999999)
             .WithMessage(e => 
             {
+                // Allow fixed fine amount equals to 0 when condition type is Lost
+                if (e.FineAmountPerDay == 0 && e.ConditionType != FinePolicyConditionType.Lost)
+                {
+                    return isEng
+                        ? $"Fine amount per day must greater than 1.000 VND if condition type isn't {nameof(FinePolicyConditionType.Lost)}"
+                        : $"Số tiền phạt mỗi ngày phải ít nhất là  1.000 VND khi loại phí phạt khác '{FinePolicyConditionType.Lost.GetDescription()}'";
+                }
                 if (e.FineAmountPerDay < 1000)
                 {
                     return isEng
@@ -51,13 +58,20 @@ public class FinePolicyDtoValidator : AbstractValidator<FinePolicyDto>
             .InclusiveBetween(1000, 9999999999)
             .WithMessage(e => 
             {
-                if (e.FineAmountPerDay < 1000)
+                // Allow fixed fine amount equals to 0 when condition type is Lost
+                if (e.FixedFineAmount == 0 && e.ConditionType != FinePolicyConditionType.Lost)
+                {
+                    return isEng
+                        ? $"Fixed fine amount must greater than 1.000 VND if condition type isn't {nameof(FinePolicyConditionType.Lost)}"
+                        : $"Số tiền phạt cố định phải ít nhất là  1.000 VND khi loại phí phạt khác '{FinePolicyConditionType.Lost.GetDescription()}'";
+                }
+                if (e.FixedFineAmount < 1000)
                 {
                     return isEng
                         ? "Fixed fine amount must be at least 1.000 VND"
                         : "Số tiền phạt cố định phải ít nhất là 1.000 VND";
                 }
-                else if (e.FineAmountPerDay > 9999999999)
+                else if (e.FixedFineAmount > 9999999999)
                 {
                     return isEng
                         ? "Fixed fine amount exceeds the maximum limit of 9.999.999.999 VND"

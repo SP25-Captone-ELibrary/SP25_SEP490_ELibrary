@@ -117,6 +117,15 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
             }
             
+            // Check allow to reserve
+            if (libItemDto.LibraryItemInventory?.AvailableUnits > 0) // Still exist available items 
+            {
+                // Msg: Cannot reserve for item {0} as this item is still available to borrow
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0005); 
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0005,
+                    StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
+            }
+            
             // Retrieve user 
             var userDto = (await _userSvc.GetByEmailAsync(email)).Data as UserDto;
             if (userDto == null)
@@ -172,43 +181,44 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                 return new ServiceResult(ResultCodeConst.Reservation_Warning0003,
                     StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
             }
+
+            #region Archived code
+            // // Build spec
+            // var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
+            //     rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
+            //     rq.LibraryItemId == libItemDto.LibraryItemId); // Equals item id
+            // // Retrieve with spec
+            // var entities = (await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+            // if (entities.Any())
+            // {
+            //     // Check allow to reserve
+            //     if (libItemDto.LibraryItemInventory?.AvailableUnits > 0) // Still exist available items 
+            //     {
+            //         // Msg: Cannot reserve for item {0} as this item is still available to borrow
+            //         var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0005); 
+            //         return new ServiceResult(ResultCodeConst.Reservation_Warning0005,
+            //             StringUtils.Format(errMsg, $"'{libItemDto.Title}'"), false);
+            //     }
+            // }
+            //
+            // // Allow to reserve whether item total units > 0 and available == 0
+            // if (libItemDto.LibraryItemInventory != null && 
+            //     libItemDto.LibraryItemInventory.TotalUnits > 0 &&
+            //     libItemDto.LibraryItemInventory.TotalUnits > entities.Count && // Total current reservation must smaller than total units of item  
+            //     libItemDto.LibraryItemInventory.AvailableUnits == 0 &&
+            //     // Only allow to reserve when at least one item is borrowing
+            //     libItemDto.LibraryItemInventory.BorrowedUnits > 0 && 
+            //     libItemDto.LibraryItemInventory.BorrowedUnits > libItemDto.LibraryItemInventory.ReservedUnits)
+            // {
+            //     // Allow to reserve
+            //     return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+            //         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), true);
+            // }
+            #endregion
             
-            // Build spec
-            var baseSpec = new BaseSpecification<ReservationQueue>(rq =>
-                rq.QueueStatus == ReservationQueueStatus.Pending && // Must be in pending status
-                rq.LibraryItemId == libItemDto.LibraryItemId); // Equals item id
-            // Retrieve with spec
-            var entities = (await _unitOfWork.Repository<ReservationQueue, int>().GetAllWithSpecAsync(baseSpec)).ToList();
-            if (entities.Any())
-            {
-                // Check allow to reserve
-                if (entities.Count >= libItemDto.LibraryItemInventory?.TotalUnits || // Total reservation exceed or equals to total units
-                    libItemDto.LibraryItemInventory?.AvailableUnits > 0 ||
-                    libItemDto.LibraryItemInventory?.BorrowedUnits == 0) // Still exist available items 
-                {
-                    // Not allow to reserve
-                    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
-                }
-            }
-            
-            // Allow to reserve whether item total units > 0 and available == 0
-            if (libItemDto.LibraryItemInventory != null && 
-                libItemDto.LibraryItemInventory.TotalUnits > 0 &&
-                libItemDto.LibraryItemInventory.TotalUnits > entities.Count && // Total current reservation must smaller than total units of item  
-                libItemDto.LibraryItemInventory.AvailableUnits == 0 &&
-                // Only allow to reserve when at least one item is borrowing
-                libItemDto.LibraryItemInventory.BorrowedUnits > 0 && 
-                libItemDto.LibraryItemInventory.BorrowedUnits > libItemDto.LibraryItemInventory.ReservedUnits)
-            {
-                // Allow to reserve
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), true);
-            }
-            
-            // Not allow to reserve
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), false);
+            // Mark as allow to borrow
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), true);
         }
         catch (Exception ex)
         {
@@ -352,38 +362,38 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                      // Assign expected date range
                      reservationDto.ExpectedAvailableDateMin = generateResp.ExpectedAvailableDateMin;
                      reservationDto.ExpectedAvailableDateMax = generateResp.ExpectedAvailableDateMax;
-                     
-                     // Add necessary fields
-                     reservationDto.LibraryCardId = cardDto.LibraryCardId;
-                     reservationDto.ReservationDate = currentLocalDateTime;
-                     reservationDto.QueueStatus = ReservationQueueStatus.Pending;
-
-                     // Add to entity list
-                     entities.Add(_mapper.Map<ReservationQueue>(reservationDto));
-                     
-                     // Retrieving item inventory 
-                     var itemIven =
-                         (await _inventorySvc.Value.GetByIdAsync(id: reservationDto.LibraryItemId)).Data as LibraryItemInventoryDto;
-                     if (itemIven == null)
-                     {
-                         // Unknown error
-                         return new ServiceResult(ResultCodeConst.SYS_Warning0006,
-                             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
-                     }
-                     
-                     // Increase reservation value
-                     itemIven.ReservedUnits++;
-                     // Process update without save change
-                     await _inventorySvc.Value.UpdateWithoutSaveChangesAsync(itemIven);
                  }
+                 
+                 // Add necessary fields
+                 reservationDto.LibraryCardId = cardDto.LibraryCardId;
+                 reservationDto.ReservationDate = currentLocalDateTime;
+                 reservationDto.QueueStatus = ReservationQueueStatus.Pending;
+
+                 // Add to entity list
+                 entities.Add(_mapper.Map<ReservationQueue>(reservationDto));
+                 
+                 // Retrieving item inventory 
+                 var itemIven =
+                     (await _inventorySvc.Value.GetByIdAsync(id: reservationDto.LibraryItemId)).Data as LibraryItemInventoryDto;
+                 if (itemIven == null)
+                 {
+                     // Unknown error
+                     return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                 }
+                 
+                 // Increase reservation value
+                 itemIven.ReservedUnits++;
+                 // Process update without save change
+                 await _inventorySvc.Value.UpdateWithoutSaveChangesAsync(itemIven);
             }
             
             // Try to add range without save changes
-            await _unitOfWork.Repository<ReservationQueue, int>().AddRangeAsync(entities);
+            // await _unitOfWork.Repository<ReservationQueue, int>().AddRangeAsync(entities);
             
             // Mark as create successfully
             return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), data: dtos);
         }
         catch (Exception ex)
         {

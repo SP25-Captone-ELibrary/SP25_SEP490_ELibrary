@@ -65,13 +65,18 @@
 			public const string GetAllManagement = Base + "/management/borrows/requests";
 			public const string GetByIdManagement = Base + "/management/borrows/requests/{id}";
 			public const string CheckExistBarcode = Base + "/management/borrows/requests/{id}/exist-barcode";
+			// [PATCH]
+			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
+			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			#endregion
 			
 			// [GET]
 			// [POST]
 			public const string Create = Base + "/borrows/requests";
+			public const string AddItemToRequest = Base + "/borrows/requests/{id}/details/add-item";
 			// [PATCH]
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
+			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
 		}
 
 		/// <summary>
@@ -86,6 +91,8 @@
 			// [POST]
 			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
 			public const string Create = Base + "/management/borrows/records";
+			// [PUT]
+			public const string ProcessReturn = Base + "/mangement/borrows/records/{id}/process-return";
 			#endregion
 			
 			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
@@ -290,6 +297,7 @@
 			
 			// [GET]
 			public const string GetAllPublic = Base + "/packages";
+			public const string GetByIdPublic = Base + "/packages/{id}";
 		}
 		
 		/// <summary>

@@ -1362,7 +1362,7 @@ namespace FPTU_ELibrary.Application.Services
                 var isCreateByEmailExist = (await _employeeService.AnyAsync(e => Equals(e.Email, createdByEmail))).Data is true;
                 if (!isCreateByEmailExist) // not found
                 {
-                    throw new ForbiddenException(); 
+                    throw new ForbiddenException("Not allow to access"); 
                 }
 				
 				// Validate user
@@ -1623,6 +1623,11 @@ namespace FPTU_ELibrary.Application.Services
 				// Total missed default 
 				dto.LibraryCard.TotalMissedPickUp = 0;
 				
+				// Add default account security
+				dto.EmailConfirmed = true;
+				dto.IsActive = true;
+				dto.IsDeleted = false;
+				
 				// Add transaction to user
 				if (transactionDto != null) dto.Transactions.Add(transactionDto);
 				else
@@ -1638,6 +1643,9 @@ namespace FPTU_ELibrary.Application.Services
 				var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 				if (isSaved)
 				{
+					// Assign package to transaction
+					transactionDto.LibraryCardPackage = libCardPackageDto;
+					
 					// Determine transaction method
 					switch (transactionMethod)
 					{

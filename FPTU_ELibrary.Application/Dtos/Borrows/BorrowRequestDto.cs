@@ -35,4 +35,6 @@ public class BorrowRequestDto
     public LibraryCardDto LibraryCard { get; set; } = null!;
 
     public ICollection<BorrowRequestDetailDto> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetailDto>();
+    
+    public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
 }

@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -35,4 +36,6 @@ public class GetBorrowRecordDetailDto
     // Navigations
     public List<string> ConditionImages { get; set; } = new();
     public List<BorrowDetailExtensionHistoryDto> BorrowDetailExtensionHistories { get; set; } = new();
+    
+    public List<FineDto> Fines { get; set; } = new();
 }

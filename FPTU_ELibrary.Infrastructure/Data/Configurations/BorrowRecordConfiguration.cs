@@ -121,6 +121,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             //     .HasDefaultValue(0)
             //     .HasColumnName("total_extension");
             #endregion
+
+            #region Updated at: 14/03/2025 by Le Xuan Phuoc
+            // builder.Property(e => e.SkipFineReason)
+            //     .HasColumnType("nvarchar(250)")
+            //     .HasColumnName("skip_fine_reason");
+            #endregion
         }
 	}
 }
