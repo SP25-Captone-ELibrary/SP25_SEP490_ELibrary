@@ -105,4 +105,9 @@ public class VoiceService : IVoiceService
              throw new Exception("Error invoke when Train Book Model");
          }
      }
+
+     public Task<IServiceResult> TextToVoice(List<string> urls)
+     {
+         throw new NotImplementedException();
+     }
 }

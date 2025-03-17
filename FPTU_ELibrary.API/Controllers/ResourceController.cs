@@ -73,4 +73,12 @@ public class ResourceController : ControllerBase
     {
         return Ok(await _cloudService.DeleteAsync(publicId, FileType.Video));
     }
+
+    [Authorize]
+    [HttpPost(APIRoute.Resource.UploadLargeVideo, Name = nameof(UploadLargeVideoAsync))]
+    public async Task<IActionResult> UploadLargeVideoAsync([FromBody] UploadLargeVideoRequest req)
+    {
+        return Ok(await _cloudService.UploadLargeVideo(req.ProviderIds));
+    }
+
 }

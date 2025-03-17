@@ -7,9 +7,10 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 public interface IAIDetectionService
 {
     Task<List<BoxDto>> DetectAsync(IFormFile image);
-
     Task<IServiceResult> ValidateImportTraining(int itemId, List<IFormFile> compareList);
     Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox);
     Task<List<DetectResultDto>> DetectAllAsync(IFormFile image);
     Task<IServiceResult> RawDetectAsync(IFormFile image,int id);
+    Task<IServiceResult> DetectWithEmgu(IFormFile image, string groupCode);
+    
 }

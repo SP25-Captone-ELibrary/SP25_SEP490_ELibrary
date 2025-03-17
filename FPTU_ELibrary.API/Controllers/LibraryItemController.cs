@@ -362,6 +362,8 @@ public class LibraryItemController : ControllerBase
             email: email ?? string.Empty,
             ids: req.Ids));
     }
+    
+    // [HttpGet(APIRoute.LibraryItem.)]
 
     #region Archived Function
     // [Authorize]

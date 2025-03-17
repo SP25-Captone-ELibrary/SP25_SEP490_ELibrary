@@ -16,6 +16,7 @@ public class LibraryResource : IAuditableEntity
     public string FileFormat { get; set; } = null!;
     public string Provider { get; set; } = null!;
     public string ProviderPublicId { get; set; } = null!;
+    public string? SubPublicId { get; set; }
     public string? ProviderMetadata { get; set; }
     public bool IsDeleted { get; set; }
     public int DefaultBorrowDurationDays { get; set; }

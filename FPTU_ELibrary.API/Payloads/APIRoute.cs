@@ -142,6 +142,7 @@
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
+			public const string CheckEmgu = "emgu/test";
 		}
 
 		/// <summary>
@@ -438,7 +439,7 @@
 			// [POST]
 			public const string UploadImage = Base + "/management/resources/images/upload";
 			public const string UploadVideo = Base + "/management/resources/videos/upload";
-			public const string UploadBigVideo = Base + "/management/resources/big-videos/upload";
+			public const string UploadLargeVideo = Base + "/management/resources/large-videos/upload";
 			// [PUT]
 			public const string UpdateImage = Base + "/management/resources/images/update";
 			public const string UpdateVideo = Base + "/management/resources/videos/update";
@@ -617,6 +618,7 @@
 			public const string Training = Base + "/management/library-items/ai/extend-train";
 			public const string TrainingLatestVersion = Base+"/management/library-items/ai/extend-train/v2";
 			public const string Predict = Base + "/library-items/ai/predict";
+			public const string PredictWithEmgu = Base + "/library-items/ai/predict/v2";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string RecommendationWithId = Base + "/library-items/ai/recommendation/{id}";
 			public const string VoiceSearching = Base + "/library-items/voice";

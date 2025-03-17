@@ -5,6 +5,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -411,6 +412,27 @@ public class CloudinaryService : ICloudinaryService
         {
             _logger.Error(ex, "Error generating Cloudinary URL.");
             throw new Exception("Error occurred while generating Cloudinary URL", ex);
+        }
+    }
+
+    public async Task<IServiceResult> UploadLargeVideo(List<string> providerIds)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            
+            //Todo: Check validation
+
+            return new ServiceResult();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
     }
 

@@ -24,6 +24,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using SixLabors.ImageSharp.Processing;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using Rectangle = SixLabors.ImageSharp.Rectangle;
@@ -43,6 +44,7 @@ public class AIClassificationService : IAIClassificationService
     private readonly IAIDetectionService _aiDetectionService;
     private readonly string _basePredictUrl;
     private readonly IOCRService _ocrService;
+    private readonly IAITrainingSessionService<AITrainingSessionDto> _aiTrainingSessionService;
     private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
 
     public AIClassificationService(HttpClient httpClient, ISystemMessageService msgService,
@@ -50,9 +52,11 @@ public class AIClassificationService : IAIClassificationService
         IHubContext<AiHub> hubContext, IAIDetectionService aiDetectionService
         , IOptionsMonitor<CustomVisionSettings> monitor, ILogger logger,
         IServiceProvider service, IOCRService ocrService,
+        IAITrainingSessionService<AITrainingSessionDto> aiTrainingSessionService,
         ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService)
     {
         _ocrService = ocrService;
+        _aiTrainingSessionService = aiTrainingSessionService;
         _libraryItemGroupService = libraryItemGroupService;
         _aiDetectionService = aiDetectionService;
         _hubContext = hubContext;
@@ -263,7 +267,7 @@ public class AIClassificationService : IAIClassificationService
             }
 
             // Case suitable group is found
-            if (suitableGroupId != 0 )
+            if (suitableGroupId != 0)
             {
                 var suitableGroup = await _libraryItemGroupService.GetByIdAsync(suitableGroupId);
                 if (suitableGroup.Data is null)
@@ -509,8 +513,23 @@ public class AIClassificationService : IAIClassificationService
 
             var response = new List<CheckedGroupResponseDto<string>>();
             var processedItemIds = new HashSet<int>();
+            // Check if is there any training session or not
 
+            var baseSession =
+                new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+            baseSession.EnableSplitQuery();
+            baseSession.ApplyInclude(q => q.Include(s => s.TrainingDetails));
+            var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
+            AITrainingSessionDto? sessionValue = null;
+            if (session.Data != null)
+            {
+                sessionValue = (AITrainingSessionDto)session.Data!;
+            }
 
+            var isTrainingLibraryItems = sessionValue != null
+                ? sessionValue.TrainingDetails.Select(td => td.LibraryItemId).ToList()
+                                         :new List<int>();
+                
             // foreach (var selectedItemId in selectedItemIds)
             // {
             //     if (processedItemIds.Contains(selectedItemId))
@@ -646,7 +665,8 @@ public class AIClassificationService : IAIClassificationService
             //     }
             // }
 
-            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained);
+            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained && 
+                                                                             (isTrainingLibraryItems.Any()&&!isTrainingLibraryItems.Contains(li.LibraryItemId)));
             ungroupedItemSpec.EnableSplitQuery();
             ungroupedItemSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author));
@@ -795,6 +815,31 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
+    public async Task<IServiceResult> IsAvailableToTrain()
+    {
+        // Determine current system language
+        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = lang == SystemLanguage.English;
+
+        var baseSession =
+            new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+        baseSession.EnableSplitQuery();
+        baseSession.ApplyInclude(q => q.Include(s => s.TrainingDetails));
+        var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
+        if (session.Data is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
+            return new ServiceResult(ResultCodeConst.AIService_Warning0009,
+                isEng
+                    ? errMsg
+                    : "Đang có một tiến trình huấn luyện AI diễn ra!");
+        }
+
+        return new ServiceResult(ResultCodeConst.AIService_Success0007,
+            await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0007));
+    }
+
     public async Task<IServiceResult> NumberOfGroupForTraining()
     {
         return new ServiceResult(ResultCodeConst.SYS_Success0002
@@ -860,7 +905,7 @@ public class AIClassificationService : IAIClassificationService
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             if (dto.TrainingData.Any(x => x.ItemsInGroup.Any(iig
                     => iig.ImageFiles.Count() < 5 || iig.ImageUrls.Count() < 5)))
             {
@@ -874,7 +919,7 @@ public class AIClassificationService : IAIClassificationService
             // Merge group from previous stage (input) to db and get code
             var trainingDataDic = new Dictionary<Guid, List<(byte[] FileBytes, string FileName)>>();
             // parameter for creating history
-            var itemWithImages = new Dictionary<int, List<string>>();
+            var itemWithImages = new Dictionary<int, List<string>>();   
             foreach (var untrainedGroup in dto.TrainingData)
             {
                 // add value for itemWithImages 
@@ -910,7 +955,7 @@ public class AIClassificationService : IAIClassificationService
                 {
                     using var memoryStream = new MemoryStream();
                     await file.CopyToAsync(memoryStream);
-                    trainingDataDic[code].Add((memoryStream.ToArray(), file.FileName)); 
+                    trainingDataDic[code].Add((memoryStream.ToArray(), file.FileName));
                 }
             }
 
@@ -931,7 +976,8 @@ public class AIClassificationService : IAIClassificationService
         }
     }
 
-    private async Task ExtendProcessTrainingTask(Dictionary<Guid, List<(byte[] FileBytes, string FileName)>> trainingDataDic,
+    private async Task ExtendProcessTrainingTask(
+        Dictionary<Guid, List<(byte[] FileBytes, string FileName)>> trainingDataDic,
         Dictionary<int, List<string>> detailParam, string email)
     {
         try
@@ -976,7 +1022,7 @@ public class AIClassificationService : IAIClassificationService
                 TrainBy = email,
                 TrainingDetails = new List<AITrainingDetailDto>()
             };
-            
+
             // Create relative object
             foreach (var itemId in detailParam.Keys)
             {
@@ -985,7 +1031,7 @@ public class AIClassificationService : IAIClassificationService
                     LibraryItemId = itemId,
                     TrainingImages = new List<AITrainingImageDto>()
                 };
-                
+
                 var itemImages = detailParam[itemId];
                 var aiTrainingImageDtos = new List<AITrainingImageDto>();
                 foreach (var itemImage in itemImages)
@@ -1002,7 +1048,7 @@ public class AIClassificationService : IAIClassificationService
                 // Add training detail to session
                 initSession.TrainingDetails.Add(detail);
             }
-            
+
             // Add all session, detail and image to db
             var createSession = await aiTrainingSessionService.CreateAsync(initSession);
             var sessionEntity = mapper.Map<AITrainingSession>(initSession);
@@ -1011,18 +1057,19 @@ public class AIClassificationService : IAIClassificationService
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully. Err when create Session");
                 await Task.CompletedTask;
             }
+
             // Handle uploading image to tag in ai cloud
             foreach (var (key, value) in trainingDataDic)
             {
-                TagDto tag = tags.FirstOrDefault(x => x.Name == key.ToString())??
+                TagDto tag = tags.FirstOrDefault(x => x.Name == key.ToString()) ??
                              await CreateTagAsync(baseConfig, key);
                 var memoryStreams = new List<(MemoryStream Stream, string FileName)>();
                 // Get cover image of current 
-                
+
                 var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
                     => lig.AiTrainingCode.Equals(key.ToString()));
                 groupBaseSpec.ApplyInclude(q => q.Include(lig => lig.LibraryItems));
-                
+
                 var group = await libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
                 if (group.Data == null)
                 {
@@ -1030,9 +1077,9 @@ public class AIClassificationService : IAIClassificationService
                         new { message = "Error retrieving group", key });
                     await Task.CompletedTask;
                 }
-                
+
                 var groupValue = (LibraryItemGroupDto)group.Data!;
-                
+
                 foreach (var groupValueLibraryItem in groupValue.LibraryItems
                              .Where(li => li.IsTrained == false)
                              .ToList()
@@ -1050,14 +1097,16 @@ public class AIClassificationService : IAIClassificationService
                     memoryStream.Position = 0;
                     memoryStreams.Add((memoryStream, $"{groupValueLibraryItem.LibraryItemId}_cover.jpg"));
                 }
+
                 foreach (var valueTuple in value)
                 {
                     var memoryStream = new MemoryStream(valueTuple.FileBytes);
-                    memoryStreams.Add((memoryStream, $"{key}"+valueTuple.FileName));
+                    memoryStreams.Add((memoryStream, $"{key}" + valueTuple.FileName));
                 }
+
                 await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
             }
-            
+
             await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
                 new { message = 20, session = initSession.TrainingSessionId });
             // Train the model after adding the images
@@ -2463,6 +2512,135 @@ public class AIClassificationService : IAIClassificationService
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when Predict Book Model");
+        }
+    }
+
+    public async Task<IServiceResult> PredictWithEmgu(IFormFile image)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Init store result param
+            Dictionary<int, double> itemTotalPoint = new Dictionary<int, double>();
+            Dictionary<int, MinimisedMatchResultDto>
+                itemOrcMatchResult = new Dictionary<int, MinimisedMatchResultDto>();
+            LibraryItemGroupDto groupValue = new LibraryItemGroupDto();
+            // predict
+            using var imageStream = image.OpenReadStream();
+            using var ms = new MemoryStream();
+            await imageStream.CopyToAsync(ms);
+            var imageBytes = ms.ToArray();
+            var content = new ByteArrayContent(imageBytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            _httpClient.DefaultRequestHeaders.Add("Prediction-Key", _monitor.PredictionKey);
+            var imageResponse = await _httpClient.PostAsync(_basePredictUrl, content);
+            imageResponse.EnsureSuccessStatusCode();
+            var jsonResponse = await imageResponse.Content.ReadAsStringAsync();
+            var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(jsonResponse,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                });
+            var bestPrediction =
+                predictionResult.Predictions.OrderByDescending(p => p.Probability).FirstOrDefault();
+            var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(x =>
+                x.AiTrainingCode.ToString().ToLower().Equals(bestPrediction.TagName));
+            groupBaseSpec.ApplyInclude(q =>
+                q.Include(x => x.LibraryItems)
+                    .ThenInclude(be => be.LibraryItemAuthors)
+                    .ThenInclude(ea => ea.Author));
+            var group = await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
+            if (group.ResultCode != ResultCodeConst.SYS_Success0002)
+            {
+                return group;
+            }
+
+            groupValue = (LibraryItemGroupDto)group.Data!;
+            // Calculate the similarity
+            var itemsEqualCompare = await _aiDetectionService.DetectWithEmgu(image, groupValue.AiTrainingCode);
+            Dictionary<int, double> matchObjectPoint = (Dictionary<int, double>)itemsEqualCompare.Data!;
+            if (!matchObjectPoint.Any())
+            {
+                var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),
+                    "item in group");
+
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    isEng ? errMsg : "Không tìm thấy tài liệu nào trong nhóm để so sánh");
+            }
+
+            // check ocr
+            foreach (var item in groupValue.LibraryItems)
+            {
+                List<string> mainAuthor = new List<string>();
+                mainAuthor.Add(item.GeneralNote!);
+                mainAuthor.Add(item.LibraryItemAuthors.First(x
+                        => x.LibraryItemId == item.LibraryItemId)!
+                    .Author.FullName);
+
+                var coverImage = _httpClient.GetAsync(item.CoverImage).Result;
+                var ocrCheck = new CheckedItemDto()
+                {
+                    Title = item.Title,
+                    Authors = mainAuthor,
+                    Publisher = item.Publisher ?? " ",
+                    Images = new List<IFormFile>()
+                    {
+                        new FormFile(await coverImage.Content.ReadAsStreamAsync(), 0,
+                            coverImage.Content.ReadAsByteArrayAsync().Result.Length, "file",
+                            item.Title)
+                        {
+                            Headers = new HeaderDictionary(),
+                            ContentType = "application/octet-stream"
+                        }
+                    }
+                };
+                var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
+                var compareResultValue = ((List<MatchResultDto>)compareResult.Data!).First();
+                itemOrcMatchResult.Add(item.LibraryItemId,
+                    compareResultValue.ToMinimisedMatchResultDto());
+                var ocrPoint = compareResultValue.TotalPoint;
+                itemTotalPoint.Add(item.LibraryItemId,matchObjectPoint[item.LibraryItemId]*0.5+ocrPoint*0.5);
+            }
+            
+            var response = new PredictionResponseDto()
+            {
+                OtherItems = new List<ItemPredictedDetailDto>()
+            };
+
+            //choose the best item
+            int bestItemId = itemTotalPoint.OrderByDescending(x => x.Value).FirstOrDefault().Key;
+
+            var bestItemPredictResponse = new ItemPredictedDetailDto
+            {
+                OCRResult = itemOrcMatchResult[bestItemId],
+                LibraryItemId = bestItemId,
+                ObjectMatchResult = (int)Math.Floor(matchObjectPoint[bestItemId])
+            };
+            itemTotalPoint.Remove(bestItemId);
+            response.BestItem = bestItemPredictResponse;
+            // add other items detail
+            foreach (var groupValueLibraryItemId in itemTotalPoint.Keys)
+            {
+                var itemPredictResponse = new ItemPredictedDetailDto
+                {
+                    OCRResult = itemOrcMatchResult[groupValueLibraryItemId],
+                    LibraryItemId = groupValueLibraryItemId,
+                    ObjectMatchResult = (int)Math.Floor(matchObjectPoint[groupValueLibraryItemId])
+                };
+                response.OtherItems.Add(itemPredictResponse);
+            }
+
+            return new ServiceResult(ResultCodeConst.AIService_Success0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004), response);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Predict Book Model with Emgu");
         }
     }
 

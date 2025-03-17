@@ -1693,6 +1693,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("resource_url");
 
+                    b.Property<string>("SubPublicId")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)")
+                        .HasColumnName("sub_public_id");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("updated_at");

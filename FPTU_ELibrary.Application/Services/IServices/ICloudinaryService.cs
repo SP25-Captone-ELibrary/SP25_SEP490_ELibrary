@@ -12,5 +12,6 @@ public interface ICloudinaryService
     Task<IServiceResult> IsExistAsync(string publicId, FileType fileType);
     Task<IServiceResult> GetMediaUrlAsync(string publicId, FileType fileType);
     Task<IServiceResult> BuildMediaUrlAsync(string publicId, FileType fileType);
+    Task<IServiceResult> UploadLargeVideo(List<string> providerIds);
     // Task<IServiceResult> GetRangeMediaUrlAsync(List<string> publicIds, FileType fileType);
 }

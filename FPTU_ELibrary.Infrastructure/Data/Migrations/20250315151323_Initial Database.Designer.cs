@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250313105408_Initial Database")]
+    [Migration("20250315151323_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1695,6 +1695,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("resource_url");
+
+                    b.Property<string>("SubPublicId")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)")
+                        .HasColumnName("sub_public_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")

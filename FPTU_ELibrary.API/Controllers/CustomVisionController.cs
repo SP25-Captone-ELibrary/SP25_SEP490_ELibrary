@@ -52,7 +52,12 @@ public class CustomVisionController : ControllerBase
     {
         return Ok(await _aiClassificationService.PredictAsync(req.ImageToPredict));
     }
-
+    [HttpPost(APIRoute.AIServices.PredictWithEmgu, Name = nameof(PredictWithEmgu))]
+    public async Task<IActionResult> PredictWithEmgu([FromForm] PredictRequest req)
+    {
+        return Ok(await _aiClassificationService.PredictWithEmgu(req.ImageToPredict));
+    }
+    
     [HttpPost(APIRoute.AIServices.Training, Name = nameof(ExtendTrainingModel))]
     [Authorize]
     public async Task<IActionResult> ExtendTrainingModel([FromForm] ExtendTrainingRequest req)

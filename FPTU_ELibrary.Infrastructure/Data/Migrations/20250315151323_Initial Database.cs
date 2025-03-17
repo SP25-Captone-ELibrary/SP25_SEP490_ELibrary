@@ -224,6 +224,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     file_format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     provider = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     provider_public_id = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    sub_public_id = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
                     provider_metadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     default_borrow_duration_days = table.Column<int>(type: "int", nullable: false),

@@ -769,6 +769,10 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string AIService_Success0006 = "AIService.Success0006";
         /// <summary>
+        /// [SUCCESS] Is able to train
+        /// </summary>
+        public static string AIService_Success0007 = "AIService.Success0007";
+        /// <summary>
         /// [WARNING] Data did not match with image
         /// </summary>
         public static string AIService_Warning0001 = "AIService.Warning0001";
@@ -800,6 +804,11 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Not import at least 5 pictures each item
         /// </summary>
         public static string AIService_Warning0008 = "AIService.Warning0008";
+        /// <summary>
+        /// [WARNING] There is existed training session uncompletely!
+        /// </summary>
+        public static string AIService_Warning0009 = "AIService.Warning0009";
+
         #endregion
 
         #region Warehouse Tracking

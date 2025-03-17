@@ -91,6 +91,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
             #endregion
+            # region Update at 15/03/2025 by Nguyen Vu Quang Huy
+            builder.Property(e => e.SubPublicId)
+                .HasMaxLength(1024)
+                .HasColumnName("sub_public_id");
+            #endregion
         }
     }
 }
