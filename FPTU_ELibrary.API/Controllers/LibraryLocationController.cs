@@ -69,6 +69,13 @@ public class LibraryLocationController : ControllerBase
     {
         return Ok(await _shelfService.GetAllAsync());
     }
+
+    [Authorize]
+    [HttpGet(APIRoute.LibraryLocation.GetShelfWithFloorZoneSectionById, Name = nameof(GetShelfWithFloorZoneSectionByIdAsync))]
+    public async Task<IActionResult> GetShelfWithFloorZoneSectionByIdAsync([FromRoute] int shelfId)
+    {
+        return Ok(await _shelfService.GetDetailWithFloorZoneSectionByIdAsync(shelfId: shelfId));
+    }
     
     [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetZonesByFloorId, Name = nameof(GetAllLibraryZoneByFloorIdAsync))]

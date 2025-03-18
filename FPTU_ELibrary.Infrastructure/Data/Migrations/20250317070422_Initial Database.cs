@@ -1128,7 +1128,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     condition_check_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_reminder_sent = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    total_extension = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
+                    total_extension = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    processed_return_by = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1149,6 +1150,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         column: x => x.library_item_instance_id,
                         principalTable: "Library_Item_Instance",
                         principalColumn: "library_item_instance_id");
+                    table.ForeignKey(
+                        name: "FK_BorrowRecordDetail_ProcessedReturnBy",
+                        column: x => x.processed_return_by,
+                        principalTable: "Employee",
+                        principalColumn: "employee_id");
                     table.ForeignKey(
                         name: "FK_BorrowRecordDetail_ReturnConditionId",
                         column: x => x.return_condition_id,
@@ -1231,6 +1237,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     expected_available_date_max = table.Column<DateTime>(type: "datetime", nullable: true),
                     reservation_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    collected_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_notified = table.Column<bool>(type: "bit", nullable: false),
                     cancelled_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true)
@@ -1422,6 +1429,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 name: "IX_Borrow_Record_Detail_library_item_instance_id",
                 table: "Borrow_Record_Detail",
                 column: "library_item_instance_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Record_Detail_processed_return_by",
+                table: "Borrow_Record_Detail",
+                column: "processed_return_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Borrow_Record_Detail_return_condition_id",

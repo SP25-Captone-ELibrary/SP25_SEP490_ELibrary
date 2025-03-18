@@ -194,6 +194,7 @@ namespace FPTU_ELibrary.Application.Utils
         }
 
         // Validate Cutter number
+        // TODO: Fix pattern
         public static bool IsValidCutterNumber(string cutterNumber)
         {
             // Regex for Cutter Numbers

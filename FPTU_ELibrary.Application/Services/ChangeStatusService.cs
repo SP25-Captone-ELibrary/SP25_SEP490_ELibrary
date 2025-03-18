@@ -178,6 +178,8 @@ public class ChangeStatusService : BackgroundService
             // Progress update 
             await unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(borrowReq);
             
+            // TODO: Update inventory amount after borrow request expired
+            
             // Mark as changed
             hasChanges = true;
         }
@@ -282,4 +284,6 @@ public class ChangeStatusService : BackgroundService
         return hasChanges;
     }
     #endregion
+    
+    // TODO: Update reservation expired date -> update inventory units
 }

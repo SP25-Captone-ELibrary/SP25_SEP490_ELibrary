@@ -238,6 +238,47 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
         }
     }
 
+    public async Task<IServiceResult> GetDetailWithFloorZoneSectionByIdAsync(int shelfId)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Initialize shelf base spec
+            var shelfSpec = new BaseSpecification<LibraryShelf>(lf => lf.ShelfId == shelfId);
+            // Apply including section
+            shelfSpec.ApplyInclude(q => q
+                .Include(s => s.Section)
+                    .ThenInclude(s => s.Zone)
+                        .ThenInclude(s => s.Floor)
+            );
+            
+            // Retrieve all shelves with spec
+            var existingEntity = await _unitOfWork.Repository<LibraryShelf, int>().GetWithSpecAsync(shelfSpec);
+            if (existingEntity == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "shelf" : "kệ sách"));
+            }
+            
+            // Map to dto
+            var dto = _mapper.Map<LibraryShelfDto>(existingEntity);
+            // Msg: Get data successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), dto.ToGetLibraryShelfDetailDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get detail with floor, zone and section");
+        }
+    }
+    
     public async Task<IServiceResult> GetItemAppropriateShelfAsync(int libraryItemId,
         bool? isReferenceSection, bool? isChildrenSection, bool? isJournalSection, bool? isMostAppropriate)
     {

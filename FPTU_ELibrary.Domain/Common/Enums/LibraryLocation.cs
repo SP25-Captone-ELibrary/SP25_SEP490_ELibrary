@@ -601,7 +601,7 @@ public class LibraryLocation
             {
                 new()
                 {
-                    ShelfNumber = "L-01",
+                    ShelfNumber = "LA-01",
                     EngShelfName = "General Linguistics",
                     VieShelfName = "Ngôn ngữ học tổng quát",
                     ClassificationNumberRangeFrom = 400,
@@ -610,7 +610,7 @@ public class LibraryLocation
                 },
                 new()
                 {
-                    ShelfNumber = "L-02",
+                    ShelfNumber = "LA-02",
                     EngShelfName = "English & Germanic Languages",
                     VieShelfName = "Tiếng Anh & Các ngôn ngữ Đức",
                     ClassificationNumberRangeFrom = 420,
@@ -619,7 +619,7 @@ public class LibraryLocation
                 },
                 new()
                 {
-                    ShelfNumber = "L-03",
+                    ShelfNumber = "LA-03",
                     EngShelfName = "French & Romance Languages",
                     VieShelfName = "Tiếng Pháp & Các ngôn ngữ Rôman",
                     ClassificationNumberRangeFrom = 440,
@@ -628,7 +628,7 @@ public class LibraryLocation
                 },
                 new()
                 {
-                    ShelfNumber = "L-04",
+                    ShelfNumber = "LA-04",
                     EngShelfName = "Spanish, Portuguese & Italian",
                     VieShelfName = "Tiếng Tây Ban Nha, Bồ Đào Nha & Ý",
                     ClassificationNumberRangeFrom = 460,
@@ -637,7 +637,7 @@ public class LibraryLocation
                 },
                 new()
                 {
-                    ShelfNumber = "L-05",
+                    ShelfNumber = "LA-05",
                     EngShelfName = "Greek, Russian & Other Languages",
                     VieShelfName = "Các ngôn ngữ Hy Lạp, Nga, Đông Á & Các ngôn ngữ khác",
                     ClassificationNumberRangeFrom = 480,

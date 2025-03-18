@@ -95,7 +95,7 @@ public static class LibraryCardHolderCsvRecordDtoExtensions
                     Status = (LibraryCardStatus) Enum.Parse(typeof(LibraryCardStatus), 
                         record.LibraryCardStatus ?? string.Empty, true),
                     IssueDate = record.IssueDate ?? currentLocalDateTime,
-                    ExpiryDate = record.ExpiryDate ?? record.IssueDate!.Value.AddDays(borrowSettings.BorrowRequestExpirationInDays)
+                    ExpiryDate = record.ExpiryDate ?? record.IssueDate!.Value.AddDays(borrowSettings.PickUpExpirationInDays)
                 }
                 : null
         };

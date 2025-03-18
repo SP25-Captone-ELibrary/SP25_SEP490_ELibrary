@@ -36,6 +36,9 @@ public class ReservationQueue
     // Deadline for pickup
     public DateTime? ExpiryDate { get; set; }
     
+    // Collected date
+    public DateTime? CollectedDate { get; set; }
+    
     // If the user was notified
     public bool IsNotified { get; set; }
     

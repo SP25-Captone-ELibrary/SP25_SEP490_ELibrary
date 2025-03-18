@@ -373,6 +373,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_instance_id");
 
+                    b.Property<Guid?>("ProcessedReturnBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("processed_return_by");
+
                     b.Property<int?>("ReturnConditionId")
                         .HasColumnType("int")
                         .HasColumnName("return_condition_id");
@@ -400,6 +404,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasIndex("ConditionId");
 
                     b.HasIndex("LibraryItemInstanceId");
+
+                    b.HasIndex("ProcessedReturnBy");
 
                     b.HasIndex("ReturnConditionId");
 
@@ -2090,6 +2096,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("cancelled_by");
 
+                    b.Property<DateTime?>("CollectedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("collected_date");
+
                     b.Property<DateTime?>("ExpectedAvailableDateMax")
                         .HasColumnType("datetime")
                         .HasColumnName("expected_available_date_max");
@@ -3027,6 +3037,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRecordDetail_ItemInstanceId");
 
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "ProcessedReturnByNavigation")
+                        .WithMany("BorrowRecordDetails")
+                        .HasForeignKey("ProcessedReturnBy")
+                        .HasConstraintName("FK_BorrowRecordDetail_ProcessedReturnBy");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", "ReturnCondition")
                         .WithMany("BorrowRecordDetailsReturn")
                         .HasForeignKey("ReturnConditionId")
@@ -3037,6 +3052,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Condition");
 
                     b.Navigation("LibraryItemInstance");
+
+                    b.Navigation("ProcessedReturnByNavigation");
 
                     b.Navigation("ReturnCondition");
                 });
@@ -3599,6 +3616,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
+                    b.Navigation("BorrowRecordDetails");
+
                     b.Navigation("BorrowRecords");
 
                     b.Navigation("FineCreateByNavigations");

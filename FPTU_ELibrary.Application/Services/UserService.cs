@@ -4,12 +4,14 @@ using CsvHelper.Configuration;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
 using FPTU_ELibrary.Application.Dtos.Roles;
+using FPTU_ELibrary.Application.Dtos.Users;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
@@ -41,8 +43,10 @@ namespace FPTU_ELibrary.Application.Services
 	{
 		// Lazy services
 		private readonly Lazy<ILibraryCardService<LibraryCardDto>> _libraryCardService;
-		private readonly Lazy<ITransactionService<TransactionDto>> _tranService;
 		private readonly Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> _cardPackageService;
+		private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqService;
+		private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecService;
+		private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationService;
 		
 		private readonly IEmailService _emailService;
 		private readonly ISystemRoleService<SystemRoleDto> _roleService;
@@ -55,12 +59,13 @@ namespace FPTU_ELibrary.Application.Services
 		private readonly PayOSSettings _payOsSettings;
 		private readonly BorrowSettings _borrowSettings;
 		private readonly PaymentSettings _paymentSettings;
-		private readonly TokenValidationParameters _tokenValidationParams;
 
 		public UserService(
 			// Lazy services
+			Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqService,
+			Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecService,
+			Lazy<IReservationQueueService<ReservationQueueDto>> reservationService,
 			Lazy<ILibraryCardService<LibraryCardDto>> libraryCardService,
-			Lazy<ITransactionService<TransactionDto>> tranService,
 			Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> cardPackageService,
 			
 			// Normal services
@@ -80,12 +85,14 @@ namespace FPTU_ELibrary.Application.Services
 			IMapper mapper, IServiceProvider serviceProvider) 
 			: base(msgService, unitOfWork, mapper, logger)
 		{
+			_borrowReqService = borrowReqService;
+			_borrowRecService = borrowRecService;
+			_reservationService = reservationService;
 			_roleService = roleService;
 			_cloudService = cloudService;
 			_emailService = emailService;
 			_employeeService = employeeService;
 			_serviceProvider = serviceProvider;
-			_tranService = tranService;
 			_libraryCardService = libraryCardService;
 			_cardPackageService = cardPackageService;
 			_paymentMethodService = paymentMethodService;
@@ -93,7 +100,6 @@ namespace FPTU_ELibrary.Application.Services
 			_borrowSettings = monitor1.CurrentValue;
 			_payOsSettings = monitor3.CurrentValue;
 			_paymentSettings = monitor2.CurrentValue;
-			_tokenValidationParams = tokenValidationParams;
 		}
 
 		public override async Task<IServiceResult> GetByIdAsync(Guid id)
@@ -725,6 +731,167 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				_logger.Error(ex.Message);
 				throw new Exception("Error invoke while get user by email");
+			}
+		}
+
+		public async Task<IServiceResult> GetPendingLibraryActivityAsync(Guid libraryCardId)
+		{
+			try
+			{
+				// Build spec
+				var userSpec = new BaseSpecification<User>(u => u.LibraryCardId == libraryCardId);
+				// Retrieve user information by lib card id 
+				var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userSpec);
+				if (user == null)
+				{
+					// Msg: Data not found or empty
+					return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+						await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+						// Default user pending activity
+						new UserPendingActivityDto());
+				}
+				
+				// Retrieve all requesting items
+				var pendingBorrowRequests = (await _borrowReqService.Value.GetAllPendingRequestByLibCardIdAsync(
+					libraryCardId: libraryCardId)).Data as List<GetBorrowRequestDto>;
+				// Retrieve all borrowing items
+				var activeBorrowRecords = (await _borrowRecService.Value.GetAllActiveRecordByLibCardIdAsync(
+					libraryCardId: libraryCardId)).Data as List<GetBorrowRecordDto>;
+				// Retrieve all reserving items
+				var currentReservationQueues = (await _reservationService.Value.GetAllPendingAndAssignedReservationByLibCardIdAsync(
+						libraryCardId: libraryCardId)).Data as List<GetReservationQueueDto>;
+				
+				// Count total requesting items
+				var totalRequesting = pendingBorrowRequests != null && pendingBorrowRequests.Any()
+					? pendingBorrowRequests.Select(br => br.LibraryItems.Count).Sum()
+					: 0;
+				// Count total borrowing items
+				var totalBorrowing = activeBorrowRecords != null && activeBorrowRecords.Any()
+					? activeBorrowRecords.Select(brd => brd.BorrowRecordDetails.Count).Sum()
+					: 0;
+				// Count total pending reserving items
+				var totalPendingReserving = currentReservationQueues != null && currentReservationQueues.Any()
+					? currentReservationQueues.Count(r => r.QueueStatus == ReservationQueueStatus.Pending)
+					: 0;
+				// Count total assigned reserving items
+				var totalAssignedReserving = currentReservationQueues != null && currentReservationQueues.Any()
+					? currentReservationQueues.Count(r => r.QueueStatus == ReservationQueueStatus.Assigned)
+					: 0;
+				// Count remain total
+				// Not count pending reservation to total borrow amount as ensuring that user only assigned when borrowing amount smaller than threshold
+				var remainTotal = _borrowSettings.BorrowAmountOnceTime - (totalRequesting + totalBorrowing + totalAssignedReserving);
+				
+				// Initialize summary
+				var summaryActivity = new UserPendingActivitySummaryDto()
+				{
+					TotalRequesting = totalRequesting,
+					TotalBorrowing = totalBorrowing,
+					TotalPendingReserving = totalPendingReserving,
+					TotalAssignedReserving = totalAssignedReserving,
+					TotalBorrowOnce = _borrowSettings.BorrowAmountOnceTime,
+					RemainTotal = Math.Max(0, remainTotal),
+					IsAtLimit = remainTotal <= 0
+				};
+				
+				// Initialize user pending activity
+				var userPendingActivity = new UserPendingActivityDto()
+				{
+					PendingBorrowRequests = pendingBorrowRequests ?? new(),
+					ActiveBorrowRecords = activeBorrowRecords ?? new(),
+					PendingReservationQueues = currentReservationQueues != null && currentReservationQueues.Any()
+						? currentReservationQueues.Where(r => 
+							r.QueueStatus == ReservationQueueStatus.Pending).ToList()
+						: new(),
+					AssignedReservationQueues = currentReservationQueues != null && currentReservationQueues.Any()
+						? currentReservationQueues.Where(r => 
+							r.QueueStatus == ReservationQueueStatus.Assigned).ToList()
+						: new(),
+					SummaryActivity = summaryActivity
+				};
+				
+				// Msg: Get data successfully
+				return new ServiceResult(ResultCodeConst.SYS_Success0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), userPendingActivity);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke whenp rocess get user's pending activity");
+			}
+		}
+
+		public async Task<IServiceResult> GetPendingLibraryActivitySummaryAsync(Guid libraryCardId)
+		{
+			try
+			{
+				// Build spec
+                var userSpec = new BaseSpecification<User>(u => u.LibraryCardId == libraryCardId);
+                // Apply include
+                userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+                // Retrieve user information by lib card id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userSpec);
+                if (user == null)
+                {
+                	// Msg: Data not found or empty
+                	return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                		// Default user pending activity
+                		new UserPendingActivitySummaryDto());
+                }
+                
+                // Count total requesting items
+                var reqCountRes = (await _borrowReqService.Value.CountAllPendingRequestByLibCardIdAsync(
+	                libraryCardId: libraryCardId)).Data;
+				// Try parse to integer
+				int.TryParse(reqCountRes?.ToString() ?? "0", out var totalRequesting);
+				
+				// Count total active records
+				var activeRecCountRes = (await _borrowRecService.Value.CountAllActiveRecordByLibCardIdAsync(
+					libraryCardId: libraryCardId)).Data;
+				// Try parse to integer
+				int.TryParse(activeRecCountRes?.ToString() ?? "0", out var totalBorrowing);
+				
+				// Count total pending reservations
+				var pendingReservingCountRes = (await _reservationService.Value.CountAllReservationByLibCardIdAndStatusAsync(
+					libraryCardId: libraryCardId,
+					status: ReservationQueueStatus.Pending)).Data;
+				// Try parse to integer
+				int.TryParse(pendingReservingCountRes?.ToString() ?? "0", out var totalPendingReserving);
+				
+				// Count total pending reservations
+				var assignedReservingCountRes = (await _reservationService.Value.CountAllReservationByLibCardIdAndStatusAsync(
+					libraryCardId: libraryCardId,
+					status: ReservationQueueStatus.Assigned)).Data;
+				// Try parse to integer
+				int.TryParse(assignedReservingCountRes?.ToString() ?? "0", out var totalAssignedReserving);
+				
+				// Max amount to borrow 
+				var maxAmountToBorrow = user.LibraryCard != null && user.LibraryCard.IsAllowBorrowMore // Is allow to borrow more than default
+					? user.LibraryCard.MaxItemOnceTime // Use updated max amount
+					: _borrowSettings.BorrowAmountOnceTime; // Use default
+				// Count remain total
+				var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalPendingReserving + totalAssignedReserving);
+				
+				// Initialize summary
+				var summaryActivity = new UserPendingActivitySummaryDto()
+				{
+					TotalRequesting = totalRequesting,
+					TotalBorrowing = totalBorrowing,
+					TotalPendingReserving = totalPendingReserving,
+					TotalAssignedReserving = totalAssignedReserving,
+					TotalBorrowOnce = maxAmountToBorrow,
+					RemainTotal = Math.Max(0, remainTotal),
+					IsAtLimit = remainTotal <= 0
+				};
+				
+				// Msg: Get data successfully
+				return new ServiceResult(ResultCodeConst.SYS_Success0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), summaryActivity);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when process get pending library activity summary by lib card id");
 			}
 		}
 		
@@ -3232,7 +3399,7 @@ namespace FPTU_ELibrary.Application.Services
 		                  </ul>
 		              </div>
 
-		              <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+		              <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
 
 		              <p><strong>Trân trọng,</strong></p>
 		              <p>{{libName}}</p>

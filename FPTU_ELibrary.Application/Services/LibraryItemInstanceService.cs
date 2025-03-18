@@ -2249,7 +2249,12 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         }
                         // Case 2: OutOfShelf -> OutOfShelf (no effect)
                         // Case 3: OutOfShelf -> Borrowed (not allow)
-                        // Case 4: OutOfShelf -> Reserved (not allow)
+                        // Case 4: OutOfShelf -> Reserved (assign return item to reservation)
+                        if (status == LibraryItemInstanceStatus.Reserved)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
+                        }
                         // Case 5: OutOfShelf -> Lost (not allow)
                         break;
                     case nameof(LibraryItemInstanceStatus.Borrowed):
@@ -2313,12 +2318,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                                 inventory.ReservedUnits--;
                             }
                         }
-                        // Case 3: Reserved -> Reserved (assign from one reservation to another)
-                        if (status == LibraryItemInstanceStatus.Reserved)
-                        {
-                            // Update status
-                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
-                        }
+                        // Case 3: Reserved -> Reserved (No effect)
                         // Case 4: Reserved -> Borrowed (reservation's person comes to pick up item)
                         if (status == LibraryItemInstanceStatus.Borrowed)
                         {

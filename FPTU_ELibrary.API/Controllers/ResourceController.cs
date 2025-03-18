@@ -16,7 +16,7 @@ public class ResourceController : ControllerBase
     {
         _cloudService = cloudService;
     }
-
+    
     [Authorize]
     [HttpGet(APIRoute.Resource.GetAllType, Name = nameof(GetAllResourceType))]
     public async Task<IActionResult> GetAllResourceType()

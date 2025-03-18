@@ -20,8 +20,11 @@ public class Transaction
     public int? FineId { get; set; }
     public int? ResourceId { get; set; }
     public int? LibraryCardPackageId { get; set; }
+    
     // Transaction method
     public TransactionMethod? TransactionMethod { get; set; }
+    
+    // Payment method
     public int? PaymentMethodId { get; set; }
     
     // Store payment information

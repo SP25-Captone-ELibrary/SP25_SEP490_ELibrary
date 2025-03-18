@@ -73,7 +73,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string SYS_Fail0006 = "SYS.Fail0006";
         /// <summary>
-        /// [FAIL] Cannot delete because it is bound to other data
+        /// [FAIL] Unable to delete because it is bound to other data
         /// </summary>
         public static string SYS_Fail0007 = "SYS.Fail0007";
         /// <summary>
@@ -94,7 +94,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Warning0002 = "SYS.Warning0002";
 		/// <summary>
-		/// [WARNING] Cannot progress {0} as {1} already exist
+		/// [WARNING] Unable to progress {0} as {1} already exist
 		/// </summary>
 		public static string SYS_Warning0003 = "SYS.Warning0003";
 		/// <summary>
@@ -110,11 +110,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string SYS_Warning0006 = "SYS.Warning0006";
 		/// <summary>
-		/// [WARNING] Cannot delete {0} as it is in use
+		/// [WARNING] Unable to delete {0} as it is in use
 		/// </summary>
 		public static string SYS_Warning0007 = "SYS.Warning0007";
 		/// <summary>
-		/// [WARNING] Cannot edit because it is bound to other data
+		/// [WARNING] Unable to edit because it is bound to other data
 		/// </summary>
 		public static string SYS_Warning0008 = "SYS.Warning0008";
 		#endregion
@@ -202,7 +202,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public static string Auth_Warning0010 = "Auth.Warning0010";
 		/// <summary>
-		/// [WARNING] Cannot process as the account has not enabled 2-factor authentication yet
+		/// [WARNING] Unable to process as the account has not enabled 2-factor authentication yet
 		/// </summary>
 		public static string Auth_Warning0011 = "Auth.Warning0011";
 		/// <summary>
@@ -254,6 +254,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0007 = "Borrow.Success0007";
 		/// <summary>
+		/// [SUCCESS] Total {0} items have been returned successfully
+		/// </summary>
+		public const string Borrow_Success0008 = "Borrow.Success0008";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -270,19 +274,20 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0004 = "Borrow.Warning0004";
 		/// <summary>
-		/// [WARNING] You can borrow up to {0} items at a time
+		/// [WARNING] A maximum of {0} items can be borrowed at the same time. Currently, you may still borrow {1} more.
+		/// Please contact the library if you need to borrow more
 		/// </summary>
 		public const string Borrow_Warning0005 = "Borrow.Warning0005";
 		/// <summary>
-		/// [WARNING] Cannot cancel because item has been proceeded
+		/// [WARNING] Unable to cancel because item has been proceeded
 		/// </summary>
 		public const string Borrow_Warning0006 = "Borrow.Warning0006";
 		/// <summary>
-		/// [WARNING] Cannot process as borrow request has been expired
+		/// [WARNING] Unable to process as borrow request has been expired
 		/// </summary>
 		public const string Borrow_Warning0007 = "Borrow.Warning0007";
 		/// <summary>
-		/// [WARNING] Cannot process as library card is incorrect
+		/// [WARNING] Unable to process as library card is incorrect
 		/// </summary>
 		public const string Borrow_Warning0008 = "Borrow.Warning0008";
 		/// <summary>
@@ -294,15 +299,15 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0010 = "Borrow.Warning0010";
 		/// <summary>
-		/// [WARNING] Cannot create borrow record because borrow request has been processed
+		/// [WARNING] Unable to create borrow record because borrow request has been processed
 		/// </summary>
 		public const string Borrow_Warning0011 = "Borrow.Warning0011";
 		/// <summary>
-		/// [WARNING] Cannot create borrow record because borrow request has been cancelled
+		/// [WARNING] Unable to create borrow record because borrow request has been cancelled
 		/// </summary>
 		public const string Borrow_Warning0012 = "Borrow.Warning0012";
 		/// <summary>
-		/// [WARNING] Cannot create borrow record because borrow request has been expired
+		/// [WARNING] Unable to create borrow record because borrow request has been expired
 		/// </summary>
 		public const string Borrow_Warning0013 = "Borrow.Warning0013";
 		/// <summary>
@@ -310,7 +315,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0014 = "Borrow.Warning0014";
 		/// <summary>
-		/// [WARNING] Digital resource {0} is borrowing. Cannot not create register
+		/// [WARNING] Digital resource {0} is borrowing. Unable to not create register
 		/// </summary>
 		public const string Borrow_Warning0015 = "Borrow.Warning0015";
 		/// <summary>
@@ -330,11 +335,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0019 = "Borrow.Warning0019";
 		/// <summary>
-		/// [WARNING] Cannot process extend borrow record expiration as this item has already been reserved. Please return the item by {0} to ensure its continued circulations
+		/// [WARNING] Unable to process extend borrow record expiration as this item has already been reserved. Please return the item by {0} to ensure its continued circulations
 		/// </summary>
 		public const string Borrow_Warning0020 = "Borrow.Warning0020";
 		/// <summary>
-		/// [WARNING] Cannot process extend borrow record before date {0}
+		/// [WARNING] Unable to process extend borrow record before date {0}
 		/// </summary>
 		public const string Borrow_Warning0021 = "Borrow.Warning0021";
 		/// <summary>
@@ -362,7 +367,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Warning0027 = "Borrow.Warning0027";
 		/// <summary>
-		/// [WARNING] Cannot change item status to lost as item isn't in borrowing status
+		/// [WARNING] Unable to change item status to lost as item isn't in borrowing status
 		/// </summary>
 		public const string Borrow_Warning0028 = "Borrow.Warning0028";
 		/// <summary>
@@ -381,7 +386,47 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Exist duplicate or inappropriate fines for return item marked as lost
         /// </summary>
         public const string Borrow_Warning0032 = "Borrow.Warning0032";
-        
+        /// <summary>
+        /// [WARNING] Estimated price of item not found. Please update it to process lost return
+        /// </summary>
+        public const string Borrow_Warning0033 = "Borrow.Warning0033";
+        /// <summary>
+        /// [WARNING] Not found price value for fine policy {0}
+        /// </summary>
+        public const string Borrow_Warning0034 = "Borrow.Warning0034";
+        /// <summary>
+        /// [WARNING] Fine policy is invalid for returning item
+        /// </summary>
+        public const string Borrow_Warning0035 = "Borrow.Warning0035";
+        /// <summary>
+        /// [WARNING] Reader has already reserved this item and haven been assigned with instance {0}. Requested instance {1} is not match
+        /// </summary>
+        public const string Borrow_Warning0036 = "Borrow.Warning0036";
+        /// <summary>
+        /// [WARNING] Unable to create borrow record as item {0} has been requested by reader by but have not been processed yet
+        /// </summary>
+        public const string Borrow_Warning0037 = "Borrow.Warning0037";
+        /// <summary>
+	    /// [WARNING] Unable to create borrow record as exist {0} pending item requests awaiting processing
+	    /// </summary>
+	    public const string Borrow_Warning0038 = "Borrow.Warning0038";
+        /// <summary>
+	    /// [WARNING] Unable to create borrow record as there are still {0} items have been reserved and successfully assigned to user, but have not been yet processed
+	    /// </summary>
+	    public const string Borrow_Warning0039 = "Borrow.Warning0039";
+	    /// <summary>
+	    /// [WARNING] A maximum of {0} items can be borrowed at the same time. Currently, reader may still borrow {1} more
+	    /// </summary>
+	    public const string Borrow_Warning0040 = "Borrow.Warning0040";
+	    /// <summary>
+	    /// [WARNING] A maximum of {0} items can be borrowed at the same time. Total requested items to create borrow record is {1}. Please update max amount can borrow of reader
+	    /// </summary>
+	    public const string Borrow_Warning0041 = "Borrow.Warning0041";
+	    /// <summary>
+	    /// [WARNING] A maximum of {0} items can be borrowed at the same time. Please contact the library if you need to borrow more
+	    /// </summary>
+	    public const string Borrow_Warning0042 = "Borrow.Warning0042";
+		
 		/// <summary>
 		/// [FAIL] An error occurred, the item borrowing registration failed
 		/// </summary>
@@ -418,19 +463,31 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to cancel borrow request
         /// </summary>
         public const string Borrow_Fail0009 = "Borrow.Fail0009";
+        /// <summary>
+        /// [FAIL] Failed to process return items
+        /// </summary>
+        public const string Borrow_Fail0010 = "Borrow.Fail0010";
+        /// <summary>
+        /// [FAIL] Error has been occurred. An item instance belongs to several reservations at the same time
+        /// </summary>
+        public const string Borrow_Fail0011 = "Borrow.Fail0011";
 		#endregion
 
 		#region Reservatation
 		/// <summary>
-		/// [WARNING] Cannot create item reservation as {0}
+        /// [FAIL] The instance has been reserved by the reader, but failed to update the reservation status while create borrow record
+        /// </summary>
+        public const string Reservation_Fail0001 = "Reservation.Fail0001";
+		/// <summary>
+		/// [WARNING] Unable to create item reservation as {0}
 		/// </summary>
 		public const string Reservation_Warning0001 = "Reservation.Warning0001";
 		/// <summary>
-		/// [WARNING] Cannot reserve for item {0} as you are requesting for this item
+		/// [WARNING] Unable to reserve for item {0} as you are requesting for this item
 		/// </summary>
 		public const string Reservation_Warning0002 = "Reservation.Warning0002";
 		/// <summary>
-		/// [WARNING] Cannot reserve for item {0} as you are borrowing this item
+		/// [WARNING] Unable to reserve for item {0} as you are borrowing this item
 		/// </summary>
 		public const string Reservation_Warning0003 = "Reservation.Warning0003";
 		/// <summary>
@@ -438,7 +495,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Reservation_Warning0004 = "Reservation.Warning0004";
 		/// <summary>
-		/// [WARNING] Cannot reserve for item {0} as this item is still available to borrow
+		/// [WARNING] Unable to reserve for item {0} as this item is still available to borrow
 		/// </summary>
 		public const string Reservation_Warning0005 = "Reservation.Warning0005";
 		#endregion
@@ -449,7 +506,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Role_Warning0001 = "Role.Warning0001";
 		/// <summary>
-		/// [WARNING] Cannot update as role is invalid
+		/// [WARNING] Unable to update as role is invalid
 		/// </summary>
 		public const string Role_Warning0002 = "Role.Warning0002";
 		#endregion
@@ -620,27 +677,27 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryItem_Warning0007 = "LibraryItem.Warning0007";
 		/// <summary>
-		/// [WARNING] Cannot change data that is on borrowing or reserved
+		/// [WARNING] Unable to change data that is on borrowing or reserved
 		/// </summary>
 		public const string LibraryItem_Warning0008 = "LibraryItem.Warning0008";
 		/// <summary>
-		/// [WARNING] Cannot process, please change all item instance status to inventory first
+		/// [WARNING] Unable to process, please change all item instance status to inventory first
 		/// </summary>
 		public const string LibraryItem_Warning0009 = "LibraryItem.Warning0009";
 		/// <summary>
-		/// [WARNING] Cannot delete as there still exist instance within the item
+		/// [WARNING] Unable to delete as there still exist instance within the item
 		/// </summary>
 		public const string LibraryItem_Warning0010 = "LibraryItem.Warning0010";
 		/// <summary>
-		/// [WARNING] Cannot change item instance status. {0}
+		/// [WARNING] Unable to change item instance status. {0}
 		/// </summary>
 		public const string LibraryItem_Warning0011 = "LibraryItem.Warning0011";
 		/// <summary>
-		/// [WARNING] Cannot change item status to public. {0}
+		/// [WARNING] Unable to change item status to public. {0}
 		/// </summary>
 		public const string LibraryItem_Warning0012 = "LibraryItem.Warning0012";
 		/// <summary>
-		/// [WARNING] Cannot change item status to draft. {0}
+		/// [WARNING] Unable to change item status to draft. {0}
 		/// </summary>
 		public const string LibraryItem_Warning0013 = "LibraryItem.Warning0013";
 		/// <summary>
@@ -668,15 +725,15 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryItem_Warning0019 = "LibraryItem.Warning0019";
 		/// <summary>
-        /// [WARNING] Cannot update item's shelf status to 'in-shelf' as {0}
+        /// [WARNING] Unable to update item's shelf status to 'in-shelf' as {0}
         /// </summary>
         public const string LibraryItem_Warning0020 = "LibraryItem.Warning0020";
         /// <summary>
-        /// [WARNING] Cannot update item's shelf status to 'out-of-shelf' as {0}
+        /// [WARNING] Unable to update item's shelf status to 'out-of-shelf' as {0}
         /// </summary>
         public const string LibraryItem_Warning0021 = "LibraryItem.Warning0021";
         /// <summary>
-        /// [WARNING] Cannot update item instance status as {0}
+        /// [WARNING] Unable to update item instance status as {0}
         /// </summary>
         public const string LibraryItem_Warning0022 = "LibraryItem.Warning0022";
 		/// <summary>
@@ -751,11 +808,11 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Warning0008 = "LibraryCard.Warning0008";
 		/// <summary>
-		/// [WARNING] Cannot update library card status to {0} as {1}
+		/// [WARNING] Unable to update library card status to {0} as {1}
 		/// </summary>
 		public const string LibraryCard_Warning0009 = "LibraryCard.Warning0009";
 		/// <summary>
-		/// [WARNING] Cannot process confirm card as not found payment information
+		/// [WARNING] Unable to process confirm card as not found payment information
 		/// </summary>
 		public const string LibraryCard_Warning0010 = "LibraryCard.Warning0010";
 		/// <summary>
@@ -767,7 +824,7 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Warning0012 = "LibraryCard.Warning0012";
 		/// <summary>
-		/// [WARNING] Cannot process send card reconfirmation when card status is not rejected
+		/// [WARNING] Unable to process send card reconfirmation when card status is not rejected
 		/// </summary>
 		public const string LibraryCard_Warning0013 = "LibraryCard.Warning0013";
 		/// <summary>
@@ -876,15 +933,15 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0002 = "WarehouseTracking.Warning0002";
         /// <summary>
-        /// [WARNING] Cannot delete warehouse tracking information, as existing item has been cataloged
+        /// [WARNING] Unable to delete warehouse tracking information, as existing item has been cataloged
         /// </summary>
         public const string WarehouseTracking_Warning0003 = "WarehouseTracking.Warning0003";
         /// <summary>
-        /// [WARNING] Cannot change status to completed, as existing item has not been cataloged yet
+        /// [WARNING] Unable to change status to completed, as existing item has not been cataloged yet
         /// </summary>
         public const string WarehouseTracking_Warning0004 = "WarehouseTracking.Warning0004";
         /// <summary>
-        /// [WARNING] Cannot change status to completed, as total item instance is not
+        /// [WARNING] Unable to change status to completed, as total item instance is not
         /// enough compared to the total of warehouse tracking information
         /// </summary>
         public const string WarehouseTracking_Warning0005 = "WarehouseTracking.Warning0005";
@@ -901,11 +958,11 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0008 = "WarehouseTracking.Warning0008";
         /// <summary>
-        /// [WARNING] Cannot change data as warehouse tracking was completed or cancelled
+        /// [WARNING] Unable to change data as warehouse tracking was completed or cancelled
         /// </summary>
         public const string WarehouseTracking_Warning0009 = "WarehouseTracking.Warning0009";
         /// <summary>
-        /// [WARNING] Cannot process delete as warehouse tracking detail still contains item
+        /// [WARNING] Unable to process delete as warehouse tracking detail still contains item
         /// </summary>
         public const string WarehouseTracking_Warning0010 = "WarehouseTracking.Warning0010";
         /// <summary>
@@ -913,7 +970,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0011 = "WarehouseTracking.Warning0011";
         /// <summary>
-        /// [WARNING] Cannot process update as exist item has been cataloged
+        /// [WARNING] Unable to process update as exist item has been cataloged
         /// </summary>
         public const string WarehouseTracking_Warning0012 = "WarehouseTracking.Warning0012";
         /// <summary>
@@ -921,7 +978,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0013 = "WarehouseTracking.Warning0013";
         /// <summary>
-        /// [WARNING] Cannot change data as existing item has been cataloged
+        /// [WARNING] Unable to change data as existing item has been cataloged
         /// </summary>
         public const string WarehouseTracking_Warning0014 = "WarehouseTracking.Warning0014";
         /// <summary>
@@ -929,7 +986,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0015 = "WarehouseTracking.Warning0015";
         /// <summary>
-        /// [WARNING] Cannot change item when tracking type is stock out or transfer
+        /// [WARNING] Unable to change item when tracking type is stock out or transfer
         /// </summary>
         public const string WarehouseTracking_Warning0016 = "WarehouseTracking.Warning0016";
         /// <summary>
@@ -937,7 +994,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0017 = "WarehouseTracking.Warning0017";
         /// <summary>
-        /// [WARNING] Cannot register unique barcode for warehouse tracking detail as it has not been cataloged yet
+        /// [WARNING] Unable to register unique barcode for warehouse tracking detail as it has not been cataloged yet
         /// </summary>
         public const string WarehouseTracking_Warning0018 = "WarehouseTracking.Warning0018";
         /// <summary>
@@ -976,7 +1033,7 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string Transaction_Warning0001 = "Transaction.Warning0001";
         /// <summary>
-        /// [WARNING] Cannot process create payment for library card register as not found card information
+        /// [WARNING] Unable to process create payment for library card register as not found card information
         /// </summary>
         public const string Transaction_Warning0002 = "Transaction.Warning0002";
         /// <summary>
@@ -1015,9 +1072,21 @@ namespace FPTU_ELibrary.Application.Common
         
         #region Fine
         /// <summary>
+        /// [WARNING] Paid for {0} fines successfully
+        /// </summary>
+        public const string Fine_Success0001 = "Fine.Success0001";
+        /// <summary>
         /// [WARNING] Existing {0} fines haven't been paid yet. Please make payment to continue
         /// </summary>
         public const string Fine_Warning0001 = "Fine.Warning0001";
+        /// <summary>
+        /// [WARNING] Failed to pay for fines as {0}
+        /// </summary>
+        public const string Fine_Fail0001 = "Fine.Fail0001";
+        /// <summary>
+        /// [WARNING] Failed to pay for fines
+        /// </summary>
+        public const string Fine_Fail0002 = "Fine.Fail0002";
         #endregion
         #endregion
     }

@@ -2061,43 +2061,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             var entities = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec)).ToList();
             if (entities.Any())
             {
-                // Initialize amount calculation props
-                var totalRequestAmount = 0;
-                var totalBorrowingAmount = 0;
-
-                // Build spec
-                var borrowReqSpec = new BaseSpecification<BorrowRequest>(br =>
-                    br.LibraryCardId == validCardId && // with specific library card
-                    br.Status == BorrowRequestStatus.Created); // In created status
-                // Count requesting amount to check for threshold
-                var listRequestAmount = (await _unitOfWork.Repository<BorrowRequest, int>()
-                        .GetAllWithSpecAndSelectorAsync(borrowReqSpec, selector: s => s.BorrowRequestDetails.Count))
-                    .ToList();
-                totalRequestAmount = listRequestAmount?.Select(i => i).Sum() ?? 0;
-
-                // Build spec
-                var borrowRecSpec = new BaseSpecification<BorrowRecord>(br => br.LibraryCardId == validCardId);
-                // Count borrowed amount to check for threshold
-                var listBorrowingAmount = (await _borrowRecordService.Value
-                            .GetAllWithSpecAndSelectorAsync(borrowRecSpec,
-                                selector: s => s.BorrowRecordDetails
-                                    .Count(brd => brd.Status == BorrowRecordStatus.Borrowing && // Is borrowing 
-                                                  brd.ReturnDate == null)) // Has not return yet
-                    ).Data as List<int>;
-                totalBorrowingAmount = listBorrowingAmount?.Select(i => i).Sum() ?? 0;
-
-                // Check whether request + borrowed amount is exceed than borrow threshold 
-                IServiceResult? validateAmountRes = null;
-                if (totalBorrowingAmount > 0 || totalRequestAmount > 0)
-                {
-                    // Sum requested + borrowed + item to borrow 
-                    var sumTotal = totalRequestAmount + totalBorrowingAmount + ids.Length;
-                    // Validate borrow amount
-                    validateAmountRes = await _borrowRequestService.Value.ValidateBorrowAmountAsync(
-                        totalItem: sumTotal,
-                        libraryCardId: validCardId);
-                }
-
                 // Initialize response collections
                 var alreadyBorrowedItems = new List<HomePageItemDto>();
                 var alreadyRequestedItems = new List<HomePageItemDto>();
@@ -2187,11 +2150,12 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     }
                 }
 
-                // Only process response for amount exceed than threshold when not exist any reserve items
-                if (allowToReserveItems.Count == 0)
-                {
-                    if (validateAmountRes != null) return validateAmountRes;
-                }
+                // Validate amount of allowing to borrow items
+                var validateAmountRes = await _borrowRequestService.Value.ValidateBorrowAmountAsync(
+                    totalItem: allowToBorrowItems.Count,
+                    libraryCardId: validCardId);
+                // Check whether exceeding than threshold
+                if (validateAmountRes != null) return validateAmountRes;
 
                 // Get successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,

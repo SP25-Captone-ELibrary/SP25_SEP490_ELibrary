@@ -189,7 +189,8 @@ namespace FPTU_ELibrary.API.Extensions
 						: null,
 					Fines = brd.Fines.Select(f => new FineDto()
 					{
-						FinePolicyId = f.FinePolicyId
+						FinePolicyId = f.FinePolicyId,
+						FineNote = f.FineNote
 					}).ToList()
 				}).ToList()
 			};
@@ -205,7 +206,6 @@ namespace FPTU_ELibrary.API.Extensions
 					Fines = brd.Fines.Select(f => new FineDto()
 					{
 						FinePolicyId = f.FinePolicyId,
-						FineAmount = f.FineAmount,
 						FineNote = f.FineNote
 					}).ToList()
 				}).ToList()

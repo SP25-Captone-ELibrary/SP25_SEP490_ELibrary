@@ -1,11 +1,10 @@
 using System.Text.Json.Serialization;
-using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
-public class ReservationQueueDto
+public class GetReservationQueueDto
 {
     // Key
     public int QueueId { get; set; }
@@ -20,7 +19,7 @@ public class ReservationQueueDto
     public Guid LibraryCardId { get; set; }
     
     // Queue status
-    public ReservationQueueStatus QueueStatus { get; set; }
+    public ReservationQueueStatus QueueStatus { get; set; } 
     
     // Belongs to specific request (if any)
     public int? BorrowRequestId { get; set; }
@@ -45,18 +44,43 @@ public class ReservationQueueDto
     public bool IsNotified { get; set; }
     
     // Cancellation details
-    public string? CancelledBy { get; set; } 
+    public string? CancelledBy { get; set; }
     public string? CancellationReason { get; set; } 
     
     // Mapping entities
-    public LibraryItemDto LibraryItem { get; set; } = null!;
+    public LibraryItemDetailDto LibraryItem { get; set; } = null!;
     
     [JsonIgnore] 
     public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
-
-    [JsonIgnore]
-    public LibraryCardDto LibraryCard { get; set; } = null!;
     
     [JsonIgnore] 
-    public BorrowRequestDto? BorrowRequest { get; set; }
+    public GetBorrowRequestDto? BorrowRequest { get; set; }
+}
+
+public static class GetReservationQueueDtoExtensions
+{
+    public static GetReservationQueueDto ToGetReservationQueueDto(this ReservationQueueDto dto)
+    {
+        return new()
+        {
+            QueueId = dto.QueueId,
+            LibraryItemId = dto.LibraryItemId,
+            LibraryItemInstanceId = dto.LibraryItemInstanceId,
+            LibraryCardId = dto.LibraryCardId,
+            QueueStatus = dto.QueueStatus,
+            BorrowRequestId = dto.BorrowRequestId,
+            IsReservedAfterRequestFailed = dto.IsReservedAfterRequestFailed,
+            ExpectedAvailableDateMin = dto.ExpectedAvailableDateMin,
+            ExpectedAvailableDateMax = dto.ExpectedAvailableDateMax,
+            ReservationDate = dto.ReservationDate,
+            ExpiryDate = dto.ExpiryDate,
+            CollectedDate = dto.CollectedDate,
+            IsNotified = dto.IsNotified,
+            CancelledBy = dto.CancelledBy,
+            CancellationReason = dto.CancellationReason,
+            BorrowRequest = dto.BorrowRequest?.ToGetBorrowRequestDto(),
+            LibraryItem = dto.LibraryItem.ToLibraryItemDetailDto(),
+            LibraryItemInstance = dto.LibraryItemInstance
+        };
+    }
 }

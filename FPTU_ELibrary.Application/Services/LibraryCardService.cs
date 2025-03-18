@@ -2364,7 +2364,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                           </ul>
                       </div>
                       
-                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                       
                       <p><strong>Trân trọng,</strong></p>
                       <p>{{libName}}</p>
@@ -2425,7 +2425,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                      
                      <p>Vui lòng sửa chữa thông tin và gửi lại yêu cầu xác thực thẻ và đợi thư viện phản hồi<p>
                      
-                     <p>Nếu bạn cần thêm thông tin hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                     <p>Nếu bạn cần thêm thông tin hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
                      <p>{{libName}}</p>
@@ -2500,7 +2500,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                           </ul>
                       </div>
                       
-                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                       
                       <p><strong>Trân trọng,</strong></p>
                       <p>{{libName}}</p>
@@ -2619,7 +2619,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 		                 </ul>
 		             </div>
 		             
-		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
 		             
 		             <p><strong>Trân trọng,</strong></p>
 		             <p>{{libName}}</p>

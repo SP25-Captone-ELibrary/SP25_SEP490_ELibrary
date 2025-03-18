@@ -34,10 +34,14 @@ public class BorrowRecordDetail
     // Total extension time  
     public int TotalExtension { get; set; }
     
+    // Processed return by
+    public Guid? ProcessedReturnBy { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
     public BorrowRecord BorrowRecord { get; set; } = null!;
-    
+
+    public Employee? ProcessedReturnByNavigation { get; set; }
     public LibraryItemInstance LibraryItemInstance { get; set; } = null!;
     public LibraryItemCondition Condition { get; set; } = null!;
     public LibraryItemCondition? ReturnCondition { get; set; }

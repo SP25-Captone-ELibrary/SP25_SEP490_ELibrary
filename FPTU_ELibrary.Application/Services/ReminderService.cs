@@ -59,7 +59,7 @@ public class ReminderService : BackgroundService
                                 // Define subject
                                 subject: subject,
                                 // Add email body content
-                                content: GetBorrowExpiryReminderEmailBody(
+                                content: GetBorrowRequestExpiryReminderEmailBody(
                                     user: userInfo,
                                     borrowReq: br, 
                                     libName: appSettingMonitor.CurrentValue.LibraryName,
@@ -98,7 +98,7 @@ public class ReminderService : BackgroundService
                                 // Define subject
                                 subject: subject,
                                 // Add email body content
-                                content: GetBorrowRecordSuccessEmailBody(
+                                content: GetBorrowRecordReminderEmailBody(
                                     user: userInfo,
                                     borrowRecord: br, 
                                     libName: appSettingMonitor.CurrentValue.LibraryName,
@@ -290,7 +290,7 @@ public class ReminderService : BackgroundService
                          </ul>
                      </div>
                      
-                     <p>Để gia hạn thẻ thư viện, vui lòng đến trực tiếp thư viện hoặc liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                     <p>Để gia hạn thẻ thư viện, vui lòng đến trực tiếp thư viện hoặc liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, đừng ngần ngại liên hệ với chúng tôi.</p>
                      
@@ -394,7 +394,7 @@ public class ReminderService : BackgroundService
         return false;
     }
     
-    private string GetBorrowExpiryReminderEmailBody(User user, BorrowRequest borrowReq, string libName, string libLocation, string libContact)
+    private string GetBorrowRequestExpiryReminderEmailBody(User user, BorrowRequest borrowReq, string libName, string libLocation, string libContact)
     {
         var itemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail => 
             $"""
@@ -472,7 +472,7 @@ public class ReminderService : BackgroundService
                 </div>
                 
                 <p>Vui lòng đến nhận các tài liệu trước ngày hết hạn để tránh việc yêu cầu bị tự động hủy.</p>
-                <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ thư viện qua số <strong>{{libContact}}</strong>.</p>
+                <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ thư viện qua email: <strong>{{libContact}}</strong>.</p>
                 <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện!</p>
                 
                 <p class="footer"><strong>Trân trọng,</strong></p>
@@ -482,7 +482,7 @@ public class ReminderService : BackgroundService
             """;
     }
     
-    private string GetBorrowRecordSuccessEmailBody(User user, BorrowRecord borrowRecord, string libName, string libLocation, string libContact)
+    private string GetBorrowRecordReminderEmailBody(User user, BorrowRecord borrowRecord, string libName, string libLocation, string libContact)
     {
         var itemDetails = string.Join("", borrowRecord.BorrowRecordDetails.Select(detail => 
            $"""
@@ -573,7 +573,7 @@ public class ReminderService : BackgroundService
                     
                     <p><em>Lưu ý:</em> Vui lòng trả sách trước ngày hẹn trả để tránh bị phạt phí.</p>
                     
-                    <p>Nếu có bất kỳ thắc mắc nào, xin vui lòng liên hệ với thư viện qua số <strong>{{libContact}}</strong>.</p>
+                    <p>Nếu có bất kỳ thắc mắc nào, xin vui lòng liên hệ với thư viện qua email: <strong>{{libContact}}</strong>.</p>
                     
                     <p>Cảm ơn bạn đã hợp tác!</p>
                     
@@ -583,7 +583,5 @@ public class ReminderService : BackgroundService
                 </html>
                 """;
     }
-
-
     #endregion
 }

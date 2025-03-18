@@ -1692,8 +1692,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    CreatedBy = librarian.Email,
 					LibraryItemInventory = new LibraryItemInventory()
 			        {
-				        TotalUnits = 0,
-				        AvailableUnits = 0,
+				        TotalUnits = 4,
+				        AvailableUnits = 4,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
 						RequestUnits = 0,
@@ -1705,7 +1705,70 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        {
 					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00003").AuthorId
 				        }
-			        }
+			        },
+					LibraryItemInstances = new List<LibraryItemInstance>()
+					{
+						new()
+						{
+							Barcode = "SD00011",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00012",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00013",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00014",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00015",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						}
+					}
 			    },
 			    new LibraryItem
 			    {

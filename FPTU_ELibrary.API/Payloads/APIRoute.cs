@@ -88,6 +88,7 @@
 			// [GET]
 			public const string GetAll = Base + "/management/borrows/records";
 			public const string GetById = Base + "/management/borrows/records/{id}";
+			public const string GetAllUserPendingActivity = Base + "/management/borrows/records/user-pending-activity";
 			// [POST]
 			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
 			public const string Create = Base + "/management/borrows/records";
@@ -523,12 +524,13 @@
 			public const string GetMapByFloorId = Base + "/management/location/map/floors/{floorId}";
 			public const string GetMapShelfDetailById = Base + "/management/location/map/shelves/{shelfId}";
 
-
 			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
 			public const string GetZonesByFloorId = Base + "/management/location/zones";
 			public const string GetSectionsByZoneId = Base + "/management/location/sections";
 			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
 			#endregion
+			
+			public const string GetShelfWithFloorZoneSectionById = Base + "/location/shelves/{shelfId}";
 		}
 		
 		/// <summary>
@@ -716,6 +718,7 @@
 			public const string GetPrivacyTransaction = Base + "/payment/transactions";
 			// [POST]
 			public const string CreateTransaction = Base + "/payment/transactions";
+			public const string CreateBorrowRecordTransaction = Base + "/payment/transactions/borrows/records/{borrowRecordId}";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
 			public const string SendWebhookConfirm = Base + "/payment/pay-os/webhook-confirm";

@@ -78,6 +78,13 @@ public class BorrowRecordDetailConfiguration : IEntityTypeConfiguration<BorrowRe
             .HasForeignKey(e => e.ReturnConditionId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_BorrowRecordDetail_ReturnConditionId");
+        
+        builder.Property(e => e.ProcessedReturnBy).HasColumnName("processed_return_by");
+        builder.HasOne(e => e.ProcessedReturnByNavigation).WithMany(p => p.BorrowRecordDetails)
+            .HasForeignKey(e => e.ProcessedReturnBy)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_BorrowRecordDetail_ProcessedReturnBy");
         #endregion
     }
 }
