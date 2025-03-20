@@ -25,6 +25,7 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
     Task<IServiceResult> UpdateOutOfShelfAsync(string barcode);
     Task<IServiceResult> UpdateRangeInShelfAsync(List<string> barcodes);
     Task<IServiceResult> UpdateRangeOutOfShelfAsync(List<string> barcodes);
+    // Task<IServiceResult> UpdateLostStatusWithoutSaveChangesAsync(int libraryItemInstanceId);
     Task<IServiceResult> UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(List<int> libraryItemInstanceIds,
         LibraryItemInstanceStatus status, bool isProcessBorrowRequest);
 }

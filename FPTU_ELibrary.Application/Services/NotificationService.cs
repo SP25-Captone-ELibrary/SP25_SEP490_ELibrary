@@ -144,7 +144,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             var baseSpec = new BaseSpecification<Employee>(e => Equals(e.Email, createdByEmail));
             var employeeDto = (await _employeeService.GetWithSpecAsync(baseSpec)).Data as EmployeeDto;
             // Not found any employee match
-            if (employeeDto == null) throw new ForbiddenException(); // Forbid to access
+            if (employeeDto == null) throw new ForbiddenException("Not allow to access"); // Forbid to access
             
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(dto);
@@ -236,7 +236,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             // Not found any match
             if (!isEmailExist)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("Not allow to access");
             }
 
             // Try to parse specification to NotificationSpecification
@@ -315,7 +315,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             // Not found any match
             if (!isEmailExist)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("Not allow to access");
             }
             
             // Build spec

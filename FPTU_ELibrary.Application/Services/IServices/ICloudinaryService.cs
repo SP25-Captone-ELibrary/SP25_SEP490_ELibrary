@@ -6,6 +6,7 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 
 public interface ICloudinaryService
 {
+    Task<IServiceResult> PublicUploadAsync(string email, IFormFile file, FileType fileType, ResourceType resourceType);
     Task<IServiceResult> UploadAsync(IFormFile file, FileType fileType, ResourceType resourceType);
     Task<IServiceResult> UpdateAsync(string publicId, IFormFile file, FileType fileType);
     Task<IServiceResult> DeleteAsync(string publicId, FileType fileType);

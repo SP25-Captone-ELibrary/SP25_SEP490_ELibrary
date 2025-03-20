@@ -24,6 +24,9 @@ public class LibraryItemInstanceDto
     // Mark as delete
     public bool IsDeleted { get; set; }
 
+    // Mark as the instance has been circulated
+    public bool IsCirculated { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
     public LibraryItemDto LibraryItem { get; set; } = null!;

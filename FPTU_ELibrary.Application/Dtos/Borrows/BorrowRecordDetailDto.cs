@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Employees;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -35,12 +37,18 @@ public class BorrowRecordDetailDto
     // Total extension time  
     public int TotalExtension { get; set; }
     
+    // Processed return by
+    public Guid? ProcessedReturnBy { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
     public BorrowRecordDto BorrowRecord { get; set; } = null!;
+    public EmployeeDto? ProcessedReturnByNavigation { get; set; }
     public LibraryItemInstanceDto LibraryItemInstance { get; set; } = null!;
     public LibraryItemConditionDto Condition { get; set; } = null!;
+    public LibraryItemConditionDto? ReturnCondition { get; set; } = null!;
     
     // Navigations
     public ICollection<BorrowDetailExtensionHistoryDto> BorrowDetailExtensionHistories { get; set; } = new List<BorrowDetailExtensionHistoryDto>();
+    public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
 }

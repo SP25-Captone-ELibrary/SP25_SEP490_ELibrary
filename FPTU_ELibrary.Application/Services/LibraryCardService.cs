@@ -432,7 +432,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 	        var isEmailExist = (await _employeeSvc.AnyAsync(e => Equals(e.Email, processedByEmail))).Data is true;
 	        if (!isEmailExist) // not found
 	        {
-		        throw new ForbiddenException(); 
+		        throw new ForbiddenException("Not allow to access"); 
 	        }
 	        
 	        // Retrieve user information
@@ -738,7 +738,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 .Include(u => u.LibraryCard)!
             );
             var userDto = (await _userSvc.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException(); // Not found user 
+            if (userDto == null) throw new ForbiddenException("Not allow to access"); // Not found user 
             
             // Try parse card id to Guid type 
             Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId);
@@ -2364,7 +2364,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                           </ul>
                       </div>
                       
-                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                       
                       <p><strong>Trân trọng,</strong></p>
                       <p>{{libName}}</p>
@@ -2425,7 +2425,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                      
                      <p>Vui lòng sửa chữa thông tin và gửi lại yêu cầu xác thực thẻ và đợi thư viện phản hồi<p>
                      
-                     <p>Nếu bạn cần thêm thông tin hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                     <p>Nếu bạn cần thêm thông tin hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
                      <p>{{libName}}</p>
@@ -2500,7 +2500,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                           </ul>
                       </div>
                       
-                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                       
                       <p><strong>Trân trọng,</strong></p>
                       <p>{{libName}}</p>
@@ -2619,7 +2619,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 		                 </ul>
 		             </div>
 		             
-		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+		             <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
 		             
 		             <p><strong>Trân trọng,</strong></p>
 		             <p>{{libName}}</p>

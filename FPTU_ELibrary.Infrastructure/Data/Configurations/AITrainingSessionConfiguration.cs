@@ -26,6 +26,7 @@ public class AITrainingSessionConfiguration : IEntityTypeConfiguration<AITrainin
             .HasDefaultValue(0)
             .HasColumnName("total_trained_item");
         builder.Property(e => e.TotalTrainedTime)
+            .HasColumnType("decimal(10,2)")
             .HasColumnName("total_trained_time");
         builder.Property(e => e.ErrorMessage)
             .HasColumnType("nvarchar(250)")

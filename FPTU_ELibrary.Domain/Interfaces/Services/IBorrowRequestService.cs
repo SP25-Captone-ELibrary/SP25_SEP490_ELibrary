@@ -9,9 +9,16 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     where TDto : class
 {
     Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
-    Task<IServiceResult> CreateAsync(string email, TDto dto, List<int> reservationIds, List<int> userFavoriteIds);
-    Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason);
+    Task<IServiceResult> GetAllPendingRequestByLibCardIdAsync(Guid libraryCardId);
+    Task<IServiceResult> CountAllPendingRequestByLibCardIdAsync(Guid libraryCardId);
+    Task<IServiceResult> CreateAsync(string email, TDto dto, List<int> reservationItemIds);
+    Task<IServiceResult> AddItemAsync(string email, int id, int libraryItemId);
+    Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason, bool isConfirmed = false);
+    Task<IServiceResult> CancelManagementAsync(Guid libraryCardId, int id, string? cancellationReason, bool isConfirmed = false);
+    Task<IServiceResult> CancelSpecificItemAsync(string email, int id, int libraryItemId);
+    Task<IServiceResult> CancelSpecificItemManagementAsync(Guid libraryCardId, int id, int libraryItemId);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
     Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);
-    Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId);
+    Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId,
+        bool isCallFromRecordSvc = false, int totalActualItem = 0);
 }

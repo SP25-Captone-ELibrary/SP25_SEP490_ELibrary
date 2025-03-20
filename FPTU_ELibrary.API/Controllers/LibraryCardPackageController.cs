@@ -72,4 +72,10 @@ public class LibraryCardPackageController : ControllerBase
     {
         return Ok(await _packageSvc.GetAllAsync());
     }
+    
+    [HttpGet(APIRoute.LibraryCardPackage.GetByIdPublic, Name = nameof(GetLibraryCardPackageByIdPublicAsync))]
+    public async Task<IActionResult> GetLibraryCardPackageByIdPublicAsync([FromRoute] int id)
+    {
+        return Ok(await _packageSvc.GetByIdAsync(id: id));
+    }
 }

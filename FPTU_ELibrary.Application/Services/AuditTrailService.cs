@@ -327,6 +327,7 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
                     CreatedBy = bec.NewValues["CreatedBy"]?.ToString() ?? null!,
                     UpdatedBy = bec.NewValues["UpdatedBy"]?.ToString() ?? null!,
                     IsDeleted = bool.TryParse(bec.NewValues["IsDeleted"]?.ToString(), out var validBool) && validBool,
+                    IsCirculated = bool.TryParse(bec.NewValues["IsCirculated"]?.ToString(), out var validBool2) && validBool2,
                 }).ToList();
 
             if (itemInstanceDtos.Any())

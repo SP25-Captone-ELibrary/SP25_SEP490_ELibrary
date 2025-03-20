@@ -11,6 +11,9 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services
     public interface IUserService<TDto> : IGenericService<User, TDto, Guid>
         where TDto : class
     {
+        Task<IServiceResult> GetPendingLibraryActivityAsync(Guid libraryCardId);
+        Task<IServiceResult> GetPendingLibraryActivitySummaryAsync(Guid libraryCardId);
+        Task<IServiceResult> GetPendingLibraryActivitySummaryByEmailAsync(string email);
         Task<IServiceResult> GetByEmailAndPasswordAsync(string email, string password);
         Task<IServiceResult> GetByEmailAsync(string email);
         Task<IServiceResult> CreateManyAccountsWithSendEmail(string email, IFormFile? excelFile, DuplicateHandle duplicateHandle, bool isSendEmail = false);

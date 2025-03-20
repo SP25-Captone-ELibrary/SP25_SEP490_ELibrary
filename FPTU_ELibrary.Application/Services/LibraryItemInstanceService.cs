@@ -240,22 +240,27 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             // Check if status change
             if (!Equals(existingEntity.Status, enumStatus.ToString())) // Change detected
             {
-                // Do not allow to update BORROWED/RESERVED status
+                // Msg: Cannot update item instance status as {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0022);
+                    
+                // Do not allow to update BORROWED/RESERVED/LOST status
                 // With RESERVED status of item instance, it will change automatically when 
                 // someone return their borrowed book and assigned that book to others, who are in reservation queue
                 if (enumStatus == LibraryItemInstanceStatus.Borrowed ||
-                    enumStatus == LibraryItemInstanceStatus.Reserved)
+                    enumStatus == LibraryItemInstanceStatus.Reserved ||
+                    enumStatus == LibraryItemInstanceStatus.Lost)
                 {
-                    // Fail to update
-                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0022,
+                        StringUtils.Format(errMsg, isEng 
+                                ? "selected status is invalid" 
+                                : "trạng thái thay đổi không hợp lệ"));
                 }
                 else if (enumStatus == LibraryItemInstanceStatus.InShelf)
                 {
                     // Required exist shelf location in library item for update to in-shelf status
                     if (existingEntity.LibraryItem.ShelfId == null || existingEntity.LibraryItem.ShelfId == 0)
                     {
-                        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0011);
+                        errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0011);
                         // Required shelf location
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0011,
                             StringUtils.Format(errMsg, isEng
@@ -535,7 +540,8 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     UpdatedAt = li.UpdatedAt,   
                     CreatedBy = li.CreatedBy,   
                     UpdatedBy = li.UpdatedBy,   
-                    IsDeleted = li.IsDeleted,   
+                    IsDeleted = li.IsDeleted, 
+                    IsCirculated = li.IsCirculated,
                     LibraryItem = new LibraryItem()
                     {
                         LibraryItemId = li.LibraryItem.LibraryItemId,
@@ -670,14 +676,21 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
                     StringUtils.Format(constraintMsg, isEng 
                         ? "the item's status is currently 'borrowed'" 
-                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                        : "trạng thái của tài liệu hiện đang mượn"));
             }
             else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
                     StringUtils.Format(constraintMsg, isEng 
                         ? "the item's status is currently 'reserved'" 
-                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                        : "trạng thái của tài liệu hiện đang được đặt trước"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Lost))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently 'lost'" 
+                        : "trạng thái của tài liệu hiện đang bị mất"));
             }
             
             // Map to instance dto
@@ -853,6 +866,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
                     // Boolean 
                     IsDeleted = false,
+                    IsCirculated = false,
                     // Condition histories
                     LibraryItemConditionHistories =
                         _mapper.Map<List<LibraryItemConditionHistory>>(bec.LibraryItemConditionHistories)
@@ -996,6 +1010,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
                     // Boolean 
                     IsDeleted = false,
+                    IsCirculated = false,
                     // Condition histories
                     LibraryItemConditionHistories =
                         _mapper.Map<List<LibraryItemConditionHistory>>(bec.LibraryItemConditionHistories)
@@ -1118,24 +1133,31 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     // Check if status change
                     if (!Equals(itemInstanceEntity.Status, toUpdateStatus.ToString())) // Change detected
                     {
+                        // Msg: Cannot update item instance status as {0}
+                        var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0022);
+                        
                         // Do not allow to update BORROWED/RESERVED status
                         // With RESERVED status of item instance, it will change automatically when 
                         // someone return their borrowed book and assigned that book to others, who are in reservation queue
                         if (toUpdateStatus == LibraryItemInstanceStatus.Borrowed ||
-                            toUpdateStatus == LibraryItemInstanceStatus.Reserved)
+                            toUpdateStatus == LibraryItemInstanceStatus.Reserved ||
+                            toUpdateStatus == LibraryItemInstanceStatus.Lost)
                         {
                             // Error key
                             var key = $"libraryItemInstances.[{i}].status";
-                            var msg = isEng ? "Invalid status selection" : "Trạng thái được chọn không hợp lệ";
                             // Add error dic 
-                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, key, msg);
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                                key: key, 
+                                msg: StringUtils.Format(errMsg, isEng 
+                                     ? "selected status is invalid" 
+                                     : "trạng thái thay đổi không hợp lệ"));
                         }
                         else if (toUpdateStatus == LibraryItemInstanceStatus.InShelf)
                         {
                             // Required exist shelf location in library item for update to in-shelf status
                             if (itemInstanceEntity.LibraryItem.ShelfId == null || itemInstanceEntity.LibraryItem.ShelfId == 0)
                             {
-                                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0011);
+                                errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0011);
                                 // Required shelf location
                                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0011,
                                     StringUtils.Format(errMsg, isEng
@@ -1326,15 +1348,22 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
                     StringUtils.Format(constraintMsg, isEng 
-                        ? "the item's status is currently 'borrowed'" 
-                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                        ? "the item's status is currently borrowed" 
+                        : "trạng thái của tài liệu hiện đang mượn"));
             }
             else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
                     StringUtils.Format(constraintMsg, isEng 
-                        ? "the item's status is currently 'reserved'" 
-                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                        ? "the item's status is currently reserved" 
+                        : "trạng thái của tài liệu hiện đang được đặt trước"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Lost))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently lost" 
+                        : "trạng thái của tài liệu hiện đang bị mất"));
             }
             
             // Change status
@@ -1409,15 +1438,22 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
                     StringUtils.Format(constraintMsg, isEng 
-                        ? "the item's status is currently 'borrowed'" 
-                        : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                        ? "the item's status is currently borrowed" 
+                        : "trạng thái của tài liệu hiện đang mượn"));
             }
             else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Reserved))
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
                     StringUtils.Format(constraintMsg, isEng 
-                        ? "the item's status is currently 'reserved'" 
-                        : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                        ? "the item's status is currently reserved" 
+                        : "trạng thái của tài liệu hiện đang được đặt trước"));
+            }
+            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Lost))
+            {
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                    StringUtils.Format(constraintMsg, isEng 
+                        ? "the item's status is currently lost" 
+                        : "trạng thái của tài liệu hiện đang bị mất"));
             }
             
             // Change status
@@ -1499,8 +1535,8 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
                         key: $"barcodes[{i}]", 
                         msg: StringUtils.Format(constraintMsg, isEng
-                            ? "the item's status is currently 'borrowed'"
-                            : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                            ? "the item's status is currently borrowed"
+                            : "trạng thái của tài liệu hiện đang mượn"));
                 }
                 else if (instance.Status == nameof(LibraryItemInstanceStatus.Reserved))
                 {
@@ -1508,8 +1544,17 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
                         key: $"barcodes[{i}]", 
                         msg: StringUtils.Format(constraintMsg, isEng
-                            ? "the item's status is currently 'reserved'"
-                            : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                            ? "the item's status is currently reserved"
+                            : "trạng thái của tài liệu hiện đang được đặt trước"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Lost))
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs, 
+                        key: $"barcodes[{i}]", 
+                        msg: StringUtils.Format(constraintMsg, isEng
+                            ? "the item's status is currently lost"
+                            : "trạng thái của tài liệu hiện đang bị mất"));
                 }
 
                 // Change status
@@ -1596,15 +1641,22 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                 {
                     return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
                         StringUtils.Format(constraintMsg, isEng 
-                            ? "the item's status is currently 'borrowed'" 
-                            : "trạng thái của tài liệu hiện đang là 'đang mượn'"));
+                            ? "the item's status is currently borrowed" 
+                            : "trạng thái của tài liệu hiện đang mượn"));
                 }
                 else if (instance.Status == nameof(LibraryItemInstanceStatus.Reserved))
                 {
                     return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
                         StringUtils.Format(constraintMsg, isEng 
                             ? "the item's status is currently 'reserved'" 
-                            : "trạng thái của tài liệu hiện đang là 'được đặt trước'"));
+                            : "trạng thái của tài liệu hiện đang được đặt trước"));
+                }
+                else if (instance.Status == nameof(LibraryItemInstanceStatus.Lost))
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0021,
+                        StringUtils.Format(constraintMsg, isEng 
+                            ? "the item's status is currently lost" 
+                            : "trạng thái của tài liệu hiện đang bị mất"));
                 }
 
                 // Change status
@@ -2137,6 +2189,8 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         {
                             // Update status
                             instance.Status = nameof(LibraryItemInstanceStatus.Borrowed);
+                            // Update circulation
+                            instance.IsCirculated = true;
                             
                             // Update inventory quantity
                             if (inventory != null)
@@ -2172,6 +2226,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         }
                         // Case 3: InShelf -> InShelf (no effect)
                         // Case 4: InShelf -> Reserved (not allow)
+                        // Case 5: InShelf -> Lost (not allow)
                         break;
                     case nameof(LibraryItemInstanceStatus.OutOfShelf):
                         // Case 1: OutOfShelf -> InShelf
@@ -2199,24 +2254,28 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         }
                         // Case 2: OutOfShelf -> OutOfShelf (no effect)
                         // Case 3: OutOfShelf -> Borrowed (not allow)
-                        // Case 4: OutOfShelf -> Reserved (not allow)
-                        break;
-                    case nameof(LibraryItemInstanceStatus.Borrowed):
-                        // Case 1: Borrowed -> InShelf (return item)
-                        if (status == LibraryItemInstanceStatus.InShelf)
+                        // Case 4: OutOfShelf -> Reserved (assign return item to reservation)
+                        if (status == LibraryItemInstanceStatus.Reserved)
                         {
                             // Update status
-                            instance.Status = nameof(LibraryItemInstanceStatus.InShelf);
+                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
+                        }
+                        // Case 5: OutOfShelf -> Lost (not allow)
+                        break;
+                    case nameof(LibraryItemInstanceStatus.Borrowed):
+                        // Case 1: Borrowed -> InShelf (Not allow)
+                        // Case 2: Borrowed -> OutOfShelf (return item) 
+                        if (status == LibraryItemInstanceStatus.OutOfShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
                             
                             if (inventory != null && inventory.BorrowedUnits > 0)
                             {
                                 // Reduce borrow units
                                 inventory.BorrowedUnits--;
-                                // Increase availability units
-                                inventory.AvailableUnits++;
                             }
                         }
-                        // Case 2: Borrowed -> OutOfShelf (not allow) 
                         // Case 2: Borrowed -> Borrowed (no effect) 
                         // Case 4: Borrowed -> Reserved (assign item to reservation queue)
                         if (status == LibraryItemInstanceStatus.Reserved)
@@ -2230,6 +2289,23 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                                 inventory.BorrowedUnits--;
                                 // Increase reserved units
                                 inventory.ReservedUnits++;
+                            }
+                        }
+                        // Case 5: Borrowed -> Lost
+                        if (status == LibraryItemInstanceStatus.Lost)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Lost);
+                            
+                            if (inventory != null && inventory.BorrowedUnits > 0 
+                                                  && inventory.TotalUnits > 0)
+                            {
+                                // Reduce borrow units
+                                inventory.BorrowedUnits--;
+                                // Reduce total units
+                                inventory.TotalUnits--;
+                                // Increase lost units 
+                                inventory.LostUnits++;
                             }
                         }
                         break;
@@ -2247,12 +2323,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                                 inventory.ReservedUnits--;
                             }
                         }
-                        // Case 3: Reserved -> Reserved (assign from one reservation to another)
-                        if (status == LibraryItemInstanceStatus.Reserved)
-                        {
-                            // Update status
-                            instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
-                        }
+                        // Case 3: Reserved -> Reserved (No effect)
                         // Case 4: Reserved -> Borrowed (reservation's person comes to pick up item)
                         if (status == LibraryItemInstanceStatus.Borrowed)
                         {
@@ -2267,6 +2338,10 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                                 inventory.BorrowedUnits++;
                             }
                         }
+                        // Case 5: Reserved -> Lost (not allow)
+                        break;
+                    case nameof(LibraryItemInstanceStatus.Lost):
+                        // Not allow to update from lost status to other statuses
                         break;
                 }
                 

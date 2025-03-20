@@ -11,5 +11,7 @@ public enum LibraryItemInstanceStatus
     [Description("Đang được mượn")]
     Borrowed,
     [Description("Được đặt trước")]
-    Reserved
+    Reserved,
+    [Description("Bị mất")]
+    Lost
 }

@@ -7,12 +7,12 @@ public enum BorrowType
     /// <summary>
     /// Only for reading inside the library
     /// </summary>
-    [Description("Mượn tài quầy")]
+    [Description("Đọc tại chỗ")]
     InLibrary, 
     
     /// <summary>
     /// Borrowing away from the library 
     /// </summary>
-    [Description("Mượn từ xa")]
+    [Description("Mượn mang về")]
     TakeHome   
 }

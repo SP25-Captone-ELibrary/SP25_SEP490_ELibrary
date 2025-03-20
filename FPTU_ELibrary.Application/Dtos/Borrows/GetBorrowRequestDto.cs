@@ -30,6 +30,8 @@ public class GetBorrowRequestDto
     public int TotalRequestItem { get; set; }
     
     public List<LibraryItemDetailDto> LibraryItems { get; set; } = new();
+
+    public List<ReservationQueueDto> ReservationQueues { get; set; } = new();
 }
 
 public static class GetBorrowRequestDtoExtensions
@@ -50,7 +52,10 @@ public static class GetBorrowRequestDtoExtensions
             TotalRequestItem = dto.TotalRequestItem,
             LibraryItems = dto.BorrowRequestDetails
                 .Select(brd => brd.LibraryItem)
-                .Select(li => li.ToLibraryItemDetailDto()).ToList()
+                .Select(li => li.ToLibraryItemDetailDto()).ToList(),
+            ReservationQueues = dto.ReservationQueues.Any() 
+                ? dto.ReservationQueues.ToList() 
+                : new()
         };
     }
 }
