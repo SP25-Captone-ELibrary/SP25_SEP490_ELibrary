@@ -109,7 +109,7 @@ public class VoiceService : IVoiceService
          }
      }
 
-     public async Task<IServiceResult> TextToVoice(string lang, string email, string itemName)
+     public async Task<IServiceResult> TextToVoice(string lang, string email)
      {
          var speechConfig = SpeechConfig.FromSubscription(_monitor.SubscriptionKey, _monitor.Region);
          
@@ -126,7 +126,7 @@ public class VoiceService : IVoiceService
          using var synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
 
          var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
-         var editedScript= StringUtils.Format(script, itemName, email);
+         var editedScript= StringUtils.Format(script, email);
          var result = await synthesizer.SpeakTextAsync(editedScript);
          if (result.Reason != ResultReason.SynthesizingAudioCompleted)
          {

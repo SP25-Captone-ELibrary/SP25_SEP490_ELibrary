@@ -30,6 +30,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 {
     private readonly IEmployeeService<EmployeeDto> _empService;
     private readonly IUserService<UserDto> _userService;
+    private readonly IVoiceService _voiceService;
     private readonly DigitalResourceSettings _digitalSettings;
     private readonly ICloudinaryService _cloudService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
@@ -44,10 +45,12 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         IUserService<UserDto> userService,
         HttpClient client,
         IOptionsMonitor<DigitalResourceSettings> digitalSettings,
+        IVoiceService voiceService,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _empService = empService;
         _userService = userService;
+        _voiceService = voiceService;
         _digitalSettings = digitalSettings.CurrentValue;
         _cloudService = cloudService;
         _libraryItemService = libraryItemService;
@@ -830,7 +833,9 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             if (resource.FileFormat.ToLower().Equals("video"))
             {
+                // var resourceLang = ;
                 var listUrls = resource.LibraryResourceUrls.Select(u => u.Url).ToList();
+                // var audioStream = await PrependTTSAndMergeAsync(listUrls,);
             }
 
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
@@ -842,7 +847,54 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             throw new Exception("Error invoke when process get digital resource");
         }
     }
+    private async Task<MemoryStream> PrependTTSAndMergeAsync(List<string> urls,string lang,string email)
+    {
+        var chunkStreams = await DownloadChunkStreamsAsync(urls);
+        var ttsStream = await _voiceService.TextToVoice(lang, email);
+        var streamValue = (MemoryStream)ttsStream.Data!;
+        
+        var mergedStreams = new List<MemoryStream>();
 
+        foreach (var chunkStream in chunkStreams)
+        {
+            var mergedStream = ConcatenateAudioStreams(new List<MemoryStream> { streamValue, chunkStream });
+            mergedStreams.Add(mergedStream);
+        }
+
+        return ConcatenateAudioStreams(mergedStreams);
+    }
+    private MemoryStream ConcatenateAudioStreams(List<MemoryStream> streams)
+    {
+        var outputStream = new MemoryStream();
+        foreach (var stream in streams)
+        {
+            stream.Position = 0;
+            stream.CopyTo(outputStream);
+        }
+        outputStream.Position = 0;
+        return outputStream;
+    }
+
+    private async Task<List<MemoryStream>> DownloadChunkStreamsAsync(List<string> urls)
+    {
+        using var httpClient = new HttpClient();
+        var streams = new List<MemoryStream>();
+
+        foreach (var url in urls)
+        {
+            var response = await httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var byteArray = await response.Content.ReadAsByteArrayAsync();
+                var memoryStream = new MemoryStream(byteArray);
+                memoryStream.Position = 0;
+                streams.Add(memoryStream);
+            }
+        }
+
+        return streams;
+    }
+    
     public async Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId)
     {
         try
@@ -869,21 +921,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
-
-            var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
-            var user = await _userService.GetWithSpecAsync(userSpec);
-            if (user.Data is null)
-            {
-                var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),isEng
-                    ? "user"
-                    : "người dùng");
-                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,errMsg);
-            }
-            var userValue = (user.Data as UserDto)!;
-            
-            
-            var resourceUrl = resource.ResourceUrl;
-            var pdfStream = await DownloadAndAddWatermark(resourceUrl, email,true);
+            var pdfStream = await DownloadWithoutWaterMark(resource.ResourceUrl);
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
         }
@@ -937,6 +975,57 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 contentByte.AddTemplate(importedPage, 0, 0);
 
                 AddWatermark(contentByte, reader.GetPageSize(i), watermarkText);
+            }
+
+            document.Close();
+            writer.Close();
+            reader.Close();
+
+            outputPdfStream.Position = 0;
+            return outputPdfStream;
+        }
+        catch
+        {
+            outputPdfStream.Dispose();
+            throw;
+        }
+    }
+
+    private async Task<MemoryStream> DownloadWithoutWaterMark(string pdfUrl)
+    {
+        using HttpClient client = new HttpClient();
+        byte[] pdfBytes = await client.GetByteArrayAsync(pdfUrl);
+
+        if (pdfBytes == null || pdfBytes.Length == 0)
+        {
+            throw new InvalidOperationException("Downloaded PDF file is empty or corrupted.");
+        }
+
+        using MemoryStream inputPdfStream = new MemoryStream(pdfBytes);
+        MemoryStream outputPdfStream = new MemoryStream();
+
+        try
+        {
+            PdfReader reader = new PdfReader(inputPdfStream);
+            int totalPages = reader.NumberOfPages;
+
+            if (totalPages == 0)
+            {
+                throw new InvalidOperationException("The PDF file contains no pages.");
+            }
+            
+            Document document = new Document(reader.GetPageSizeWithRotation(1));
+            PdfWriter writer = PdfWriter.GetInstance(document, outputPdfStream);
+            document.Open();
+            PdfContentByte contentByte = writer.DirectContent;
+            
+            int pagesToProcess = Math.Min(5, totalPages);
+            for (int i = 1; i <= pagesToProcess; i++)
+            {
+                document.SetPageSize(reader.GetPageSizeWithRotation(i));
+                document.NewPage();
+                PdfImportedPage importedPage = writer.GetImportedPage(reader, i);
+                contentByte.AddTemplate(importedPage, 0, 0);
             }
 
             document.Close();

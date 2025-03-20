@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250319095404_Initial Database")]
+    [Migration("20250320142622_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -103,7 +103,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("total_trained_item");
 
                     b.Property<decimal?>("TotalTrainedTime")
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("decimal(10,2)")
                         .HasColumnName("total_trained_time");
 
                     b.Property<string>("TrainBy")
@@ -377,6 +377,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_instance_id");
 
+                    b.Property<Guid?>("ProcessedReturnBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("processed_return_by");
+
                     b.Property<int?>("ReturnConditionId")
                         .HasColumnType("int")
                         .HasColumnName("return_condition_id");
@@ -404,6 +408,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasIndex("ConditionId");
 
                     b.HasIndex("LibraryItemInstanceId");
+
+                    b.HasIndex("ProcessedReturnBy");
+
+                    b.HasIndex("ReturnConditionId");
 
                     b.ToTable("Borrow_Record_Detail", (string)null);
                 });
@@ -786,9 +794,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FineId"));
 
-                    b.Property<int>("BorrowRecordId")
+                    b.Property<int>("BorrowRecordDetailId")
                         .HasColumnType("int")
-                        .HasColumnName("borrow_record_id");
+                        .HasColumnName("borrow_record_detail_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime")
@@ -797,9 +805,13 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("ExpiryAt")
+                    b.Property<DateTime?>("ExpiryAt")
                         .HasColumnType("datetime")
                         .HasColumnName("expiry_at");
+
+                    b.Property<decimal>("FineAmount")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("fine_amount");
 
                     b.Property<string>("FineNote")
                         .HasMaxLength(255)
@@ -819,7 +831,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasKey("FineId")
                         .HasName("PK_Fine_FineId");
 
-                    b.HasIndex("BorrowRecordId");
+                    b.HasIndex("BorrowRecordDetailId");
 
                     b.HasIndex("CreatedBy");
 
@@ -847,7 +859,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("description");
 
-                    b.Property<decimal>("FineAmountPerDay")
+                    b.Property<decimal?>("FineAmountPerDay")
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("fine_amount_per_day");
 
@@ -1456,6 +1468,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("IsCirculated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_circulated");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
@@ -1504,6 +1522,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0)
                         .HasColumnName("borrowed_units");
+
+                    b.Property<int>("LostUnits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("lost_units");
 
                     b.Property<int>("RequestUnits")
                         .ValueGeneratedOnAdd()
@@ -2101,6 +2125,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QueueId"));
 
+                    b.Property<int?>("BorrowRequestId")
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_request_id");
+
                     b.Property<string>("CancellationReason")
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("cancellation_reason");
@@ -2108,6 +2136,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<string>("CancelledBy")
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("cancelled_by");
+
+                    b.Property<DateTime?>("CollectedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("collected_date");
 
                     b.Property<DateTime?>("ExpectedAvailableDateMax")
                         .HasColumnType("datetime")
@@ -2121,9 +2153,21 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("expiry_date");
 
+                    b.Property<bool>("IsAppliedLabel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_applied_label");
+
                     b.Property<bool>("IsNotified")
                         .HasColumnType("bit")
                         .HasColumnName("is_notified");
+
+                    b.Property<bool>("IsReservedAfterRequestFailed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_reserved_after_request_failed");
 
                     b.Property<Guid>("LibraryCardId")
                         .HasColumnType("uniqueidentifier")
@@ -2142,12 +2186,18 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("queue_status");
 
+                    b.Property<string>("ReservationCode")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reservation_code");
+
                     b.Property<DateTime>("ReservationDate")
                         .HasColumnType("datetime")
                         .HasColumnName("reservation_date");
 
                     b.HasKey("QueueId")
                         .HasName("PK_ReservationQueue_QueueId");
+
+                    b.HasIndex("BorrowRequestId");
 
                     b.HasIndex("LibraryCardId");
 
@@ -2717,18 +2767,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("user_id");
 
-                    b.Property<bool>("WantsToBorrow")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("wants_to_borrow");
-
-                    b.Property<bool>("WantsToBorrowAfterRequestFailed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("wants_to_borrow_after_request_failed");
-
                     b.HasKey("FavoriteId")
                         .HasName("PK_UserFavorite_FavoriteId");
 
@@ -3050,11 +3088,25 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRecordDetail_ItemInstanceId");
 
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "ProcessedReturnByNavigation")
+                        .WithMany("BorrowRecordDetails")
+                        .HasForeignKey("ProcessedReturnBy")
+                        .HasConstraintName("FK_BorrowRecordDetail_ProcessedReturnBy");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", "ReturnCondition")
+                        .WithMany("BorrowRecordDetailsReturn")
+                        .HasForeignKey("ReturnConditionId")
+                        .HasConstraintName("FK_BorrowRecordDetail_ReturnConditionId");
+
                     b.Navigation("BorrowRecord");
 
                     b.Navigation("Condition");
 
                     b.Navigation("LibraryItemInstance");
+
+                    b.Navigation("ProcessedReturnByNavigation");
+
+                    b.Navigation("ReturnCondition");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequest", b =>
@@ -3136,11 +3188,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Fine", b =>
                 {
-                    b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRecord", "BorrowRecord")
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRecordDetail", "BorrowRecordDetail")
                         .WithMany("Fines")
-                        .HasForeignKey("BorrowRecordId")
+                        .HasForeignKey("BorrowRecordDetailId")
                         .IsRequired()
-                        .HasConstraintName("FK_Fine_BorrowRecordId");
+                        .HasConstraintName("FK_Fine_BorrowRecordDetailId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Employee", "CreateByNavigation")
                         .WithMany("FineCreateByNavigations")
@@ -3154,7 +3206,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_Fine_FindPolicyId");
 
-                    b.Navigation("BorrowRecord");
+                    b.Navigation("BorrowRecordDetail");
 
                     b.Navigation("CreateByNavigation");
 
@@ -3383,6 +3435,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.ReservationQueue", b =>
                 {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
+                        .WithMany("ReservationQueues")
+                        .HasForeignKey("BorrowRequestId")
+                        .HasConstraintName("FK_ReservationQueue_BorrowRequestId");
+
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCard", "LibraryCard")
                         .WithMany("ReservationQueues")
                         .HasForeignKey("LibraryCardId")
@@ -3399,6 +3456,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .WithMany("ReservationQueues")
                         .HasForeignKey("LibraryItemInstanceId")
                         .HasConstraintName("FK_ReservationQueue_LibraryItemInstanceId");
+
+                    b.Navigation("BorrowRequest");
 
                     b.Navigation("LibraryCard");
 
@@ -3590,18 +3649,20 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecord", b =>
                 {
                     b.Navigation("BorrowRecordDetails");
-
-                    b.Navigation("Fines");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRecordDetail", b =>
                 {
                     b.Navigation("BorrowDetailExtensionHistories");
+
+                    b.Navigation("Fines");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequest", b =>
                 {
                     b.Navigation("BorrowRequestDetails");
+
+                    b.Navigation("ReservationQueues");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Category", b =>
@@ -3618,6 +3679,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Employee", b =>
                 {
+                    b.Navigation("BorrowRecordDetails");
+
                     b.Navigation("BorrowRecords");
 
                     b.Navigation("FineCreateByNavigations");
@@ -3684,6 +3747,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryItemCondition", b =>
                 {
                     b.Navigation("BorrowRecordDetails");
+
+                    b.Navigation("BorrowRecordDetailsReturn");
 
                     b.Navigation("LibraryItemConditionHistories");
 
