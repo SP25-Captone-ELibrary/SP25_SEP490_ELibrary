@@ -142,6 +142,7 @@
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
+			public const string GetPdfPreview = Base + "/library-item/resource/{resourceId}/preview";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -156,7 +157,7 @@
 			public const string GetById = Base + "/management/library-items/resources/{id}";
 			// [POST]
 			public const string AddToBook = Base + "/management/library-items/{libraryItemId}/resources";
-			// [PUT] / [PATCH]
+			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/library-items/resources/{id}";
 			public const string SoftDelete = Base + "/management/library-items/resources/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/library-items/resources/soft-delete-range";
@@ -611,7 +612,9 @@
 		public static class AIServices
 		{
 			// [GET]
-			public const string GetAvailableLanguages = Base + "/library-items/available-languages";	
+			public const string GetAvailableLanguages = Base + "/library-items/available-languages";
+
+			public const string GetStatusToTrain = Base+ "/library-items/train-status";
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";

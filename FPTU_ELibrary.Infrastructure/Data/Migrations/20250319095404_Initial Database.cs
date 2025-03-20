@@ -224,7 +224,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     file_format = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     provider = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     provider_public_id = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    sub_public_id = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
                     provider_metadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     default_borrow_duration_days = table.Column<int>(type: "int", nullable: false),
@@ -395,6 +394,27 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         column: x => x.floor_id,
                         principalTable: "Library_Floor",
                         principalColumn: "floor_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Library_Resource_Url",
+                columns: table => new
+                {
+                    library_resource_url_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    part_number = table.Column<int>(type: "int", nullable: false),
+                    url = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
+                    resource_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryResourceUrl_LibraryResourceUrlId", x => x.library_resource_url_id);
+                    table.ForeignKey(
+                        name: "FK_LibraryResourceUrl_ResourceId",
+                        column: x => x.resource_id,
+                        principalTable: "Library_Resource",
+                        principalColumn: "resource_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -1538,6 +1558,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Library_Resource_Url_resource_id",
+                table: "Library_Resource_Url",
+                column: "resource_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Library_Section_zone_id",
                 table: "Library_Section",
                 column: "zone_id");
@@ -1711,6 +1736,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Review");
+
+            migrationBuilder.DropTable(
+                name: "Library_Resource_Url");
 
             migrationBuilder.DropTable(
                 name: "Notification_Recipient");

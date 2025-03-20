@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250315151323_Initial Database")]
+    [Migration("20250319095404_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1696,11 +1696,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("resource_url");
 
-                    b.Property<string>("SubPublicId")
-                        .HasMaxLength(1024)
-                        .HasColumnType("nvarchar(1024)")
-                        .HasColumnName("sub_public_id");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("updated_at");
@@ -1714,6 +1709,37 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasName("PK_LibraryResource_ResourceId");
 
                     b.ToTable("Library_Resource", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryResourceUrl", b =>
+                {
+                    b.Property<int>("LibraryResourceUrlId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("library_resource_url_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LibraryResourceUrlId"));
+
+                    b.Property<int>("LibraryResourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("resource_id");
+
+                    b.Property<int>("PartNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("part_number");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)")
+                        .HasColumnName("url");
+
+                    b.HasKey("LibraryResourceUrlId")
+                        .HasName("PK_LibraryResourceUrl_LibraryResourceUrlId");
+
+                    b.HasIndex("LibraryResourceId");
+
+                    b.ToTable("Library_Resource_Url", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibrarySection", b =>
@@ -3262,6 +3288,18 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryResourceUrl", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryResource", "LibraryResource")
+                        .WithMany("LibraryResourceUrls")
+                        .HasForeignKey("LibraryResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_LibraryResourceUrl_ResourceId");
+
+                    b.Navigation("LibraryResource");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibrarySection", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryZone", "Zone")
@@ -3673,6 +3711,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("DigitalBorrows");
 
                     b.Navigation("LibraryItemResources");
+
+                    b.Navigation("LibraryResourceUrls");
 
                     b.Navigation("Transactions");
                 });

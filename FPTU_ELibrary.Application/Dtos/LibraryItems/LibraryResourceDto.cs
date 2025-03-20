@@ -17,7 +17,6 @@ public class LibraryResourceDto
     public string FileFormat { get; set; } = null!;
     public string Provider { get; set; } = null!;
     public string ProviderPublicId { get; set; } = null!;
-    public string? SubPublicId { get; set; }
     public string? ProviderMetadata { get; set; }
     public bool IsDeleted { get; set; }
     public int DefaultBorrowDurationDays { get; set; }
@@ -37,4 +36,8 @@ public class LibraryResourceDto
     
     [JsonIgnore] 
     public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
+    
+    [JsonIgnore] 
+    public ICollection<LibraryResourceUrlDto> LibraryResourceUrls { get; set; } = new List<LibraryResourceUrlDto>();
+
 }

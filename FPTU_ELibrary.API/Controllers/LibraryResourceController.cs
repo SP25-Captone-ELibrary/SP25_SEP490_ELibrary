@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CloudinaryDotNet;
 using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests;
@@ -100,5 +101,13 @@ public class LibraryResourceController : ControllerBase
     public async Task<IActionResult> DeleteRangeLibraryResourceAsync([FromBody] RangeRequest<int> req)
     {
         return Ok(await _libraryResourceService.DeleteRangeAsync(req.Ids));
+    }
+
+    [Authorize]
+    [HttpPost(APIRoute.LibraryItemResource.AddAudioBook, Name = nameof(AddAudioBook))]
+    public async Task<IActionResult> AddAudioBook([FromRoute] int libraryItemId,[FromBody] CreateLibraryResourceWithLargeFileRequest req)
+    {
+        return Ok(await _libraryResourceService.AddResourceToLibraryItemAsync(libraryItemId,req.ToLibraryResourceDto(),
+            req.ToChunkDetail()));
     }
 }

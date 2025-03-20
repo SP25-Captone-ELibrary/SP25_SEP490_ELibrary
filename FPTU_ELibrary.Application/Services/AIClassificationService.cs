@@ -528,8 +528,8 @@ public class AIClassificationService : IAIClassificationService
 
             var isTrainingLibraryItems = sessionValue != null
                 ? sessionValue.TrainingDetails.Select(td => td.LibraryItemId).ToList()
-                                         :new List<int>();
-                
+                : new List<int>();
+
             // foreach (var selectedItemId in selectedItemIds)
             // {
             //     if (processedItemIds.Contains(selectedItemId))
@@ -665,8 +665,10 @@ public class AIClassificationService : IAIClassificationService
             //     }
             // }
 
-            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained && 
-                                                                             (isTrainingLibraryItems.Any()&&!isTrainingLibraryItems.Contains(li.LibraryItemId)));
+            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained &&
+                                                                             (isTrainingLibraryItems.Any() &&
+                                                                              !isTrainingLibraryItems.Contains(
+                                                                                  li.LibraryItemId)));
             ungroupedItemSpec.EnableSplitQuery();
             ungroupedItemSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author));
@@ -827,7 +829,7 @@ public class AIClassificationService : IAIClassificationService
         baseSession.EnableSplitQuery();
         baseSession.ApplyInclude(q => q.Include(s => s.TrainingDetails));
         var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
-        if (session.Data is null)
+        if (session.Data != null)
         {
             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
             return new ServiceResult(ResultCodeConst.AIService_Warning0009,
@@ -853,6 +855,12 @@ public class AIClassificationService : IAIClassificationService
     {
         try
         {
+            var availableToTrain = await IsAvailableToTrain();
+            if (availableToTrain.ResultCode != ResultCodeConst.AIService_Success0007)
+            {
+                return availableToTrain;
+            }
+
             var listItemIds = itemIdsDic.Values.SelectMany(x => x).ToList();
             var trainingDataDic = new Dictionary<Guid, List<string>>();
             foreach (var key in itemIdsDic.Keys)
@@ -919,7 +927,7 @@ public class AIClassificationService : IAIClassificationService
             // Merge group from previous stage (input) to db and get code
             var trainingDataDic = new Dictionary<Guid, List<(byte[] FileBytes, string FileName)>>();
             // parameter for creating history
-            var itemWithImages = new Dictionary<int, List<string>>();   
+            var itemWithImages = new Dictionary<int, List<string>>();
             foreach (var untrainedGroup in dto.TrainingData)
             {
                 // add value for itemWithImages 
@@ -1058,6 +1066,12 @@ public class AIClassificationService : IAIClassificationService
                 await Task.CompletedTask;
             }
 
+            //Get recently created session
+            var baseSession =
+                new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+            var session = await aiTrainingSessionService.GetWithSpecAsync(baseSession);
+            var sessionValue = (AITrainingSessionDto)session.Data!;
+
             // Handle uploading image to tag in ai cloud
             foreach (var (key, value) in trainingDataDic)
             {
@@ -1108,40 +1122,41 @@ public class AIClassificationService : IAIClassificationService
             }
 
             await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
-                new { message = 20, session = initSession.TrainingSessionId });
+                new { message = 20, session = sessionValue.TrainingSessionId });
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 30, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new { message = 30, session = sessionValue.TrainingSessionId }
             );
             if (iteration is null)
             {
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
+                await Task.CompletedTask;
             }
 
             // Wait until the training is completed before publishing
             await WaitForTrainingCompletionAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 40, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new { message = 40, session = sessionValue.TrainingSessionId }
             );
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 50, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new { message = 50, session = sessionValue.TrainingSessionId }
             );
             // Publish the new iteration and update appsettings.json
             await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 60, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new { message = 60, session = sessionValue.TrainingSessionId }
             );
             await libraryItemService.UpdateTrainingStatusAsync(detailParam.Keys.ToList());
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 80, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new { message = 80, session = sessionValue.TrainingSessionId }
             );
-            initSession.TrainingStatus = AITrainingStatus.Completed;
-            await aiTrainingSessionService.UpdateAsync(sessionEntity.TrainingSessionId, initSession);
+            sessionValue.TrainingStatus = AITrainingStatus.Completed;
+            await aiTrainingSessionService.UpdateAsync(sessionValue.TrainingSessionId, sessionValue);
             await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
-                new { message = 90, session = initSession.TrainingSessionId });
+                new { message = 90, session = sessionValue.TrainingSessionId });
             //Send notification when finish
             await hubContext.Clients.User(email).SendAsync(
                 "AIProcessMessage", new { message = 100, session = initSession.TrainingSessionId }
@@ -1236,6 +1251,11 @@ public class AIClassificationService : IAIClassificationService
                 var group = await libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
                 if (group.Data == null)
                 {
+                    var baseSession =
+                        new BaseSpecification<AITrainingSession>(ts =>
+                            ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+                    var session = await aiTrainingSessionService.GetWithSpecAsync(baseSession);
+
                     await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
                         new { message = "Error retrieving group", trainingCode });
                     continue;
@@ -2603,9 +2623,9 @@ public class AIClassificationService : IAIClassificationService
                 itemOrcMatchResult.Add(item.LibraryItemId,
                     compareResultValue.ToMinimisedMatchResultDto());
                 var ocrPoint = compareResultValue.TotalPoint;
-                itemTotalPoint.Add(item.LibraryItemId,matchObjectPoint[item.LibraryItemId]*0.5+ocrPoint*0.5);
+                itemTotalPoint.Add(item.LibraryItemId, matchObjectPoint[item.LibraryItemId] * 0.5 + ocrPoint * 0.5);
             }
-            
+
             var response = new PredictionResponseDto()
             {
                 OtherItems = new List<ItemPredictedDetailDto>()
@@ -2620,6 +2640,13 @@ public class AIClassificationService : IAIClassificationService
                 LibraryItemId = bestItemId,
                 ObjectMatchResult = (int)Math.Floor(matchObjectPoint[bestItemId])
             };
+            if (bestItemPredictResponse.OCRResult.TotalPoint <
+                bestItemPredictResponse.OCRResult.ConfidenceThreshold)
+            {
+                return new ServiceResult(ResultCodeConst.AIService_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0004));
+            }
+
             itemTotalPoint.Remove(bestItemId);
             response.BestItem = bestItemPredictResponse;
             // add other items detail
@@ -2901,6 +2928,14 @@ public class AIClassificationService : IAIClassificationService
             dto.Logger.Error(ex.Message);
             throw new Exception("Error invoke when create AI Tag");
         }
+    }
+
+    private void UpdateTrainingSessionStatus(IAITrainingSessionService<AITrainingSessionDto> trainingSessionService,
+        AITrainingSessionDto sessionDto, string errorMessage)
+    {
+        sessionDto.ErrorMessage = errorMessage;
+        sessionDto.TrainingStatus = AITrainingStatus.Failed;
+        trainingSessionService.UpdateAsync(sessionDto.TrainingSessionId, sessionDto);
     }
 
     private async Task CreateImagesFromDataAsync(BaseConfigurationBackgroudDto dto,

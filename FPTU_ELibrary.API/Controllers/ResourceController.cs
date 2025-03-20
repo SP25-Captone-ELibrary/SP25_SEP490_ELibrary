@@ -80,5 +80,5 @@ public class ResourceController : ControllerBase
     {
         return Ok(await _cloudService.UploadLargeVideo(req.ProviderIds));
     }
-
+    
 }
