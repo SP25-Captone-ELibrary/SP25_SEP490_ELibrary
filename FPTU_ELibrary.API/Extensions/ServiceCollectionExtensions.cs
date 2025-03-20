@@ -128,6 +128,8 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<PaymentSettings>(updatedConfiguration.GetSection("PaymentSettings"));
         	//Configure DigitalBorrowSettings
             services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
+            //Configure AdsScriptSettings
+            services.Configure<AdsScriptSettings>(updatedConfiguration.GetSection("AdsScriptSettings"));
         	
             #region Development stage
         

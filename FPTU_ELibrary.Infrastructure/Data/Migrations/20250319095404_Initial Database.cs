@@ -397,6 +397,27 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Library_Resource_Url",
+                columns: table => new
+                {
+                    library_resource_url_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    part_number = table.Column<int>(type: "int", nullable: false),
+                    url = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
+                    resource_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryResourceUrl_LibraryResourceUrlId", x => x.library_resource_url_id);
+                    table.ForeignKey(
+                        name: "FK_LibraryResourceUrl_ResourceId",
+                        column: x => x.resource_id,
+                        principalTable: "Library_Resource",
+                        principalColumn: "resource_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Warehouse_Tracking",
                 columns: table => new
                 {
@@ -1537,6 +1558,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Library_Resource_Url_resource_id",
+                table: "Library_Resource_Url",
+                column: "resource_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Library_Section_zone_id",
                 table: "Library_Section",
                 column: "zone_id");
@@ -1710,6 +1736,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Review");
+
+            migrationBuilder.DropTable(
+                name: "Library_Resource_Url");
 
             migrationBuilder.DropTable(
                 name: "Notification_Recipient");

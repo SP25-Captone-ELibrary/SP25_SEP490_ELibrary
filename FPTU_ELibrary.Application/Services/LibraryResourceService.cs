@@ -294,6 +294,110 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
+    public async Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, LibraryResourceDto dto,
+        Dictionary<int, string> chunkDetails)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            // Add represent url and providerId
+            dto.ResourceUrl = chunkDetails[chunkDetails.Keys.Min()];
+            dto.ProviderPublicId = StringUtils.GetPublicIdFromCloudinaryUrl(dto.ResourceUrl);
+
+            List<LibraryResourceUrlDto> urls = new List<LibraryResourceUrlDto>();
+            foreach (var chunkDetail in chunkDetails)
+            {
+                urls.Add(new()
+                {
+                    Url = chunkDetail.Value,
+                    PartNumber = chunkDetail.Key
+                });
+            }
+
+            dto.LibraryResourceUrls = urls;
+
+
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
+            {
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
+            }
+
+            // Check exist item
+            var isItemExist = (await _libraryItemService.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
+            if (!isItemExist)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "item to process add resource"
+                        : "tài liệu để thêm mới tài nguyên"));
+            }
+            else
+            {
+                // Check not same publicId and resourceUrl
+                var isDuplicateContent = await _unitOfWork.Repository<LibraryResource, int>().AnyAsync(x =>
+                    x.ProviderPublicId == dto.ProviderPublicId || // With specific public id
+                    x.ResourceUrl == dto.ResourceUrl); // with specific resource url
+                if (isDuplicateContent) // Not allow to have same resource content
+                {
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0003));
+                }
+
+                // Check resource format
+                if (!dto.ResourceUrl.Contains(dto.ProviderPublicId)) // Invalid resource format
+                {
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+                }
+
+                // Get file type
+                Enum.TryParse(typeof(FileType), dto.FileFormat, out var fileType);
+                // Check exist resource
+                var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
+                if (checkExistResult.Data is false) return checkExistResult; // Return when not found resource on cloud
+            }
+
+            // Generate new library item resource
+            var libResource = new LibraryItemResource()
+            {
+                LibraryItemId = libraryItemId,
+                LibraryResource = _mapper.Map<LibraryResource>(dto)
+            };
+
+            // Process add new entity
+            await _unitOfWork.Repository<LibraryItemResource, int>().AddAsync(libResource);
+            // Save to DB
+            if (await _unitOfWork.SaveChangesAsync() > 0)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), true);
+            }
+            else
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001), false);
+            }
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process add item resource");
+        }
+    }
+
     public override async Task<IServiceResult> UpdateAsync(int id, LibraryResourceDto dto)
     {
         try
@@ -676,6 +780,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            resourceSpec.EnableSplitQuery();
+            resourceSpec.ApplyInclude(q => q.Include(r => r.LibraryResourceUrls));
             var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
             if (resource is null)
             {
@@ -715,18 +821,16 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             if (resource.FileFormat.ToLower().Equals("image"))
             {
                 var resourceUrl = resource.ResourceUrl;
-                var watermarkInfo = userValue.UserId.ToString();
 
                 // if (pageNumber == 0 || pageNumber is null) pageNumber = 1;
-                var pdfStream = await DownloadAndAddWatermark(resourceUrl, watermarkInfo);
+                var pdfStream = await DownloadAndAddWatermark(resourceUrl, email,false);
                 return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
             }
 
             if (resource.FileFormat.ToLower().Equals("video"))
             {
-                var resourceUrl = resource.ResourceUrl;
-                //Todo: Implement add ads for audio book
+                var listUrls = resource.LibraryResourceUrls.Select(u => u.Url).ToList();
             }
 
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
@@ -739,8 +843,59 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
+    public async Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Get resource
+            var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            resourceSpec.EnableSplitQuery();
+            resourceSpec.ApplyInclude(q => q.Include(r => r.LibraryResourceUrls));
+            var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
+            if (resource is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
+            }
+
+            if (!resource.FileFormat.ToLower().Equals("image"))
+            {
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email));
+            var user = await _userService.GetWithSpecAsync(userSpec);
+            if (user.Data is null)
+            {
+                var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),isEng
+                    ? "user"
+                    : "người dùng");
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,errMsg);
+            }
+            var userValue = (user.Data as UserDto)!;
+            
+            
+            var resourceUrl = resource.ResourceUrl;
+            var pdfStream = await DownloadAndAddWatermark(resourceUrl, email,true);
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get digital resource preview");
+        }
+    }
+
     // function to process
-    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText)
+    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText,bool isPreview)
     {
         using HttpClient client = new HttpClient();
         byte[] pdfBytes = await client.GetByteArrayAsync(pdfUrl);
@@ -773,7 +928,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             document.Open();
             PdfContentByte contentByte = writer.DirectContent;
 
-            for (int i = 1; i <= totalPages; i++)
+            int pagesToProcess = isPreview ? Math.Min(5, totalPages) : totalPages;
+            for (int i = 1; i <= pagesToProcess; i++)
             {
                 document.SetPageSize(reader.GetPageSizeWithRotation(i));
                 document.NewPage();
