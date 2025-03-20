@@ -25,6 +25,9 @@ public class Employee : BaseUser
     public ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
     
     [JsonIgnore]
+    public ICollection<BorrowRecordDetail> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetail>();
+    
+    [JsonIgnore]
     public ICollection<Fine> FineCreateByNavigations { get; set; } = new List<Fine>();
 
     [JsonIgnore]

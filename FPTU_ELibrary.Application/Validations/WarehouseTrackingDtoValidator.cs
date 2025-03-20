@@ -26,10 +26,10 @@ public class WarehouseTrackingDtoValidator : AbstractValidator<WarehouseTracking
                 : "Số biên lai không được quá 50 ký tự");
         // Total item
         RuleFor(e => e.TotalItem)
-            // .Must(i => i > 0)
-            // .WithMessage(isEng
-            //     ? "Required at least 1 item to create warehouse tracking"
-            //     : "Cần ít nhất 1 tài liệu để tạo theo dõi kho")
+            .Must(i => i > 0)
+            .WithMessage(isEng
+                ? "Required at least 1 item to create warehouse tracking"
+                : "Cần ít nhất 1 tài liệu để tạo theo dõi kho")
             .Must(i => i < int.MaxValue)
             .WithMessage(isEng
                 ? "Total item is not valid"

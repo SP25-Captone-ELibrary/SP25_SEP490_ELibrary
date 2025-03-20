@@ -6,4 +6,5 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 public interface IFineService<TDto> : IGenericService<Fine, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> ConfirmFineAsync(string email, string transactionToken);
 }

@@ -3,6 +3,7 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Cloudinary;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -21,23 +22,138 @@ namespace FPTU_ELibrary.Application.Services;
 
 public class CloudinaryService : ICloudinaryService
 {
+    // Lazy services
+    private readonly Lazy<IUserService<UserDto>> _userSvc;
+    
     private readonly Cloudinary _cloudinary;
     private readonly ILogger _logger;
     private readonly ISystemMessageService _msgService;
     private readonly CloudinarySettings _cloudSettings;
 
     public CloudinaryService(
+        // Lazy services
+        Lazy<IUserService<UserDto>> userSvc,   
+        
+        // Normal services
         IOptionsMonitor<CloudinarySettings> monitor,
         ISystemMessageService msgService,
         Cloudinary cloudinary,
         ILogger logger)
     {
+        _userSvc = userSvc;
         _cloudSettings = monitor.CurrentValue;
         _cloudinary = cloudinary;
         _msgService = msgService;
         _logger = logger;
     }
 
+    public async Task<IServiceResult> PublicUploadAsync(string email, IFormFile file, FileType fileType, ResourceType resourceType)
+    {
+        try
+        {
+            // Check exist user by email
+            var isExistUser = (await _userSvc.Value.AnyAsync(u => Equals(u.Email, email))).Data is true;
+            if (!isExistUser) throw new ForbiddenException("Not allow to access"); // Forbid to access
+
+            // Get cloudinary directory by resource type
+            var directory = GetDirectoryFromResourceType(resourceType);
+            // Custom public id, ends with random digits
+            // var uniqueIdWithTimestamp = $"{directory}/{Guid.NewGuid().ToString()}";
+            var uniqueIdWithTimestamp = Guid.NewGuid().ToString();
+
+            // Retrieve current language
+            var currentLanguage = LanguageContext.CurrentLanguage;
+
+            switch (fileType)
+            {
+                // IMAGE
+                case FileType.Image:
+                    // Validate image 
+                    var imageValidationRes = await new ImageTypeValidator(currentLanguage).ValidateAsync(file);
+                    if (!imageValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid image file type",
+                            imageValidationRes.ToProblemDetails().Errors);
+                    }
+
+                    // Initializes image upload params
+                    var imageUploadParams = new ImageUploadParams()
+                    {
+                        File = new FileDescription(uniqueIdWithTimestamp, file.OpenReadStream()),
+                        PublicId = uniqueIdWithTimestamp
+                    };
+                    // Upload image file to cloudinary
+                    var imageResult = await _cloudinary.UploadAsync(imageUploadParams);
+
+                    // Success 
+                    if (imageResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0001,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0001),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = imageResult.SecureUrl.ToString(),
+                                PublicId = imageResult.PublicId,
+                            });
+                    }
+
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0001));
+                // VIDEO
+                case FileType.Video:
+                    // Validate video 
+                    var videoValidationRes = await new VideoTypeValidator(currentLanguage).ValidateAsync(file);
+                    if (!videoValidationRes.IsValid)
+                    {
+                        throw new UnprocessableEntityException("Invalid video file type",
+                            videoValidationRes.ToProblemDetails().Errors);
+                    }
+
+                    // Initializes image upload params
+                    var videoUploadParams = new VideoUploadParams()
+                    {
+                        File = new FileDescription(uniqueIdWithTimestamp, file.OpenReadStream()),
+                        PublicId = uniqueIdWithTimestamp
+                    };
+                    // Upload image file to cloudinary
+                    var videoResult = await _cloudinary.UploadAsync(videoUploadParams);
+
+                    // Success 
+                    if (videoResult.StatusCode == HttpStatusCode.OK)
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Success0002,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002),
+                            new CloudinaryResultDto()
+                            {
+                                SecureUrl = videoResult.SecureUrl.ToString(),
+                                PublicId = videoResult.PublicId,
+                            });
+                    }
+
+                    // Error
+                    return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+                default:
+                    return new ServiceResult(ResultCodeConst.File_Warning0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.File_Warning0001));
+            }
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process upload image from public");
+        }
+    }
+    
     public async Task<IServiceResult> UploadAsync(IFormFile file, FileType fileType, ResourceType resourceType)
     {
         // Get cloudinary directory by resource type

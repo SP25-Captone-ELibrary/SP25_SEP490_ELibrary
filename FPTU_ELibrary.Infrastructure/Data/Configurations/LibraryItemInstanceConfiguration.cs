@@ -58,6 +58,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(50)
                 .HasColumnName("barcode");
             #endregion
+
+            #region Updated at: 20/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsCirculated)
+                .HasDefaultValue(false)
+                .HasColumnName("is_circulated");
+            #endregion
         }
     }
 }

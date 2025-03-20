@@ -4,8 +4,10 @@ using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 using FPTU_ELibrary.Application.Configurations;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
@@ -17,13 +19,16 @@ namespace FPTU_ELibrary.API.Controllers;
 [ApiController]
 public class BorrowRecordController : ControllerBase
 {
+    private readonly IUserService<UserDto> _userService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecSvc;
     private readonly AppSettings _appSettings;
 
     public BorrowRecordController(
+        IUserService<UserDto> userService,
         IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
         IOptionsMonitor<AppSettings> monitor)
     {
+        _userService = userService;
         _borrowRecSvc = borrowRecSvc;
         _appSettings = monitor.CurrentValue;
     }
@@ -37,6 +42,13 @@ public class BorrowRecordController : ControllerBase
             specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
             pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRecord.GetAllUserPendingActivity, Name = nameof(GetAllUserPendingActivityAsync))]
+    public async Task<IActionResult> GetAllUserPendingActivityAsync([FromQuery] Guid libraryCardId)
+    {
+        return Ok(await _userService.GetPendingLibraryActivityAsync(libraryCardId: libraryCardId));
     }
     
     [Authorize]
@@ -61,6 +73,19 @@ public class BorrowRecordController : ControllerBase
     {
         var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowRecSvc.CreateAsync(processedByEmail: email ?? string.Empty, dto: req.ToBorrowRecordDto()));
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.BorrowRecord.ProcessReturn, Name = nameof(ProcessReturnBorrowRecordAsync))]
+    public async Task<IActionResult> ProcessReturnBorrowRecordAsync([FromRoute] int id, [FromBody] ReturnBorrowRecordRequest req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowRecSvc.ProcessReturnAsync(
+            processedReturnByEmail: email ?? string.Empty,
+            libraryCardId: req.LibraryCardId,
+            recordWithReturnItems: req.ToBorrowRecordWithReturnDto(),
+            recordWithLostItems: req.ToBorrowRecordWithLostDto(),
+            isConfirmMissing: req.IsConfirmMissing));
     }
     #endregion
 

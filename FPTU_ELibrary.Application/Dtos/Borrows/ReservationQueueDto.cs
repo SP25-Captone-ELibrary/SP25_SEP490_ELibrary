@@ -20,7 +20,13 @@ public class ReservationQueueDto
     public Guid LibraryCardId { get; set; }
     
     // Queue status
-    public ReservationQueueStatus QueueStatus { get; set; } 
+    public ReservationQueueStatus QueueStatus { get; set; }
+    
+    // Belongs to specific request (if any)
+    public int? BorrowRequestId { get; set; }
+    
+    // Mark as reserved after requested failed
+    public bool IsReservedAfterRequestFailed { get; set; }
     
     // Forecasting available datetime
     public DateTime? ExpectedAvailableDateMin { get; set; } // Best case scenario
@@ -32,6 +38,15 @@ public class ReservationQueueDto
     // Deadline for pickup
     public DateTime? ExpiryDate { get; set; }
     
+    // Reservation code (only process when s.o return their item and assigned to s.o in reservation queues)
+    public string? ReservationCode { get; set; }
+    
+    // Mark whether assigned reservation code or not 
+    public bool IsAppliedLabel { get; set; }
+    
+    // Collected date
+    public DateTime? CollectedDate { get; set; }
+    
     // If the user was notified
     public bool IsNotified { get; set; }
     
@@ -40,12 +55,13 @@ public class ReservationQueueDto
     public string? CancellationReason { get; set; } 
     
     // Mapping entities
-    [JsonIgnore]
     public LibraryItemDto LibraryItem { get; set; } = null!;
     
-    [JsonIgnore] 
     public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
 
     [JsonIgnore]
     public LibraryCardDto LibraryCard { get; set; } = null!;
+    
+    [JsonIgnore] 
+    public BorrowRequestDto? BorrowRequest { get; set; }
 }

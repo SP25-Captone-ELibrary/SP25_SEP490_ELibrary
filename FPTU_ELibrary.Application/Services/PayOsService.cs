@@ -3,6 +3,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
@@ -34,6 +35,7 @@ public class PayOsService : IPayOsService
     private const string Hub_Method = "VerifyPaymentStatus";
     
     private readonly ILogger _logger;
+    private readonly IFineService<FineDto> _fineService;
     private readonly IUserService<UserDto> _userService;
     private readonly ISystemMessageService _msgService;
     private readonly ITransactionService<TransactionDto> _transactionService;
@@ -44,11 +46,12 @@ public class PayOsService : IPayOsService
     private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowService;
 
     private readonly IHubContext<PaymentHub> _hubContext;
-    
+
     public PayOsService(
         ILogger logger,
         IHubContext<PaymentHub> hubContext,
         ISystemMessageService msgService,
+        IFineService<FineDto> fineService,
         IUserService<UserDto> userService,
         ILibraryCardService<LibraryCardDto> libCardService,
         ITransactionService<TransactionDto> transactionService,
@@ -59,6 +62,7 @@ public class PayOsService : IPayOsService
         _logger = logger;
         _hubContext = hubContext;
         _msgService = msgService;
+        _fineService = fineService;
         _userService = userService;
         _libCardService = libCardService;
         _transactionService = transactionService;
@@ -262,7 +266,9 @@ public class PayOsService : IPayOsService
                 switch (transaction.TransactionType)
                 {
                     case TransactionType.Fine:
-                        // TODO: Add function to confirm fine payment
+                        confirmRes = await _fineService.ConfirmFineAsync(
+                            email: userDto.Email,
+                            transactionToken: paymentToken);
                         break;
                     case TransactionType.DigitalBorrow:
                         confirmRes = await _digitalBorrowService.ConfirmDigitalBorrowAsync(

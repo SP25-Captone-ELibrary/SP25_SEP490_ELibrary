@@ -37,7 +37,6 @@ public class GetBorrowRecordDto
     public GetBorrowRequestDto? BorrowRequest { get; set; }
     public EmployeeDto? ProcessedByNavigation { get; set; }
     public List<GetBorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new();
-    public List<FineDto> Fines { get; set; } = new();
 }
 
 public static class GetBorrowRecordDtoExtensions
@@ -60,7 +59,6 @@ public static class GetBorrowRecordDtoExtensions
             // References, Navigations
             ProcessedByNavigation = dto.ProcessedByNavigation,
             BorrowRequest = dto.BorrowRequest?.ToGetBorrowRequestDto(),
-            Fines = dto.Fines.ToList(),
             BorrowRecordDetails = dto.BorrowRecordDetails.Any() 
                 ? dto.BorrowRecordDetails.Select(brd => new GetBorrowRecordDetailDto()
                 {
@@ -83,7 +81,8 @@ public static class GetBorrowRecordDtoExtensions
                         : null,
                     LibraryItem = brd.LibraryItemInstance.LibraryItem != null!
                         ? brd.LibraryItemInstance.LibraryItem.ToLibraryItemDetailDto()
-                        : null!
+                        : null!,
+                    Fines = brd.Fines.ToList()
                 }).ToList()
                 : new()
         };

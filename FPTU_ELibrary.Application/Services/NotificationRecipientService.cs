@@ -32,7 +32,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         try
         {
             var userDto = (await _userService.GetByEmailAsync(email)).Data as UserDto;
-            if (userDto == null) throw new ForbiddenException();
+            if (userDto == null) throw new ForbiddenException("Not allow to access");
 
             // Build spec
             var baseSpec = new BaseSpecification<NotificationRecipient>(n => 
@@ -63,7 +63,7 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         {
             // Check exist user
             var user = (await _userService.GetByEmailAsync(email)).Data as UserDto;
-            if (user == null) throw new ForbiddenException();
+            if (user == null) throw new ForbiddenException("Not allow to access");
 
             // Build spec
             var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId

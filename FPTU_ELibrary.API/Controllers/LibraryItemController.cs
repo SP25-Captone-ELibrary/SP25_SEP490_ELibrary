@@ -355,7 +355,6 @@ public class LibraryItemController : ControllerBase
     }
 
     [HttpGet(APIRoute.LibraryItem.GetPdfPreview, Name = nameof(GetPdfPreview))]
-    [Authorize]
     public async Task<IActionResult> GetPdfPreview([FromRoute]int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";

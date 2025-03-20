@@ -40,5 +40,4 @@ public class BorrowRecordDto
     public LibraryCardDto LibraryCard { get; set; } = null!;
     
     public ICollection<BorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetailDto>();
-    public ICollection<FineDto> Fines { get; set; } = new List<FineDto>();
 }

@@ -32,4 +32,6 @@ public class BorrowRequest
     public LibraryCard LibraryCard { get; set; } = null!;
     
     public ICollection<BorrowRequestDetail> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetail>();
+
+    public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
 }

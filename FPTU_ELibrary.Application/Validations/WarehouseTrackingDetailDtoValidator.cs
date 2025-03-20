@@ -86,6 +86,10 @@ public class WarehouseTrackingDetailDtoValidator : AbstractValidator<WarehouseTr
         //     .WithMessage(isEng ? "Barcode must not exceed 50 characters" : "Số ĐKCB không vượt quá 50 ký tự");
         // Total item
         RuleFor(e => e.ItemTotal)
+            .Must(i => i > 0)
+            .WithMessage(isEng
+                ? "Required at least 1 item"
+                : "Yêu cầu ít nhất 1 tài liệu")
             .Must(v => v < int.MaxValue)
             .WithMessage(isEng ? "Total item is not valid" : "Tổng số lượng không hợp lệ hoặc quá lớn");
     }

@@ -27,7 +27,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ReservationQueue_ItemId");
 
-            #region Update at: 04/02/2025 by Le Xuan Phuoc
+            #region Updated at: 04/02/2025 by Le Xuan Phuoc
             // builder.Property(e => e.DepositExpirationDate)
             //     .HasColumnType("datetime")
             //     .HasColumnName("deposit_expiration_date");
@@ -81,6 +81,34 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasForeignKey(d => d.LibraryItemInstanceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ReservationQueue_LibraryItemInstanceId");
+            #endregion
+
+            #region Updated at: 14/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.IsReservedAfterRequestFailed)
+                .HasDefaultValue(false)
+                .HasColumnName("is_reserved_after_request_failed");
+            
+            builder.Property(e => e.BorrowRequestId).HasColumnName("borrow_request_id");
+            builder.HasOne(e => e.BorrowRequest).WithMany(p => p.ReservationQueues)
+                .HasForeignKey(e => e.BorrowRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReservationQueue_BorrowRequestId");
+            #endregion
+
+            #region Updated at: 16/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.CollectedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("collected_date");
+            #endregion
+
+            #region Updated at: 19/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.ReservationCode)
+                .IsRequired(false)
+                .HasColumnType("nvarchar(50)")
+                .HasColumnName("reservation_code");
+            builder.Property(e => e.IsAppliedLabel)
+                .HasDefaultValue(false)
+                .HasColumnName("is_applied_label");
             #endregion
         }
     }

@@ -393,16 +393,50 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Hư hoặc rách sách giấy",
+					Description = "Rách bìa sách nhẹ (dưới 20% hư hỏng)",
+					FixedFineAmount = 8000,
 					FineAmountPerDay = 10000,
-					FinePolicyTitle = "Hư bìa sách 1"
+					FinePolicyTitle = "Rách bìa sách nhẹ (dưới 20%)"
 				},
 				new()
 				{
 					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Hư hoặc rách sách bìa cứng",
-					FineAmountPerDay = 15000,
-					FinePolicyTitle = "Hư bìa sách 2"
+					Description = "Rách bìa sách nặng (trên 20% hư hỏng)",
+					FixedFineAmount = 20000,
+					FineAmountPerDay = 22000,
+					FinePolicyTitle = "Rách bìa sách nặng (trên 20%)"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Mất trang sách nhẹ (dưới 50% trang mất)",
+					FixedFineAmount = 12000,
+					FineAmountPerDay = 14000,
+					FinePolicyTitle = "Mất trang sách nhẹ (dưới 50%)"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Mất trang sách nặng (trên 50% trang mất)",
+					FixedFineAmount = 25000,
+					FineAmountPerDay = 30000,
+					FinePolicyTitle = "Mất trang sách nặng (trên 50%)"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Vẽ bậy lên sách",
+					FixedFineAmount = 15000,
+					FineAmountPerDay = 20000,
+					FinePolicyTitle = "Vẽ bậy lên sách"
+				},
+				new()
+				{
+					ConditionType = FinePolicyConditionType.Damage,
+					Description = "Sách bị ướt do nước",
+					FixedFineAmount = 18000,
+					FineAmountPerDay = 20000,
+					FinePolicyTitle = "Sách bị ướt"
 				},
 				new()
 				{
@@ -415,9 +449,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				{
 					ConditionType = FinePolicyConditionType.OverDue,
 					Description = "Trả quá hạn",
-					FineAmountPerDay = 5000,
+					FixedFineAmount = 5000,
+					FineAmountPerDay = 10000,
 					FinePolicyTitle = "Trả quá hạn"
-				},
+				}
 			};
 			
 			await _context.FinePolicies.AddRangeAsync(finePolicies);	
@@ -1296,7 +1331,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
                     LibraryItemAuthors = new List<LibraryItemAuthor>()
 				    {
@@ -1344,7 +1380,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					    AvailableUnits = 5,
 					    BorrowedUnits = 0,
 					    RequestUnits = 0,
-					    ReservedUnits = 0
+					    ReservedUnits = 0,
+						LostUnits = 0
 				    },
 				    LibraryItemInstances = new List<LibraryItemInstance>()
 				    {
@@ -1455,7 +1492,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					    AvailableUnits = 4,
 					    BorrowedUnits = 0,
 					    RequestUnits = 0,
-					    ReservedUnits = 0
+					    ReservedUnits = 0,
+						LostUnits = 0
 				    },
 				    LibraryItemInstances = new List<LibraryItemInstance>()
 				    {
@@ -1564,7 +1602,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {
@@ -1610,7 +1649,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {
@@ -1652,11 +1692,12 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    CreatedBy = librarian.Email,
 					LibraryItemInventory = new LibraryItemInventory()
 			        {
-				        TotalUnits = 0,
-				        AvailableUnits = 0,
+				        TotalUnits = 4,
+				        AvailableUnits = 4,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {
@@ -1664,7 +1705,70 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        {
 					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00003").AuthorId
 				        }
-			        }
+			        },
+					LibraryItemInstances = new List<LibraryItemInstance>()
+					{
+						new()
+						{
+							Barcode = "SD00011",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00012",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00013",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00014",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						},
+						new()
+						{
+							Barcode = "SD00015",
+							Status = nameof(LibraryItemInstanceStatus.InShelf),
+							LibraryItemConditionHistories = new List<LibraryItemConditionHistory>()
+							{
+								new ()
+								{
+									ConditionId = goodCondition.ConditionId
+								}
+							}
+						}
+					}
 			    },
 			    new LibraryItem
 			    {
@@ -1702,7 +1806,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {
@@ -1748,7 +1853,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {
@@ -1794,7 +1900,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        AvailableUnits = 0,
 						BorrowedUnits = 0,
 						ReservedUnits = 0,
-						RequestUnits = 0
+						RequestUnits = 0,
+						LostUnits = 0
 			        },
 			        LibraryItemAuthors = new List<LibraryItemAuthor>()
 			        {

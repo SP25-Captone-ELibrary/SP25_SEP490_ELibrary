@@ -65,13 +65,18 @@
 			public const string GetAllManagement = Base + "/management/borrows/requests";
 			public const string GetByIdManagement = Base + "/management/borrows/requests/{id}";
 			public const string CheckExistBarcode = Base + "/management/borrows/requests/{id}/exist-barcode";
+			// [PATCH]
+			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
+			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			#endregion
 			
 			// [GET]
 			// [POST]
 			public const string Create = Base + "/borrows/requests";
+			public const string AddItemToRequest = Base + "/borrows/requests/{id}/details/add-item";
 			// [PATCH]
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
+			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
 		}
 
 		/// <summary>
@@ -83,9 +88,12 @@
 			// [GET]
 			public const string GetAll = Base + "/management/borrows/records";
 			public const string GetById = Base + "/management/borrows/records/{id}";
+			public const string GetAllUserPendingActivity = Base + "/management/borrows/records/user-pending-activity";
 			// [POST]
 			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
 			public const string Create = Base + "/management/borrows/records";
+			// [PUT]
+			public const string ProcessReturn = Base + "/mangement/borrows/records/process-return";
 			#endregion
 			
 			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
@@ -292,6 +300,7 @@
 			
 			// [GET]
 			public const string GetAllPublic = Base + "/packages";
+			public const string GetByIdPublic = Base + "/packages/{id}";
 		}
 		
 		/// <summary>
@@ -355,6 +364,7 @@
 			
 			// [GET]
 			public const string CalculateBorrowReturnSummary = Base + "/users/borrows/calculate-summary";
+			public const string GetAllPendingActivity = Base + "/users/borrows/records/user-pending-activity";
 			public const string GetAllUserBorrowRequest = Base + "/users/borrows/requests";
 			public const string GetAllUserBorrowRecord = Base + "/users/borrows/records";
 			public const string GetAllUserDigitalBorrow = Base + "/users/borrows/digital";
@@ -435,6 +445,7 @@
 		/// </summary>
 		public static class Resource
 		{
+			#region Management
 			// [GET]
 			public const string GetAllType = Base + "/management/resources/types";
 			// [POST]
@@ -447,6 +458,9 @@
 			// [DELETE]
 			public const string DeleteImage = Base + "/management/resources/images";
 			public const string DeleteVideo = Base + "/management/resources/videos";
+			#endregion
+			
+			public const string PublicUploadImage = Base + "/resources/images/upload";
 		}
 
 		/// <summary>
@@ -519,12 +533,13 @@
 			public const string GetMapByFloorId = Base + "/management/location/map/floors/{floorId}";
 			public const string GetMapShelfDetailById = Base + "/management/location/map/shelves/{shelfId}";
 
-
 			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
 			public const string GetZonesByFloorId = Base + "/management/location/zones";
 			public const string GetSectionsByZoneId = Base + "/management/location/sections";
 			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
 			#endregion
+			
+			public const string GetShelfWithFloorZoneSectionById = Base + "/location/shelves/{shelfId}";
 		}
 		
 		/// <summary>
@@ -716,6 +731,7 @@
 			public const string GetPrivacyTransaction = Base + "/payment/transactions";
 			// [POST]
 			public const string CreateTransaction = Base + "/payment/transactions";
+			public const string CreateBorrowRecordTransaction = Base + "/payment/transactions/borrows/records/{borrowRecordId}";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
 			public const string SendWebhookConfirm = Base + "/payment/pay-os/webhook-confirm";

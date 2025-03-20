@@ -35,7 +35,5 @@ public class BorrowRecord
     public BorrowRequest? BorrowRequest { get; set; }
     public Employee? ProcessedByNavigation { get; set; } 
     public LibraryCard LibraryCard { get; set; } = null!;
-    
     public ICollection<BorrowRecordDetail> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetail>();
-    public ICollection<Fine> Fines { get; set; } = new List<Fine>();
 }

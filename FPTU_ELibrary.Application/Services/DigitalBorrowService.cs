@@ -678,7 +678,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                          </ul>
                      </div>
 
-                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
                      <p>{{libName}}</p>
@@ -769,7 +769,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                          </ul>
                      </div>
 
-                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email <strong>{{libContact}}</strong>.</p>
+                     <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
                      <p>{{libName}}</p>

@@ -29,12 +29,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasConstraintName("FK_UserFavorite_UserId");
 
             #region Updated at: 11/03/2025 by Le Xuan Phuoc
-            builder.Property(e => e.WantsToBorrow)
-                .HasDefaultValue(false)
-                .HasColumnName("wants_to_borrow");
-            builder.Property(e => e.WantsToBorrowAfterRequestFailed)
-                .HasDefaultValue(false)
-                .HasColumnName("wants_to_borrow_after_request_failed");
+            // builder.Property(e => e.WantsToBorrow)
+            //     .HasDefaultValue(false)
+            //     .HasColumnName("wants_to_borrow");
+            // builder.Property(e => e.WantsToBorrowAfterRequestFailed)
+            //     .HasDefaultValue(false)
+            //     .HasColumnName("wants_to_borrow_after_request_failed");
             builder.Property(e => e.CreatedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");

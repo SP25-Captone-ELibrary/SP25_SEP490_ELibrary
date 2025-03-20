@@ -17,5 +17,8 @@ public class LibraryItemCondition
     public ICollection<BorrowRecordDetail> BorrowRecordDetails { get; set; } = new List<BorrowRecordDetail>();
     
     [JsonIgnore]
+    public ICollection<BorrowRecordDetail> BorrowRecordDetailsReturn { get; set; } = new List<BorrowRecordDetail>();
+    
+    [JsonIgnore]
     public ICollection<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; } = new List<WarehouseTrackingDetail>();
 }

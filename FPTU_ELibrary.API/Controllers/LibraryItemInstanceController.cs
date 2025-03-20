@@ -60,8 +60,8 @@ public class LibraryItemInstanceController : ControllerBase
     }
     
     [Authorize]
-    [HttpPost(APIRoute.LibraryItemInstance.AddRange, Name = nameof(AddRangeCopyToBookEditionAsync))]
-    public async Task<IActionResult> AddRangeCopyToBookEditionAsync(
+    [HttpPost(APIRoute.LibraryItemInstance.AddRange, Name = nameof(AddRangeInstanceToItemAsync))]
+    public async Task<IActionResult> AddRangeInstanceToItemAsync(
         [FromRoute] int id, 
         [FromBody] CreateRangeItemInstanceRequest req)
     {
@@ -76,8 +76,8 @@ public class LibraryItemInstanceController : ControllerBase
     }
     
     [Authorize]
-    [HttpPut(APIRoute.LibraryItemInstance.UpdateRange, Name = nameof(UpdateRangeEditionCopyAsync))]
-    public async Task<IActionResult> UpdateRangeEditionCopyAsync(
+    [HttpPut(APIRoute.LibraryItemInstance.UpdateRange, Name = nameof(UpdateRangeItemInstanceAsync))]
+    public async Task<IActionResult> UpdateRangeItemInstanceAsync(
         [FromRoute] int libraryItemId, 
         [FromBody] UpdateRangeItemInstanceRequest req)
     {

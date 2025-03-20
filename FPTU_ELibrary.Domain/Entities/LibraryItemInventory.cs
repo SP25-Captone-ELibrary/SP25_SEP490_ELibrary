@@ -14,7 +14,8 @@ public class LibraryItemInventory
     public int RequestUnits { get; set; }
     public int BorrowedUnits { get; set; }
     public int ReservedUnits { get; set; }
-
+    public int LostUnits { get; set; }
+    
     // Mapping entity
     [JsonIgnore]
     public LibraryItem LibraryItem { get; set; } = null!;
