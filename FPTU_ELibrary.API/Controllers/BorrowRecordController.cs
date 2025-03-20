@@ -82,7 +82,7 @@ public class BorrowRecordController : ControllerBase
         var email = HttpContext.User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowRecSvc.ProcessReturnAsync(
             processedReturnByEmail: email ?? string.Empty,
-            id: id, libraryCardId: req.LibraryCardId,
+            libraryCardId: req.LibraryCardId,
             recordWithReturnItems: req.ToBorrowRecordWithReturnDto(),
             recordWithLostItems: req.ToBorrowRecordWithLostDto(),
             isConfirmMissing: req.IsConfirmMissing));

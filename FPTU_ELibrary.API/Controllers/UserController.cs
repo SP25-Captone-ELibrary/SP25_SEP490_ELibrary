@@ -149,6 +149,14 @@ public class UserController:ControllerBase
     #endregion
 
     [Authorize]
+    [HttpGet(APIRoute.User.GetAllPendingActivity, Name = nameof(GetAllPendingActivityAsync))]
+    public async Task<IActionResult> GetAllPendingActivityAsync()
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _userService.GetPendingLibraryActivitySummaryByEmailAsync(email: email ?? string.Empty));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.User.GetAllUserBorrowRequest, Name = nameof(GetAllUserBorrowRequestAsync))]
     public async Task<IActionResult> GetAllUserBorrowRequestAsync([FromQuery] BorrowRequestSpecParams specParams)
     {

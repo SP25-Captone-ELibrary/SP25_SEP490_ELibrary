@@ -99,7 +99,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.CollectedDate)
                 .HasColumnType("datetime")
                 .HasColumnName("collected_date");
-            #endregion   
+            #endregion
+
+            #region Updated at: 19/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.ReservationCode)
+                .IsRequired(false)
+                .HasColumnType("nvarchar(50)")
+                .HasColumnName("reservation_code");
+            builder.Property(e => e.IsAppliedLabel)
+                .HasDefaultValue(false)
+                .HasColumnName("is_applied_label");
+            #endregion
         }
     }
 }

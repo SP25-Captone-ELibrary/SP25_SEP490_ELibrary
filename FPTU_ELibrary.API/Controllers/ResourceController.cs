@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Resource;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -28,6 +29,18 @@ public class ResourceController : ControllerBase
                 nameof(ResourceType.BookAudio)
             })
         );
+    }
+    
+    [Authorize]
+    [HttpPost(APIRoute.Resource.PublicUploadImage, Name = nameof(PublicUploadImageAsync))]
+    public async Task<IActionResult> PublicUploadImageAsync([FromForm] UploadImageRequest req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _cloudService.PublicUploadAsync(
+            email: email ?? string.Empty,
+            file: req.File,
+            fileType: FileType.Image,
+            resourceType: (ResourceType) Enum.Parse(typeof(ResourceType), req.ResourceType)));
     }
     
     [Authorize]

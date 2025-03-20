@@ -1,4 +1,5 @@
 using System.Diagnostics.Tracing;
+using System.Globalization;
 using CloudinaryDotNet.Core;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
@@ -9,6 +10,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Users;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -17,9 +19,11 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using HtmlAgilityPack;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Nest;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -33,10 +37,12 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
     private readonly Lazy<ILibraryItemInventoryService<LibraryItemInventoryDto>> _inventorySvc;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     
+    private readonly IEmailService _emailSvc;
     private readonly IUserService<UserDto> _userSvc;
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
     
+    private readonly AppSettings _appSettings;
     private readonly BorrowSettings _borrowSettings;
 
     public ReservationQueueService(
@@ -50,6 +56,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         ILibraryItemService<LibraryItemDto> libItemSvc,
         ILibraryCardService<LibraryCardDto> cardSvc,
         IOptionsMonitor<BorrowSettings> monitor,
+        IOptionsMonitor<AppSettings> monitor1,
+        IEmailService emailSvc,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
@@ -57,11 +65,14 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
     {
         _cardSvc = cardSvc;
         _userSvc = userSvc;
+        _emailSvc = emailSvc;
         _libItemSvc = libItemSvc;
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
         _borrowRecordSvc = borrowRecordSvc;
         _borrowRequestSvc = borrowRequestSvc;
+        
+        _appSettings = monitor1.CurrentValue;
         _borrowSettings = monitor.CurrentValue;
     }
 
@@ -75,9 +86,9 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             	TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
             // Clone requested item instances to store unhandled instance 
-            var unhandledInstanceIds = libraryItemInstanceIds;
-            // Initialize handled instance dto
-            var handledInstanceDtoList = new List<LibraryItemInstanceDto>();
+            var unhandledInstanceIds = libraryItemInstanceIds.Clone();
+            // Initialize handled reservation dic to process send email
+            var handledReservationDic = new Dictionary<Guid, List<ReservationQueueDto>>();
             // Try to retrieve pending reservation order ascending by reserve date
             var baseSpec = new BaseSpecification<ReservationQueue>(r =>
                 // Pending status
@@ -92,6 +103,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     .ThenInclude(l => l.LibraryItemInventory)
                 .Include(r => r.LibraryItem)
                     .ThenInclude(l => l.LibraryItemInstances)
+                .Include(q => q.LibraryCard)
             );
             // Order by reservation date
             baseSpec.AddOrderBy(r => r.ReservationDate);
@@ -147,11 +159,6 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                         status: LibraryItemInstanceStatus.Reserved,
                                         isProcessBorrowRequest: false);
                                     
-                                    // Add to handled instance
-                                    var instanceFromItem = reservation.LibraryItem.LibraryItemInstances
-                                        .First(li => li.LibraryItemInstanceId == unhandledInstanceIds[i]);
-                                    handledInstanceDtoList.Add(_mapper.Map<LibraryItemInstanceDto>(instanceFromItem));
-                                    
                                     // Break and remove handled index
                                     unhandledInstanceIds.RemoveAt(i); 
                                     break;
@@ -162,10 +169,10 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                 }
                 
                 // Group handled reservation by library card to check for exceed than threshold
-                var groupedReservations = entities.GroupBy(g => g.LibraryCardId);
+                var groupedReservations = entities.GroupBy(g => g.LibraryCardId).ToList();
                 foreach (var groupedRes in groupedReservations)
                 {
-                    // Extract all reservation 
+                    // Extract all reservation existing reservation code
                     var reservationsFromGroup = groupedRes.ToList();
                     // Recheck for card's threshold value
                     var activitySummary = (await _userSvc.GetPendingLibraryActivitySummaryAsync(libraryCardId: groupedRes.Key)).Data;
@@ -197,22 +204,113 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                 reservation.ExpectedAvailableDateMax = null;
                                 reservation.ExpiryDate = null;
                                 reservation.IsNotified = false;
+                                
+                                // Add to unhandled list
+                                unhandledInstanceIds.Add(validInstanceId);
+                                
+                                // Process update reservation
+                                await _unitOfWork.Repository<ReservationQueue, int>().UpdateAsync(reservation);
                             }
                         }
+                        
+                        // Retrieve all existing assigned reservation
+                        var reserveSpec = new BaseSpecification<ReservationQueue>(r =>
+                            // Has already assigned instance
+                            (r.QueueStatus == ReservationQueueStatus.Assigned || 
+                             r.QueueStatus == ReservationQueueStatus.Expired) &&  
+                            r.LibraryItemInstanceId != null &&
+                            // Has already registered reservation code
+                            r.ReservationCode != null                        
+                        );
+                        // Retrieve today's reservations with spec
+                        var todayAssignedReservations = (await _unitOfWork.Repository<ReservationQueue, int>()
+                            .GetAllWithSpecAsync(reserveSpec)).ToList();
+                        // Generate reservation code
+                        var newReservationCode = GenerateNextReservationCode(todayAssignedReservations);
+                        if (!string.IsNullOrEmpty(newReservationCode))
+                        {
+                            var assignedReservations = reservationsFromGroup
+                                .Where(r => r.QueueStatus == ReservationQueueStatus.Assigned)
+                                .ToList();
+                            // Iterate all assigned status in grouped reservation
+                            assignedReservations.ForEach(r =>
+                                {
+                                    // Add default assign handling fields
+                                    r.ReservationCode = newReservationCode;
+                                    r.IsAppliedLabel = false;
+                                });
+                            
+                            // Add to handled reservation dic
+                            handledReservationDic.Add(
+                                key: groupedRes.Key,
+                                value: _mapper.Map<List<ReservationQueueDto>>(assignedReservations));
+                        }
                     }
-                    
-                    // Announce user about assigned item
-                    // TODO: Announce user after assigned item success
+                }
+
+                // Process save changes when exist at least one instance has been handled 
+                if (groupedReservations.Any() && 
+                    (unhandledInstanceIds.Count == 0 ||
+                     unhandledInstanceIds.Count < libraryItemInstanceIds.Count))
+                {
+                    // Save DB
+                    var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+                    if (isSaved)
+                    {
+                        // Process send email
+                        foreach (var key in handledReservationDic.Keys)
+                        {
+                            if (handledReservationDic.TryGetValue(key, out var reservations))
+                            {
+                                if(reservations.Any())
+                                {
+                                    // Retrieve reservation code
+                                    var reservationCode = reservations[0].ReservationCode;
+                                    
+                                    // Retrieve user information
+                                    var userSpec = new BaseSpecification<User>(u => u.LibraryCardId == key);
+                                    // Apply include
+                                    userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+
+                                    // Process send email to announce about assigned items
+                                    if ((await _userSvc.GetWithSpecAsync(userSpec)).Data is UserDto userDto &&
+                                        userDto.LibraryCard != null)
+                                    {
+                                        await SendAssignReservationSuccessEmailBody(
+                                            email: userDto.Email,
+                                            libCard: userDto.LibraryCard,
+                                            assignedReservations: reservations,
+                                            reservationCode: reservationCode ?? string.Empty,
+                                            libName: _appSettings.LibraryName,
+                                            libContact: _appSettings.LibraryContact);
+                                    }
+                                    else
+                                    {
+                                        _logger.Error("Failed to send assigned reservation email to user");
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Map to dto
+                        var dtoList = _mapper.Map<List<ReservationQueueDto>>(handledReservationDic.Values
+                            .SelectMany(list => list).ToList()); // Select all values in dictionary
+                        // Convert to collection of assign result
+                        var assignReservationResultList = dtoList.ToAssignReservationResultDto(assignedDate: currentLocalDateTime);
+                        
+                        // Response with assign result
+                        var successMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0008);
+                        return new ServiceResult(ResultCodeConst.Borrow_Success0008,
+                            message: StringUtils.Format(successMsg, libraryItemInstanceIds.Count.ToString()),
+                            data: assignReservationResultList);
+                    }   
+                    else
+                    {
+                        _logger.Error("Failed to save assign item instance to reservation queues");
+                    }
                 }
             }
 
-            // Initialize 
-            // Check for any handled instance
-            if (handledInstanceDtoList.Any())
-            {
-                // TODO: Implement ordering number for each reservations
-            }
-            
             // Do nothing, keep instance in outOfShelf status waiting for librarian update in shelf
             // Response return items success
             var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0008);
@@ -595,7 +693,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                             UpdatedAt = r.LibraryItemInstance.UpdatedAt,
                             CreatedBy = r.LibraryItemInstance.CreatedBy,
                             UpdatedBy = r.LibraryItemInstance.UpdatedBy,
-                            IsDeleted = r.LibraryItemInstance.IsDeleted
+                            IsDeleted = r.LibraryItemInstance.IsDeleted,
+                            IsCirculated = r.LibraryItemInstance.IsCirculated
                         }
                         : null,
                 })).ToList();
@@ -828,5 +927,239 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         
         // Add default value to response
         return (libItemId, null, null);
+    }
+
+    private string GenerateNextReservationCode(List<ReservationQueue> reservations)
+    {
+        try
+        {
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+            // Format date to yyyyMMdd
+            var todayStr = currentLocalDateTime.ToString("yyyyMMdd");
+            // Initialize max number
+            var maxNum = 0;
+            
+            // Iterate each reservation to retrieve for newest reservation code
+            foreach (var reservation in reservations)
+            {
+                // Skip reservation has null or empty code
+                if(string.IsNullOrEmpty(reservation.ReservationCode))
+                    continue;
+                
+                // Split code, and assume that code has 3 parts
+                // Code format: RS-yyyyMMdd-XXXX with X: number
+                var parts = reservation.ReservationCode.Split('-');
+                if (parts.Length == 3 && parts[1] == todayStr) 
+                {
+                    if (int.TryParse(parts[2], out int number))
+                    {
+                        if(number > maxNum)
+                            maxNum = number;
+                    }
+                }
+            }
+            
+            // Process generate new code
+            var newMaxNum = maxNum + 1;
+            var newReservationCode = $"RS-{todayStr}-{newMaxNum:D4}";
+            return newReservationCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process generate next reservation code");
+        }
+    }
+
+    private async Task<bool> SendAssignReservationSuccessEmailBody(
+        string email,
+        LibraryCardDto libCard,
+        List<ReservationQueueDto> assignedReservations,
+        string reservationCode,
+        string libName, string libContact)
+    	{
+    		try
+    		{
+    			// Email subject
+    			var subject = "[ELIBRARY] Thông Báo Tài Liệu Đặt Trước Đã Có Sẵn";
+    			
+    			// Process send email
+    			var emailMessageDto = new EmailMessageDto( // Define email message
+                    // Define Recipient
+                    to: new List<string>() { email },
+                    // Define subject
+                    subject: subject,
+                    // Add email body content
+                    content: GetAssignReservationSuccessEmailBody(
+                        libCard: libCard,
+                        assignedReservations: assignedReservations,
+                        reservationCode: reservationCode,
+                        libName: libName,
+                        libContact:libContact)
+                );
+    			
+    			// Process send email
+    			return await _emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+    		}
+    		catch (Exception ex)
+    		{
+    			_logger.Error(ex.Message);
+    			throw new Exception("Error invoke when process send borrow record return success email");
+    		}
+    	}
+    
+    private string GetAssignReservationSuccessEmailBody(
+        LibraryCardDto libCard,
+        List<ReservationQueueDto> assignedReservations,
+        string reservationCode,
+        string libName, string libContact)
+    {
+        // Initialize email content sections
+        string headerMessage = string.Empty;
+        string mainMessage = string.Empty;
+        string codeSection = string.Empty;
+        string reservationSection = string.Empty;
+
+        // Process assigned reservations
+        if (assignedReservations.Any())
+        {
+            headerMessage = "Thông Báo Tài Liệu Đặt Trước Đã Có Sẵn";
+            mainMessage = "Các tài liệu bạn đã đặt trước đã có sẵn. Vui lòng đến nhận theo thời gian quy định dưới đây:";
+
+            // Build the reservation code section
+            codeSection = $"""
+                <div style="text-align: center; margin: 20px 0;">
+                    <div style="display: inline-block; padding: 10px 20px; background-color: #ffeb3b; border-radius: 8px;">
+                        <p style="font-size: 16px; color: #d32f2f; font-weight: bold;">Mã Đặt: {reservationCode}</p>
+                    </div>
+                    <p style="font-size: 14px; color: #616161;">Vui lòng cung cấp mã đặt này cho thủ thư để nhận các tài liệu.</p>
+                </div>
+            """;
+
+            // Build a list of reservation details
+            var reservationItemList = string.Join("", assignedReservations.Select(reservation =>
+            {
+                // If an item instance is assigned, include its details (e.g. Barcode and Status)
+                string instanceDetails = string.Empty;
+                if (reservation.LibraryItemInstance != null)
+                {
+                    // Try parse status
+                    Enum.TryParse(reservation.LibraryItemInstance.Status, true,
+                        out LibraryItemInstanceStatus validStatus);
+                    
+                    instanceDetails = $"""
+                        <p><strong>Mã Vạch:</strong> <span class="barcode">{reservation.LibraryItemInstance.Barcode}</span></p>
+                        <p><strong>Trạng Thái:</strong> <span class="status-text">{(validStatus != null! ? validStatus.GetDescription() : reservation.LibraryItemInstance.Status)}</span></p>
+                    """;
+                }
+
+                // Build details for each reserved item
+                return $"""
+                <li>
+                    <p><strong>Tiêu đề:</strong> <span class="title">{reservation.LibraryItem.Title}</span></p>
+                    <p><strong>ISBN:</strong> <span class="isbn">{reservation.LibraryItem.Isbn}</span></p>
+                    <p><strong>Năm Xuất Bản:</strong> {reservation.LibraryItem.PublicationYear}</p>
+                    <p><strong>Nhà Xuất Bản:</strong> {reservation.LibraryItem.Publisher}</p>
+                    {instanceDetails}
+                    <p><strong>Hạn Nhận:</strong> <span class="expiry-date">{(reservation.ExpiryDate.HasValue 
+                            ? reservation.ExpiryDate.Value.ToString("dd/MM/yyyy HH:mm") 
+                            : "Không xác định")}</span></p>
+                </li>
+                """;
+            }));
+
+            reservationSection = $"""
+                <p><strong>Thông Tin Tài Liệu Đã Cấp:</strong></p>
+                <div class="details">
+                    <ul>
+                        {reservationItemList}
+                    </ul>
+                </div>
+                """;
+        }
+
+        // Build HTML content
+        return $$"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>{headerMessage}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                }
+                .header {
+                    font-size: 18px;
+                    color: #2c3e50;
+                    font-weight: bold;
+                }
+                .details {
+                    margin: 15px 0;
+                    padding: 10px;
+                    background-color: #f9f9f9;
+                    border-left: 4px solid #27ae60;
+                }
+                .details ul {
+                    list-style-type: disc;
+                    padding-left: 20px;
+                }
+                .details li {
+                    margin: 5px 0;
+                }
+                .footer {
+                    margin-top: 20px;
+                    font-size: 14px;
+                    color: #7f8c8d;
+                }
+                .isbn {
+                    color: #2980b9;
+                    font-weight: bold;
+                }
+                .title {
+                    color: #f39c12;
+                    font-weight: bold;
+                }
+                .expiry-date {
+                    color: #27ae60;
+                    font-weight: bold;
+                }
+                .status-text {
+                    color: #c0392b;
+                    font-weight: bold;
+                }
+                .barcode {
+                    color: #8e44ad;
+                    font-weight: bold;
+                }
+                .code {
+                    color: #16a085;
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <p class="header">{{headerMessage}}</p>
+            <p>Xin chào {{libCard.FullName}},</p>
+            <p>{{mainMessage}}</p>
+            
+            {{codeSection}}
+            
+            {{reservationSection}}
+            
+            <p>Nếu có bất kỳ thắc mắc hoặc cần hỗ trợ, vui lòng liên hệ qua email: <strong>{{libContact}}</strong>.</p>
+            <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện.</p>
+            
+            <p class="footer"><strong>Trân trọng,</strong></p>
+            <p class="footer">{{libName}}</p>
+        </body>
+        </html>
+        """;
     }
 }

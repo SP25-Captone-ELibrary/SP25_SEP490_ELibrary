@@ -159,7 +159,8 @@ namespace FPTU_ELibrary.API.Extensions
 				BorrowType = req.BorrowType,
 				BorrowRecordDetails = req.BorrowRecordDetails.Select(brd => new BorrowRecordDetailDto()
 				{
-					LibraryItemInstanceId = brd.LibraryItemInstanceId
+					LibraryItemInstanceId = brd.LibraryItemInstanceId,
+					DueDate = req.DueDate ?? DateTime.MinValue
 				}).ToList()
 			};
 		

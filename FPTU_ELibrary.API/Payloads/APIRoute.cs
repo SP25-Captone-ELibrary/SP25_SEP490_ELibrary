@@ -93,7 +93,7 @@
 			public const string ProcessRequest = Base + "/management/borrows/records/process-request";
 			public const string Create = Base + "/management/borrows/records";
 			// [PUT]
-			public const string ProcessReturn = Base + "/mangement/borrows/records/{id}/process-return";
+			public const string ProcessReturn = Base + "/mangement/borrows/records/process-return";
 			#endregion
 			
 			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
@@ -360,6 +360,7 @@
 			
 			// [GET]
 			public const string CalculateBorrowReturnSummary = Base + "/users/borrows/calculate-summary";
+			public const string GetAllPendingActivity = Base + "/users/borrows/records/user-pending-activity";
 			public const string GetAllUserBorrowRequest = Base + "/users/borrows/requests";
 			public const string GetAllUserBorrowRecord = Base + "/users/borrows/records";
 			public const string GetAllUserDigitalBorrow = Base + "/users/borrows/digital";
@@ -440,6 +441,7 @@
 		/// </summary>
 		public static class Resource
 		{
+			#region Management
 			// [GET]
 			public const string GetAllType = Base + "/management/resources/types";
 			// [POST]
@@ -452,6 +454,9 @@
 			// [DELETE]
 			public const string DeleteImage = Base + "/management/resources/images";
 			public const string DeleteVideo = Base + "/management/resources/videos";
+			#endregion
+			
+			public const string PublicUploadImage = Base + "/resources/images/upload";
 		}
 
 		/// <summary>

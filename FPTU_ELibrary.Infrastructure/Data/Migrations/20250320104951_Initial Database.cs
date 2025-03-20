@@ -925,7 +925,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    is_deleted = table.Column<bool>(type: "bit", nullable: false)
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    is_circulated = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -1237,6 +1238,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     expected_available_date_max = table.Column<DateTime>(type: "datetime", nullable: true),
                     reservation_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    reservation_code = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    is_applied_label = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     collected_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     is_notified = table.Column<bool>(type: "bit", nullable: false),
                     cancelled_by = table.Column<string>(type: "nvarchar(100)", nullable: true),

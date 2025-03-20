@@ -23,6 +23,9 @@ public class LibraryItemInstanceDetailDto
     // Mark as delete
     public bool IsDeleted { get; set; }
 
+    // Mark as the instance has been circulated
+    public bool IsCirculated { get; set; }
+    
     // Mapping entities
     public LibraryItemDto LibraryItem { get; set; } = null!;
 
@@ -50,6 +53,7 @@ public static class LibraryItemInstanceDetailDtoExtensions
             CreatedBy = dto.CreatedBy,
             UpdatedBy = dto.UpdatedBy,
             IsDeleted = dto.IsDeleted,
+            IsCirculated = dto.IsCirculated,
             LibraryItem = dto.LibraryItem,
             BorrowRecordDetails = dto.BorrowRecordDetails.Any() ? dto.BorrowRecordDetails.ToList() : new(),
             BorrowRequestDetails = dto.BorrowRequestDetails.Any() ? dto.BorrowRequestDetails.ToList() : new(),

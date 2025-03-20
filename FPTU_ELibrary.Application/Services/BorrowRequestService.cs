@@ -1714,7 +1714,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
     
-    public async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId, bool isCallFromRecordSvc = false)
+    public async Task<IServiceResult?> ValidateBorrowAmountAsync(int totalItem, Guid libraryCardId,
+        bool isCallFromRecordSvc = false,
+        int totalActualItem = 0)
     {
         // Try to retrieve user pending activity
         if ((await _userSvc.Value.GetPendingLibraryActivitySummaryAsync(
@@ -1733,7 +1735,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             if (totalItem > activitySummary.RemainTotal) // Exceed than remain total that user can borrow more
             {
                 var params1 = activitySummary.TotalBorrowOnce.ToString();
-                var params2 = resCode != ResultCodeConst.Borrow_Warning0041 ? activitySummary.RemainTotal.ToString() : totalItem.ToString();
+                var params2 = resCode != ResultCodeConst.Borrow_Warning0041 // Is not borrow warning 41
+                    ? activitySummary.RemainTotal.ToString() // Default using remain total
+                    : (totalItem + totalActualItem).ToString(); // Sum total item and total actual item (if any already existing borrow request or reservation)
                 
                 // Msg: A maximum of {0} items can be borrowed at the same time. Currently, you may still borrow {1} more.
                 // Please contact the library if you need to borrow more

@@ -271,6 +271,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 iInstance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
                 // Boolean 
                 iInstance.IsDeleted = false;
+                iInstance.IsCirculated = false;
             }
 
             // Iterate each library resource (if any) to check valid data
@@ -1052,6 +1053,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                         CreatedBy = li.CreatedBy,
                         UpdatedBy = li.UpdatedBy,
                         IsDeleted = li.IsDeleted,
+                        IsCirculated = li.IsCirculated,
                         LibraryItemConditionHistories = li.LibraryItemConditionHistories.Select(lih => new LibraryItemConditionHistory()
                         {
                             ConditionHistoryId = lih.ConditionHistoryId,
@@ -1092,8 +1094,11 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     {
                         foreach (var resource in dest.LibraryItemResources)
                         {
-                            // Ignore ResourceUrl
-                            resource.LibraryResource.ResourceUrl = null!; 
+                            if (!string.IsNullOrEmpty(email))
+                            {
+                                // Ignore ResourceUrl
+                                resource.LibraryResource.ResourceUrl = null!; 
+                            }
                         }
                     });
                 

@@ -23,6 +23,9 @@ public class LibraryItemInstance : IAuditableEntity
 
     // Mark as delete
     public bool IsDeleted { get; set; }
+    
+    // Mark as the instance has been circulated
+    public bool IsCirculated { get; set; }
 
     // Mapping entities
     [JsonIgnore]

@@ -36,6 +36,12 @@ public class ReservationQueue
     // Deadline for pickup
     public DateTime? ExpiryDate { get; set; }
     
+    // Reservation code (only process when s.o return their item and assigned to s.o in reservation queues)
+    public string? ReservationCode { get; set; }
+
+    // Mark whether assigned reservation code or not 
+    public bool IsAppliedLabel { get; set; }
+    
     // Collected date
     public DateTime? CollectedDate { get; set; }
     
@@ -49,7 +55,6 @@ public class ReservationQueue
     // Mapping entities
     public LibraryItem LibraryItem { get; set; } = null!;
     
-    [JsonIgnore] 
     public LibraryItemInstance? LibraryItemInstance { get; set; }
 
     [JsonIgnore]

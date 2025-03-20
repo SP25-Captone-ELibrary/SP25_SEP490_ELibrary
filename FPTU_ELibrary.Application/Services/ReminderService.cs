@@ -170,7 +170,7 @@ public class ReminderService : BackgroundService
         
             // Delay 10m for each time execution
             // await Task.Delay(600000, cancellationToken);
-            await Task.Delay(10000, cancellationToken);
+            await Task.Delay(30000, cancellationToken);
         }
         
         _logger.Information("ReminderService background task is stopping.");

@@ -159,6 +159,7 @@ public class WarehouseTrackingDetailService :
 				                    UpdatedBy = li.UpdatedBy,
 				                    CreatedBy = li.CreatedBy,
 				                    IsDeleted = li.IsDeleted,
+				                    IsCirculated = li.IsCirculated,
 				                    LibraryItemConditionHistories = li.LibraryItemConditionHistories
 			                    }).ToList(),
 			                    LibraryItemReviews = w.LibraryItem.LibraryItemReviews,

@@ -895,6 +895,84 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 		
+		public async Task<IServiceResult> GetPendingLibraryActivitySummaryByEmailAsync(string email)
+        {
+        	try
+        	{
+        		// Build spec
+                var userSpec = new BaseSpecification<User>(u => u.Email == email);
+                // Apply include
+                userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+                // Retrieve user information by lib card id 
+                var user = await _unitOfWork.Repository<User, Guid>().GetWithSpecAsync(userSpec);
+                if (user == null || user.LibraryCardId == null)
+                {
+                    // Msg: Data not found or empty
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                        // Default user pending activity
+                        new UserPendingActivitySummaryDto());
+                }
+                
+                // Try parse lib card
+                Guid.TryParse(user.LibraryCardId.ToString() ?? Guid.Empty.ToString(), out var libraryCardId);
+                
+                // Count total requesting items
+                var reqCountRes = (await _borrowReqService.Value.CountAllPendingRequestByLibCardIdAsync(
+                    libraryCardId: libraryCardId)).Data;
+        		// Try parse to integer
+        		int.TryParse(reqCountRes?.ToString() ?? "0", out var totalRequesting);
+        		
+        		// Count total active records
+        		var activeRecCountRes = (await _borrowRecService.Value.CountAllActiveRecordByLibCardIdAsync(
+        			libraryCardId: libraryCardId)).Data;
+        		// Try parse to integer
+        		int.TryParse(activeRecCountRes?.ToString() ?? "0", out var totalBorrowing);
+        		
+        		// Count total pending reservations
+        		var pendingReservingCountRes = (await _reservationService.Value.CountAllReservationByLibCardIdAndStatusAsync(
+        			libraryCardId: libraryCardId,
+        			status: ReservationQueueStatus.Pending)).Data;
+        		// Try parse to integer
+        		int.TryParse(pendingReservingCountRes?.ToString() ?? "0", out var totalPendingReserving);
+        		
+        		// Count total pending reservations
+        		var assignedReservingCountRes = (await _reservationService.Value.CountAllReservationByLibCardIdAndStatusAsync(
+        			libraryCardId: libraryCardId,
+        			status: ReservationQueueStatus.Assigned)).Data;
+        		// Try parse to integer
+        		int.TryParse(assignedReservingCountRes?.ToString() ?? "0", out var totalAssignedReserving);
+        		
+        		// Max amount to borrow 
+        		var maxAmountToBorrow = user.LibraryCard != null && user.LibraryCard.IsAllowBorrowMore // Is allow to borrow more than default
+        			? user.LibraryCard.MaxItemOnceTime // Use updated max amount
+        			: _borrowSettings.BorrowAmountOnceTime; // Use default
+        		// Count remain total
+        		var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalPendingReserving + totalAssignedReserving);
+        		
+        		// Initialize summary
+        		var summaryActivity = new UserPendingActivitySummaryDto()
+        		{
+        			TotalRequesting = totalRequesting,
+        			TotalBorrowing = totalBorrowing,
+        			TotalPendingReserving = totalPendingReserving,
+        			TotalAssignedReserving = totalAssignedReserving,
+        			TotalBorrowOnce = maxAmountToBorrow,
+        			RemainTotal = Math.Max(0, remainTotal),
+        			IsAtLimit = remainTotal <= 0
+        		};
+        		
+        		// Msg: Get data successfully
+        		return new ServiceResult(ResultCodeConst.SYS_Success0002,
+        			await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), summaryActivity);
+        	}
+        	catch (Exception ex)
+        	{
+        		_logger.Error(ex.Message);
+        		throw new Exception("Error invoke when process get pending library activity summary by lib card id");
+        	}
+        }
+		
 		public async Task<IServiceResult> CreateAccountByAdminAsync(UserDto dto)
 		{
 			try

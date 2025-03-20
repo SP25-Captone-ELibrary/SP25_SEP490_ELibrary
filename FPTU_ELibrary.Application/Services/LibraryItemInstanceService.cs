@@ -540,7 +540,8 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     UpdatedAt = li.UpdatedAt,   
                     CreatedBy = li.CreatedBy,   
                     UpdatedBy = li.UpdatedBy,   
-                    IsDeleted = li.IsDeleted,   
+                    IsDeleted = li.IsDeleted, 
+                    IsCirculated = li.IsCirculated,
                     LibraryItem = new LibraryItem()
                     {
                         LibraryItemId = li.LibraryItem.LibraryItemId,
@@ -865,6 +866,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
                     // Boolean 
                     IsDeleted = false,
+                    IsCirculated = false,
                     // Condition histories
                     LibraryItemConditionHistories =
                         _mapper.Map<List<LibraryItemConditionHistory>>(bec.LibraryItemConditionHistories)
@@ -1008,6 +1010,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                     Status = nameof(LibraryItemInstanceStatus.OutOfShelf),
                     // Boolean 
                     IsDeleted = false,
+                    IsCirculated = false,
                     // Condition histories
                     LibraryItemConditionHistories =
                         _mapper.Map<List<LibraryItemConditionHistory>>(bec.LibraryItemConditionHistories)
@@ -2186,6 +2189,8 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         {
                             // Update status
                             instance.Status = nameof(LibraryItemInstanceStatus.Borrowed);
+                            // Update circulation
+                            instance.IsCirculated = true;
                             
                             // Update inventory quantity
                             if (inventory != null)

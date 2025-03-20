@@ -1464,6 +1464,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("IsCirculated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_circulated");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_deleted");
@@ -2112,6 +2118,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("expiry_date");
 
+                    b.Property<bool>("IsAppliedLabel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_applied_label");
+
                     b.Property<bool>("IsNotified")
                         .HasColumnType("bit")
                         .HasColumnName("is_notified");
@@ -2138,6 +2150,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("queue_status");
+
+                    b.Property<string>("ReservationCode")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reservation_code");
 
                     b.Property<DateTime>("ReservationDate")
                         .HasColumnType("datetime")

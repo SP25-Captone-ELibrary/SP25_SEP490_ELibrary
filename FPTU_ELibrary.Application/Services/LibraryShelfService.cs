@@ -170,6 +170,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                         CreatedBy = lia.CreatedBy,
                         UpdatedBy = lia.UpdatedBy,
                         IsDeleted = lia.IsDeleted,
+                        IsCirculated = lia.IsCirculated,
                         BorrowRecordDetails = lia.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
                         {
                             BorrowRecordDetailId = brd.BorrowRecordDetailId,
