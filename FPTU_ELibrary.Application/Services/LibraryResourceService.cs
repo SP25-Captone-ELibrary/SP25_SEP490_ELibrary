@@ -21,6 +21,8 @@ using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using NAudio.Lame;
+using NAudio.Wave;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -309,7 +311,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             // Add represent url and providerId
             dto.ResourceUrl = chunkDetails[chunkDetails.Keys.Min()];
             dto.ProviderPublicId = StringUtils.GetPublicIdFromCloudinaryUrl(dto.ResourceUrl);
-
+            dto.ResourceType = ResourceType.BookAudio.ToString();
             List<LibraryResourceUrlDto> urls = new List<LibraryResourceUrlDto>();
             foreach (var chunkDetail in chunkDetails)
             {
@@ -323,15 +325,15 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             dto.LibraryResourceUrls = urls;
 
 
-            // Validate inputs using the generic validator
-            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
-            // Check for valid validations
-            if (validationResult != null && !validationResult.IsValid)
-            {
-                // Convert ValidationResult to ValidationProblemsDetails.Errors
-                var errors = validationResult.ToProblemDetails().Errors;
-                throw new UnprocessableEntityException("Invalid Validations", errors);
-            }
+            // // Validate inputs using the generic validator
+            // var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // // Check for valid validations
+            // if (validationResult != null && !validationResult.IsValid)
+            // {
+            //     // Convert ValidationResult to ValidationProblemsDetails.Errors
+            //     var errors = validationResult.ToProblemDetails().Errors;
+            //     throw new UnprocessableEntityException("Invalid Validations", errors);
+            // }
 
             // Check exist item
             var isItemExist = (await _libraryItemService.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
@@ -365,8 +367,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 // Get file type
                 Enum.TryParse(typeof(FileType), dto.FileFormat, out var fileType);
                 // Check exist resource
-                var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
-                if (checkExistResult.Data is false) return checkExistResult; // Return when not found resource on cloud
+                // var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
+                // if (checkExistResult.Data is false) return checkExistResult; // Return when not found resource on cloud
             }
 
             // Generate new library item resource
@@ -771,8 +773,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult<Stream>> GetOwnBorrowResource(string email, int resourceId
-        , int? latestMinute)
+    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId
+        , int itemId)
     {
         try
         {
@@ -781,6 +783,102 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
+            //get item of the resource
+            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
+            if (libraryItem.Data is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
+            }
+
+            var itemValue = (LibraryItemDto)libraryItem.Data!;
+
+            // Get resource
+            var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            resourceSpec.EnableSplitQuery();
+            resourceSpec.ApplyInclude(q => q.Include(r => r.LibraryResourceUrls));
+            var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
+            if (resource is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
+            }
+
+            // Check if this email is available to have this resource
+            var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email)
+                                                            && u.DigitalBorrows.Any(db =>
+                                                                db.LibraryResource.ResourceId == resourceId));
+            userSpec.ApplyInclude(q => q
+                .Include(u => u.DigitalBorrows)
+                .ThenInclude(db => db.LibraryResource));
+            var user = await _userService.GetWithSpecAsync(userSpec);
+            if (user.Data is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0018);
+                return new ServiceResult<(Stream, string)>(ResultCodeConst.Borrow_Warning0018,
+                    StringUtils.Format(errMsg, isEng
+                        ? "user has not borrowed this resource"
+                        : "người dùng chưa mượn tài nguyên này"));
+            }
+
+            var userValue = (user.Data as UserDto)!;
+            var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
+                                                                            && db.Status == BorrowDigitalStatus.Active
+                                                                            && db.ExpiryDate.Date > DateTime.Now.Date);
+            if (userBorrows is null)
+            {
+                return new ServiceResult<(Stream, string)>(ResultCodeConst.Borrow_Warning0019,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
+            }
+
+            // resource.FileFormat.ToLower().Equals("pdf    ")
+            if (resource.FileFormat.ToLower().Equals("image"))
+            {
+                var resourceUrl = resource.ResourceUrl;
+
+                // if (pageNumber == 0 || pageNumber is null) pageNumber = 1;
+                var pdfStream = await DownloadAndAddWatermark(resourceUrl, email, false);
+                return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    (pdfStream, resource.FileFormat.ToLower()));
+            }
+
+            return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Fail0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get digital resource");
+        }
+    }
+
+    #region mp3 v1
+
+    public async Task<IServiceResult<Stream>> GetPartOfOwnAudioReSource(string email, int itemId, int resourceId,
+        int part)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            //get item of the resource
+            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
+            if (libraryItem.Data is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
+            }
+    
+            var itemValue = (LibraryItemDto)libraryItem.Data!;
+    
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
             resourceSpec.EnableSplitQuery();
@@ -792,7 +890,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
             }
-
+    
             // Check if this email is available to have this resource
             var userSpec = new BaseSpecification<User>(u => u.Email.Equals(email)
                                                             && u.DigitalBorrows.Any(db =>
@@ -809,7 +907,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                         ? "user has not borrowed this resource"
                         : "người dùng chưa mượn tài nguyên này"));
             }
-
+    
             var userValue = (user.Data as UserDto)!;
             var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
                                                                             && db.Status == BorrowDigitalStatus.Active
@@ -819,27 +917,38 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0019,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
             }
-
-            // resource.FileFormat.ToLower().Equals("pdf    ")
-            if (resource.FileFormat.ToLower().Equals("image"))
-            {
-                var resourceUrl = resource.ResourceUrl;
-
-                // if (pageNumber == 0 || pageNumber is null) pageNumber = 1;
-                var pdfStream = await DownloadAndAddWatermark(resourceUrl, email,false);
-                return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
-            }
-
-            if (resource.FileFormat.ToLower().Equals("video"))
-            {
-                // var resourceLang = ;
-                var listUrls = resource.LibraryResourceUrls.Select(u => u.Url).ToList();
-                // var audioStream = await PrependTTSAndMergeAsync(listUrls,);
-            }
-
-            return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+    
+            var resourceLang = itemValue.Language;
+            // var resourceLang = ;
+            var listUrls = resource.LibraryResourceUrls.Select(u => u.Url).ToList();
+            // Default part size to upload: 40MB
+            var responseChunkedSize = 40 * 1024 * 1024;
+    
+            //Get full of audio
+            var audioStream = await PrependTTSAndMergeAsync(listUrls, resourceLang, email);
+    
+            var totalLength = audioStream.Length;
+    
+            var startByte = part * responseChunkedSize;
+            var endByte = Math.Min(startByte + responseChunkedSize, totalLength);
+    
+            audioStream.Seek(startByte, SeekOrigin.Begin);
+    
+            // Create a new memory stream to store the chunk
+            var memoryStream = new MemoryStream();
+            var buffer = new byte[endByte - startByte];
+    
+            // Read and write the chunk to the memory stream
+            await audioStream.ReadAsync(buffer, 0, buffer.Length);
+            await memoryStream.WriteAsync(buffer, 0, buffer.Length);
+    
+            // Chỉ cần seek lại MemoryStream để đảm bảo nó bắt đầu từ đầu
+            memoryStream.Seek(0, SeekOrigin.Begin);
+    
+            // Return the part of the stream
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                memoryStream);
         }
         catch (Exception ex)
         {
@@ -847,22 +956,36 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             throw new Exception("Error invoke when process get digital resource");
         }
     }
-    private async Task<MemoryStream> PrependTTSAndMergeAsync(List<string> urls,string lang,string email)
+    
+    private async Task<MemoryStream> PrependTTSAndMergeAsync(List<string> urls, string lang, string email)
     {
+        // Tải về các stream từ các URL
         var chunkStreams = await DownloadChunkStreamsAsync(urls);
-        var ttsStream = await _voiceService.TextToVoice(lang, email);
-        var streamValue = (MemoryStream)ttsStream.Data!;
-        
+    
+        // Gọi API Text-to-Voice để lấy đoạn TTS
+        var ttsStreamResult = await _voiceService.TextToVoice(lang, email);
+        var ttsStream = (MemoryStream)ttsStreamResult.Data!;
+        ttsStream.Position = 0; // Đảm bảo bắt đầu từ đầu
+    
         var mergedStreams = new List<MemoryStream>();
-
         foreach (var chunkStream in chunkStreams)
         {
-            var mergedStream = ConcatenateAudioStreams(new List<MemoryStream> { streamValue, chunkStream });
-            mergedStreams.Add(mergedStream);
+            chunkStream.Position = 0; // Reset vị trí stream
+            var combinedStream = new MemoryStream();
+    
+            ttsStream.Position = 0;
+            ttsStream.CopyTo(combinedStream);
+    
+            chunkStream.CopyTo(combinedStream);
+            combinedStream.Position = 0;
+            mergedStreams.Add(combinedStream);
         }
-
+    
+    
         return ConcatenateAudioStreams(mergedStreams);
     }
+    
+    
     private MemoryStream ConcatenateAudioStreams(List<MemoryStream> streams)
     {
         var outputStream = new MemoryStream();
@@ -871,10 +994,12 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             stream.Position = 0;
             stream.CopyTo(outputStream);
         }
+    
         outputStream.Position = 0;
         return outputStream;
     }
 
+// Hàm tải về danh sách các streams từ các URL
     private async Task<List<MemoryStream>> DownloadChunkStreamsAsync(List<string> urls)
     {
         using var httpClient = new HttpClient();
@@ -887,14 +1012,64 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             {
                 var byteArray = await response.Content.ReadAsByteArrayAsync();
                 var memoryStream = new MemoryStream(byteArray);
-                memoryStream.Position = 0;
+                memoryStream.Position = 0; // Reset vị trí của stream
                 streams.Add(memoryStream);
             }
         }
 
         return streams;
     }
+
+    #endregion
+
     
+
+    public async Task<IServiceResult> GetNumberOfUploadAudioFile(int resourceId, int itemId, string email)
+    {
+        // Determine current system language
+        var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = sysLang == SystemLanguage.English;
+        //get item of the resource
+        var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+        var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
+        if (libraryItem.Data is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
+        }
+
+        var itemValue = (LibraryItemDto)libraryItem.Data!;
+        //Get Speech Size
+        var textToVoice = await _voiceService.TextToVoice(itemValue.Language, email);
+        var audioStream = (MemoryStream)textToVoice.Data!;
+        var speechSize = audioStream.Length;
+
+        //Get Audio Size
+        var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+        resourceSpec.EnableSplitQuery();
+        resourceSpec.ApplyInclude(q => q.Include(r => r.LibraryResourceUrls));
+        var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
+        if (resource is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
+        }
+
+        var times = (resource.ResourceSize * 1024 * 1024! + speechSize) / (40 * 1024 * 1024);
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+            Math.Ceiling(times ?? 0));
+    }
+
+    public async Task<IServiceResult<byte[]>> GetAudioPreview(string email, string resourceId)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId)
     {
         try
@@ -903,7 +1078,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
             resourceSpec.EnableSplitQuery();
@@ -921,6 +1096,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
+
             var pdfStream = await DownloadWithoutWaterMark(resource.ResourceUrl);
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), pdfStream);
@@ -933,7 +1109,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     }
 
     // function to process
-    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText,bool isPreview)
+    private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText, bool isPreview)
     {
         using HttpClient client = new HttpClient();
         byte[] pdfBytes = await client.GetByteArrayAsync(pdfUrl);
@@ -1013,12 +1189,12 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             {
                 throw new InvalidOperationException("The PDF file contains no pages.");
             }
-            
+
             Document document = new Document(reader.GetPageSizeWithRotation(1));
             PdfWriter writer = PdfWriter.GetInstance(document, outputPdfStream);
             document.Open();
             PdfContentByte contentByte = writer.DirectContent;
-            
+
             int pagesToProcess = Math.Min(5, totalPages);
             for (int i = 1; i <= pagesToProcess; i++)
             {

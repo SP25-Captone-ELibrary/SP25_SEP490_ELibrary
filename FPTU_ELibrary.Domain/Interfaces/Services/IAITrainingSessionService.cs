@@ -6,4 +6,5 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IAITrainingSessionService<TDto> : IGenericService<AITrainingSession, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> UpdateSuccessSessionStatus(int sessionId, bool isSuccess);
 }

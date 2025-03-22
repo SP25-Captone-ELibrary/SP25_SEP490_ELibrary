@@ -210,7 +210,7 @@ public class PayOsService : IPayOsService
                     // Transaction datetime
                     transactionDate = parsedDateTimeOffset.DateTime;
                     // Transaction status
-                    status = TransactionStatus.Paid;
+                        status = TransactionStatus.Paid;
                 }
                 catch (ForbiddenException)
                 {
