@@ -25,6 +25,7 @@
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="Google.Apis" Version="1.68.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+    <PackageReference Include="GroupDocs.Merger" Version="25.3.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.72" />
     <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.7.1" />
     <PackageReference Include="MailKit" Version="4.8.0" />
@@ -38,6 +39,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
 	<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+	<PackageReference Include="NAudio" Version="2.2.1" />
+	<PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <PackageReference Include="NEST" Version="7.17.5" />
     <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
@@ -47,6 +50,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.5" />
+    <PackageReference Include="Xabe.FFmpeg" Version="6.0.1" />
   </ItemGroup>
   <ItemGroup>
 	<Using Include="BCrypt.Net.BCrypt" Alias="BC" />

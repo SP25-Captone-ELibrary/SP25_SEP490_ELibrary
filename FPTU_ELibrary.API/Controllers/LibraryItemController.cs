@@ -27,7 +27,7 @@ namespace FPTU_ELibrary.API.Controllers;
 public class LibraryItemController : ControllerBase
 {
     private readonly AppSettings _appSettings;
-    
+
     private readonly IAuthorService<AuthorDto> _authorService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceService;
@@ -132,13 +132,13 @@ public class LibraryItemController : ControllerBase
         [FromQuery] bool? isMostAppropriate)
     {
         return Ok(await _shelfService.GetItemAppropriateShelfAsync(
-            libraryItemId: id, 
+            libraryItemId: id,
             isReferenceSection: isReferenceSection,
             isChildrenSection: isChildrenSection,
             isJournalSection: isJournalSection,
             isMostAppropriate: isMostAppropriate));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.CountTotalInstance, Name = nameof(CountTotalInstanceAsync))]
     public async Task<IActionResult> CountTotalInstanceAsync([FromRoute] int id)
@@ -215,7 +215,7 @@ public class LibraryItemController : ControllerBase
     {
         return Ok(await _libraryItemService.DeleteRangeAsync(req.Ids));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.Export, Name = nameof(ExportLibraryItemAsync))]
     public async Task<IActionResult> ExportLibraryItemAsync([FromQuery] LibraryItemSpecParams specParams)
@@ -224,18 +224,20 @@ public class LibraryItemController : ControllerBase
             specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
             pageSize: specParams.PageSize ?? _appSettings.PageSize));
-    
+
         return exportResult.Data is byte[] fileStream
-            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "library-items.xlsx")
+            ? File(fileStream, @"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "library-items.xlsx")
             : Ok(exportResult);
     }
-    
+
     [Authorize]
     [HttpPost(APIRoute.LibraryItem.CheckImagesForTraining, Name = nameof(CheckTrainingImagesForTraining))]
     public async Task<IActionResult> CheckTrainingImagesForTraining([FromForm] CheckImagesForTrainingRequest req)
     {
         return Ok(await _aiDetectionService.ValidateImportTraining(req.ItemId, req.CompareList));
     }
+
     #endregion
 
     [HttpGet(APIRoute.LibraryItem.Search, Name = nameof(SearchLibraryItemWithElasticAsync))]
@@ -246,7 +248,7 @@ public class LibraryItemController : ControllerBase
     }
 
     [HttpGet(APIRoute.LibraryItem.GetRecentReadByIds, Name = nameof(GetLibraryItemByIdsAsync))]
-    public async Task<IActionResult> GetLibraryItemByIdsAsync([FromQuery] RangeRequest<int> req, 
+    public async Task<IActionResult> GetLibraryItemByIdsAsync([FromQuery] RangeRequest<int> req,
         [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
     {
         return Ok(await _libraryItemService.GetRecentReadByIdsAsync(
@@ -257,13 +259,14 @@ public class LibraryItemController : ControllerBase
     }
 
     [HttpGet(APIRoute.LibraryItem.GetNewArrivals, Name = nameof(GetNewArrivalsLibraryItemAsync))]
-    public async Task<IActionResult> GetNewArrivalsLibraryItemAsync([FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetNewArrivalsLibraryItemAsync([FromQuery] int? pageIndex,
+        [FromQuery] int? pageSize)
     {
         return Ok(await _libraryItemService.GetNewArrivalsAsync(
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
     }
-    
+
     [HttpGet(APIRoute.LibraryItem.GetTrending, Name = nameof(GetTrendingLibraryItemAsync))]
     public async Task<IActionResult> GetTrendingLibraryItemAsync([FromQuery] int? pageIndex, [FromQuery] int? pageSize)
     {
@@ -287,13 +290,13 @@ public class LibraryItemController : ControllerBase
     {
         return Ok(await _libraryItemService.GetByBarcodeAsync(barcode: barcode));
     }
-    
+
     [HttpGet(APIRoute.LibraryItem.GetByIsbn, Name = nameof(GetLibraryItemByIsbnAsync))]
     public async Task<IActionResult> GetLibraryItemByIsbnAsync([FromQuery] string isbn)
     {
         return Ok(await _libraryItemService.GetByIsbnAsync(isbn: isbn));
     }
-    
+
     [HttpGet(APIRoute.LibraryItem.GetDetail, Name = nameof(GetLibraryItemDetailAsync))]
     public async Task<IActionResult> GetLibraryItemDetailAsync([FromRoute] int id, [FromQuery] string? email = null)
     {
@@ -329,7 +332,7 @@ public class LibraryItemController : ControllerBase
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
     }
-    
+
     [HttpGet(APIRoute.LibraryItem.GetRelatedAuthorItems, Name = nameof(GetAuthorRelatedLibraryItemsAsync))]
     public async Task<IActionResult> GetAuthorRelatedLibraryItemsAsync([FromQuery] int authorId,
         [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
@@ -339,31 +342,39 @@ public class LibraryItemController : ControllerBase
             pageIndex: pageIndex ?? 1,
             pageSize: pageSize ?? _appSettings.PageSize));
     }
-    [HttpGet(APIRoute.LibraryItem.GetOwnResource,Name = nameof(GetOwnResourceAsync))]
+
+    [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetOwnResourceAsync))]
     [Authorize]
-    public async Task<IActionResult> GetOwnResourceAsync( [FromRoute] int resourceId
-        , [FromQuery] int? latestMinute)
+    public async Task<IActionResult> GetOwnResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId
+    )
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId, latestMinute);
-        
-        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId, itemId);
+
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is (not null, not null))
         {
-            return File(result.Data, "application/pdf", $"Watermarked_{resourceId}.pdf");
+            //return base on the type of the resource
+            if (result.Data.Item2.ToLower().Equals("image"))
+            {
+                return File(result.Data.Item1, "application/pdf", $"Watermarked_{resourceId}.pdf");
+            }
+            return File(result.Data.Item1, "audio/mpeg", "merged_audio.mp3"); 
         }
+
         return Ok(result);
     }
 
     [HttpGet(APIRoute.LibraryItem.GetPdfPreview, Name = nameof(GetPdfPreview))]
-    public async Task<IActionResult> GetPdfPreview([FromRoute]int resourceId)
+    public async Task<IActionResult> GetPdfPreview([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         var result = await _libraryResourceService.GetPdfPreview(email, resourceId);
-        
+
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
             return File(result.Data, "application/pdf", $"Watermarked_{resourceId}.pdf");
         }
+
         return Ok(result);
     }
 
@@ -375,10 +386,36 @@ public class LibraryItemController : ControllerBase
             email: email ?? string.Empty,
             ids: req.Ids));
     }
-    
-    // [HttpGet(APIRoute.LibraryItem.)]
 
+    [HttpGet(APIRoute.LibraryItem.GetPartOfAudioResource, Name = nameof(GetPartOfAudioResourceAsync))]
+    [Authorize]
+    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId,
+        [FromRoute] int part)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        var result = await _libraryResourceService.GetPartOfOwnAudioReSource(email??string.Empty
+            , itemId
+            , resourceId
+            , part);
+
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        {
+            return File(result.Data, "audio/mpeg", $"part_{part}.mp3");
+        }
+
+        return Ok(result);
+    }
+    
+    [HttpGet(APIRoute.LibraryItem.CountPartToUpload, Name = nameof(CountPartToUpload))]
+    [Authorize]
+    public async Task<IActionResult> CountPartToUpload([FromRoute] int resourceId, [FromRoute] int itemId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(resourceId, itemId, email));
+    }
+    
     #region Archived Function
+
     // [Authorize]
     // [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
     // public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportLibraryItemRequest req)
@@ -389,5 +426,6 @@ public class LibraryItemController : ControllerBase
     //        scanningFields: req.ScanningFields,
     //        duplicateHandle: req.DuplicateHandle));
     // }
+
     #endregion
 }

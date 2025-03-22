@@ -136,6 +136,8 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
+			public const string GetPartOfAudioResource = Base + "/library-items/{itemId}/resource/{resourceId}/{part}";
+			public const string CountPartToUpload = Base +"/library-items/{itemId}/resource/{resourceId}/count-part";
 			public const string GetNewArrivals = Base + "/library-items/new-arrivals";
 			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
 			public const string GetTrending = Base + "/library-items/trending";
@@ -149,8 +151,8 @@
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
-			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
-			public const string GetPdfPreview = Base + "/library-item/resource/{resourceId}/preview";
+			public const string GetOwnResource = Base + "/library-items/{itemId}/resource/{resourceId}";
+			public const string GetPdfPreview = Base + "/library-item/{itemId}/resource/{resourceId}/preview";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -635,7 +637,7 @@
 		{
 			// [GET]
 			public const string GetAvailableLanguages = Base + "/library-items/available-languages";
-
+			public const string TextToVoice = Base + "/library-items/text-to-voice";
 			public const string GetStatusToTrain = Base+ "/library-items/train-status";
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
