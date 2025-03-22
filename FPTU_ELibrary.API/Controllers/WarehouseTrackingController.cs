@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
@@ -61,6 +62,15 @@ public class WarehouseTrackingController : ControllerBase
             specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
             pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.WarehouseTracking.GetAllStockTransactionTypeByTrackingType,
+        Name = nameof(GetAllStockTransactionTypeByTrackingTypeAsync))]
+    public async Task<IActionResult> GetAllStockTransactionTypeByTrackingTypeAsync([FromQuery] TrackingType trackingType)
+    {
+        return Ok(await _warehouseTrackSvc.GetAllStockTransactionTypeByTrackingTypeAsync(
+            trackingType: trackingType));
     }
 
     [Authorize]

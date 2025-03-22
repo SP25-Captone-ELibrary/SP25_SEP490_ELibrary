@@ -407,6 +407,42 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 
+		#region Library Item Condition
+		// Mapping from typeof(CreateLibraryItemConditionRequest) to typeof(LibraryItemConditionDto)
+		public static LibraryItemConditionDto ToLibraryItemConditionDto(this CreateLibraryItemConditionRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new()
+			{
+				EnglishName = req.EnglishName,
+				VietnameseName = req.VietnameseName,
+				CreatedAt = currentLocalDateTime
+			};
+		}
+		
+		// Mapping from typeof(UpdateLibraryItemConditionRequest) to typeof(LibraryItemConditionDto)
+		public static LibraryItemConditionDto ToLibraryItemConditionDto(this UpdateLibraryItemConditionRequest req)
+		{
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			
+			return new()
+			{
+				EnglishName = req.EnglishName ?? string.Empty,
+				VietnameseName = req.VietnameseName ?? string.Empty,
+				UpdatedAt = currentLocalDateTime
+			};
+		}
+		
+
+		#endregion
+		
 		#region Library Card
 		// Mapping from (RegisterLibraryCardOnlineRequest) to typeof(LibraryCardDto)
 		public static LibraryCardDto ToUserWithLibraryCardDto(this RegisterLibraryCardOnlineRequest req)
