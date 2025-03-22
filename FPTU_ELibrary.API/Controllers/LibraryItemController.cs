@@ -340,11 +340,25 @@ public class LibraryItemController : ControllerBase
             pageSize: pageSize ?? _appSettings.PageSize));
     }
     [HttpGet(APIRoute.LibraryItem.GetOwnResource,Name = nameof(GetOwnResourceAsync))]
+    [Authorize]
     public async Task<IActionResult> GetOwnResourceAsync( [FromRoute] int resourceId
         , [FromQuery] int? latestMinute)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId, latestMinute);
+        
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        {
+            return File(result.Data, "application/pdf", $"Watermarked_{resourceId}.pdf");
+        }
+        return Ok(result);
+    }
+
+    [HttpGet(APIRoute.LibraryItem.GetPdfPreview, Name = nameof(GetPdfPreview))]
+    public async Task<IActionResult> GetPdfPreview([FromRoute]int resourceId)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var result = await _libraryResourceService.GetPdfPreview(email, resourceId);
         
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
@@ -361,6 +375,8 @@ public class LibraryItemController : ControllerBase
             email: email ?? string.Empty,
             ids: req.Ids));
     }
+    
+    // [HttpGet(APIRoute.LibraryItem.)]
 
     #region Archived Function
     // [Authorize]

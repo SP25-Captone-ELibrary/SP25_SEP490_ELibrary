@@ -42,22 +42,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.BorrowPrice)
                 .HasColumnType("decimal(10,2)")
                 .HasColumnName("borrow_price");
-            
+
             #region Update at 23/12/2024 by Le Xuan Phuoc
+
             // builder.Property(e => e.BookEditionId).HasColumnName("book_edition_id");
             // builder.HasOne(d => d.BookEdition).WithMany(p => p.BookResources)
             //     .HasForeignKey(d => d.BookEditionId)
             //     .OnDelete(DeleteBehavior.ClientSetNull)
             //     .HasConstraintName("FK_BookResource_BookEditionId");
-            
+
             // builder.Property(e => e.BookId).HasColumnName("book_id");
             // builder.HasOne(d => d.Book).WithMany(p => p.BookResources)
             //     .HasForeignKey(d => d.BookId)
             //     .OnDelete(DeleteBehavior.ClientSetNull)
             //     .HasConstraintName("FK_BookResource_BookId");
+
             #endregion
 
             #region Update at 24/12/2024 by Le Xuan Phuoc
+
             // builder.Property(e => e.CreateDate)
             //     .HasColumnType("datetime")
             //     .HasColumnName("create_date");
@@ -70,7 +73,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             //     .HasForeignKey(d => d.CreatedBy)
             //     .OnDelete(DeleteBehavior.ClientSetNull)
             //     .HasConstraintName("FK_BookResource_CreatedBy");
-                
+
             builder.Property(x => x.CreatedAt)
                 .IsRequired()
                 .HasColumnType("datetime")
@@ -84,13 +87,24 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(x => x.UpdatedBy)
                 .HasMaxLength(255) // Email address
                 .HasColumnName("updated_by");
+
             #endregion
 
             #region Update at 25/12/2024 by Le Xuan Phuoc
+
             builder.Property(e => e.IsDeleted)
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
+
             #endregion
+        /*
+         # region Update at 15/03/2025 by Nguyen Vu Quang Huy
+
+                     builder.Property(e => e.SubPublicId)
+                         .HasMaxLength(1024)
+                         .HasColumnName("sub_public_id");
+                     #endregion
+                     */
         }
     }
 }

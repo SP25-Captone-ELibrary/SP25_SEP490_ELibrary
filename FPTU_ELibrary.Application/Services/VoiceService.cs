@@ -21,19 +21,22 @@ public class VoiceService : IVoiceService
     // private readonly IBookService<BookDto> _bookService;
     private readonly ILibraryItemService<LibraryItemDto> _editionService;
     private readonly ISearchService _searchService;
+    private readonly AdsScriptSettings _adsMonitor;
     private readonly ILogger _logger;
     private readonly ISystemMessageService _msgService;
     private readonly AzureSpeechSettings _monitor;
-
+    
     public VoiceService(SpeechConfig speechConfig, 
         // IBookService<BookDto> bookService
         ILibraryItemService<LibraryItemDto> editionService,
         ISearchService searchService, IOptionsMonitor<AzureSpeechSettings> monitor,
+        IOptionsMonitor<AdsScriptSettings> adsMonitor,
         ILogger logger, ISystemMessageService msgService)
     {
         _speechConfig = speechConfig;
         _editionService = editionService;
         _searchService = searchService;
+        _adsMonitor = adsMonitor.CurrentValue;
         _logger = logger;
         _msgService = msgService;
         _monitor = monitor.CurrentValue;
@@ -105,4 +108,37 @@ public class VoiceService : IVoiceService
              throw new Exception("Error invoke when Train Book Model");
          }
      }
+
+     public async Task<IServiceResult> TextToVoice(string lang, string email)
+     {
+         var speechConfig = SpeechConfig.FromSubscription(_monitor.SubscriptionKey, _monitor.Region);
+         
+         string voiceName = lang.ToLower() switch
+         {
+             "vi" => "vi-VN-HoaiMyNeural",  
+             "en" => "en-US-AriaNeural",    
+             _ => "en-US-AriaNeural"        
+         };
+         speechConfig.SpeechSynthesisVoiceName = voiceName;
+         
+         using var audioStream = AudioOutputStream.CreatePullStream();
+         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
+         using var synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
+
+         var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
+         var editedScript= StringUtils.Format(script, email);
+         var result = await synthesizer.SpeakTextAsync(editedScript);
+         if (result.Reason != ResultReason.SynthesizingAudioCompleted)
+         {
+             throw new Exception($"Text-to-Speech failed: {result.Reason}");
+         }
+
+         var memoryStream = new MemoryStream(result.AudioData);
+         memoryStream.Position = 0;
+
+         return new ServiceResult(ResultCodeConst.SYS_Success0002,
+             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+             memoryStream);
+     }
+     
 }

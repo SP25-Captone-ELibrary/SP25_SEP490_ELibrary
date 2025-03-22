@@ -1,3 +1,4 @@
+using System.Drawing;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.AIServices.Detection;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -6,14 +7,22 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Serilog;
 using System.Net.Http.Headers;
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Features2D;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Azure;
 using Newtonsoft.Json;
 using MultipartFormDataContent = System.Net.Http.MultipartFormDataContent;
 
@@ -452,6 +461,143 @@ public class AIDetectionService : IAIDetectionService
         }
     }
 
+    public async Task<IServiceResult> DetectWithEmgu(IFormFile image, string groupCode)
+    {
+        try
+        {
+            // Dictionary to save score
+            Dictionary<int, double> matchScores = new Dictionary<int, double>();
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            var groupBaseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemGroup!.AiTrainingCode
+                .Equals(groupCode));
+            groupBaseSpec.EnableSplitQuery();
+            groupBaseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemGroup!));
+            var itemsInGroup = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(groupBaseSpec);
+            if (itemsInGroup.Data is null)
+            {
+                var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),"Items");
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    isEng
+                        ? errMsg
+                        : "Không tìm thấy bất kỳ tài liệu nào trong nhóm");
+            }
+
+            // Create Mat fot user input
+            using var memoryStream = new MemoryStream();
+            await image.CopyToAsync(memoryStream);
+            var imageBytes = memoryStream.ToArray();
+            Mat userInputMat = new Mat();
+            CvInvoke.Imdecode(imageBytes,ImreadModes.Grayscale,userInputMat);
+            // Create Mat for each cover image
+            var itemsInGroupData = (List<LibraryItemDto>)itemsInGroup.Data!;
+            
+            foreach (var item in itemsInGroupData)
+            {
+                var response = await _httpClient.GetByteArrayAsync(item.CoverImage);
+                // if (!response.IsSuccessStatusCode)
+                // {
+                //     var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
+                //         ,"cover image");
+                //     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                //         isEng
+                //             ? errMsg
+                //             : "Không tìm thấy bất kỳ tài liệu nào trong nhóm");
+                // }
+                using MemoryStream ms = new MemoryStream(response);
+                Mat output = new Mat(); 
+                CvInvoke.Imdecode(response, ImreadModes.Grayscale,output);
+                double score = MatchBookCovers(output, userInputMat);
+                matchScores[item.LibraryItemId] = score;
+            }
+            
+            // Normalize scores to a percentage based on the best match
+            var responseValue = matchScores.Select(x =>
+            {
+                var maxScore = matchScores.Values.Max();
+                Dictionary<int,double> returnValue = new Dictionary<int,double>();
+                foreach (var i in matchScores.Keys)
+                {
+                    returnValue.Add(i,matchScores[i]/maxScore *100);
+                }
+
+                return returnValue;
+            }).FirstOrDefault();
+
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                responseValue);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Object detection failed");
+            throw new Exception("Error invoke when detecting objects with Emgu");
+        }
+    }
+    
+    private double MatchBookCovers(Mat img1, Mat img2)
+    {
+        SIFT sift = new SIFT();
+        VectorOfKeyPoint keypoints1 = new VectorOfKeyPoint();
+        Mat descriptors1 = new Mat();
+        VectorOfKeyPoint keypoints2 = new VectorOfKeyPoint();
+        Mat descriptors2 = new Mat();
+
+        sift.DetectAndCompute(img1, null, keypoints1, descriptors1, false);
+        sift.DetectAndCompute(img2, null, keypoints2, descriptors2, false);
+
+        if (keypoints1.Size == 0 || keypoints2.Size == 0)
+            return 0;  // No keypoints found, return 0 match
+
+        BFMatcher matcher = new BFMatcher(DistanceType.L2);
+        VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch();
+        matcher.KnnMatch(descriptors1, descriptors2, matches, 2);
+
+        // Lowe's Ratio Test: Filter out weak matches
+        List<MKeyPoint> goodMatches = new List<MKeyPoint>();
+        List<MKeyPoint> matchedKeypoints1 = new List<MKeyPoint>();
+        List<MKeyPoint> matchedKeypoints2 = new List<MKeyPoint>();
+
+        foreach (var match in matches.ToArrayOfArray())
+        {
+            if (match.Length > 1 && match[0].Distance < 0.75 * match[1].Distance)
+            {
+                goodMatches.Add(keypoints1[match[0].QueryIdx]);
+                matchedKeypoints1.Add(keypoints1[match[0].QueryIdx]);
+                matchedKeypoints2.Add(keypoints2[match[0].TrainIdx]);
+            }
+        }
+
+        if (goodMatches.Count >= 10)
+        {
+            Mat homography = GetHomography(matchedKeypoints1, matchedKeypoints2);
+
+            if (!homography.IsEmpty)
+            {
+                return goodMatches.Count; // Use count as raw score
+            }
+        }
+
+        return 0; // Return 0 if Homography check fails
+    }
+    private Mat GetHomography(List<MKeyPoint> keypoints1, List<MKeyPoint> keypoints2)
+    {
+        if (keypoints1.Count < 4 || keypoints2.Count < 4)
+        {
+            return new Mat(); // Not enough points for Homography
+        }
+
+        PointF[] srcPoints = keypoints1.Select(kp => kp.Point).ToArray();
+        PointF[] dstPoints = keypoints2.Select(kp => kp.Point).ToArray();
+
+        Mat homography = CvInvoke.FindHomography(
+            srcPoints, dstPoints, RobustEstimationAlgorithm.Ransac, 3);
+
+        return homography;
+    }
 
     private async Task<DetectResponseDto?> DetectObjectsAsync(Stream imageStream, string fileName, string contentType)
     {

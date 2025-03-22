@@ -36,4 +36,8 @@ public class LibraryResourceDto
     
     [JsonIgnore] 
     public ICollection<TransactionDto> Transactions { get; set; } = new List<TransactionDto>();
+    
+    [JsonIgnore] 
+    public ICollection<LibraryResourceUrlDto> LibraryResourceUrls { get; set; } = new List<LibraryResourceUrlDto>();
+
 }

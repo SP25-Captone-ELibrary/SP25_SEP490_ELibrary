@@ -7,4 +7,5 @@ public interface IVoiceService
 {
     Task<IServiceResult> VoiceToText(IFormFile audioFile,string languageCode);
     Task<IServiceResult> GetLanguages();
+    Task<IServiceResult> TextToVoice(string lang, string email);
 }

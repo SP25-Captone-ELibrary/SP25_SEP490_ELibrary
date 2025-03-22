@@ -12,3 +12,21 @@ public class CreateLibraryResourceRequest
     public int DefaultBorrowDurationDays { get; set; }
     public decimal BorrowPrice { get; set; }
 }
+
+public class CreateLibraryResourceWithLargeFileRequest 
+{
+    public string ResourceTitle { get; set; } = null!;
+    public string ResourceType { get; set; } = null!;
+    public string Provider { get; set; } = null!;
+    public string FileFormat { get; set; } = null!;
+    public decimal? ResourceSize { get; set; }
+    public int DefaultBorrowDurationDays { get; set; }
+    public decimal BorrowPrice { get; set; }
+    public List<ChunkDetail> ChunkDetails { get; set; } = null!;
+}
+
+public class ChunkDetail
+{
+    public string Url { get; set; } = null!;
+    public int PartNumber { get; set; } 
+} 

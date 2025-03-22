@@ -14,6 +14,9 @@ public class AITrainingImageConfiguration : IEntityTypeConfiguration<AITrainingI
         builder.ToTable("AI_Training_Image");
 
         builder.Property(e => e. TrainingImageId).HasColumnName("training_image_id");
+        builder.Property(e => e.ImageUrl)
+            .HasColumnType("varchar(2048)")
+            .HasColumnName("image_url");
         
         builder.Property(e => e.TrainingDetailId).HasColumnName("training_detail_id");
         builder.HasOne(e => e.TrainingDetail).WithMany(p => p.TrainingImages)

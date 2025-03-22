@@ -150,6 +150,8 @@
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
+			public const string GetPdfPreview = Base + "/library-item/resource/{resourceId}/preview";
+			public const string CheckEmgu = "emgu/test";
 		}
 
 		/// <summary>
@@ -163,7 +165,7 @@
 			public const string GetById = Base + "/management/library-items/resources/{id}";
 			// [POST]
 			public const string AddToBook = Base + "/management/library-items/{libraryItemId}/resources";
-			// [PUT] / [PATCH]
+			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";			// [PUT] / [PATCH]
 			public const string Update = Base + "/management/library-items/resources/{id}";
 			public const string SoftDelete = Base + "/management/library-items/resources/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/library-items/resources/soft-delete-range";
@@ -327,11 +329,13 @@
 		{
 			//[GET]
 			public const string GetSuitableItemsForGrouping = Base + "/management/groups/suitable-items/{rootItemId}";
+			public const string GroupedItems = Base + "/management/groups/grouped-items";
+
+			public const string AvailableTrainingGroupPerTime = "/management/groups/available-groups-to-train";
 			// [POST]
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
 			public const string DefineGroup = Base + "/management/groups/define-group";
-			public const string GroupedItems = Base + "/management/groups/grouped-items";
 			
 		}
 		
@@ -454,7 +458,7 @@
 			// [POST]
 			public const string UploadImage = Base + "/management/resources/images/upload";
 			public const string UploadVideo = Base + "/management/resources/videos/upload";
-			public const string UploadBigVideo = Base + "/management/resources/big-videos/upload";
+			public const string UploadLargeVideo = Base + "/management/resources/large-videos/upload";
 			// [PUT]
 			public const string UpdateImage = Base + "/management/resources/images/update";
 			public const string UpdateVideo = Base + "/management/resources/videos/update";
@@ -630,12 +634,16 @@
 		public static class AIServices
 		{
 			// [GET]
-			public const string GetAvailableLanguages = Base + "/library-items/available-languages";	
+			public const string GetAvailableLanguages = Base + "/library-items/available-languages";
+
+			public const string GetStatusToTrain = Base+ "/library-items/train-status";
 			//[POST]
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Training = Base + "/management/library-items/ai/extend-train";
+			public const string TrainingLatestVersion = Base+"/management/library-items/ai/extend-train/v2";
 			public const string Predict = Base + "/library-items/ai/predict";
+			public const string PredictWithEmgu = Base + "/library-items/ai/predict/v2";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
 			public const string RecommendationWithId = Base + "/library-items/ai/recommendation/{id}";
 			public const string VoiceSearching = Base + "/library-items/voice";

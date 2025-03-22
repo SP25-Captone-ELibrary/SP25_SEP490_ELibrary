@@ -14,4 +14,5 @@ public class CustomVisionSettings
     public string? PublishedName { get; set; }
     public string BaseAIUrl { get; set; }
     public string BasePredictUrl { get; set; }
+    public int AvailableGroupToTrain { get; set; }
 }

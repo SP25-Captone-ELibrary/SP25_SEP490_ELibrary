@@ -368,8 +368,22 @@ namespace FPTU_ELibrary.API.Extensions
 				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
 				BorrowPrice = req.BorrowPrice,
 			};
+		public static LibraryResourceDto ToLibraryResourceDto(this CreateLibraryResourceWithLargeFileRequest req)
+			=> new()
+			{
+				ResourceTitle = req.ResourceTitle,
+				Provider = req.Provider,
+				ResourceSize = req.ResourceSize,
+				FileFormat = req.FileFormat,
+				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
+				BorrowPrice = req.BorrowPrice,
+			};
+
+		public static Dictionary<int, string> ToChunkDetail(this CreateLibraryResourceWithLargeFileRequest req)
+			=> req.ChunkDetails.ToDictionary(c => c.PartNumber, c => c.Url);
 
 		#endregion
+		
 
 		#region Library Item Instance
 
