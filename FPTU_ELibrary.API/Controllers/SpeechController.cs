@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Speech;
 using FPTU_ELibrary.Application.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -26,4 +29,13 @@ public class SpeechController : ControllerBase
         return Ok(await _voiceService.VoiceToText(req.AudioFile, req.LanguageCode));
     }
 
+    [HttpGet(APIRoute.AIServices.TextToVoice, Name = nameof(TextToVoice))]
+    [Authorize]
+    public async Task<IActionResult> TextToVoice()
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        // var result = await _voiceService.TextToVoice("en", email??string.Empty);
+        // return File((MemoryStream)result.Data!, "audio/mpeg", $"textToVoice.mp3");
+        return Ok(_voiceService.TextToVoiceFile("en", email??string.Empty));
+    }
 }

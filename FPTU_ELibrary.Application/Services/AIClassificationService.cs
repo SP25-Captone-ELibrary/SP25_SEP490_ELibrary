@@ -665,7 +665,7 @@ public class AIClassificationService : IAIClassificationService
             //     }
             // }
 
-            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained &&
+            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained ||
                                                                              (isTrainingLibraryItems.Any() &&
                                                                               !isTrainingLibraryItems.Contains(
                                                                                   li.LibraryItemId)));
@@ -1154,7 +1154,7 @@ public class AIClassificationService : IAIClassificationService
                 "AIProcessMessage", new { message = 80, session = sessionValue.TrainingSessionId }
             );
             sessionValue.TrainingStatus = AITrainingStatus.Completed;
-            await aiTrainingSessionService.UpdateAsync(sessionValue.TrainingSessionId, sessionValue);
+            await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionValue.TrainingSessionId, true);
             await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
                 new { message = 90, session = sessionValue.TrainingSessionId });
             //Send notification when finish
@@ -1308,6 +1308,7 @@ public class AIClassificationService : IAIClassificationService
             );
             if (iteration is null)
             {
+                await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionEntity.TrainingSessionId, false);
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
             }
 
@@ -1331,7 +1332,7 @@ public class AIClassificationService : IAIClassificationService
                 "AIProcessMessage", new { message = 80, session = initSession.TrainingSessionId }
             );
             initSession.TrainingStatus = AITrainingStatus.Completed;
-            await aiTrainingSessionService.UpdateAsync(sessionEntity.TrainingSessionId, initSession);
+            await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionEntity.TrainingSessionId, true);
             await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
                 new { message = 90, session = initSession.TrainingSessionId });
             //Send notification when finish

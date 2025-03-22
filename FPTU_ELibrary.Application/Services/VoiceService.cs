@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Options;
+using NAudio.Wave;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -18,6 +19,7 @@ namespace FPTU_ELibrary.Application.Services;
 public class VoiceService : IVoiceService
 {
     private readonly SpeechConfig _speechConfig;
+
     // private readonly IBookService<BookDto> _bookService;
     private readonly ILibraryItemService<LibraryItemDto> _editionService;
     private readonly ISearchService _searchService;
@@ -25,8 +27,8 @@ public class VoiceService : IVoiceService
     private readonly ILogger _logger;
     private readonly ISystemMessageService _msgService;
     private readonly AzureSpeechSettings _monitor;
-    
-    public VoiceService(SpeechConfig speechConfig, 
+
+    public VoiceService(SpeechConfig speechConfig,
         // IBookService<BookDto> bookService
         ILibraryItemService<LibraryItemDto> editionService,
         ISearchService searchService, IOptionsMonitor<AzureSpeechSettings> monitor,
@@ -42,103 +44,129 @@ public class VoiceService : IVoiceService
         _monitor = monitor.CurrentValue;
     }
 
-     public async Task<IServiceResult> VoiceToText(IFormFile audioFile, string languageCode)
-     {
-         var tempFilePath = Path.GetTempFileName();
-         try
-         {
-             using (var fileStream = new FileStream(tempFilePath, FileMode.Create))
-             {
-                 await audioFile.CopyToAsync(fileStream);
-             }
+    public async Task<IServiceResult> VoiceToText(IFormFile audioFile, string languageCode)
+    {
+        var tempFilePath = Path.GetTempFileName();
+        try
+        {
+            using (var fileStream = new FileStream(tempFilePath, FileMode.Create))
+            {
+                await audioFile.CopyToAsync(fileStream);
+            }
 
-             // Create AudioConfig from the temporary WAV file
-             using var audioInput = AudioConfig.FromWavFileInput(tempFilePath);
-             using var recognizer = new SpeechRecognizer(_speechConfig, languageCode, audioInput);
+            // Create AudioConfig from the temporary WAV file
+            using var audioInput = AudioConfig.FromWavFileInput(tempFilePath);
+            using var recognizer = new SpeechRecognizer(_speechConfig, languageCode, audioInput);
 
-             // Perform speech recognition
-             var result = await recognizer.RecognizeOnceAsync();
-             var recogniseTitle = StringUtils.SplitSpecialCharAtTheEnd(result.Text);
+            // Perform speech recognition
+            var result = await recognizer.RecognizeOnceAsync();
+            var recogniseTitle = StringUtils.SplitSpecialCharAtTheEnd(result.Text);
 
-             return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), recogniseTitle);
-         }
-         catch (Exception ex)
-         {
-             _logger.Error(ex.Message);
-             throw new Exception("Error invoke when Train Book Model");
-         }
-     }
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), recogniseTitle);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Train Book Model");
+        }
+    }
 
-     public async Task<IServiceResult> GetLanguages()
-     {
-         try
-         {
-             List<SpeechLanguagesDto> availableLanguages = new List<SpeechLanguagesDto>();
-             availableLanguages = _monitor.Languages
-                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                 .Select(langCode =>
-                 {
-                     var trimmedCode = langCode.Trim();
-                     try
-                     {
-                         var culture = new CultureInfo(trimmedCode);
-                         return new SpeechLanguagesDto()
-                         {
-                             LanguageCode = trimmedCode,
-                             LanguageName = culture.DisplayName
-                         };
-                     }
-                     catch (CultureNotFoundException)
-                     {
-                         return new SpeechLanguagesDto()
-                         {
-                             LanguageCode = trimmedCode,
-                             LanguageName = "Unknown Language"
-                         };
-                     }
-                 })
-                 .ToList();
-             return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), availableLanguages);
-         }
-         catch (Exception ex)
-         {
-             _logger.Error(ex.Message);
-             throw new Exception("Error invoke when Train Book Model");
-         }
-     }
+    public async Task<IServiceResult> GetLanguages()
+    {
+        try
+        {
+            List<SpeechLanguagesDto> availableLanguages = new List<SpeechLanguagesDto>();
+            availableLanguages = _monitor.Languages
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(langCode =>
+                {
+                    var trimmedCode = langCode.Trim();
+                    try
+                    {
+                        var culture = new CultureInfo(trimmedCode);
+                        return new SpeechLanguagesDto()
+                        {
+                            LanguageCode = trimmedCode,
+                            LanguageName = culture.DisplayName
+                        };
+                    }
+                    catch (CultureNotFoundException)
+                    {
+                        return new SpeechLanguagesDto()
+                        {
+                            LanguageCode = trimmedCode,
+                            LanguageName = "Unknown Language"
+                        };
+                    }
+                })
+                .ToList();
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), availableLanguages);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when Train Book Model");
+        }
+    }
 
-     public async Task<IServiceResult> TextToVoice(string lang, string email)
-     {
-         var speechConfig = SpeechConfig.FromSubscription(_monitor.SubscriptionKey, _monitor.Region);
-         
-         string voiceName = lang.ToLower() switch
-         {
-             "vi" => "vi-VN-HoaiMyNeural",  
-             "en" => "en-US-AriaNeural",    
-             _ => "en-US-AriaNeural"        
-         };
-         speechConfig.SpeechSynthesisVoiceName = voiceName;
-         
-         using var audioStream = AudioOutputStream.CreatePullStream();
-         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
-         using var synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
+    public async Task<IServiceResult> TextToVoice(string lang, string email)
+    {
+        _speechConfig.SpeechSynthesisVoiceName = lang.ToLower() switch
+        {
+            "vi" => "vi-VN-HoaiMyNeural",
+            "en" => "en-US-AriaNeural",
+            _ => "en-US-AriaNeural"
+        };
 
-         var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
-         var editedScript= StringUtils.Format(script, email);
-         var result = await synthesizer.SpeakTextAsync(editedScript);
-         if (result.Reason != ResultReason.SynthesizingAudioCompleted)
-         {
-             throw new Exception($"Text-to-Speech failed: {result.Reason}");
-         }
+        using var audioStream = AudioOutputStream.CreatePullStream();
+        using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
+        using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
-         var memoryStream = new MemoryStream(result.AudioData);
-         memoryStream.Position = 0;
+        var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
+        var editedScript = StringUtils.Format(script, email);
+        var result = await synthesizer.SpeakTextAsync(editedScript);
 
-         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-             memoryStream);
-     }
-     
+        if (result.Reason != ResultReason.SynthesizingAudioCompleted)
+        {
+            throw new Exception($"Text-to-Speech failed: {result.Reason}");
+        }
+
+        var memoryStream = new MemoryStream(result.AudioData);
+        memoryStream.Position = 0;
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+            memoryStream);
+    }
+
+    public async Task<IServiceResult> TextToVoiceFile(string lang, string email)
+    {
+        _speechConfig.SpeechSynthesisVoiceName = lang.ToLower() switch
+        {
+            "vi" => "vi-VN-HoaiMyNeural",
+            "en" => "en-US-AriaNeural",
+            _ => "en-US-AriaNeural"
+        };
+
+        using var audioStream = AudioOutputStream.CreatePullStream();
+        using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
+        using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
+
+        var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
+        var editedScript = StringUtils.Format(script, email);
+        var result = await synthesizer.SpeakTextAsync(editedScript);
+
+        if (result.Reason != ResultReason.SynthesizingAudioCompleted)
+        {
+            throw new Exception($"Text-to-Speech failed: {result.Reason}");
+        }
+
+        var memoryStream = new MemoryStream(result.AudioData);
+        var mp3Reader = new WaveFileReader(memoryStream);
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
+            , mp3Reader);
+    }
 }
