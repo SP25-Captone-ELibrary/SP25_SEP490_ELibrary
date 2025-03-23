@@ -8,6 +8,7 @@ public interface ITransactionService<TDto> : IGenericService<Transaction, TDto, 
     where TDto : class
 {
     Task<IServiceResult> CreateAsync(TDto dto, string createdByEmail);
+    Task<IServiceResult> CreateTransactionForBorrowRequestAsync(string createdByEmail, int borrowRequestId);
     Task<IServiceResult> CreateTransactionForBorrowRecordAsync(string createdByEmail, int borrowRecordId);
     Task<IServiceResult> CreateWithoutSaveChangesAsync(TDto dto);
     Task<IServiceResult> GetAllByTransactionCodeAsync(string transactionCode);

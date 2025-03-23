@@ -742,6 +742,7 @@
 			// [POST]
 			public const string CreateTransaction = Base + "/payment/transactions";
 			public const string CreateBorrowRecordTransaction = Base + "/payment/transactions/borrows/records/{borrowRecordId}";
+			public const string CreateBorrowRequestTransaction = Base + "/payment/transactions/borrows/requests/{borrowRequestId}";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
 			public const string SendWebhookConfirm = Base + "/payment/pay-os/webhook-confirm";

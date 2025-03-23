@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
@@ -38,4 +40,8 @@ public class TransactionDto
     public LibraryResourceDto? LibraryResource { get; set; }
     public LibraryCardPackageDto? LibraryCardPackage { get; set; }
     public PaymentMethodDto? PaymentMethod { get; set; }
+    
+    // Navigations
+    [JsonIgnore]
+    public ICollection<BorrowRequestResourceDto> BorrowRequestResources { get; set; } = new List<BorrowRequestResourceDto>();
 }

@@ -31,8 +31,10 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<ILibraryCardService<LibraryCardDto>> _libCardService;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecService;
+    private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqService;
     private readonly Lazy<IDigitalBorrowService<DigitalBorrowDto>> _digitalBorrowService;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
+    private readonly Lazy<IPaymentMethodService<PaymentMethodDto>> _paymentMethodService;
     private readonly Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> _cardPackageService;
 
     private readonly IEmployeeService<EmployeeDto> _employeeService;
@@ -46,8 +48,10 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         Lazy<IUserService<UserDto>> userSvc,
         Lazy<ILibraryCardService<LibraryCardDto>> libCardService,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecService,
+        Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqService,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
         Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> cardPackageService,
+        Lazy<IPaymentMethodService<PaymentMethodDto>> paymentMethodService,
         Lazy<IDigitalBorrowService<DigitalBorrowDto>> digitalBorrowService,
         
         IEmployeeService<EmployeeDto> employeeService,
@@ -61,9 +65,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     {
         _userSvc = userSvc;
         _borrowRecService = borrowRecService;
+        _borrowReqService = borrowReqService;
         _libCardService = libCardService;
         _resourceService = resourceService;
         _cardPackageService = cardPackageService;
+        _paymentMethodService = paymentMethodService;
         _digitalBorrowService = digitalBorrowService;
         _employeeService = employeeService;
         _borrowSettings = monitor1.CurrentValue;
@@ -93,8 +99,9 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             
             // Check whether existing any transaction has pending status
             var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
-                .AnyAsync(t => t.TransactionType == dto.TransactionType &&
-                               t.TransactionStatus == TransactionStatus.Pending);
+                .AnyAsync(t => t.UserId == userDto.UserId &&
+                    t.TransactionType == dto.TransactionType &&
+                    t.TransactionStatus == TransactionStatus.Pending);
             if (isExistPendingStatus)
             {
                 // Msg: Failed to create payment transaction as existing transaction with pending status
@@ -355,6 +362,190 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         }
     }
 
+    public async Task<IServiceResult> CreateTransactionForBorrowRequestAsync(string createdByEmail, int borrowRequestId)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Check exist user
+            var userSpec = new BaseSpecification<User>(u => Equals(u.Email, createdByEmail));
+            // Apply including library card
+            userSpec.ApplyInclude(q => q.Include(u => u.LibraryCard!));
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userSpec)).Data as UserDto;
+            if (userDto == null)
+            {
+                // Forbid to access
+                throw new ForbiddenException("Not allow to access");
+            }
+            
+            // Check whether existing any transaction has pending status
+            var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
+                .AnyAsync(t => t.UserId == userDto.UserId &&
+                               t.TransactionType == TransactionType.DigitalBorrow &&
+                               t.TransactionStatus == TransactionStatus.Pending);
+            if (isExistPendingStatus)
+            {
+                // Msg: Failed to create payment transaction as existing transaction with pending status
+                return new ServiceResult(ResultCodeConst.Transaction_Warning0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003));
+            }
+            
+            // Check exist borrow request
+            var recordSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == borrowRequestId);
+            // Apply include
+            recordSpec.ApplyInclude(q => q
+                    .Include(b => b.BorrowRequestResources) // Include all borrow request resources
+                        .ThenInclude(brr => brr.Transaction!) // Include transaction reference
+            );
+            // Retrieve with spec
+            var borrowReqDto = (await _borrowReqService.Value.GetWithSpecAsync(recordSpec)).Data as BorrowRequestDto;
+            if (borrowReqDto == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "borrow request to process create transaction for library resources borrowing payment"
+                        : "lịch sử yêu cầu mượn để tạo thanh toán tài liệu điện tử"));
+            }
+            
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            // Generate transaction code
+            var transactionCodeDigits = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
+            var expiredAt = currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes);
+            // Initialize list of transaction
+            var transactionDtos = new List<TransactionDto>();
+            // Extract all pending resources payment
+            var pendingReqResources = borrowReqDto.BorrowRequestResources
+                .Where(brr => brr.TransactionId == null && brr.Transaction == null).ToList();
+            if (!pendingReqResources.Any())
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "any pending resource payment to create transaction"
+                        : "tài liệu điện tử cần thanh toán"));
+            }
+            
+            // Retrieve payOS payment method
+            var payOsPaymentMethod = (await _paymentMethodService.Value.GetWithSpecAsync(
+                new BaseSpecification<PaymentMethod>(p => p.MethodName == PaymentType.PayOS.ToString()))).Data as PaymentMethodDto;
+            if (payOsPaymentMethod == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "payment method to process create borrow request payment" 
+                        : "phương thức thanh toán để tạo phiên thanh toán cho yêu cầu mượn"));
+            }
+            
+            // Iterate each fine to create transaction
+            foreach (var requestResource in pendingReqResources)
+            {
+                // Add transaction with default value
+                transactionDtos.Add(new ()
+                {
+                    TransactionCode = transactionCodeDigits.ToString(),
+                    Amount = requestResource.BorrowPrice,
+                    CreatedAt = currentLocalDateTime,
+                    ExpiredAt = expiredAt,
+                    CreatedBy = createdByEmail,
+                    TransactionStatus = TransactionStatus.Pending,
+                    TransactionType = TransactionType.DigitalBorrow,
+                    TransactionMethod = TransactionMethod.DigitalPayment,
+                    UserId = userDto.UserId,
+                    ResourceId = requestResource.ResourceId,
+                    PaymentMethodId = payOsPaymentMethod.PaymentMethodId
+                });
+            }
+            
+            // Aggregate amount
+            var aggregatedAmount = transactionDtos.Sum(t => t.Amount);
+            // Initialize expired at offset unix seconds
+            var expiredAtOffsetUnixSeconds = (int)((DateTimeOffset) expiredAt).ToUnixTimeSeconds();
+            // Generate payment link
+            var payOsPaymentRequest = new PayOSPaymentRequestDto()
+            {
+                OrderCode = transactionCodeDigits,
+                Amount = (int) aggregatedAmount,
+                Description = isEng 
+                    ? $"Pay for {transactionDtos.Count} digital borrow"  
+                    : $"Thanh toan {transactionDtos.Count} tai lieu",
+                BuyerName = $"{userDto.FirstName} {userDto.LastName}".ToUpper(),
+                BuyerEmail = userDto.Email,
+                BuyerPhone = userDto.Phone ?? string.Empty,
+                BuyerAddress = userDto.Address ?? string.Empty,
+                Items = transactionDtos
+                    .Select(f => new
+                    {
+                        Name = isEng ? f.TransactionType.ToString() : f.TransactionType.GetDescription(),
+                        Quantity = 1,
+                        Price = f.Amount
+                    })
+                    .Cast<object>()
+                    .ToList(),
+                CancelUrl = _payOsSettings.CancelUrl,
+                ReturnUrl = _payOsSettings.ReturnUrl,
+                ExpiredAt = expiredAtOffsetUnixSeconds
+            };
+            
+            // Generate signature
+            await payOsPaymentRequest.GenerateSignatureAsync(transactionCodeDigits, _payOsSettings);
+            var payOsPaymentResp = await payOsPaymentRequest.GetUrlAsync(_payOsSettings);
+            
+            // Create Payment status
+            bool isCreatePaymentSuccess = payOsPaymentResp.Item1;
+            
+            // Check if create payment success with resp data
+            if (isCreatePaymentSuccess && payOsPaymentResp.Item3 != null)
+            {
+                // Iterate each transaction to update QRCode
+                foreach (var dto in transactionDtos)
+                {
+                    // Update payment information (if any)
+                    dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                }
+                
+                // Process create transaction
+                await _unitOfWork.Repository<Transaction, int>().AddRangeAsync(_mapper.Map<List<Transaction>>(transactionDtos));
+
+                if (await _unitOfWork.SaveChangesAsync() > 0)
+                {
+                    // Create payment link successfully
+                    return new ServiceResult(ResultCodeConst.Transaction_Success0001,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Success0001), 
+                        new PayOSPaymentLinkResponseDto()
+                        {
+                            PayOsResponse = payOsPaymentResp.Item3,
+                            ExpiredAtOffsetUnixSeconds = expiredAtOffsetUnixSeconds
+                        });
+                }
+            }
+            
+            // Mark as failed to create payment link
+            return new ServiceResult(ResultCodeConst.Transaction_Fail0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0004));
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process create transaction for borrow request");
+        }
+    }
+    
     public async Task<IServiceResult> CreateTransactionForBorrowRecordAsync(string createdByEmail, int borrowRecordId)
     {
         try
@@ -377,8 +568,9 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             
             // Check whether existing any transaction has pending status
             var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
-                .AnyAsync(t => t.TransactionType == TransactionType.Fine &&
-                               t.TransactionStatus == TransactionStatus.Pending);
+                .AnyAsync(t => t.UserId == userDto.UserId &&
+                       t.TransactionType == TransactionType.Fine &&
+                       t.TransactionStatus == TransactionStatus.Pending);
             if (isExistPendingStatus)
             {
                 // Msg: Failed to create payment transaction as existing transaction with pending status
@@ -429,6 +621,20 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                        ? "any pending fines to create transaction"
                        : "phí phạt cần thanh toán"));
             }
+            
+            // Retrieve payOS payment method
+            var payOsPaymentMethod = (await _paymentMethodService.Value.GetWithSpecAsync(
+                new BaseSpecification<PaymentMethod>(p => p.MethodName == PaymentType.PayOS.ToString()))).Data as PaymentMethodDto;
+            if (payOsPaymentMethod == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "payment method to process create fines payment" 
+                        : "phương thức thanh toán để tạo phiên thanh toán phí phạt"));
+            }
+            
             // Iterate each fine to create transaction
             foreach (var fine in pendingFines)
             {
@@ -468,8 +674,10 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                     CreatedAt = currentLocalDateTime,
                     ExpiredAt = expiredAt,
                     CreatedBy = createdByEmail,
+                    TransactionType = TransactionType.Fine,
                     TransactionStatus = TransactionStatus.Pending,
                     TransactionMethod = TransactionMethod.DigitalPayment,
+                    PaymentMethodId = payOsPaymentMethod.PaymentMethodId,
                     Description = fine.FineNote,
                     UserId = userDto.UserId,
                     FineId = fine.FineId

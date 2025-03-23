@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Domain.Entities;
@@ -36,4 +37,8 @@ public class Transaction
     public LibraryResource? LibraryResource { get; set; }
     public LibraryCardPackage? LibraryCardPackage { get; set; }
     public PaymentMethod? PaymentMethod { get; set; }
+    
+    // Navigations
+    [JsonIgnore]
+    public ICollection<BorrowRequestResource> BorrowRequestResources { get; set; } = new List<BorrowRequestResource>();
 }

@@ -403,6 +403,18 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		                            }).ToList()
 		                        },
 		                        LibraryItemInstance = rq.LibraryItemInstance
+		                    }).ToList(),
+		                    BorrowRequestResources = br.BorrowRequest.BorrowRequestResources.Select(bs => new BorrowRequestResource()
+		                    {
+			                    BorrowRequestResourceId = bs.BorrowRequestResourceId,
+			                    BorrowRequestId = bs.BorrowRequestId,
+			                    ResourceId = bs.ResourceId,
+			                    ResourceTitle = bs.ResourceTitle,
+			                    BorrowPrice = bs.BorrowPrice,
+			                    DefaultBorrowDurationDays = bs.DefaultBorrowDurationDays,
+			                    LibraryResource = bs.LibraryResource,
+			                    TransactionId = bs.TransactionId,
+			                    Transaction = bs.Transaction
 		                    }).ToList()
                         }
                         : null,

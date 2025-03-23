@@ -37,4 +37,6 @@ public class BorrowRequestDto
     public ICollection<BorrowRequestDetailDto> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetailDto>();
     
     public ICollection<ReservationQueueDto> ReservationQueues { get; set; } = new List<ReservationQueueDto>();
+    
+    public ICollection<BorrowRequestResourceDto> BorrowRequestResources { get; set; } = new List<BorrowRequestResourceDto>();
 }
