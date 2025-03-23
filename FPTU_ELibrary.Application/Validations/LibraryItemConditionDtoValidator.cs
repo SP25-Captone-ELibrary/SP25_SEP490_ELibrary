@@ -14,15 +14,23 @@ public class LibraryItemConditionDtoValidator : AbstractValidator<LibraryItemCon
         var isEng = langEnum == SystemLanguage.English;
 
         RuleFor(e => e.EnglishName)
+            .NotEmpty()
+            .WithMessage(isEng
+                ? "English name is required" 
+                : "Tên tình trạng tài liệu không được rỗng")
             .MaximumLength(50)
             .WithMessage(isEng
                 ? "English name must not exceed 50 characters"
-                : "Tên tiếng anh không vượt quá 50 ký tự");
+                : "Tên tiếng Anh không vượt quá 50 ký tự");
         
         RuleFor(e => e.VietnameseName)
+            .NotEmpty()
+            .WithMessage(isEng
+                ? "English name is required" 
+                : "Tên tình trạng tài liệu không được rỗng")
             .MaximumLength(50)
             .WithMessage(isEng
                 ? "Vietnamese name must not exceed 50 characters"
-                : "Tên tiếng việt không vượt quá 50 ký tự");
+                : "Tên tiếng Việt không vượt quá 50 ký tự");
     }
 }

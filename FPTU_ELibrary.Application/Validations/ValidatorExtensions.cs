@@ -35,6 +35,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(LibraryResourceDto) => (IValidator<T>)new LibraryResourceDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryItemInstanceDto) => (IValidator<T>)new LibraryItemInstanceDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryItemInventoryDto) => (IValidator<T>)new LibraryItemInventoryDtoValidator(),
+				{ } when typeof(T) == typeof(LibraryItemConditionDto) => (IValidator<T>)new LibraryItemConditionDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryCardDto) => (IValidator<T>)new LibraryCardDtoValidator(language),
 				{ } when typeof(T) == typeof(LibraryCardPackageDto) => (IValidator<T>)new LibraryCardPackageDtoValidator(language),
 				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),

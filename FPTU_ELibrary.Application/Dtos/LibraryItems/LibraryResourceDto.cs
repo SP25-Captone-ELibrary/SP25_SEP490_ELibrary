@@ -39,5 +39,7 @@ public class LibraryResourceDto
     
     [JsonIgnore] 
     public ICollection<LibraryResourceUrlDto> LibraryResourceUrls { get; set; } = new List<LibraryResourceUrlDto>();
-
+    
+    [JsonIgnore]
+    public ICollection<BorrowRequestResourceDto> BorrowRequestResources { get; set; } = new List<BorrowRequestResourceDto>();
 }

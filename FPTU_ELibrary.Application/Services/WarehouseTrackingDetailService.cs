@@ -1276,12 +1276,16 @@ public class WarehouseTrackingDetailService :
 		    // Not allow duplicate ISBN in the same warehouse tracking
 		    if(isIsbnExist && trackingDto.TrackingType == TrackingType.StockIn) 
 		    {
-			    // Add error
-			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
-				    msg: isEng
-					    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking {trackingDto.ReceiptNumber}"
-					    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong dữ liệu nhập kho '{trackingDto.ReceiptNumber}'");
+			    // Only process check exist ISBN for new stock transaction type
+			    if (dto.StockTransactionType == StockTransactionType.New)
+			    {
+				    // Add error
+				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
+					    msg: isEng
+						    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking {trackingDto.ReceiptNumber}"
+						    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong dữ liệu nhập kho '{trackingDto.ReceiptNumber}'");
+			    }
 		    }
 		    // Required exist ISBN when tracking type is stock-out or transfer
 		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || trackingDto.TrackingType == TrackingType.Transfer)) 

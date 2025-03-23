@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -180,7 +180,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     ConditionId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     english_name = table.Column<string>(type: "nvarchar(50)", nullable: false),
-                    vietnamese_name = table.Column<string>(type: "nvarchar(50)", nullable: false)
+                    vietnamese_name = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1402,6 +1404,39 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         principalColumn: "user_id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Borrow_Request_Resource",
+                columns: table => new
+                {
+                    borrow_request_resource_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    borrow_request_id = table.Column<int>(type: "int", nullable: false),
+                    resource_id = table.Column<int>(type: "int", nullable: false),
+                    resource_title = table.Column<string>(type: "nvarchar(255)", nullable: false),
+                    borrow_price = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    default_borrow_duration_days = table.Column<int>(type: "int", nullable: false),
+                    transaction_id = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BorrowRequestResource_RequestResourceId", x => x.borrow_request_resource_id);
+                    table.ForeignKey(
+                        name: "FK_BorrowRequestResource_RequestId",
+                        column: x => x.borrow_request_id,
+                        principalTable: "Borrow_Request",
+                        principalColumn: "borrow_request_id");
+                    table.ForeignKey(
+                        name: "FK_BorrowRequestResource_ResourceId",
+                        column: x => x.resource_id,
+                        principalTable: "Library_Resource",
+                        principalColumn: "resource_id");
+                    table.ForeignKey(
+                        name: "FK_BorrowRequestResource_TransactionId",
+                        column: x => x.transaction_id,
+                        principalTable: "Transaction",
+                        principalColumn: "transaction_id");
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AI_Training_Detail_library_item_id",
                 table: "AI_Training_Detail",
@@ -1483,6 +1518,21 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "IX_Borrow_Request_Detail_LibraryItemInstanceId",
                 table: "Borrow_Request_Detail",
                 column: "LibraryItemInstanceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Resource_borrow_request_id",
+                table: "Borrow_Request_Resource",
+                column: "borrow_request_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Resource_resource_id",
+                table: "Borrow_Request_Resource",
+                column: "resource_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Borrow_Request_Resource_transaction_id",
+                table: "Borrow_Request_Resource",
+                column: "transaction_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Digital_Borrow_resource_id",
@@ -1757,6 +1807,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Borrow_Request_Detail");
 
             migrationBuilder.DropTable(
+                name: "Borrow_Request_Resource");
+
+            migrationBuilder.DropTable(
                 name: "Digital_Borrow_Extension_History");
 
             migrationBuilder.DropTable(
@@ -1793,9 +1846,6 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "System_Message");
 
             migrationBuilder.DropTable(
-                name: "Transaction");
-
-            migrationBuilder.DropTable(
                 name: "User_Favorite");
 
             migrationBuilder.DropTable(
@@ -1806,6 +1856,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AI_Training_Detail");
+
+            migrationBuilder.DropTable(
+                name: "Transaction");
 
             migrationBuilder.DropTable(
                 name: "Digital_Borrow");
@@ -1823,6 +1876,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "System_Permission");
 
             migrationBuilder.DropTable(
+                name: "Warehouse_Tracking");
+
+            migrationBuilder.DropTable(
+                name: "AI_Training_Session");
+
+            migrationBuilder.DropTable(
                 name: "Fine");
 
             migrationBuilder.DropTable(
@@ -1832,25 +1891,19 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 name: "Payment_Method");
 
             migrationBuilder.DropTable(
-                name: "Warehouse_Tracking");
-
-            migrationBuilder.DropTable(
-                name: "AI_Training_Session");
-
-            migrationBuilder.DropTable(
                 name: "Library_Resource");
 
             migrationBuilder.DropTable(
                 name: "User");
 
             migrationBuilder.DropTable(
+                name: "Supplier");
+
+            migrationBuilder.DropTable(
                 name: "Borrow_Record_Detail");
 
             migrationBuilder.DropTable(
                 name: "Fine_Policy");
-
-            migrationBuilder.DropTable(
-                name: "Supplier");
 
             migrationBuilder.DropTable(
                 name: "Borrow_Record");

@@ -43,6 +43,7 @@ public class ChangeStatusService : BackgroundService
                 {
                     var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                     var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<BorrowSettings>>();
+                    var monitor1 = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<AppSettings>>();
                     var reservationSvc = scope.ServiceProvider.GetRequiredService<IReservationQueueService<ReservationQueueDto>>();
                     var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();              
                     
@@ -55,18 +56,23 @@ public class ChangeStatusService : BackgroundService
                     hasChanges |= await UpdateAllLibraryCardExpiredStatusAsync(unitOfWork);
                     // Update library card suspended status
                     hasChanges |= await UpdateAllLibraryCardSuspendedStatusAsync(unitOfWork);
-                    // Update borrow request expired status
-                    hasChanges |= await UpdateAllBorrowRequestExpiredStatusAsync(unitOfWork, borrowSettings: monitor.CurrentValue);
                     // Update borrow record expired status
                     hasChanges |= await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
                     // Update digital borrow expired status
                     hasChanges |= await UpdateAllDigitalBorrowExpiredStatusAsync(unitOfWork);
+                    // Update borrow request expired status
+                    hasChanges |= await UpdateAllBorrowRequestExpiredStatusAsync(
+                        emailSvc: emailSvc,
+                        unitOfWork: unitOfWork, 
+                        borrowSettings: monitor.CurrentValue,
+                        appSettings: monitor1.CurrentValue);
                     // Update reservation expired status
                     hasChanges |= await UpdateAllReservationExpiredStatusAsync(
                         emailSvc: emailSvc,
                         reservationSvc: reservationSvc, 
                         unitOfWork: unitOfWork,
-                        borrowSettings: monitor.CurrentValue);
+                        borrowSettings: monitor.CurrentValue,
+                        appSettings: monitor1.CurrentValue);
                     // Assign item's instance to reservations (if any)
                     hasChanges |= await AssignItemToReservationAsync(
                         reservationSvc: reservationSvc,
@@ -157,7 +163,10 @@ public class ChangeStatusService : BackgroundService
     #endregion
     
     #region Borrow Tasks
-    private async Task<bool> UpdateAllBorrowRequestExpiredStatusAsync(IUnitOfWork unitOfWork, BorrowSettings borrowSettings)
+    private async Task<bool> UpdateAllBorrowRequestExpiredStatusAsync(
+        IEmailService emailSvc,
+        IUnitOfWork unitOfWork,
+        BorrowSettings borrowSettings, AppSettings appSettings)
     {
         // Initialize has changes field
         bool hasChanges = false;
@@ -174,10 +183,11 @@ public class ChangeStatusService : BackgroundService
         baseSpec.ApplyInclude(q => q
             .Include(b => b.BorrowRequestDetails)
                 .ThenInclude(b => b.LibraryItem)
+            .Include(b => b.LibraryCard)
         );
         // Retrieve all with spec
-        var entities = await unitOfWork.Repository<BorrowRequest, int>()
-            .GetAllWithSpecAsync(baseSpec);
+        var entities = (await unitOfWork.Repository<BorrowRequest, int>()
+            .GetAllWithSpecAsync(baseSpec)).ToList();
         foreach (var borrowReq in entities)
         {
             borrowReq.Status = BorrowRequestStatus.Expired;
@@ -223,12 +233,37 @@ public class ChangeStatusService : BackgroundService
             // Progress update 
             await unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(borrowReq);
             
-            
             // Mark as changed
             hasChanges = true;
         }
 
-        return hasChanges;
+        if (hasChanges)
+        {
+            // Save DB
+            var isSaved = await unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Process send email
+                foreach (var borrowReq in entities)
+                {
+                    // Try to retrieve user by email
+                    var user = await unitOfWork.Repository<User, Guid>().GetWithSpecAsync(new BaseSpecification<User>(
+                        u => Equals(u.LibraryCardId, borrowReq.LibraryCardId)));
+                    if (user != null)
+                    {
+                        await SendOverdueBorrowRequestPickupEmailAsync(
+                            emailSvc: emailSvc,
+                            email: user.Email,
+                            request: borrowReq,
+                            borrowSettings: borrowSettings,
+                            libName: appSettings.LibraryName,
+                            libContact: appSettings.LibraryContact);
+                    }
+                }
+            }
+        }
+        
+        return false; // Always return false to avoid save change many times
     }
 
     private async Task<bool> UpdateAllBorrowRecordExpiredStatusAsync(IUnitOfWork unitOfWork)
@@ -333,13 +368,13 @@ public class ChangeStatusService : BackgroundService
     private async Task<bool> UpdateAllReservationExpiredStatusAsync(
         IEmailService emailSvc,
         IReservationQueueService<ReservationQueueDto> reservationSvc,
-        IUnitOfWork unitOfWork, BorrowSettings borrowSettings)
+        IUnitOfWork unitOfWork, BorrowSettings borrowSettings, AppSettings appSettings)
     {
         // Initialize has changes field
         bool hasChanges = false;
         
         // Initialize collection of item instance ids need to be assigned
-        var instanceToAssignedIds = new List<int>();
+        var handledReservations = new List<ReservationQueue>();
         
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
@@ -405,7 +440,7 @@ public class ChangeStatusService : BackgroundService
                         itemInventory.ReservedUnits--;
                     
                         // Add instance to assigned list
-                        instanceToAssignedIds.Add(itemInstance.LibraryItemInstanceId);
+                        handledReservations.Add(reservation);
                         
                         // Process update item instance
                         await unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(itemInstance);
@@ -417,14 +452,37 @@ public class ChangeStatusService : BackgroundService
             }
         }
 
-        if (hasChanges && instanceToAssignedIds.Any())
+        if (hasChanges && handledReservations.Any())
         {
             // Process save changes to DB
             var isSaved = await unitOfWork.SaveChangesWithTransactionAsync() > 0;
             if (isSaved)
             {
+                // Process send email
+                foreach (var reservation in handledReservations)
+                {
+                    // Try to retrieve user by email
+                    var user = await unitOfWork.Repository<User, Guid>().GetWithSpecAsync(new BaseSpecification<User>(
+                        u => Equals(u.LibraryCardId, reservation.LibraryCardId)));
+                    if (user != null)
+                    {
+                        await SendOverdueReservationPickupEmailAsync(
+                            emailSvc: emailSvc,
+                            email: user.Email,
+                            reservation: reservation,
+                            borrowSettings: borrowSettings,
+                            libName: appSettings.LibraryName,
+                            libContact: appSettings.LibraryContact);
+                    }
+                }
+                
+                // Extract all instance item ids
+                var allItemInstanceIds = handledReservations
+                    .Where(r => r.LibraryItemInstanceId != null)
+                    .Select(r => int.Parse(r.LibraryItemInstanceId.ToString() ?? "0"))
+                    .ToList();
                 // Process reassigned item instance to other reservations (if any)
-                await reservationSvc.AssignReturnItemAsync(libraryItemInstanceIds: instanceToAssignedIds);
+                await reservationSvc.AssignReturnItemAsync(libraryItemInstanceIds: allItemInstanceIds);
             }
         }
         
@@ -476,7 +534,6 @@ public class ChangeStatusService : BackgroundService
     }
     #endregion
     
-    // TODO: Implement send email for expired items
     #region Send Email Handling
     private async Task<bool> SendOverdueReservationPickupEmailAsync(
         IEmailService emailSvc,
@@ -496,7 +553,7 @@ public class ChangeStatusService : BackgroundService
     			// Define subject
     			subject: subject,
     			// Add email body content
-    			content: GetOverduePickupEmailBody(
+    			content: GetOverdueReservationPickupEmailBody(
                     reservation: reservation,
                     borrowSettings: borrowSettings,
     				libName: libName,
@@ -512,8 +569,43 @@ public class ChangeStatusService : BackgroundService
     		throw new Exception("Error invoke when process send overdue reservation pickup email");
     	}
     }
+
+    private async Task<bool> SendOverdueBorrowRequestPickupEmailAsync(
+        IEmailService emailSvc,
+        string email,
+        BorrowRequest request, BorrowSettings borrowSettings,
+        string libName, string libContact)
+    {
+        try
+        {
+            // Email subject
+            var subject = "[ELIBRARY] Thông Báo Yêu Cầu Mượn Quá Hạn";
+        
+            // Process send email
+            var emailMessageDto = new EmailMessageDto( // Define email message
+            	// Define Recipient
+            	to: new List<string>() { email },
+            	// Define subject
+            	subject: subject,
+            	// Add email body content
+            	content: GetOverdueBorrowRequestPickupEmailBody(
+                    request: request,
+                    borrowSettings: borrowSettings,
+            		libName: libName,
+            		libContact:libContact)
+            );
+            
+            // Process send email
+            return await emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process send overdue borrow request pickup email");
+        }
+    }
     
-    private string GetOverduePickupEmailBody(
+    private string GetOverdueReservationPickupEmailBody(
         ReservationQueue reservation, BorrowSettings borrowSettings,
         string libName, string libContact)
     {
@@ -527,7 +619,7 @@ public class ChangeStatusService : BackgroundService
             <div class="details">
                 <ul>
                     <li><strong>Mã Đặt Trước:</strong> <span class="reservation-code">{{reservation.ReservationCode}}</span></li>
-                    <li><strong>Ngày Đặt:</strong> <span class="reservation-date">{{reservation.ReservationDate:dd/MM/yyyy HH:mm}}</span></li>
+                    <li><strong>Ngày Đặt:</strong> <span class="expiry-date">{{reservation.ReservationDate:dd/MM/yyyy HH:mm}}</span></li>
                     <li><strong>Ngày Hết Hạn:</strong> <span class="expiry-date">{{reservation.ExpiryDate:dd/MM/yyyy HH:mm}}</span></li>
                     <li><strong>Trạng Thái Đặt:</strong> <span class="status-text">{{reservation.QueueStatus.GetDescription()}}</span></li>
                     <li><strong>Đã thông báo hết hạn:</strong> <span class="status-text">{{(reservation.IsNotified ? "Đã gửi email thông báo" : "Chưa gửi thông báo")}}</span></li>
@@ -563,12 +655,14 @@ public class ChangeStatusService : BackgroundService
         string instanceDetails = string.Empty;
         if (reservation.LibraryItemInstance != null)
         {
+            Enum.TryParse(reservation.LibraryItemInstance.Status.ToString(), out LibraryItemInstanceStatus status);
+            
             instanceDetails = $$"""
                 <p><strong>Thông Tin Bản Sao Đã Gán:</strong></p>
                 <div class="details">
                     <ul>
                         <li><strong>Mã Vạch:</strong> <strong>{{reservation.LibraryItemInstance.Barcode}}</strong></li>
-                        <li><strong>Tình Trạng:</strong> {{reservation.LibraryItemInstance.Status}}</li>
+                        <li><strong>Tình Trạng:</strong> {{(status != null! ? status.GetDescription() : reservation.LibraryItemInstance.Status)}}</li>
                     </ul>
                 </div>
                 """;
@@ -585,7 +679,7 @@ public class ChangeStatusService : BackgroundService
         {
             policySection = $$"""
                 <p><strong>Chính Sách Thư Viện:</strong></p>
-                <div class="details">
+                <div class="policy-details">
                     <ul>
                         <li>Do bạn đã bỏ lỡ lịch hẹn nhận tài liệu đủ <strong>{{allowedMissedPickups}}</strong> lần, thẻ của bạn hiện đã bị treo trong <strong>{{borrowSettings.EndSuspensionInDays}} ngày.</strong></li>
                         <li>Trong thời gian treo, bạn sẽ không được sử dụng các dịch vụ của thư viện (mượn, đặt trước, ...).</li>
@@ -597,7 +691,7 @@ public class ChangeStatusService : BackgroundService
         {
             policySection = $$"""
                 <p><strong>Chính Sách Thư Viện:</strong></p>
-                <div class="details">
+                <div class="policy-details">
                     <ul>
                         <li>Mỗi thẻ chỉ được phép bỏ lỡ lịch hẹn nhận tài liệu tối đa <strong>{{allowedMissedPickups}}</strong> lần.</li>
                         <li>Hiện tại, bạn đã bỏ lỡ <strong>{{reservation.LibraryCard.TotalMissedPickUp}}</strong> lần.</li>
@@ -625,11 +719,21 @@ public class ChangeStatusService : BackgroundService
                         color: #c0392b;
                         font-weight: bold;
                     }
-                    .details {
+                    .policy-details {
                         margin: 15px 0;
                         padding: 10px;
                         background-color: #f9f9f9;
                         border-left: 4px solid #e74c3c;
+                    }
+                    .policy-details ul {
+                        list-style-type: disc;
+                        padding-left: 20px;
+                    }
+                    .details {
+                        margin: 15px 0;
+                        padding: 10px;
+                        background-color: #f9f9f9;
+                        border-left: 4px solid #27ae60;
                     }
                     .details ul {
                         list-style-type: disc;
@@ -659,6 +763,10 @@ public class ChangeStatusService : BackgroundService
                         color: #c0392b;
                         font-weight: bold;
                     }
+                    .reservation-code {
+                        color: #8e44ad;
+                        font-weight: bold;
+                    }
                 </style>
             </head>
             <body>
@@ -681,5 +789,165 @@ public class ChangeStatusService : BackgroundService
             </html>
             """;
 	}
+
+    private string GetOverdueBorrowRequestPickupEmailBody(
+        BorrowRequest request, 
+        BorrowSettings borrowSettings,
+        string libName, 
+        string libContact)
+    {
+        // Email header and main message
+        string headerMessage = "Thông Báo Yêu Cầu Mượn Quá Hạn";
+        string mainMessage = "Yêu cầu mượn tài liệu của bạn đã quá hạn để đến nhận. Vui lòng liên hệ thư viện để được hỗ trợ.";
+
+        // Request information section
+        string requestInfoSection = $$"""
+            <p><strong>Thông Tin Yêu Cầu Mượn:</strong></p>
+            <div class="details">
+                <ul>
+                    <li><strong>Ngày Yêu Cầu:</strong> <span class="request-date">{{request.RequestDate:dd/MM/yyyy HH:mm}}</span></li>
+                    <li><strong>Ngày Hết Hạn:</strong> <span class="expiry-date">{{request.ExpirationDate:dd/MM/yyyy HH:mm}}</span></li>
+                    <li><strong>Trạng Thái:</strong> <span class="status-text">{{request.Status.GetDescription()}}</span></li>
+                    <li><strong>Tổng Số Tài Liệu:</strong> {{request.TotalRequestItem}}</li>
+                    {{ (string.IsNullOrEmpty(request.Description) ? "" : $"<li><strong>Mô Tả:</strong> {request.Description}</li>") }}
+                </ul>
+            </div>
+            """;
+
+        // Requested items details section
+        var itemDetailsList = string.Join("", request.BorrowRequestDetails.Select(detail =>
+            $$"""
+            <li>
+                <p><strong>Tiêu đề:</strong> <span class="title">{{detail.LibraryItem.Title}}</span></p>
+                <p><strong>ISBN:</strong> <span class="isbn">{{detail.LibraryItem.Isbn}}</span></p>
+                <p><strong>Năm Xuất Bản:</strong> {{detail.LibraryItem.PublicationYear}}</p>
+                <p><strong>Nhà Xuất Bản:</strong> {{detail.LibraryItem.Publisher}}</p>
+            </li>
+            """));
+
+        string itemsSection = $$"""
+            <p><strong>Chi Tiết Tài Liệu Yêu Cầu:</strong></p>
+            <div class="details">
+                <ul>
+                    {{itemDetailsList}}
+                </ul>
+            </div>
+            """;
+
+        // Calculate remaining allowed missed pickups
+        int allowedMissedPickups = borrowSettings.TotalMissedPickUpAllow;
+        int remainingMisses = allowedMissedPickups - request.LibraryCard.TotalMissedPickUp;
+        remainingMisses = remainingMisses < 0 ? 0 : remainingMisses;
+
+        // Library policy
+        string policySection;
+        if (remainingMisses == 0)
+        {
+            policySection = $$"""
+              <p><strong>Chính Sách Thư Viện:</strong></p>
+              <div class="policy-details">
+                  <ul>
+                      <li>Do bạn đã bỏ lỡ lịch hẹn nhận tài liệu đủ <strong>{{allowedMissedPickups}}</strong> lần, thẻ của bạn hiện đã bị treo trong <strong>{{borrowSettings.EndSuspensionInDays}} ngày.</strong></li>
+                      <li>Trong thời gian treo, bạn sẽ không được sử dụng các dịch vụ của thư viện (mượn, đặt trước, ...).</li>
+                  </ul>
+              </div>
+              """;
+        }
+        else
+        {
+            policySection = $$"""
+              <p><strong>Chính Sách Thư Viện:</strong></p>
+              <div class="policy-details">
+                  <ul>
+                      <li>Mỗi thẻ chỉ được phép bỏ lỡ lịch hẹn nhận tài liệu tối đa <strong>{{allowedMissedPickups}}</strong> lần.</li>
+                      <li>Hiện tại, bạn đã bỏ lỡ <strong>{{request.LibraryCard.TotalMissedPickUp}}</strong> lần.</li>
+                      <li>Nếu bạn bỏ lỡ thêm <strong>{{remainingMisses}}</strong> lần nữa, thẻ của bạn sẽ bị treo trong <strong>{{borrowSettings.EndSuspensionInDays}} ngày</strong> và bạn sẽ không được sử dụng các dịch vụ của thư viện.</li>
+                  </ul>
+              </div>
+              """;
+        }
+        
+        // Build HTML content
+        return $$"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{{headerMessage}}</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                    }
+                    .header {
+                        font-size: 18px;
+                        color: #2c3e50;
+                        font-weight: bold;
+                    }
+                    .policy-details {
+                        margin: 15px 0;
+                        padding: 10px;
+                        background-color: #f9f9f9;
+                        border-left: 4px solid #e74c3c;
+                    }
+                    .policy-details ul {
+                        list-style-type: disc;
+                        padding-left: 20px;
+                    }
+                    .details {
+                        margin: 15px 0;
+                        padding: 10px;
+                        background-color: #f9f9f9;
+                        border-left: 4px solid #27ae60;
+                    }
+                    .details ul {
+                        list-style-type: disc;
+                        padding-left: 20px;
+                    }
+                    .details li {
+                        margin: 5px 0;
+                    }
+                    .footer {
+                        margin-top: 20px;
+                        font-size: 14px;
+                        color: #7f8c8d;
+                    }
+                    .isbn {
+                        color: #2980b9;
+                        font-weight: bold;
+                    }
+                    .title {
+                        color: #f39c12;
+                        font-weight: bold;
+                    }
+                    .request-date, .expiry-date {
+                        color: #27ae60;
+                        font-weight: bold;
+                    }
+                    .status-text {
+                        color: #e74c3c;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body>
+                <p class="header">{{headerMessage}}</p>
+                <p>Xin chào {{request.LibraryCard.FullName}},</p>
+                <p>{{mainMessage}}</p>
+                
+                {{requestInfoSection}}
+                {{itemsSection}}
+                {{policySection}}
+                
+                <p>Nếu bạn đã nhận được tài liệu hoặc cần hỗ trợ, vui lòng liên hệ qua email: <strong>{{libContact}}</strong>.</p>
+                <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện.</p>
+                
+                <p class="footer"><strong>Trân trọng,</strong></p>
+                <p class="footer">{{libName}}</p>
+            </body>
+            </html>
+            """;
+    }
     #endregion
 }

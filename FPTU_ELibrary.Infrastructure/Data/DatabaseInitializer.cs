@@ -1204,22 +1204,26 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				new()
 				{
 					EnglishName = nameof(LibraryItemConditionStatus.Good),
-					VietnameseName = LibraryItemConditionStatus.Good.GetDescription()
+					VietnameseName = LibraryItemConditionStatus.Good.GetDescription(),
+					CreatedAt = DateTime.Now
 				},
 				new()
 				{
 					EnglishName = nameof(LibraryItemConditionStatus.Damaged),
-					VietnameseName = LibraryItemConditionStatus.Damaged.GetDescription()
+					VietnameseName = LibraryItemConditionStatus.Damaged.GetDescription(),
+					CreatedAt = DateTime.Now
 				},
 				new()
 				{
 					EnglishName = nameof(LibraryItemConditionStatus.Worn),
-					VietnameseName = LibraryItemConditionStatus.Worn.GetDescription()
+					VietnameseName = LibraryItemConditionStatus.Worn.GetDescription(),
+					CreatedAt = DateTime.Now
 				},
 				new()
 				{
 					EnglishName = nameof(LibraryItemConditionStatus.Lost),
-					VietnameseName = LibraryItemConditionStatus.Lost.GetDescription()
+					VietnameseName = LibraryItemConditionStatus.Lost.GetDescription(),
+					CreatedAt = DateTime.Now
 				}
 			};
 			

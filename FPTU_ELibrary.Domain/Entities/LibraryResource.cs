@@ -38,4 +38,7 @@
         
         [JsonIgnore] 
         public ICollection<LibraryResourceUrl> LibraryResourceUrls { get; set; } = new List<LibraryResourceUrl>();
+        
+        [JsonIgnore]
+        public ICollection<BorrowRequestResource> BorrowRequestResources { get; set; } = new List<BorrowRequestResource>();
     }

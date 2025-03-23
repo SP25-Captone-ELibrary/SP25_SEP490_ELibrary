@@ -370,7 +370,6 @@ public class AIClassificationService : IAIClassificationService
 
     // create a function with List<int> libraryItemIds as parameter and check if their field could be able to be in a group or not
     // base on CutterNumber,ClassificationNumber,mainAuthor,Title
-
     public async Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(int rootItemId)
     {
         try

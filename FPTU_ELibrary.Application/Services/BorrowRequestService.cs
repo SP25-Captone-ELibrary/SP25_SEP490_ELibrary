@@ -31,6 +31,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
 {
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
+    private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _itemSrcSvc;
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecSvc;
 
@@ -46,6 +47,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
 
     public BorrowRequestService(
         // Lazy services
+        Lazy<ILibraryResourceService<LibraryResourceDto>> itemSrcSvc,
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
         Lazy<IUserService<UserDto>> userSvc,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
@@ -68,6 +70,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         _userSvc = userSvc;
         _fineSvc = fineSvc;
         _emailSvc = emailSvc;
+        _itemSrcSvc = itemSrcSvc;
         _libItemSvc = libItemSvc;
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
@@ -313,6 +316,18 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                             }).ToList()
                         },
                         LibraryItemInstance = rq.LibraryItemInstance
+                    }).ToList(),
+                    BorrowRequestResources = br.BorrowRequestResources.Select(bs => new BorrowRequestResource()
+                    {
+                        BorrowRequestResourceId = bs.BorrowRequestResourceId,
+                        BorrowRequestId = bs.BorrowRequestId,
+                        ResourceId = bs.ResourceId,
+                        ResourceTitle = bs.ResourceTitle,
+                        BorrowPrice = bs.BorrowPrice,
+                        DefaultBorrowDurationDays = bs.DefaultBorrowDurationDays,
+                        LibraryResource = bs.LibraryResource,
+                        TransactionId = bs.TransactionId,
+                        Transaction = bs.Transaction
                     }).ToList()
                 });
             if (existingEntity != null)
@@ -424,6 +439,90 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                                 Author = ba.Author
                             }).ToList()
                         },
+                    }).ToList(),
+                    ReservationQueues = br.ReservationQueues.Select(rq => new ReservationQueue()
+                    {
+                        QueueId = rq.QueueId,
+                        LibraryItemId = rq.LibraryItemId,
+                        LibraryItemInstanceId = rq.LibraryItemInstanceId,
+                        LibraryCardId = rq.LibraryCardId,
+                        QueueStatus = rq.QueueStatus,
+                        BorrowRequestId = rq.BorrowRequestId,
+                        IsReservedAfterRequestFailed = rq.IsReservedAfterRequestFailed,
+                        ExpectedAvailableDateMin = rq.ExpectedAvailableDateMin,
+                        ExpectedAvailableDateMax = rq.ExpectedAvailableDateMax,
+                        ReservationDate = rq.ReservationDate,
+                        ExpiryDate = rq.ExpiryDate,
+                        IsNotified = rq.IsNotified,
+                        CancelledBy = rq.CancelledBy,
+                        CancellationReason = rq.CancellationReason,
+                        LibraryItem = new LibraryItem()
+                        {
+                            LibraryItemId = rq.LibraryItem.LibraryItemId,
+                            Title = rq.LibraryItem.Title,
+                            SubTitle = rq.LibraryItem.SubTitle,
+                            Responsibility = rq.LibraryItem.Responsibility,
+                            Edition = rq.LibraryItem.Edition,
+                            EditionNumber = rq.LibraryItem.EditionNumber,
+                            Language = rq.LibraryItem.Language,
+                            OriginLanguage = rq.LibraryItem.OriginLanguage,
+                            Summary = rq.LibraryItem.Summary,
+                            CoverImage = rq.LibraryItem.CoverImage,
+                            PublicationYear = rq.LibraryItem.PublicationYear,
+                            Publisher = rq.LibraryItem.Publisher,
+                            PublicationPlace = rq.LibraryItem.PublicationPlace,
+                            ClassificationNumber = rq.LibraryItem.ClassificationNumber,
+                            CutterNumber = rq.LibraryItem.CutterNumber,
+                            Isbn = rq.LibraryItem.Isbn,
+                            Ean = rq.LibraryItem.Ean,
+                            EstimatedPrice = rq.LibraryItem.EstimatedPrice,
+                            PageCount = rq.LibraryItem.PageCount,
+                            PhysicalDetails = rq.LibraryItem.PhysicalDetails,
+                            Dimensions = rq.LibraryItem.Dimensions,
+                            AccompanyingMaterial = rq.LibraryItem.AccompanyingMaterial,
+                            Genres = rq.LibraryItem.Genres,
+                            GeneralNote = rq.LibraryItem.GeneralNote,
+                            BibliographicalNote = rq.LibraryItem.BibliographicalNote,
+                            TopicalTerms = rq.LibraryItem.TopicalTerms,
+                            AdditionalAuthors = rq.LibraryItem.AdditionalAuthors,
+                            CategoryId = rq.LibraryItem.CategoryId,
+                            ShelfId = rq.LibraryItem.ShelfId,
+                            GroupId = rq.LibraryItem.GroupId,
+                            Status = rq.LibraryItem.Status,
+                            IsDeleted = rq.LibraryItem.IsDeleted,
+                            IsTrained = rq.LibraryItem.IsTrained,
+                            CanBorrow = rq.LibraryItem.CanBorrow,
+                            TrainedAt = rq.LibraryItem.TrainedAt,
+                            CreatedAt = rq.LibraryItem.CreatedAt,
+                            UpdatedAt = rq.LibraryItem.UpdatedAt,
+                            UpdatedBy = rq.LibraryItem.UpdatedBy,
+                            CreatedBy = rq.LibraryItem.CreatedBy,
+                            // References
+                            Category = rq.LibraryItem.Category,
+                            Shelf = rq.LibraryItem.Shelf,
+                            LibraryItemInventory = rq.LibraryItem.LibraryItemInventory,
+                            LibraryItemReviews = rq.LibraryItem.LibraryItemReviews,
+                            LibraryItemAuthors = rq.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                            {
+                                LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                                LibraryItemId = ba.LibraryItemId,
+                                AuthorId = ba.AuthorId,
+                                Author = ba.Author
+                            }).ToList()
+                        },
+                        LibraryItemInstance = rq.LibraryItemInstance
+                    }).ToList(),
+                    BorrowRequestResources = br.BorrowRequestResources.Select(bs => new BorrowRequestResource()
+                    {
+                        BorrowRequestResourceId = bs.BorrowRequestResourceId,
+                        BorrowRequestId = bs.BorrowRequestId,
+                        ResourceId = bs.ResourceId,
+                        ResourceTitle = bs.ResourceTitle,
+                        BorrowPrice = bs.BorrowPrice,
+                        DefaultBorrowDurationDays = bs.DefaultBorrowDurationDays,
+                        LibraryResource = bs.LibraryResource,
+                        TransactionId = bs.TransactionId,
+                        Transaction = bs.Transaction
                     }).ToList()
                 })).ToList();
             if (entities.Any())
@@ -475,7 +574,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
 
-    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto, List<int> reservationItemIds)
+    public async Task<IServiceResult> CreateAsync(string email, BorrowRequestDto dto, 
+        List<int> reservationItemIds,
+        List<int> resourceIds)
     {
         try
         {
@@ -674,6 +775,51 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 }
             }
 
+            // Create borrow request resources (if any)
+            var requestResources = new List<BorrowRequestResourceDto>();
+            // Iterate each resource to check whether user has already borrowed
+            for (int i = 0; i < resourceIds.Count; ++i)
+            {
+                var resourceId = resourceIds[i];
+                
+                // Retrieve resource by id
+                var resourceDto = (await _itemSrcSvc.Value.GetByIdAsync(resourceId)).Data as LibraryResourceDto;
+                if (resourceDto == null)
+                {
+                    // Data not found or empty
+                    var customMsg = isEng ? "Some input resources are not found" : "Một vài tài liệu điện tử không tồn tại";
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0004, customMsg);
+                }
+                
+                // Check whether user has already borrowed the resource
+                // Build spec
+                var resourceSpec = new BaseSpecification<LibraryResource>(r => 
+                    r.ResourceId == resourceId && // With specific resource
+                    // Any digital borrow contains user and resource
+                    r.DigitalBorrows.Any(d => d.UserId == userDto.UserId && d.ResourceId == resourceId));
+                var hasAlreadyBorrowed = (await _itemSrcSvc.Value.AnyAsync(resourceSpec)).Data is true;
+                if (hasAlreadyBorrowed)
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: $"resourceIds[{i}]",
+                        msg: isEng 
+                            ? "This resource has already been borrowed. Please try to extend the expiration time instead of borrowing new" 
+                            : "Tài liệu điện tử đã tồn tại trong lịch sử mượn. Vui lòng gia hạn tài liệu thay vì mượn mới");
+                }
+                else
+                {
+                    // Add borrow request resource
+                    requestResources.Add(new ()
+                    {
+                        ResourceId = resourceId,
+                        ResourceTitle = resourceDto.ResourceTitle,
+                        BorrowPrice = resourceDto.BorrowPrice,
+                        DefaultBorrowDurationDays = resourceDto.DefaultBorrowDurationDays
+                    });
+                }
+            }
+            
             // Check if any error invoke
             if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
 
@@ -721,6 +867,10 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 ReservationQueues = reservationQueues != null && reservationQueues.Any() 
                     ? reservationQueues.ToList() 
                     : new List<ReservationQueueDto>(),
+                // Assign request resources (if any)
+                BorrowRequestResources = requestResources.Any()
+                    ? requestResources.ToList()
+                    : new List<BorrowRequestResourceDto>(),
                 TotalRequestItem = borrowDetails.Count,
                 RequestDate = currentLocalDateTime,
                 ExpirationDate = currentLocalDateTime.AddDays(_borrowSettings.PickUpExpirationInDays),
@@ -1018,6 +1168,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         }
     }
     
+    // TODO: Not allow to cancel when exist any borrow request resources
     public async Task<IServiceResult> CancelAsync(string email, int id,
         string? cancellationReason, bool isConfirmed = false)
     {

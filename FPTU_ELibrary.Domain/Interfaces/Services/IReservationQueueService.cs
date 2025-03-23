@@ -16,4 +16,5 @@ public interface IReservationQueueService<TDto> : IGenericService<ReservationQue
     Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId, string email);
     Task<IServiceResult> UpdateReservationToCollectedWithoutSaveChangesAsync(int id, int libraryItemInstanceId);
     // TODO: Add function allowing to retrieve all reservations by library item id (Item Detail Page)
+    // TODO: Add function to confirm assign reservation code
 }

@@ -11,23 +11,40 @@ using System.Security.Claims;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using Microsoft.IdentityModel.Tokens;
 using ChangePasswordRequest = FPTU_ELibrary.API.Payloads.Requests.Auth.ChangePasswordRequest;
+using Microsoft.AspNetCore.SignalR;
+using FPTU_ELibrary.Application.Hubs;
 
 namespace FPTU_ELibrary.API.Controllers
 {
     [ApiController]
 	public class AuthenticationController : ControllerBase
 	{
-		private readonly IAuthenticationService<AuthenticateUserDto> _authenticationService;
+        private readonly IHubContext<AiHub> _hub;
+        private readonly IAuthenticationService<AuthenticateUserDto> _authenticationService;
 		private readonly TokenValidationParameters _tokenValidationParameters;
 
 		public AuthenticationController(
 			IAuthenticationService<AuthenticateUserDto> authenticationService,
-			TokenValidationParameters tokenValidationParameters)
+			TokenValidationParameters tokenValidationParameters,
+			IHubContext<AiHub> hub)
         {
+			_hub = hub;
 			_authenticationService = authenticationService;
 			_tokenValidationParameters = tokenValidationParameters;
         }
-		
+
+
+		[HttpGet("test")]
+		public async Task<IActionResult> Test()
+		{
+			var rnd = new Random();
+			await _hub.Clients.All.SendAsync("AIProcessMessage", new {
+				Message = rnd.Next(1, 100)
+			});
+
+			return Ok();
+		}
+
 		[Authorize]
 		[HttpGet(APIRoute.Authentication.CurrentUser, Name = nameof(GetCurrentUserAsync))]
 		public async Task<IActionResult> GetCurrentUserAsync()

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -500,6 +500,52 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasIndex("LibraryItemInstanceId");
 
                     b.ToTable("Borrow_Request_Detail", (string)null);
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequestResource", b =>
+                {
+                    b.Property<int>("BorrowRequestResourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_request_resource_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BorrowRequestResourceId"));
+
+                    b.Property<decimal>("BorrowPrice")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("borrow_price");
+
+                    b.Property<int>("BorrowRequestId")
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_request_id");
+
+                    b.Property<int>("DefaultBorrowDurationDays")
+                        .HasColumnType("int")
+                        .HasColumnName("default_borrow_duration_days");
+
+                    b.Property<int>("ResourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("resource_title");
+
+                    b.Property<int?>("TransactionId")
+                        .HasColumnType("int")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("BorrowRequestResourceId")
+                        .HasName("PK_BorrowRequestResource_RequestResourceId");
+
+                    b.HasIndex("BorrowRequestId");
+
+                    b.HasIndex("ResourceId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.ToTable("Borrow_Request_Resource", (string)null);
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Category", b =>
@@ -1308,10 +1354,16 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConditionId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("EnglishName")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("english_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("VietnameseName")
                         .IsRequired()
@@ -3141,6 +3193,32 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("LibraryItem");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.BorrowRequestResource", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
+                        .WithMany("BorrowRequestResources")
+                        .HasForeignKey("BorrowRequestId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BorrowRequestResource_RequestId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryResource", "LibraryResource")
+                        .WithMany("BorrowRequestResources")
+                        .HasForeignKey("ResourceId")
+                        .IsRequired()
+                        .HasConstraintName("FK_BorrowRequestResource_ResourceId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.Transaction", "Transaction")
+                        .WithMany("BorrowRequestResources")
+                        .HasForeignKey("TransactionId")
+                        .HasConstraintName("FK_BorrowRequestResource_TransactionId");
+
+                    b.Navigation("BorrowRequest");
+
+                    b.Navigation("LibraryResource");
+
+                    b.Navigation("Transaction");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.DigitalBorrow", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryResource", "LibraryResource")
@@ -3659,6 +3737,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 {
                     b.Navigation("BorrowRequestDetails");
 
+                    b.Navigation("BorrowRequestResources");
+
                     b.Navigation("ReservationQueues");
                 });
 
@@ -3770,6 +3850,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryResource", b =>
                 {
+                    b.Navigation("BorrowRequestResources");
+
                     b.Navigation("DigitalBorrows");
 
                     b.Navigation("LibraryItemResources");
@@ -3826,6 +3908,11 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Navigation("RolePermissions");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Transaction", b =>
+                {
+                    b.Navigation("BorrowRequestResources");
                 });
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.User", b =>
