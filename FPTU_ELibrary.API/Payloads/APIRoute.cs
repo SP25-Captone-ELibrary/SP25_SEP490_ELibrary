@@ -71,6 +71,7 @@
 			#endregion
 			
 			// [GET]
+			public const string ConfirmCreateTransaction = Base + "/borrows/requests/{id}/confirm-transaction";
 			// [POST]
 			public const string Create = Base + "/borrows/requests";
 			public const string AddItemToRequest = Base + "/borrows/requests/{id}/details/add-item";
@@ -386,6 +387,7 @@
 			public const string GetBorrowRequestById = Base + "/users/borrows/requests/{id}";
 			public const string GetBorrowRecordById = Base + "/users/borrows/records/{id}";
 			public const string GetDigitalBorrowById = Base + "/users/borrows/digital/{id}";
+			public const string GetTransactionById = Base + "/users/transactions/{id}";
 			// [POST]
 			// [PATCH]
 			// [PUT]

@@ -5,6 +5,7 @@ using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Users;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
@@ -33,10 +34,11 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _itemSrcSvc;
     private readonly Lazy<IUserService<UserDto>> _userSvc;
+    private readonly Lazy<IFineService<FineDto>> _fineSvc;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecSvc;
+    private readonly Lazy<ITransactionService<TransactionDto>> _transactionSvc;
 
     private readonly IEmailService _emailSvc;
-    private readonly Lazy<IFineService<FineDto>> _fineSvc;
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
     private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
@@ -48,10 +50,11 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     public BorrowRequestService(
         // Lazy services
         Lazy<ILibraryResourceService<LibraryResourceDto>> itemSrcSvc,
-        Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
         Lazy<IUserService<UserDto>> userSvc,
-        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
         Lazy<IFineService<FineDto>> fineSvc,
+        Lazy<ITransactionService<TransactionDto>> transactionSvc,
+        Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
+        Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
 
         ILibraryCardService<LibraryCardDto> cardSvc,
         ILibraryItemService<LibraryItemDto> libItemSvc,
@@ -72,6 +75,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         _emailSvc = emailSvc;
         _itemSrcSvc = itemSrcSvc;
         _libItemSvc = libItemSvc;
+        _transactionSvc = transactionSvc;
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
         _borrowRecSvc = borrowRecSvc;
@@ -807,17 +811,36 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                             ? "This resource has already been borrowed. Please try to extend the expiration time instead of borrowing new" 
                             : "Tài liệu điện tử đã tồn tại trong lịch sử mượn. Vui lòng gia hạn tài liệu thay vì mượn mới");
                 }
-                else
+
+                // Check whether exist pending in any other request
+                var isExistPending = await _unitOfWork.Repository<BorrowRequest, int>()
+                    .AnyAsync(br => br.BorrowRequestResources.Any(bs =>
+                        bs.ResourceId == resourceId && // With specific resource id
+                        (
+                            bs.TransactionId == null || // Existing in borrowing list but has not created transaction yet
+                            (
+                                // Has created transaction and still in pending status
+                                bs.Transaction != null && bs.Transaction.TransactionStatus == TransactionStatus.Pending
+                            )
+                        )));
+                if (isExistPending)
                 {
-                    // Add borrow request resource
-                    requestResources.Add(new ()
-                    {
-                        ResourceId = resourceId,
-                        ResourceTitle = resourceDto.ResourceTitle,
-                        BorrowPrice = resourceDto.BorrowPrice,
-                        DefaultBorrowDurationDays = resourceDto.DefaultBorrowDurationDays
-                    });
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: $"resourceIds[{i}]",
+                        msg: isEng 
+                            ? "This resource has already been borrowed and waiting for payment" 
+                            : "Tài liệu điện tử đã tồn tại trong lịch sử mượn và đang chờ thanh toán");
                 }
+                
+                // Add borrow request resource
+                requestResources.Add(new ()
+                {
+                    ResourceId = resourceId,
+                    ResourceTitle = resourceDto.ResourceTitle,
+                    BorrowPrice = resourceDto.BorrowPrice,
+                    DefaultBorrowDurationDays = resourceDto.DefaultBorrowDurationDays
+                });
             }
             
             // Check if any error invoke

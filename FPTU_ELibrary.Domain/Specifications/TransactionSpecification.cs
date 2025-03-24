@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.EntityFrameworkCore;
@@ -10,17 +11,13 @@ public class TransactionSpecification : BaseSpecification<Transaction>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
 
-    public TransactionSpecification(TransactionSpecParams specParams
-        , int pageIndex, int pageSize, string? email = null)
+    public TransactionSpecification(TransactionSpecParams specParams, int pageIndex, int pageSize,
+        string? email = null, Guid? userId = null)
         : base(t =>
             string.IsNullOrEmpty(specParams.Search) ||
             (!string.IsNullOrEmpty(t.TransactionCode) && t.TransactionCode.Contains(specParams.Search)) ||
-            (!string.IsNullOrEmpty(t.Description) && t.Description.Contains(specParams.Search)) ||
-            (!string.IsNullOrEmpty(t.TransactionStatus.ToString()) &&
-             t.TransactionStatus.ToString().Contains(specParams.Search)) ||
-            (!string.IsNullOrEmpty(t.TransactionType.ToString()) &&
-             t.TransactionType.ToString().Contains(specParams.Search)))
-
+            (!string.IsNullOrEmpty(t.Description) && t.Description.Contains(specParams.Search))
+        )
     {
         // Pagination
         PageIndex = pageIndex;
@@ -29,43 +26,72 @@ public class TransactionSpecification : BaseSpecification<Transaction>
         // Enable split query
         EnableSplitQuery();
 
-        ApplyInclude(q => q.Include(t => t.User));
-        if (email != null)
+        // Filter
+        if (!string.IsNullOrEmpty(email))
         {
             AddFilter(t => t.User.Email == email);
         }
-
-        //Add filter
+        if (userId != null && userId != Guid.Empty)
+        {
+            AddFilter(t => t.UserId == userId);
+        }
         if (specParams.TransactionStatus != null)
         {
             AddFilter(t => t.TransactionStatus == specParams.TransactionStatus);
         }
-
         if (specParams.TransactionType != null)
         {
             AddFilter(t => t.TransactionType == specParams.TransactionType);
         }
-
-        if (specParams.CreatedAtRange != null
-            && specParams.CreatedAtRange.Length > 1) // With range of issue date
+        if (specParams.TransactionMethod != null)
         {
-            if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1].HasValue)
+            AddFilter(t => t.TransactionMethod == specParams.TransactionMethod);
+        }
+        
+        if (specParams.TransactionDateRange != null
+            && specParams.TransactionDateRange.Length > 1) // With range of transaction date
+        {
+            if (specParams.TransactionDateRange[0].HasValue && specParams.TransactionDateRange[1].HasValue)
             {
-                AddFilter(x => x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date
-                               && x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);
+                AddFilter(x => x.TransactionDate.HasValue &&
+                    x.TransactionDate.Value.Date >= specParams.TransactionDateRange[0]!.Value.Date &&
+                    x.TransactionDate.Value.Date <= specParams.TransactionDateRange[1]!.Value.Date);
             }
-            else if ((specParams.CreatedAtRange[0] is null && specParams.CreatedAtRange[1].HasValue))
+            else if ((specParams.TransactionDateRange[0] is null && specParams.TransactionDateRange[1].HasValue))
             {
-                AddFilter(x => x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);
+                AddFilter(x => x.TransactionDate.HasValue &&
+                    x.TransactionDate.Value.Date <= specParams.TransactionDateRange[1]!.Value.Date);
             }
-            else if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1] is null)
+            else if (specParams.TransactionDateRange[0].HasValue && specParams.TransactionDateRange[1] is null)
             {
-                AddFilter(x => x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date);
+                AddFilter(x => x.TransactionDate.HasValue &&
+                    x.TransactionDate.Value.Date >= specParams.TransactionDateRange[0]!.Value.Date);
             }
         }
-
+        
+        if (specParams.ExpiredAtRange != null
+            && specParams.ExpiredAtRange.Length > 1) // With range of expired at
+        {
+            if (specParams.ExpiredAtRange[0].HasValue && specParams.ExpiredAtRange[1].HasValue)
+            {
+                AddFilter(x => x.ExpiredAt.HasValue &&
+                               x.ExpiredAt.Value.Date >= specParams.ExpiredAtRange[0]!.Value.Date &&
+                               x.ExpiredAt.Value.Date <= specParams.ExpiredAtRange[1]!.Value.Date);
+            }
+            else if ((specParams.ExpiredAtRange[0] is null && specParams.ExpiredAtRange[1].HasValue))
+            {
+                AddFilter(x => x.ExpiredAt.HasValue &&
+                               x.ExpiredAt.Value.Date <= specParams.ExpiredAtRange[1]!.Value.Date);
+            }
+            else if (specParams.ExpiredAtRange[0].HasValue && specParams.ExpiredAtRange[1] is null)
+            {
+                AddFilter(x => x.ExpiredAt.HasValue &&
+                               x.ExpiredAt.Value.Date >= specParams.ExpiredAtRange[0]!.Value.Date);
+            }
+        }
+        
         if (specParams.CancelledAtRange != null
-            && specParams.CancelledAtRange.Length > 1) // With range of issue date
+            && specParams.CancelledAtRange.Length > 1) // With range of cancellation date
         {
             if (specParams.CancelledAtRange[0].HasValue && specParams.CancelledAtRange[1].HasValue)
             {
@@ -99,7 +125,7 @@ public class TransactionSpecification : BaseSpecification<Transaction>
                 AddFilter(x => x.Amount >= specParams.AmountRange[0]!.Value);
             }
         }
-
+        
         // Progress sorting
         if (!string.IsNullOrEmpty(specParams.Sort))
         {
@@ -127,8 +153,8 @@ public class TransactionSpecification : BaseSpecification<Transaction>
     {
         if (string.IsNullOrEmpty(propertyName)) return;
 
-        // Initialize expression parameter with type of Employee (x)
-        var parameter = Expression.Parameter(typeof(LibraryCard), "x");
+        // Initialize expression parameter with type of Transaction (x)
+        var parameter = Expression.Parameter(typeof(Transaction), "x");
         // Assign property base on property name (x.PropertyName)
         var property = Expression.Property(parameter, propertyName);
         // Building a complete sort lambda expression (x => x.PropertyName)

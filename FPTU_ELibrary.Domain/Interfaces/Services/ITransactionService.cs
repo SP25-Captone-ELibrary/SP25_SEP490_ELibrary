@@ -13,8 +13,8 @@ public interface ITransactionService<TDto> : IGenericService<Transaction, TDto, 
     Task<IServiceResult> CreateTransactionForBorrowRecordAsync(string createdByEmail, int borrowRecordId);
     Task<IServiceResult> CreateWithoutSaveChangesAsync(TDto dto);
     Task<IServiceResult> GetAllByTransactionCodeAsync(string transactionCode);
-    // Task<IServiceResult> GetAllCardHolderTransactionAsync(ISpecification<Transaction> spec);
-    // Task<IServiceResult> GetCardHolderTransactionByIdAsync(Guid userId, int transactionId);
+    Task<IServiceResult> GetAllCardHolderTransactionAsync(ISpecification<Transaction> spec, bool tracked = false);
+    Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
     Task<IServiceResult> UpdateStatusByTransactionCodeAsync(
         string transactionCode, DateTime? transactionDate,
         string? cancellationReason, DateTime? cancelledAt, TransactionStatus status);

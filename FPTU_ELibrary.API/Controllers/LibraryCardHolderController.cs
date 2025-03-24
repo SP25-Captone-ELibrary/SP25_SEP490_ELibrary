@@ -164,13 +164,9 @@ public class LibraryCardHolderController : ControllerBase
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderTransactionById, Name = nameof(GetCardHolderTransactionByIdAsync))]
-    public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId,
-        [FromRoute] int transactionId)
+    public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId, [FromRoute] int transactionId)
     {
-        // TODO: Reimplement
-        // return Ok(await _transactionSvc.GetCardHolderTransactionByIdAsync(userId: userId,
-        //     transactionId: transactionId));
-        return Ok();
+        return Ok(await _transactionSvc.GetByIdAsync(id: transactionId, userId: userId));
     }
 
     [Authorize]
@@ -223,15 +219,14 @@ public class LibraryCardHolderController : ControllerBase
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderTransaction, Name = nameof(GetAllCardHolderTransactionAsync))]
-    public async Task<IActionResult> GetAllCardHolderTransactionAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetAllCardHolderTransactionAsync([FromRoute] Guid userId, [FromQuery] TransactionSpecParams specParams)
     {
-        // TODO: Reimplement
-        // return Ok(await _transactionSvc.GetAllCardHolderTransactionByUserIdAsync(
-        //     userId: userId,
-        //     pageIndex: pageIndex ?? 1,
-        //     pageSize: pageSize ?? _appSettings.PageSize));
-        return Ok();
+        return Ok(await _transactionSvc.GetAllCardHolderTransactionAsync(
+            new TransactionSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                userId: userId)));
     }
 
     [Authorize]

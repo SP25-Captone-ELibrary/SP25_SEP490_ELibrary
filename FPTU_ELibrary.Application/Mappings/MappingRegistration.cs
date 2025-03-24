@@ -31,6 +31,7 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<BorrowDetailExtensionHistory, BorrowDetailExtensionHistoryDto>();
 			config.NewConfig<BorrowRequest, BorrowRequestDto>();
 			config.NewConfig<BorrowRequestDetail, BorrowRequestDetailDto>();
+			config.NewConfig<BorrowRequestResource, BorrowRequestResourceDto>();
 			config.NewConfig<DigitalBorrow, DigitalBorrowDto>();
 			config.NewConfig<DigitalBorrowExtensionHistory, DigitalBorrowExtensionHistoryDto>();
 			config.NewConfig<Employee, EmployeeDto>();

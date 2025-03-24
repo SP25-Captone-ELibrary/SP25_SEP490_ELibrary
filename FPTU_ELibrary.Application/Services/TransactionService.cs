@@ -11,6 +11,7 @@ using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -33,6 +34,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     private readonly Lazy<ILibraryCardService<LibraryCardDto>> _libCardService;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecService;
     private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowReqService;
+    private readonly Lazy<IBorrowRequestResourceService<BorrowRequestResourceDto>> _borrowReqResourceService;
     private readonly Lazy<IDigitalBorrowService<DigitalBorrowDto>> _digitalBorrowService;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceService;
     private readonly Lazy<IPaymentMethodService<PaymentMethodDto>> _paymentMethodService;
@@ -50,6 +52,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         Lazy<ILibraryCardService<LibraryCardDto>> libCardService,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecService,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowReqService,
+        Lazy<IBorrowRequestResourceService<BorrowRequestResourceDto>> borrowReqResourceService,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceService,
         Lazy<ILibraryCardPackageService<LibraryCardPackageDto>> cardPackageService,
         Lazy<IPaymentMethodService<PaymentMethodDto>> paymentMethodService,
@@ -67,6 +70,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         _userSvc = userSvc;
         _borrowRecService = borrowRecService;
         _borrowReqService = borrowReqService;
+        _borrowReqResourceService = borrowReqResourceService;
         _libCardService = libCardService;
         _resourceService = resourceService;
         _cardPackageService = cardPackageService;
@@ -91,7 +95,46 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
 
-            return new ServiceResult();
+            // Count total transactions
+            var totalTransWithSpec = await _unitOfWork.Repository<Transaction, int>().CountAsync(transSpecification);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalTransWithSpec / transSpecification.PageSize);
+
+            // Set pagination to specification after count total library item
+            if (transSpecification.PageIndex > totalPage
+                || transSpecification.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                transSpecification.PageIndex = 1; // Set default to first page
+            }
+
+            // Apply pagination
+            transSpecification.ApplyPaging(
+                skip: transSpecification.PageSize * (transSpecification.PageIndex - 1),
+                take: transSpecification.PageSize);
+
+            var entities = await _unitOfWork.Repository<Transaction, int>()
+                .GetAllWithSpecAsync(transSpecification, tracked);
+            if (entities.Any())
+            {
+                // Map to dto
+                var dtoList = _mapper.Map<List<TransactionDto>>(entities);
+                
+                // Convert to get transaction dto
+                var getDigitalBorrowList = dtoList.Select(d => d.ToGetTransactionDto());
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<GetTransactionDto>(getDigitalBorrowList,
+                    transSpecification.PageIndex, transSpecification.PageSize, totalPage, totalTransWithSpec);
+                
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<GetDigitalBorrowDto>());
         }
         catch (Exception ex)
         {
@@ -100,6 +143,62 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         }
     }
 
+    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<Transaction>(br => br.TransactionId == id);
+            // Add filter (if any)
+            if (!string.IsNullOrEmpty(email))
+            {
+                baseSpec.AddFilter(db => db.User.Email == email);
+            }
+            if (userId.HasValue && userId != Guid.Empty)
+            {
+                baseSpec.AddFilter(db => db.UserId == userId);
+            }
+
+            // Apply include 
+            baseSpec.ApplyInclude(q => q
+                .Include(t => t.User)
+                .Include(t => t.Fine)
+                .Include(t => t.LibraryResource)
+                .Include(t => t.LibraryCardPackage)
+                .Include(t => t.PaymentMethod)
+                .Include(t => t.BorrowRequestResources)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<Transaction, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity != null)
+            {
+                // Map to dto
+                var transactionDto = _mapper.Map<TransactionDto>(existingEntity);
+                
+                // Covert to get transaction dto
+                var getTransactionDto = transactionDto.ToGetTransactionDto();
+                
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getTransactionDto);
+            }
+            
+            // Not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get card holder transaction by transaction id");
+        }
+    }
+    
     public async Task<IServiceResult> CreateAsync(TransactionDto dto, string createdByEmail)
     {
         try
@@ -443,8 +542,6 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             // Generate transaction code
             var transactionCodeDigits = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
             var expiredAt = currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes);
-            // Initialize list of transaction
-            var transactionDtos = new List<TransactionDto>();
             // Extract all pending resources payment
             var pendingReqResources = borrowReqDto.BorrowRequestResources
                 .Where(brr => brr.TransactionId == null && brr.Transaction == null).ToList();
@@ -471,28 +568,33 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                         : "phương thức thanh toán để tạo phiên thanh toán cho yêu cầu mượn"));
             }
             
-            // Iterate each fine to create transaction
+            // Initialize list borrow request resource dto to process add transaction
+            var toAddTransactionList = new List<BorrowRequestResourceDto>();
+            // Iterate each borrow resource to create transaction
             foreach (var requestResource in pendingReqResources)
             {
-                // Add transaction with default value
-                transactionDtos.Add(new ()
+                toAddTransactionList.Add(new BorrowRequestResourceDto()
                 {
-                    TransactionCode = transactionCodeDigits.ToString(),
-                    Amount = requestResource.BorrowPrice,
-                    CreatedAt = currentLocalDateTime,
-                    ExpiredAt = expiredAt,
-                    CreatedBy = createdByEmail,
-                    TransactionStatus = TransactionStatus.Pending,
-                    TransactionType = TransactionType.DigitalBorrow,
-                    TransactionMethod = TransactionMethod.DigitalPayment,
-                    UserId = userDto.UserId,
-                    ResourceId = requestResource.ResourceId,
-                    PaymentMethodId = payOsPaymentMethod.PaymentMethodId
+                    BorrowRequestResourceId = requestResource.BorrowRequestResourceId,
+                    Transaction = new ()
+                    {
+                        TransactionCode = transactionCodeDigits.ToString(),
+                        Amount = requestResource.BorrowPrice,
+                        CreatedAt = currentLocalDateTime,
+                        ExpiredAt = expiredAt,
+                        CreatedBy = createdByEmail,
+                        TransactionStatus = TransactionStatus.Pending,
+                        TransactionType = TransactionType.DigitalBorrow,
+                        TransactionMethod = TransactionMethod.DigitalPayment,
+                        UserId = userDto.UserId,
+                        ResourceId = requestResource.ResourceId,
+                        PaymentMethodId = payOsPaymentMethod.PaymentMethodId
+                    }
                 });
             }
             
             // Aggregate amount
-            var aggregatedAmount = transactionDtos.Sum(t => t.Amount);
+            var aggregatedAmount = toAddTransactionList.Sum(t => t.Transaction?.Amount ?? 0);
             // Initialize expired at offset unix seconds
             var expiredAtOffsetUnixSeconds = (int)((DateTimeOffset) expiredAt).ToUnixTimeSeconds();
             // Generate payment link
@@ -501,18 +603,18 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 OrderCode = transactionCodeDigits,
                 Amount = (int) aggregatedAmount,
                 Description = isEng 
-                    ? $"Pay for {transactionDtos.Count} digital borrow"  
-                    : $"Thanh toan {transactionDtos.Count} tai lieu",
+                    ? $"Pay for {toAddTransactionList.Count} digital borrow"  
+                    : $"Thanh toan {toAddTransactionList.Count} tai lieu",
                 BuyerName = $"{userDto.FirstName} {userDto.LastName}".ToUpper(),
                 BuyerEmail = userDto.Email,
                 BuyerPhone = userDto.Phone ?? string.Empty,
                 BuyerAddress = userDto.Address ?? string.Empty,
-                Items = transactionDtos
+                Items = toAddTransactionList
                     .Select(f => new
                     {
-                        Name = isEng ? f.TransactionType.ToString() : f.TransactionType.GetDescription(),
+                        Name = isEng ? f.Transaction?.TransactionType.ToString() : f.Transaction?.TransactionType.GetDescription(),
                         Quantity = 1,
-                        Price = f.Amount
+                        Price = f.Transaction?.Amount ?? 0
                     })
                     .Cast<object>()
                     .ToList(),
@@ -532,16 +634,18 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             if (isCreatePaymentSuccess && payOsPaymentResp.Item3 != null)
             {
                 // Iterate each transaction to update QRCode
-                foreach (var dto in transactionDtos)
+                foreach (var dto in toAddTransactionList)
                 {
                     // Update payment information (if any)
-                    dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                    if(dto.Transaction != null) dto.Transaction.QrCode = payOsPaymentResp.Item3.Data.QrCode;
                 }
                 
-                // Process create transaction
-                await _unitOfWork.Repository<Transaction, int>().AddRangeAsync(_mapper.Map<List<Transaction>>(transactionDtos));
-
-                if (await _unitOfWork.SaveChangesAsync() > 0)
+                // Process add range 
+                await _borrowReqResourceService.Value.AddRangeResourceTransactionsWithoutSaveChangesAsync(
+                    borrowResources: toAddTransactionList);
+                
+                // Save DB
+                if (await _unitOfWork.SaveChangesWithTransactionAsync() > 0)
                 {
                     // Create payment link successfully
                     return new ServiceResult(ResultCodeConst.Transaction_Success0001,
