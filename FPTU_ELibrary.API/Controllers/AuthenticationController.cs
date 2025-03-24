@@ -19,31 +19,15 @@ namespace FPTU_ELibrary.API.Controllers
     [ApiController]
 	public class AuthenticationController : ControllerBase
 	{
-        private readonly IHubContext<AiHub> _hub;
         private readonly IAuthenticationService<AuthenticateUserDto> _authenticationService;
-		private readonly TokenValidationParameters _tokenValidationParameters;
 
 		public AuthenticationController(
 			IAuthenticationService<AuthenticateUserDto> authenticationService,
 			TokenValidationParameters tokenValidationParameters,
 			IHubContext<AiHub> hub)
         {
-			_hub = hub;
 			_authenticationService = authenticationService;
-			_tokenValidationParameters = tokenValidationParameters;
         }
-
-
-		[HttpGet("test")]
-		public async Task<IActionResult> Test()
-		{
-			var rnd = new Random();
-			await _hub.Clients.All.SendAsync("AIProcessMessage", new {
-				Message = rnd.Next(1, 100)
-			});
-
-			return Ok();
-		}
 
 		[Authorize]
 		[HttpGet(APIRoute.Authentication.CurrentUser, Name = nameof(GetCurrentUserAsync))]

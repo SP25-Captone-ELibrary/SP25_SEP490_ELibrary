@@ -167,8 +167,10 @@ public class LibraryCardHolderController : ControllerBase
     public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId,
         [FromRoute] int transactionId)
     {
-        return Ok(await _transactionSvc.GetCardHolderTransactionByIdAsync(userId: userId,
-            transactionId: transactionId));
+        // TODO: Reimplement
+        // return Ok(await _transactionSvc.GetCardHolderTransactionByIdAsync(userId: userId,
+        //     transactionId: transactionId));
+        return Ok();
     }
 
     [Authorize]
@@ -224,10 +226,12 @@ public class LibraryCardHolderController : ControllerBase
     public async Task<IActionResult> GetAllCardHolderTransactionAsync([FromRoute] Guid userId,
         [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
     {
-        return Ok(await _transactionSvc.GetAllCardHolderTransactionByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        // TODO: Reimplement
+        // return Ok(await _transactionSvc.GetAllCardHolderTransactionByUserIdAsync(
+        //     userId: userId,
+        //     pageIndex: pageIndex ?? 1,
+        //     pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok();
     }
 
     [Authorize]

@@ -152,7 +152,7 @@
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/{itemId}/resource/{resourceId}";
-			public const string GetPdfPreview = Base + "/library-item/{itemId}/resource/{resourceId}/preview";
+			public const string GetPdfPreview = Base + "/library-items/resource/{resourceId}/preview";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -177,6 +177,9 @@
 			public const string Delete = Base + "/management/library-items/resources/{id}";
 			public const string DeleteRange = Base + "/management/library-items/resources";
 			#endregion
+			
+			// [GET]
+			public const string GetByIdPublic = Base + "/library-items/resources/{id}";
 		}
 
 		/// <summary>

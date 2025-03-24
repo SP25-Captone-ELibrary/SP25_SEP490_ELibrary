@@ -17,6 +17,7 @@ using FPTU_ELibrary.Domain.Interfaces;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -75,6 +76,28 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         _borrowSettings = monitor1.CurrentValue;
         _paymentSettings = monitor.CurrentValue;
         _payOsSettings = payOsMonitor.CurrentValue;
+    }
+
+    public async Task<IServiceResult> GetAllCardHolderTransactionAsync(ISpecification<Transaction> specification, bool tracked = true)
+    {
+        try
+        {
+            // Try to parse specification to TransactionSpecification
+            var transSpecification = specification as TransactionSpecification;
+            // Check if specification is null
+            if (transSpecification == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            return new ServiceResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Erorr invoke when process get all transactions");
+        }
     }
 
     public async Task<IServiceResult> CreateAsync(TransactionDto dto, string createdByEmail)

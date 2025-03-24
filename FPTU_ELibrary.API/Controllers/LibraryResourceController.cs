@@ -28,7 +28,8 @@ public class LibraryResourceController : ControllerBase
         _libraryResourceService = libraryResourceService;
         _appSettings = monitor.CurrentValue;
     }
-    
+
+    #region Management
     [Authorize]
     [HttpGet(APIRoute.LibraryItemResource.GetAll, Name = nameof(GetAllBookResourceAsync))]
     public async Task<IActionResult> GetAllBookResourceAsync([FromQuery] LibraryResourceSpecParams specParams)
@@ -109,5 +110,13 @@ public class LibraryResourceController : ControllerBase
     {
         return Ok(await _libraryResourceService.AddResourceToLibraryItemAsync(libraryItemId,req.ToLibraryResourceDto(),
             req.ToChunkDetail()));
+    }
+    #endregion
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItemResource.GetByIdPublic, Name = nameof(GetBookResourceByIdFromPublicAsync))]
+    public async Task<IActionResult> GetBookResourceByIdFromPublicAsync([FromRoute] int id)
+    {
+        return Ok(await _libraryResourceService.GetByIdAsync(id));
     }
 }
