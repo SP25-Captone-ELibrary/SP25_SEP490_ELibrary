@@ -136,7 +136,7 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
-			public const string GetPartOfAudioResource = Base + "/library-items/{itemId}/resource/{resourceId}/{part}";
+			public const string GetFullAudioFileWithWatermark = Base + "/library-items/{itemId}/resource/{resourceId}/audio";
 			public const string CountPartToUpload = Base +"/library-items/{itemId}/resource/{resourceId}/count-part";
 			public const string GetNewArrivals = Base + "/library-items/new-arrivals";
 			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
@@ -153,6 +153,7 @@
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
 			public const string GetOwnResource = Base + "/library-items/{itemId}/resource/{resourceId}";
 			public const string GetPdfPreview = Base + "/library-item/{itemId}/resource/{resourceId}/preview";
+			public const string GetAudioPreview = Base+"/library-item/{itemId}/resource/{resourceId}/audio/preview";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -784,6 +785,15 @@
 			public const string Update = Base + "/admin-configuration";
 			
 		}
-		
+
+		public static class AITrainingSession
+		{
+			#region Managemant
+			// [GET]
+			public const string GetAll = Base + "/management/sessions";
+			public const string GetById = Base + "/management/sessions/{id}";
+			#endregion
+		}
+
 	}
 }

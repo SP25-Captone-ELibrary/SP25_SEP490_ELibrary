@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250320142622_Initial Database")]
+    [Migration("20250322161434_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -114,6 +114,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<DateTime>("TrainDate")
                         .HasColumnType("datetime")
                         .HasColumnName("train_date");
+
+                    b.Property<int?>("TrainingPercentage")
+                        .HasColumnType("int")
+                        .HasColumnName("training_percentage");
 
                     b.Property<string>("TrainingStatus")
                         .IsRequired()

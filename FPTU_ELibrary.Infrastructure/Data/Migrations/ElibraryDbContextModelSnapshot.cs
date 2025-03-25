@@ -112,6 +112,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("train_date");
 
+                    b.Property<int?>("TrainingPercentage")
+                        .HasColumnType("int")
+                        .HasColumnName("training_percentage");
+
                     b.Property<string>("TrainingStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")

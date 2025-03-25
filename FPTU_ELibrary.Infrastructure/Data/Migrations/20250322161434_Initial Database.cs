@@ -22,6 +22,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     total_trained_time = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     training_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     error_message = table.Column<string>(type: "nvarchar(250)", nullable: true),
+                    training_percentage = table.Column<int>(type: "int", nullable: true),
                     train_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     train_by = table.Column<string>(type: "nvarchar(250)", nullable: false)
                 },
