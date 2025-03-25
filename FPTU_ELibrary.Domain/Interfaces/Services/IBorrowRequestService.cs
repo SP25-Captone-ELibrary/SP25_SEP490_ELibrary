@@ -11,7 +11,9 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
     Task<IServiceResult> GetAllPendingRequestByLibCardIdAsync(Guid libraryCardId);
     Task<IServiceResult> CountAllPendingRequestByLibCardIdAsync(Guid libraryCardId);
-    Task<IServiceResult> CreateAsync(string email, TDto dto, List<int> reservationItemIds);
+    Task<IServiceResult> CreateAsync(string email, TDto dto, 
+        List<int> reservationItemIds,
+        List<int> resourceIds);
     Task<IServiceResult> AddItemAsync(string email, int id, int libraryItemId);
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason, bool isConfirmed = false);
     Task<IServiceResult> CancelManagementAsync(Guid libraryCardId, int id, string? cancellationReason, bool isConfirmed = false);

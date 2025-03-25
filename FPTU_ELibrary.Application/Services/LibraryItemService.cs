@@ -104,7 +104,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _appSettings = monitor.CurrentValue;
     }
     
-    // TODO: Implement synchronize data with elastic when soft delete, undo delete, delete
     public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
     {
         try

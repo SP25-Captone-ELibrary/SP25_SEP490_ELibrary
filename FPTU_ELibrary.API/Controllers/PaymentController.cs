@@ -89,6 +89,16 @@ public class PaymentController : ControllerBase
     }
     
     [Authorize]
+    [HttpPost(APIRoute.Payment.CreateBorrowRequestTransaction, Name = nameof(CreateBorrowRequestTransactionAsync))]
+    public async Task<IActionResult> CreateBorrowRequestTransactionAsync([FromRoute] int borrowRequestId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _transactionService.CreateTransactionForBorrowRequestAsync(
+            createdByEmail: email ?? string.Empty,
+            borrowRequestId: borrowRequestId));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.Payment.GetPayOsPaymentLinkInformation, Name = nameof(GetPayOsPaymentLinkInformationAsync))]
     public async Task<IActionResult> GetPayOsPaymentLinkInformationAsync([FromRoute] string paymentLinkId)
     {

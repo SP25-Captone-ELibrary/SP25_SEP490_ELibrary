@@ -8,6 +8,9 @@ public class LibraryItemCondition
     public string EnglishName { get; set; } = null!;
 
     public string VietnameseName { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     
     // Mapping entities
     [JsonIgnore]

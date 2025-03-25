@@ -1,4 +1,5 @@
-﻿using FPTU_ELibrary.Domain.Common.Enums;
+﻿using System.Reflection.Metadata.Ecma335;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Domain.Entities;
 
@@ -34,4 +35,6 @@ public class BorrowRequest
     public ICollection<BorrowRequestDetail> BorrowRequestDetails { get; set; } = new List<BorrowRequestDetail>();
 
     public ICollection<ReservationQueue> ReservationQueues { get; set; } = new List<ReservationQueue>();
+
+    public ICollection<BorrowRequestResource> BorrowRequestResources { get; set; } = new List<BorrowRequestResource>();
 }

@@ -292,6 +292,53 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 	    }
     }
 
+    public async Task<IServiceResult> GetAllStockTransactionTypeByTrackingTypeAsync(
+	    TrackingType trackingType)
+    {
+	    try
+	    {
+			// Initialize list of tracking type
+			List<StockTransactionType> transactionTypes = null;
+			
+			// Determine tracking type
+			switch (trackingType)
+			{
+				case TrackingType.StockIn:
+					transactionTypes = new ()
+					{
+						StockTransactionType.New,
+						StockTransactionType.Additional
+					};
+					break;
+				case TrackingType.StockOut:
+					transactionTypes = new ()
+					{
+						StockTransactionType.Damaged,
+						StockTransactionType.Lost,
+						StockTransactionType.Outdated,
+						StockTransactionType.Other
+					};
+					break;
+				case TrackingType.Transfer:
+					transactionTypes = new ()
+					{
+						StockTransactionType.Transferred,
+						StockTransactionType.Other
+					};
+					break;
+			}
+			
+			// Get data successfully
+			return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), transactionTypes);
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get all stock transaction type by name");
+	    }
+    }
+    
     public async Task<IServiceResult> GetByIdAndIncludeInventoryAsync(int trackingId)
     {
 	    try
@@ -900,6 +947,21 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 						            ? "ISBN is not match with warehouse tracking detail"
 						            : "Mã ISBN không giống với dữ liệu đăng ký nhập kho");			
 			            }
+			            else
+			            {
+				            // Check exist ISBN
+				            var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
+					            .AnyAsync(whd => Equals(whd.Isbn, wDetail.Isbn));
+				            if (isIsbnExist)
+				            {
+					            // Add errors
+					            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						            key: $"warehouseTrackingDetails[{i}].libraryItem.isbn",
+						            msg: isEng
+							            ? "ISBN already exist"
+							            : "Mã ISBN đã tồn tại");	
+				            }
+			            }
 			            
 			            // Check unit price match among tracking detail and catalog item
 			            if (!Equals(wDetail.UnitPrice, libItem.EstimatedPrice))
@@ -920,6 +982,19 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 				    else
 				    {
 					    // Create without including cataloged item or item need to be cataloged along with
+					    
+					    // Check exist ISBN
+					    var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>()
+						    .AnyAsync(whd => Equals(whd.Isbn, wDetail.Isbn));
+					    if (isIsbnExist)
+					    {
+						    // Add errors
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"warehouseTrackingDetails[{i}].isbn",
+							    msg: isEng
+								    ? "ISBN already exist"
+								    : "Mã ISBN đã tồn tại");	
+					    }
 				    }
 				    
 	                // Assign barcode range to warehouse tracking detail
@@ -1758,13 +1833,24 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 					    ? $"ISBN '{record.Isbn}' must exist when tracking type is stock out or transfer" 
 					    : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
 			    }
+			    // Already exist ISBN
+			    if (isIsbnExist)
+			    {
+				    // Only process check exist ISBN when stock transaction type is new
+				    if (stockTransactionType == StockTransactionType.New)
+				    {
+					    rowErrors.Add(isEng
+						    ? $"ISBN '{record.Isbn}' already existed"
+						    : $"ISBN '{record.Isbn}' đã tồn tại");
+				    }
+			    }
 			    
 			    // Check uniqueness
 			    if (!isbnHashSet.Add(cleanedIsbn))
 			    {
 				    rowErrors.Add(isEng
-				    ? $"ISBN '{record.Isbn}' is duplicated"
-				    : $"ISBN '{record.Isbn}' đã bị trùng");
+					    ? $"ISBN '{record.Isbn}' is duplicated"
+					    : $"ISBN '{record.Isbn}' đã bị trùng");
 			    }
 	        }
 

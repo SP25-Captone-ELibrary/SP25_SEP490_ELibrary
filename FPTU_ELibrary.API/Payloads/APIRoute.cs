@@ -314,7 +314,14 @@
 			#region Management
 			// [GET]
 			public const string GetAll = Base + "/management/conditions";
-			
+			public const string GetAllForStockInWarehouse = Base + "/management/conditions/stock-in-warehouse";
+			public const string GetById = Base + "/management/conditions/{id}";
+			// [POST]
+			public const string Create = Base + "/management/conditions";
+			// [PUT]
+			public const string Update = Base + "/management/conditions/{id}";
+			// [DELETE]
+			public const string Delete = Base + "/management/conditions/{id}";
 			#endregion
 		}
 		
@@ -663,6 +670,7 @@
 			#region management
 			// [GET]
             public const string GetAll = Base + "/management/warehouse-trackings";
+            public const string GetAllStockTransactionTypeByTrackingType = Base + "/management/warehouse-trackings/stock-transasction-types";
             public const string GetById = Base + "/management/warehouse-trackings/{id}";
             // [POST]
             public const string Create = Base + "/management/warehouse-trackings";
@@ -735,6 +743,7 @@
 			// [POST]
 			public const string CreateTransaction = Base + "/payment/transactions";
 			public const string CreateBorrowRecordTransaction = Base + "/payment/transactions/borrows/records/{borrowRecordId}";
+			public const string CreateBorrowRequestTransaction = Base + "/payment/transactions/borrows/requests/{borrowRequestId}";
 			public const string CancelPayment = Base + "/payment/cancel/{paymentLinkId}";
 			public const string VerifyPayment = Base + "/payment/verify";
 			public const string SendWebhookConfirm = Base + "/payment/pay-os/webhook-confirm";
@@ -749,15 +758,6 @@
 		{
 			// [GET]
 			public const string GetAll = Base + "/payment-methods";
-		}
-
-		
-		/// <summary>
-		/// Fine endpoints
-		/// </summary>
-		public static class Fine
-		{
-			public const string Create = Base + "/fine/create";
 		}
 		
 		/// <summary>

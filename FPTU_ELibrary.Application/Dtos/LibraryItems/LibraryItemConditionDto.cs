@@ -11,6 +11,9 @@ public class LibraryItemConditionDto
 
     public string VietnameseName { get; set; } = null!;
     
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    
     // Mapping entities
     [JsonIgnore]
     public ICollection<LibraryItemConditionHistoryDto> LibraryItemConditionHistories { get; set; } = new List<LibraryItemConditionHistoryDto>();

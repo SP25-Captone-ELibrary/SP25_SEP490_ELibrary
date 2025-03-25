@@ -30,7 +30,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingDetailService;
     
     private readonly AppSettings _appSettings;
-    private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqService;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecService;
     private readonly ICategoryService<CategoryDto> _categoryService;
     private readonly ILibraryItemService<LibraryItemDto> _libItemService;
@@ -42,7 +41,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         // Lazy services
         Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingDetailService,
         
-        IBorrowRequestService<BorrowRequestDto> borrowReqService,
         IBorrowRecordService<BorrowRecordDto> borrowRecService,
         ICategoryService<CategoryDto> categoryService,
         ILibraryItemService<LibraryItemDto> libItemService,
@@ -56,7 +54,6 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _appSettings = monitor.CurrentValue;
-        _borrowReqService = borrowReqService;
         _borrowRecService = borrowRecService;
         _conditionService = conditionService;
         _categoryService = categoryService;

@@ -29,9 +29,14 @@ public class GetBorrowRequestDto
     // Count total request item
     public int TotalRequestItem { get; set; }
     
+    // Mark as allow to pay for pending resources
+    public bool IsExistPendingResources { get; set; }
+    
     public List<LibraryItemDetailDto> LibraryItems { get; set; } = new();
 
     public List<ReservationQueueDto> ReservationQueues { get; set; } = new();
+
+    public List<BorrowRequestResourceDto> BorrowRequestResources { get; set; } = new();
 }
 
 public static class GetBorrowRequestDtoExtensions
@@ -55,7 +60,12 @@ public static class GetBorrowRequestDtoExtensions
                 .Select(li => li.ToLibraryItemDetailDto()).ToList(),
             ReservationQueues = dto.ReservationQueues.Any() 
                 ? dto.ReservationQueues.ToList() 
-                : new()
+                : new(),
+            BorrowRequestResources = dto.BorrowRequestResources.Any()
+                ? dto.BorrowRequestResources.ToList()
+                : new (),
+            IsExistPendingResources = dto.BorrowRequestResources.Any() && dto.BorrowRequestResources.Any(brd => 
+                brd.TransactionId == null)
         };
     }
 }

@@ -88,7 +88,8 @@ public class BorrowRequestController : ControllerBase
         return Ok(await _borrowReqSvc.CreateAsync(
             email: email ?? string.Empty,
             dto: req.ToBorrowRequestDto(),
-            reservationItemIds: req.ReservationItemIds));
+            reservationItemIds: req.ReservationItemIds,
+            resourceIds: req.ResourceIds));
     }
 
     [Authorize]
