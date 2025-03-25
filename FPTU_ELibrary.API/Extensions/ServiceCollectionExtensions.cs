@@ -130,6 +130,8 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
             //Configure AdsScriptSettings
             services.Configure<AdsScriptSettings>(updatedConfiguration.GetSection("AdsScriptSettings"));
+        	//Configure FFMPEGSettings
+            services.Configure<FFMPEGSettings>(updatedConfiguration.GetSection("FFMPEGSettings"));
         	
             #region Development stage
         

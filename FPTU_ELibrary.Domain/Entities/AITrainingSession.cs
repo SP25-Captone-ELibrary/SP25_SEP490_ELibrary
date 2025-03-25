@@ -13,7 +13,7 @@ public class AITrainingSession
     public decimal? TotalTrainedTime { get; set; }
     public AITrainingStatus TrainingStatus { get; set; }
     public string? ErrorMessage { get; set; }
-    
+    public int? TrainingPercentage {get;set;}
     // Train date & by
     public DateTime TrainDate { get; set; }
     public string TrainBy { get; set; } = null!;

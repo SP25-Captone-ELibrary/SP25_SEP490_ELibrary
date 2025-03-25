@@ -387,25 +387,34 @@ public class LibraryItemController : ControllerBase
             ids: req.Ids));
     }
 
-    [HttpGet(APIRoute.LibraryItem.GetPartOfAudioResource, Name = nameof(GetPartOfAudioResourceAsync))]
+    [HttpGet(APIRoute.LibraryItem.GetFullAudioFileWithWatermark, Name = nameof(GetPartOfAudioResourceAsync))]
     [Authorize]
-    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId,
-        [FromRoute] int part)
+    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        var result = await _libraryResourceService.GetPartOfOwnAudioReSource(email??string.Empty
+        var result = await _libraryResourceService.GetFullAudioFileWithWatermark(email??string.Empty
             , itemId
-            , resourceId
-            , part);
-
+            , resourceId);
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
-            return File(result.Data, "audio/mpeg", $"part_{part}.mp3");
+            return File(result.Data, "audio/mpeg", $"audio.mp3");
         }
 
         return Ok(result);
     }
-    
+
+    [HttpGet(APIRoute.LibraryItem.GetAudioPreview, Name = nameof(GetAudioPreview))]
+    public async Task<IActionResult> GetAudioPreview([FromRoute]int itemId,[FromRoute]int resourceId)
+    {
+        var result = await _libraryResourceService.GetAudioPreview(resourceId, itemId);
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        {
+            return File(result.Data, "audio/mpeg", $"audio.mp3");
+        }
+
+        return Ok(result);
+    }
+
     [HttpGet(APIRoute.LibraryItem.CountPartToUpload, Name = nameof(CountPartToUpload))]
     [Authorize]
     public async Task<IActionResult> CountPartToUpload([FromRoute] int resourceId, [FromRoute] int itemId)
@@ -427,5 +436,15 @@ public class LibraryItemController : ControllerBase
     //        duplicateHandle: req.DuplicateHandle));
     // }
 
+    // [HttpPost("/test2/{id}")]
+    // public async Task<IActionResult> GetMergeFile([FromRoute] int id)
+    // {
+    //     var result = await _libraryResourceService.TestMergeSteam(id);
+    //     if (result.ResultCode == ResultCodeConst.SYS_Success0002)
+    //     {
+    //         return File(result.Data!, "audio/mpeg", "merged_audio.mp3");
+    //     }
+    //     return Ok();
+    // }
     #endregion
 }

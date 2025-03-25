@@ -11,8 +11,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Options;
+using NAudio.Lame;
 using NAudio.Wave;
 using Serilog;
+using Xabe.FFmpeg;
 
 namespace FPTU_ELibrary.Application.Services;
 
@@ -23,6 +25,7 @@ public class VoiceService : IVoiceService
     // private readonly IBookService<BookDto> _bookService;
     private readonly ILibraryItemService<LibraryItemDto> _editionService;
     private readonly ISearchService _searchService;
+    private readonly FFMPEGSettings _audioMonitor;
     private readonly AdsScriptSettings _adsMonitor;
     private readonly ILogger _logger;
     private readonly ISystemMessageService _msgService;
@@ -33,11 +36,13 @@ public class VoiceService : IVoiceService
         ILibraryItemService<LibraryItemDto> editionService,
         ISearchService searchService, IOptionsMonitor<AzureSpeechSettings> monitor,
         IOptionsMonitor<AdsScriptSettings> adsMonitor,
+        IOptionsMonitor<FFMPEGSettings> audioMonitor,
         ILogger logger, ISystemMessageService msgService)
     {
         _speechConfig = speechConfig;
         _editionService = editionService;
         _searchService = searchService;
+        _audioMonitor = audioMonitor.CurrentValue;
         _adsMonitor = adsMonitor.CurrentValue;
         _logger = logger;
         _msgService = msgService;
@@ -141,6 +146,20 @@ public class VoiceService : IVoiceService
             memoryStream);
     }
 
+    async Task<MemoryStream> ConvertWavToMp3Async(Stream wavStream)
+    {
+        var mp3Stream = new MemoryStream();
+
+        using (var reader = new WaveFileReader(wavStream))
+        using (var writer = new LameMP3FileWriter(mp3Stream, reader.WaveFormat, LAMEPreset.VBR_90))
+        {
+            await reader.CopyToAsync(writer);
+        }
+
+        mp3Stream.Position = 0;
+        return mp3Stream;
+    }
+
     public async Task<IServiceResult> TextToVoiceFile(string lang, string email)
     {
         _speechConfig.SpeechSynthesisVoiceName = lang.ToLower() switch
@@ -163,10 +182,54 @@ public class VoiceService : IVoiceService
             throw new Exception($"Text-to-Speech failed: {result.Reason}");
         }
 
-        var memoryStream = new MemoryStream(result.AudioData);
-        var mp3Reader = new WaveFileReader(memoryStream);
+        // Convert WAV to MP3 in memory
+        var wavMemoryStream = new MemoryStream(result.AudioData);
+        byte[] mp3Data = ConvertWavToMp3(wavMemoryStream.ToArray());
+
+        var mp3Stream = new MemoryStream(mp3Data);
         return new ServiceResult(ResultCodeConst.SYS_Success0002,
-            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002)
-            , mp3Reader);
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+            mp3Stream);
     }
+
+// Convert WAV to MP3
+    // private static byte[] ConvertWavToMp3(byte[] wavFile)
+    // {
+    //     using var retMs = new MemoryStream();
+    //     using var ms = new MemoryStream(wavFile);
+    //     using var rdr = new WaveFileReader(ms);
+    //     using var wtr = new LameMP3FileWriter(retMs, rdr.WaveFormat, LAMEPreset.STANDARD);
+    //
+    //     rdr.CopyTo(wtr);
+    //     wtr.Flush();
+    //
+    //     return retMs.ToArray();
+    // }
+    private static byte[] ConvertWavToMp3(byte[] wavFile)
+    {
+        using var retMs = new MemoryStream();
+        using var ms = new MemoryStream(wavFile);
+        using var rdr = new WaveFileReader(ms);
+
+        // 🔹 Resample to 44100Hz, Stereo
+        using var resampler = new MediaFoundationResampler(rdr, new WaveFormat(44100, 2))
+        {
+            ResamplerQuality = 60
+        };
+
+        using var wtr = new LameMP3FileWriter(retMs, resampler.WaveFormat, LAMEPreset.STANDARD);
+
+        // 🔹 Manually copy data
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = resampler.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            wtr.Write(buffer, 0, bytesRead);
+        }
+
+        wtr.Flush();
+        return retMs.ToArray();
+    }
+
+
 }
