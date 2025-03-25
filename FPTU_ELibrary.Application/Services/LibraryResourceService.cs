@@ -1234,24 +1234,22 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
     private void AddWatermark(PdfContentByte contentByte, Rectangle pageSize, string watermarkText)
     {
-        float fontSize = pageSize.Height * 0.05f;
+        float fontSize = pageSize.Height * 0.05f;  
         BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
-
-        // Settings watermark
+        
         contentByte.SaveState();
-        contentByte.SetGState(new PdfGState { FillOpacity = 0.3f });
+        contentByte.SetGState(new PdfGState { FillOpacity = 0.2f });
         contentByte.SetFontAndSize(baseFont, fontSize);
-        contentByte.SetColorFill(BaseColor.Red);
+        contentByte.SetColorFill(BaseColor.Gray); 
+        
 
-        // Settings margin
-        float marginX = pageSize.Width * 0.1f;
-        float marginY = pageSize.Height * 0.1f;
+        float xPosition = pageSize.Width / 2;
+        float yPosition = pageSize.Height / 2;
 
-        float xPosition = pageSize.Left + marginX;
-        float yPosition = pageSize.Bottom + marginY;
+        float angle = 45;
 
         contentByte.BeginText();
-        contentByte.ShowTextAligned(Element.ALIGN_LEFT, watermarkText, xPosition, yPosition, 0); // Không xoay
+        contentByte.ShowTextAligned(Element.ALIGN_CENTER, watermarkText, xPosition, yPosition, angle);
         contentByte.EndText();
 
         contentByte.RestoreState();
