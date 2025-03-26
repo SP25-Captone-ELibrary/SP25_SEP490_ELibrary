@@ -50,12 +50,19 @@ public class BorrowRecordController : ControllerBase
     {
         return Ok(await _userService.GetPendingLibraryActivityAsync(libraryCardId: libraryCardId));
     }
+
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRecord.GetAllFineById, Name = nameof(GetAllBorrowRecordFineByIdAsync))]
+    public async Task<IActionResult> GetAllBorrowRecordFineByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _borrowRecSvc.GetAllPendingAndExpiredFineAsync(id: id));
+    }
     
     [Authorize]
     [HttpGet(APIRoute.BorrowRecord.GetById, Name = nameof(GetBorrowRecordByIdAsync))]
     public async Task<IActionResult> GetBorrowRecordByIdAsync([FromRoute] int id)
     {
-        return Ok(await _borrowRecSvc.GetByIdAsync(id: id));
+        return Ok(await _borrowRecSvc.GetByIdAsync(id: id, email: null, userId: null));
     }
     
     [Authorize]

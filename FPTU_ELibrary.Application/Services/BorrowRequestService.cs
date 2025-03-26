@@ -85,8 +85,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         _appSettings = monitor1.CurrentValue;
     }
 
-    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<BorrowRequest> spec,
-        bool tracked = true)
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<BorrowRequest> spec, bool tracked = true)
     {
         try
         {
@@ -175,7 +174,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 baseSpec.AddFilter(br => br.LibraryCard.Users.Any(u => u.UserId == userId));
             }
 
-            // Retrieve with spec
+            // Retrieve with spec and selector
             var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>()
                 .GetWithSpecAndSelectorAsync(baseSpec, selector: br => new BorrowRequest()
                 {
@@ -842,9 +841,6 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     DefaultBorrowDurationDays = resourceDto.DefaultBorrowDurationDays
                 });
             }
-            
-            // Check if any error invoke
-            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
 
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
@@ -855,21 +851,33 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Initialize reservation queue collection
             var reservationQueues = new List<ReservationQueueDto>();
             // Iterate each reservation to check whether user has already reserved
-            foreach (var libItemId in reservationItemIds)
+            for (int i = 0; i < reservationItemIds.Count; ++i)
             {
-                var allowToReserveRes = (await _reservationQueueSvc.CheckAllowToReserveByItemIdAsync(
-                    itemId: libItemId,
-                    email: userDto.Email)).Data is true;
-                if (allowToReserveRes) // Is allow to reserve
+                var reservationItemId = reservationItemIds[i];
+                var allowToReserveRes = await _reservationQueueSvc.CheckAllowToReserveByItemIdAsync(
+                    itemId: reservationItemId,
+                    email: userDto.Email);
+                if (allowToReserveRes.Data is true) // Is allow to reserve
                 {
                     // Add new reservation                    
                     reservationQueues.Add(new ReservationQueueDto()
                     {
-                        LibraryItemId = libItemId,
+                        LibraryItemId = reservationItemId,
                         IsReservedAfterRequestFailed = true
                     });
                 }
+                else
+                {
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: $"reservationItemIds[{i}]",
+                        msg: allowToReserveRes.Message ?? string.Empty);
+                }
             }
+            
+            // Check if any error invoke
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+            
             // Add range without save changes
             var createRes = await _reservationQueueSvc.CreateRangeWithoutSaveChangesAsync(validCardId, reservationQueues.ToList());
             // Failed to create
@@ -904,7 +912,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             await _unitOfWork.Repository<BorrowRequest, int>().AddAsync(_mapper.Map<BorrowRequest>(borrowReqDto));
             
             // Update library item borrow more status if it true in current request
-            if (libCard.IsAllowBorrowMore)
+            if (libCard.IsAllowBorrowMore && dto.BorrowRequestDetails.Any()) // Exist any request item
             {
                 await _cardSvc.UpdateBorrowMoreStatusWithoutSaveChangesAsync(validCardId);
             }

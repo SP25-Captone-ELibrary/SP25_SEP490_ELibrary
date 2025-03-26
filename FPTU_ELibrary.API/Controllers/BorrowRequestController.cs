@@ -49,7 +49,7 @@ public class BorrowRequestController : ControllerBase
     [HttpGet(APIRoute.BorrowRequest.GetByIdManagement, Name = nameof(GetByIdManagementAsync))]
     public async Task<IActionResult> GetByIdManagementAsync([FromRoute] int id)
     {
-        return Ok(await _borrowReqSvc.GetByIdAsync(id));
+        return Ok(await _borrowReqSvc.GetByIdAsync(id, email: null, userId: null));
     }
 
     [Authorize]

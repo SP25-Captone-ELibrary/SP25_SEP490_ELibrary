@@ -15,10 +15,8 @@ public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
 
-    Task<IServiceResult<(Stream,string)>> GetOwnBorrowResource(string email, int resourceId
-        , int itemId);
+    Task<IServiceResult<(Stream,string)>> GetOwnBorrowResource(string email, int resourceId);
     Task<IServiceResult<Stream>> GetPartOfOwnAudioReSource(string email, int itemId, int resourceId, int part);
-
     Task<IServiceResult<byte[]>> GetAudioPreview(string email, string resourceId);
     Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId);
     Task<IServiceResult> GetNumberOfUploadAudioFile(int resourceId,int itemId, string email);

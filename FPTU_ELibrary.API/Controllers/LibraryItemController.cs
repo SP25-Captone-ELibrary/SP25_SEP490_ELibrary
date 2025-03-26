@@ -345,11 +345,10 @@ public class LibraryItemController : ControllerBase
 
     [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetOwnResourceAsync))]
     [Authorize]
-    public async Task<IActionResult> GetOwnResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId
-    )
+    public async Task<IActionResult> GetOwnResourceAsync([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId, itemId);
+        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId);
 
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is (not null, not null))
         {

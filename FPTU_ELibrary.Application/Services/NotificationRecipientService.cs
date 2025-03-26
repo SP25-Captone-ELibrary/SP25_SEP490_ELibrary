@@ -57,56 +57,75 @@ public class NotificationRecipientService : GenericService<NotificationRecipient
         }
     }
 
-    public async Task<IServiceResult> UpdateReadStatusAsync(string email)
+    public async Task<IServiceResult> MarkAsReadAllAsync(string email)
     {
         try
         {
-            // Check exist user
-            var user = (await _userService.GetByEmailAsync(email)).Data as UserDto;
-            if (user == null) throw new ForbiddenException("Not allow to access");
-
             // Build spec
-            var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == user.UserId
-                                                                             && n.IsRead == false);
-            // Include notification role
-            baseSpec.ApplyInclude(q =>
-                q.Include(u => u.Notification));
-            // Retrieve notification with spec
-            var notifications =
-                await _unitOfWork.Repository<NotificationRecipient, int>().GetAllWithSpecAsync(baseSpec);
-            // Convert to list
-            var notificationList = notifications.ToList();
-            if (!notificationList.Any())
+            var baseSpec = new BaseSpecification<NotificationRecipient>(
+                n => n.Recipient.Email == email);
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<NotificationRecipient, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (entities.Any())
             {
-                // Mark as update success
-                return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: true);
+                // Iterate each notification recipient to update read status
+                foreach (var noti in entities)
+                {
+                    // Change read status
+                    noti.IsRead = true;
+                    // Process update
+                    await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
+                }
             }
-
-            foreach (var noti in notificationList)
-            {
-                noti.IsRead = true;
-                await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
-            }
-
-            var result = await _unitOfWork.SaveChangesWithTransactionAsync();
-            if (result != -1)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), data: true);
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
-        }
-        catch (ForbiddenException)
-        {
-            throw;
+            
+            // Process save DB
+            await _unitOfWork.SaveChangesAsync();
+            
+            // Always mark as success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process update read status");
+            throw new Exception("Error invoke when mark notification read all");
+        }
+    }
+    
+    public async Task<IServiceResult> UpdateRangeReadStatusAsync(string email, List<int> notificationIds)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<NotificationRecipient>(r => 
+                notificationIds.Contains(r.NotificationId) && r.Recipient.Email == email);
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<NotificationRecipient, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (entities.Any())
+            {
+                // Iterate each notification recipient to update read status
+                foreach (var noti in entities)
+                {
+                    // Change read status
+                    noti.IsRead = true;
+                    // Process update
+                    await _unitOfWork.Repository<NotificationRecipient, int>().UpdateAsync(noti);
+                }
+            }
+            
+            // Process save DB
+            await _unitOfWork.SaveChangesAsync();
+            
+            // Always mark as success
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update range read status");
         }
     }
 }

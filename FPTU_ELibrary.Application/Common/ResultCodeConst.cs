@@ -475,9 +475,33 @@ namespace FPTU_ELibrary.Application.Common
 
 		#region Reservatation
 		/// <summary>
+		/// [SUCCESS] Total {0} items have been confirmed reservation label
+		/// </summary>
+		public const string Reservation_Success0001 = "Reservation.Success0001";
+		/// <summary>
+		/// [SUCCESS] Assign items success for {0} reservations
+		/// </summary>
+		public const string Reservation_Success0002 = "Reservation.Success0002";
+		/// <summary>
         /// [FAIL] The instance has been reserved by the reader, but failed to update the reservation status while create borrow record
         /// </summary>
         public const string Reservation_Fail0001 = "Reservation.Fail0001";
+        /// <summary>
+        /// [FAIL] Failed to confirm reservation label application
+        /// </summary>
+        public const string Reservation_Fail0002 = "Reservation.Fail0002";
+        /// <summary>
+        /// [FAIL] Unable to assign items to reservations
+        /// </summary>
+        public const string Reservation_Fail0003 = "Reservation.Fail0003";
+        /// <summary>
+        /// [FAIL] Item instances' status must be out of shelf to process assigning items for reservations
+        /// </summary>
+        public const string Reservation_Fail0004 = "Reservation.Fail0004";
+        /// <summary>
+        /// [FAIL] Item instances' status must be out of shelf and circulated to process assigning items for reservations
+        /// </summary>
+        public const string Reservation_Fail0005 = "Reservation.Fail0005";
 		/// <summary>
 		/// [WARNING] Unable to create item reservation as {0}
 		/// </summary>
@@ -498,6 +522,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Unable to reserve for item {0} as this item is still available to borrow
 		/// </summary>
 		public const string Reservation_Warning0005 = "Reservation.Warning0005";
+		/// <summary>
+		/// [WARNING] Unable to confirm reservation label application as {0}
+		/// </summary>
+		public const string Reservation_Warning0006 = "Reservation.Warning0006";
+		/// <summary>
+		/// [WARNING] Unable to find assignable items as {0}
+		/// </summary>
+		public const string Reservation_Warning0007 = "Reservation.Warning0007";
 		#endregion
 		
 		#region Role

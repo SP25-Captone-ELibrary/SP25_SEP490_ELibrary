@@ -27,6 +27,7 @@ public class UserController:ControllerBase
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecSvc;
     private readonly ITransactionService<TransactionDto> _transactionSvc;
     private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowSvc;
+    private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
     
     private readonly AppSettings _appSettings;
 
@@ -35,6 +36,7 @@ public class UserController:ControllerBase
         IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
         IDigitalBorrowService<DigitalBorrowDto> digitalBorrowSvc,
         ITransactionService<TransactionDto> transactionSvc,
+        IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         IOptionsMonitor<AppSettings> monitor,
         IUserService<UserDto> userService)
     {
@@ -43,6 +45,7 @@ public class UserController:ControllerBase
         _borrowRecSvc = borrowRecSvc;
         _transactionSvc = transactionSvc;
         _digitalBorrowSvc = digitalBorrowSvc;
+        _reservationQueueSvc = reservationQueueSvc;
         _appSettings = monitor.CurrentValue;
     }
 
@@ -242,6 +245,27 @@ public class UserController:ControllerBase
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _transactionSvc.GetByIdAsync(id: id, email: email));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserReservation, Name = nameof(GetAllUserReservationAsync))]
+    public async Task<IActionResult> GetAllUserReservationAsync([FromQuery] ReservationQueueSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _reservationQueueSvc.GetAllCardHolderReservationAsync(
+            spec: new ReservationQueueSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetReservationById, Name = nameof(GetUserReservationByIdAsync))]
+    public async Task<IActionResult> GetUserReservationByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _reservationQueueSvc.GetByIdAsync(id: id, email: email));
     }
     
     [Authorize]

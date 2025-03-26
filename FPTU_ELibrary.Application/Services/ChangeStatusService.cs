@@ -74,9 +74,9 @@ public class ChangeStatusService : BackgroundService
                         borrowSettings: monitor.CurrentValue,
                         appSettings: monitor1.CurrentValue);
                     // Assign item's instance to reservations (if any)
-                    hasChanges |= await AssignItemToReservationAsync(
-                        reservationSvc: reservationSvc,
-                        unitOfWork: unitOfWork);
+                    // hasChanges |= await AssignItemToReservationAsync(
+                    //     reservationSvc: reservationSvc,
+                    //     unitOfWork: unitOfWork);
                     
                     // Save changes only if at least one update was made
                     if (hasChanges) await unitOfWork.SaveChangesAsync();
@@ -482,7 +482,7 @@ public class ChangeStatusService : BackgroundService
                     .Select(r => int.Parse(r.LibraryItemInstanceId.ToString() ?? "0"))
                     .ToList();
                 // Process reassigned item instance to other reservations (if any)
-                await reservationSvc.AssignReturnItemAsync(libraryItemInstanceIds: allItemInstanceIds);
+                await reservationSvc.AssignInstancesAfterReturnAsync(libraryItemInstanceIds: allItemInstanceIds);
             }
         }
         
@@ -525,7 +525,7 @@ public class ChangeStatusService : BackgroundService
                 if (reservation != null) // Required exist at least once reservation match to process assign instance
                 {
                     // Try to assign item instance to reservations (if any)
-                    await reservationSvc.AssignReturnItemAsync([instance.LibraryItemInstanceId]);
+                    await reservationSvc.AssignInstancesAfterReturnAsync([instance.LibraryItemInstanceId]);
                 }
             }
         }

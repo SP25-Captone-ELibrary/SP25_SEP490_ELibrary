@@ -27,6 +27,7 @@ public class Fine
     public Guid CreatedBy { get; set; }
 
     // Mapping entities
+    [JsonIgnore]
     public BorrowRecordDetail BorrowRecordDetail { get; set; } = null!;
     public Employee CreateByNavigation { get; set; } = null!;
     public FinePolicy FinePolicy { get; set; } = null!;

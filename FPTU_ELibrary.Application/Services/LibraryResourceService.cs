@@ -773,8 +773,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId
-        , int itemId)
+    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId)
     {
         try
         {
@@ -783,17 +782,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
-            //get item of the resource
-            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
-            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
-            if (libraryItem.Data is null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
-            }
-
-            var itemValue = (LibraryItemDto)libraryItem.Data!;
 
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);

@@ -34,6 +34,9 @@ public class GetBorrowRecordDto
     // Borrow record processed by which employee
     public Guid? ProcessedBy { get; set; }
     
+    // Mark as has fine to payment
+    public bool HasFineToPayment { get; set; }
+    
     public GetBorrowRequestDto? BorrowRequest { get; set; }
     public EmployeeDto? ProcessedByNavigation { get; set; }
     public List<GetBorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new();
@@ -82,9 +85,11 @@ public static class GetBorrowRecordDtoExtensions
                     LibraryItem = brd.LibraryItemInstance.LibraryItem != null!
                         ? brd.LibraryItemInstance.LibraryItem.ToLibraryItemDetailDto()
                         : null!,
-                    Fines = brd.Fines.ToList()
+                    Fines = brd.Fines.Any() ? brd.Fines.ToList() : new()
                 }).ToList()
-                : new()
+                : new(),
+            HasFineToPayment = dto.BorrowRecordDetails.Any() && 
+                               dto.BorrowRecordDetails.Any(r => r.Fines.Any(f => f.Status != FineStatus.Paid))
         };
     }
 }

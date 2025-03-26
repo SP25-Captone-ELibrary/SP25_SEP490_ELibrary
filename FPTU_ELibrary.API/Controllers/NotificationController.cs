@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Requests.Notification;
 using FPTU_ELibrary.Application.Configurations;
@@ -48,14 +49,15 @@ public class NotificationController : ControllerBase
         return Ok(await _notificationService.GetAllWithSpecAsync(new NotificationSpecification(
                 specParams: specParams, 
                 pageIndex: specParams.PageIndex ?? 1,
-                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                isCallFromManagement: true)));
     }
     
     [Authorize]
     [HttpGet(APIRoute.Notification.GetById, Name = nameof(GetNotificationByIdAsync))]
     public async Task<IActionResult> GetNotificationByIdAsync([FromRoute] int id)
     {
-        return Ok(await _notificationService.GetByIdAsync(id: id));
+        return Ok(await _notificationService.GetByIdAsync(id: id, email: null));
     }
     #endregion
 
@@ -63,13 +65,13 @@ public class NotificationController : ControllerBase
     [HttpGet(APIRoute.Notification.GetAllPrivacy, Name = nameof(GetAllPrivacyNotificationAsync))]
     public async Task<IActionResult> GetAllPrivacyNotificationAsync([FromQuery] NotificationSpecParams specParams)
     {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _notificationService.GetAllPrivacyNotificationAsync(
-            email: email ?? string.Empty, 
-            spec: new NotificationSpecification(
+        // Assign email to spec params 
+        specParams.Email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationService.GetAllWithSpecAsync(new NotificationSpecification(
                 specParams: specParams, 
                 pageIndex: specParams.PageIndex ?? 1,
-                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                isCallFromManagement: false)));
     }
     
     [Authorize]
@@ -81,11 +83,28 @@ public class NotificationController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut(APIRoute.Notification.UpdateReadStatus, Name = nameof(UpdateReadStatus))]
-    public async Task<IActionResult> UpdateReadStatus()
+    [HttpPut(APIRoute.Notification.Update, Name = nameof(UpdateNotificationAsync))]
+    public async Task<IActionResult> UpdateNotificationAsync([FromRoute] int id, [FromBody] UpdateNotificationRequest req)
+    {
+        return Ok(await _notificationService.UpdateAsync(id, req.ToNotificationDto()));
+    }
+    
+    [Authorize]
+    [HttpPut(APIRoute.Notification.UpdateReadStatus, Name = nameof(UpdateReadStatusAsync))]
+    public async Task<IActionResult> UpdateReadStatusAsync([FromBody] UpdateRangeReadStatusRequest req)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _notificationRecipientService.UpdateReadStatusAsync(email ?? string.Empty));
+        return Ok(await _notificationRecipientService.UpdateRangeReadStatusAsync(
+            email: email ?? string.Empty,
+            notificationIds: req.NotificationIds));
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.Notification.MarkAsReadAll, Name = nameof(MarkAsReadAllAsync))]
+    public async Task<IActionResult> MarkAsReadAllAsync()
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _notificationRecipientService.MarkAsReadAllAsync(email: email ?? string.Empty));
     }
     
     [Authorize]
@@ -93,6 +112,6 @@ public class NotificationController : ControllerBase
     public async Task<IActionResult> GetPrivacyByIdAsync([FromRoute] int id)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _notificationService.GetPrivacyNotificationAsync(id: id, email: email ?? string.Empty));
+        return Ok(await _notificationService.GetByIdAsync(id: id, email: email ?? string.Empty));
     }
 }

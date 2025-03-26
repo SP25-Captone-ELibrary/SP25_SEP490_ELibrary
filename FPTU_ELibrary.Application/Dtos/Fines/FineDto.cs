@@ -30,6 +30,7 @@ public class FineDto
     public Guid CreatedBy { get; set; }
 
     // Mapping entities
+    [JsonIgnore]
     public BorrowRecordDetailDto BorrowRecordDetail { get; set; } = null!;
     public EmployeeDto CreateByNavigation { get; set; } = null!;
     public FinePolicyDto FinePolicy { get; set; } = null!;

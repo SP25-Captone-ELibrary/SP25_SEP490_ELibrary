@@ -130,7 +130,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         }
     }
 
-    public override async Task<IServiceResult> GetByIdAsync(Guid id)
+    public async Task<IServiceResult> GetDetailAsync(Guid id)
     {
         try
         {
@@ -140,7 +140,11 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             var isEng = lang == SystemLanguage.English;
             
             // Retrieve library card by id 
-            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(id);
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryCard>(c => c.LibraryCardId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q.Include(c => c.Users));
+            var existingEntity = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(baseSpec);
             if (existingEntity != null)
             {
                 // Map to dto 
@@ -153,10 +157,24 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                     // Add previous user
                     cardDto.AddPreviousUser(previousUserDto);
                 }
+            
+                // Initialize list transactions
+                var transactionDtoList = new List<TransactionDto>(); 
+                if (existingEntity.Users.Any())
+                {
+                    // Retrieve all transactions
+                    var transSpec = new BaseSpecification<Transaction>(t =>
+                        t.LibraryCardPackageId != null &&
+                        t.UserId == existingEntity.Users.First().UserId);
+                    transactionDtoList = (await _tranSvc.GetAllWithSpecAsync(transSpec)).Data as List<TransactionDto>;
+                }
+                
+                // Convert to GetLibraryCardDetailDto
+                var detailDto = cardDto.ToGetLibraryCardDetailDto(transactions: transactionDtoList);
                 
                 // Get data success
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), cardDto);
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), detailDto);
             }
             
             // Data not found or empty
@@ -169,7 +187,7 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             throw new Exception("Error invoke while process get library card by id");
         }
     }
-
+    
     public override async Task<IServiceResult> UpdateAsync(Guid id, LibraryCardDto dto)
     {
         try

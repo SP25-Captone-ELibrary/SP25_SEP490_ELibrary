@@ -15,7 +15,7 @@ public enum SystemFeature
     FineManagement,
     [Description("/management/library-items")] // Combine with authors, categories, resources, audit trail, library location, library cards, library card packages, library cardholders, library item conditions
     LibraryItemManagement,
-    [Description("/management/borrows")] // Combine with notifications, returns
+    [Description("/management/borrows")] // Combine with notifications, reservations (This route has already included borrow requests and records)
     BorrowManagement,
     [Description("/management/transactions")]
     TransactionManagement,
@@ -43,8 +43,8 @@ public enum SystemFeature
     LibraryItemConditionManagement,
     [Description("/management/notifications")]
     NotificationManagement,
-    [Description("/management/returns")]
-    ReturnManagement,
+    [Description("/management/reservations")]
+    ReservationManagement,
     [Description("/management/system-messages")]
     SystemMessageManagement,
     [Description("/management/resources")]

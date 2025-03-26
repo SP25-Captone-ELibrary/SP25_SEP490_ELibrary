@@ -110,9 +110,9 @@ public class AuthorizationService : IAuthorizationService
         #endregion
 
         #region BorrowManagement
-        // Route: [BorrowManagement] -> Combine with [ReturnManagement] and [NotificationManagement]
+        // Route: [BorrowManagement] -> Combine with [ReservationManagement] and [NotificationManagement]
         // Is [ReturnManagement]
-        if (requestFeature.Equals(SystemFeatureEnum.ReturnManagement))
+        if (requestFeature.Equals(SystemFeatureEnum.ReservationManagement))
         {
             return SystemFeatureEnum.BorrowManagement;
         }
