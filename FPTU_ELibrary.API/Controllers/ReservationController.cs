@@ -49,6 +49,13 @@ public class ReservationController : ControllerBase
     {
         return Ok(await _reservationQueueSvc.GetAssignableByIdAsync(id: id));
     }
+
+    [Authorize]
+    [HttpGet(APIRoute.Reservation.GetAppliedLabelById, Name = nameof(GetAppliedLabelByIdAsync))]
+    public async Task<IActionResult> GetAppliedLabelByIdAsync([FromRoute] int id, [FromQuery] string reservationCode)
+    {
+        return Ok(await _reservationQueueSvc.GetAppliedLabelByIdAsync(id: id, reservationCode: reservationCode));
+    }
     
     [Authorize]
     [HttpGet(APIRoute.Reservation.GetAllAssignableAfterReturn, Name = nameof(GetAllAssignableAfterReturnAsync))]
@@ -76,5 +83,19 @@ public class ReservationController : ControllerBase
     public async Task<IActionResult> ConfirmApplyReservationLabelAsync([FromBody] ConfirmApplyReservationLabelRequest req)
     {
         return Ok(await _reservationQueueSvc.ConfirmApplyLabelAsync(queueIds: req.QueueIds));
+    }
+
+    [Authorize]
+    [HttpPatch(APIRoute.Reservation.ReapplyLabel, Name = nameof(ReapplyReservationLabelAsync))]
+    public async Task<IActionResult> ReapplyReservationLabelAsync([FromRoute] int id, [FromQuery] string reservationCode)
+    {
+        return Ok(await _reservationQueueSvc.ReapplyLabelByIdAsync(id: id, reservationCode: reservationCode));
+    }
+
+    [Authorize]
+    [HttpPatch(APIRoute.Reservation.ExtendPickupDate, Name = nameof(ExtendReservationPickupDateAsync))]
+    public async Task<IActionResult> ExtendReservationPickupDateAsync([FromRoute] int id)
+    {
+        return Ok(await _reservationQueueSvc.ExtendPickupDateAsync(id: id));
     }
 }

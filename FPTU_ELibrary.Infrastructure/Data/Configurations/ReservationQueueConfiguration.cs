@@ -110,6 +110,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasDefaultValue(false)
                 .HasColumnName("is_applied_label");
             #endregion
+
+            #region Updated at: 26/03/2025 by Le Xuan Phuoc
+            builder.Property(e => e.AssignedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("assigned_date");
+            builder.Property(e => e.TotalExtendPickup)
+                .HasDefaultValue(0)
+                .HasColumnName("total_extend_pickup");
+            #endregion
         }
     }
 }

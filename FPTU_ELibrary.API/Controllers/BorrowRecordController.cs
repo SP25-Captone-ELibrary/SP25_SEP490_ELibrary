@@ -95,7 +95,7 @@ public class BorrowRecordController : ControllerBase
             isConfirmMissing: req.IsConfirmMissing));
     }
     #endregion
-
+    
     [Authorize]
     [HttpPost(APIRoute.BorrowRecord.SelfCheckout, Name = nameof(SelfCheckoutBorrowAsync))]
     public async Task<IActionResult> SelfCheckoutBorrowAsync([FromBody] SelfCheckoutBorrowRequest req)

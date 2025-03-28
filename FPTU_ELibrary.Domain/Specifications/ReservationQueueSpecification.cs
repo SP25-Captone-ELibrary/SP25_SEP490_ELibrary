@@ -130,6 +130,27 @@ public class ReservationQueueSpecification : BaseSpecification<ReservationQueue>
             }
         }
         
+        if (specParams.AssignDateRange != null
+            && specParams.AssignDateRange.Length > 1) // With range of assign date
+        {
+            if (specParams.AssignDateRange[0].HasValue && specParams.AssignDateRange[1].HasValue)
+            {
+                AddFilter(x => x.AssignedDate.HasValue &&
+                               x.AssignedDate.Value.Date >= specParams.AssignDateRange[0]!.Value.Date
+                               && x.AssignedDate.Value.Date <= specParams.AssignDateRange[1]!.Value.Date);
+            }
+            else if ((specParams.AssignDateRange[0] is null && specParams.AssignDateRange[1].HasValue))
+            {
+                AddFilter(x => x.AssignedDate != null && 
+                               x.AssignedDate.Value.Date <= specParams.AssignDateRange[1]!.Value.Date);
+            }
+            else if (specParams.AssignDateRange[0].HasValue && specParams.AssignDateRange[1] is null)
+            {
+                AddFilter(x => x.AssignedDate != null && 
+                               x.AssignedDate.Value.Date >= specParams.AssignDateRange[0]!.Value.Date);
+            }
+        }
+        
         if (specParams.CollectedDateRange != null
             && specParams.CollectedDateRange.Length > 1) // With range of collected date
         {

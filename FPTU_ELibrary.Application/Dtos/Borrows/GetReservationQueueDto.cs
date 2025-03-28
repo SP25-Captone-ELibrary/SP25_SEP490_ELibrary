@@ -46,6 +46,12 @@ public class GetReservationQueueDto
     // Collected date
     public DateTime? CollectedDate { get; set; }
     
+    // Assigned date
+    public DateTime? AssignedDate { get; set; }
+    
+    // Extend pick up time
+    public int TotalExtendPickup { get; set; }
+    
     // If the user was notified
     public bool IsNotified { get; set; }
     
@@ -86,6 +92,8 @@ public static class GetReservationQueueDtoExtensions
             IsAppliedLabel = dto.IsAppliedLabel,
             ExpiryDate = dto.ExpiryDate,
             CollectedDate = dto.CollectedDate,
+            AssignedDate = dto.AssignedDate,
+            TotalExtendPickup = dto.TotalExtendPickup,
             IsNotified = dto.IsNotified,
             CancelledBy = dto.CancelledBy,
             CancellationReason = dto.CancellationReason,

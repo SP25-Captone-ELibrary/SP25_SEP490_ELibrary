@@ -345,6 +345,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		                        ExpectedAvailableDateMax = rq.ExpectedAvailableDateMax,
 		                        ReservationDate = rq.ReservationDate,
 		                        ExpiryDate = rq.ExpiryDate,
+		                        AssignedDate = rq.AssignedDate,
+		                        TotalExtendPickup = rq.TotalExtendPickup,
 		                        IsNotified = rq.IsNotified,
 		                        CancelledBy = rq.CancelledBy,
 		                        CancellationReason = rq.CancellationReason,
@@ -563,6 +565,36 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	    }
     }
 
+    public async Task<IServiceResult> GetAllBorrowSettingValuesAsync()
+    {
+	    try
+	    {
+		    var getBorrowSettings = new GetBorrowSettingsDto()
+		    {
+			    PickUpExpirationInDays = _borrowSettings.PickUpExpirationInDays,
+			    ExtendPickUpInDays = _borrowSettings.ExtendPickUpInDays,
+			    BorrowAmountOnceTime = _borrowSettings.BorrowAmountOnceTime,
+			    TotalMissedPickUpAllow = _borrowSettings.TotalMissedPickUpAllow,
+			    EndSuspensionInDays = _borrowSettings.EndSuspensionInDays,
+			    MaxBorrowExtension = _borrowSettings.MaxBorrowExtension,
+			    AllowToExtendInDays = _borrowSettings.AllowToExtendInDays,
+			    TotalBorrowExtensionInDays = _borrowSettings.TotalBorrowExtensionInDays,
+			    OverdueOrLostHandleInDays = _borrowSettings.OverdueOrLostHandleInDays,
+			    FineExpirationInDays = _borrowSettings.FineExpirationInDays,
+			    LostAmountPercentagePerDay = _borrowSettings.LostAmountPercentagePerDay,
+		    };
+		    
+		    // Get data successfully
+		    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getBorrowSettings);
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get borrow settings");
+	    }
+    }
+    
     public async Task<IServiceResult> GetAllBorrowingByItemIdAsync(int itemId)
     {
 	    try

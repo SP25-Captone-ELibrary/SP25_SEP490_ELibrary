@@ -483,6 +483,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Reservation_Success0002 = "Reservation.Success0002";
 		/// <summary>
+		/// [SUCCESS] The pickup expiration date has been extended to {0}
+		/// </summary>
+		public const string Reservation_Success0003 = "Reservation.Success0003";
+		/// <summary>
         /// [FAIL] The instance has been reserved by the reader, but failed to update the reservation status while create borrow record
         /// </summary>
         public const string Reservation_Fail0001 = "Reservation.Fail0001";
@@ -502,6 +506,15 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Item instances' status must be out of shelf and circulated to process assigning items for reservations
         /// </summary>
         public const string Reservation_Fail0005 = "Reservation.Fail0005";
+        /// <summary>
+        /// [FAIL] Failed to get applied reservation information
+        /// </summary>
+        public const string Reservation_Fail0006 = "Reservation.Fail0006";
+        /// <summary>
+        /// [FAIL] Failed to extend pick up expiration date
+        /// </summary>
+        public const string Reservation_Fail0007 = "Reservation.Fail0007";
+		
 		/// <summary>
 		/// [WARNING] Unable to create item reservation as {0}
 		/// </summary>
@@ -530,6 +543,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Unable to find assignable items as {0}
 		/// </summary>
 		public const string Reservation_Warning0007 = "Reservation.Warning0007";
+		/// <summary>
+        /// [WARNING] The pickup expiration date has been extended. Cannot extend more
+        /// </summary>
+        public const string Reservation_Warning0008 = "Reservation.Warning0008";
+        /// <summary>
+        /// [WARNING] Unable to extend pickup expiration date as {0}
+        /// </summary>
+        public const string Reservation_Warning0009 = "Reservation.Warning0009";
 		#endregion
 		
 		#region Role

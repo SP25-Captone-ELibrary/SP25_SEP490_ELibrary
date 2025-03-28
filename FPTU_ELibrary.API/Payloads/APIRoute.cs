@@ -355,7 +355,6 @@
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
 			public const string DefineGroup = Base + "/management/groups/define-group";
-			
 		}
 		
 		/// <summary>
@@ -382,10 +381,6 @@
 			// [DELETE]
 			public const string HardDelete = Base + "/management/users/{id}";
 			public const string HardDeleteRange = Base + "/management/users";
-			
-			// public const string CreateMany = Base + "/admin/createMany";
-			//admin update role from general user(GU) to Student or Teacher role
-			// public const string UpdateRole = Base + "/users/{id}/role";
 			#endregion
 			
 			// [GET]
@@ -502,12 +497,14 @@
 			public const string GetAll = Base + "/management/reservations";
 			public const string GetById = Base + "/management/reservations/{id}";
 			public const string GetAssignableById = Base + "/management/reservations/{id}/get-assignable-instances";
+			public const string GetAppliedLabelById = Base + "/management/reservations/{id}/applied-label";
 			// [POST]
-			public const string Create = Base + "/management/reservations";
 			public const string AssignAfterReturn = Base + "/management/reservations/assign-after-return";
 			public const string AssignById = Base + "/management/reservations/{id}/assign";
 			// [PUT] OR [PATCH]
 			public const string ConfirmApplyLabel = Base + "/management/reservations/confirm-apply-label";
+			public const string ReapplyLabel = Base + "/management/reservations/{id}/re-apply-label";
+			public const string ExtendPickupDate = Base + "/management/reservations/{id}/extend-pick-up-date";
 			// [DELETE]
 			#endregion
 		}
@@ -520,6 +517,15 @@
 			// [POST]
 			public const string ImportToExcel = Base + "/management/system-messages/import-excel";
 			public const string ExportToExcel = Base + "/management/system-messages/export-excel";
+		}
+
+		/// <summary>
+		/// System configuration endpoints
+		/// </summary>
+		public static class SystemConfiguration
+		{
+			// [GET]
+			public const string GetBorrowSettings = Base + "/system-configurations/borrow-settings";
 		}
 
 		/// <summary>

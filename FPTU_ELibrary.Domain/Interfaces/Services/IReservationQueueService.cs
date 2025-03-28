@@ -16,6 +16,9 @@ public interface IReservationQueueService<TDto> : IGenericService<ReservationQue
     Task<IServiceResult> GetAllCardHolderReservationAsync(ISpecification<ReservationQueue> spec, bool tracked = false);
     Task<IServiceResult> GetAllPendingAndAssignedReservationByLibCardIdAsync(Guid libraryCardId);
     Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
+    Task<IServiceResult> GetAppliedLabelByIdAsync(int id, string reservationCode);
+    Task<IServiceResult> ReapplyLabelByIdAsync(int id, string reservationCode);
+    Task<IServiceResult> ExtendPickupDateAsync(int id);
     Task<IServiceResult> CountAllReservationByLibCardIdAndStatusAsync(Guid libraryCardId, ReservationQueueStatus status);
     Task<IServiceResult> CheckPendingByItemInstanceIdAsync(int itemInstanceId);
     Task<IServiceResult> CheckAllowToReserveByItemIdAsync(int itemId, string email);

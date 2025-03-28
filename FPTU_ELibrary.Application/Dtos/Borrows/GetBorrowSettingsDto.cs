@@ -1,6 +1,6 @@
-namespace FPTU_ELibrary.Application.Configurations;
+namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
-public class BorrowSettings
+public class GetBorrowSettingsDto
 {
     public int PickUpExpirationInDays { get; set; }
     public int ExtendPickUpInDays { get; set; }

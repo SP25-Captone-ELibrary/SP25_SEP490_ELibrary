@@ -11,6 +11,7 @@ public class ReservationQueueSpecParams : BaseSpecParams
     
     public DateTime?[]? ReservationDateRange { get; set; }
     public DateTime?[]? ExpiryDateRange { get; set; }
+    public DateTime?[]? AssignDateRange { get; set; }
     public DateTime?[]? CollectedDateRange { get; set; }
     public DateTime?[]? ExpectedAvailableDateMinRange { get; set; }
     public DateTime?[]? ExpectedAvailableDateMaxRange { get; set; }

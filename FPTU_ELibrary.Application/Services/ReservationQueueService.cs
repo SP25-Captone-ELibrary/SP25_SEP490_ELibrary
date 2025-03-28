@@ -26,6 +26,7 @@ using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using HtmlAgilityPack;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Options;
 using Nest;
 using Serilog;
@@ -83,6 +84,364 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         _borrowSettings = monitor.CurrentValue;
     }
 
+    public async Task<IServiceResult> GetAllCardHolderReservationAsync(ISpecification<ReservationQueue> spec,
+        bool tracked = false)
+    {
+        try
+        {
+            // Try to parse specification to ReservationQueueSpecification
+            var reservationSpec = spec as ReservationQueueSpecification;
+            // Check if specification is null
+            if (reservationSpec == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            // Count total reservations
+            var totalReservationWithSpec =
+                await _unitOfWork.Repository<ReservationQueue, int>().CountAsync(reservationSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalReservationWithSpec / reservationSpec.PageSize);
+
+            // Set pagination to specification after count total reservation
+            if (reservationSpec.PageIndex > totalPage
+                || reservationSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                reservationSpec.PageIndex = 1; // Set default to first page
+            }
+
+            // Apply pagination
+            reservationSpec.ApplyPaging(
+                skip: reservationSpec.PageSize * (reservationSpec.PageIndex - 1),
+                take: reservationSpec.PageSize);
+
+            // Retrieve data with spec
+            var entities = await _unitOfWork.Repository<ReservationQueue, int>()
+                .GetAllWithSpecAsync(reservationSpec, tracked);
+            if (entities.Any())
+            {
+                // Convert to dto collection
+                var queueDtos = _mapper.Map<List<ReservationQueueDto>>(entities);
+
+                // Initialize GetReservationDto collection
+                var getReservationQueueList = new List<GetReservationQueueDto>();
+                // Iterate each reservation dto
+                foreach (var reservation in queueDtos)
+                {
+                    // Check assignable instances
+                    var existAssignableInstance = (await CheckAssignableByIdAsync(reservation.QueueId)).Data is true;
+                    // Convert and append to collection
+                    getReservationQueueList.Add(reservation.ToGetReservationQueueDto(isAssignable: existAssignableInstance));
+                }
+
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<GetReservationQueueDto>(getReservationQueueList,
+                    reservationSpec.PageIndex, reservationSpec.PageSize, totalPage, totalReservationWithSpec);
+
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+
+            // Not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<GetReservationQueueDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all reservation queue by user id");
+        }
+    }
+
+    public async Task<IServiceResult> GetAllPendingAndAssignedReservationByLibCardIdAsync(Guid libraryCardId)
+    {
+        try
+        {
+            // Build specification
+            var baseSpec = new BaseSpecification<ReservationQueue>(r =>
+                r.LibraryCardId == libraryCardId && // With specific lib card
+                (
+                    r.QueueStatus == ReservationQueueStatus.Pending || // In pending status
+                    r.QueueStatus == ReservationQueueStatus.Assigned // In assigned status
+                ) &&
+                // Exclude cancellation fields
+                r.CancellationReason == null &&
+                r.CancelledBy == null
+            );
+            // Retrieve all with spec and selector
+            var entities = (await _unitOfWork.Repository<ReservationQueue, int>()
+                .GetAllWithSpecAndSelectorAsync(baseSpec, selector: r => new ReservationQueue()
+                {
+                    QueueId = r.QueueId,
+                    LibraryItemId = r.LibraryItemId,
+                    LibraryItemInstanceId = r.LibraryItemInstanceId,
+                    LibraryCardId = r.LibraryCardId,
+                    QueueStatus = r.QueueStatus,
+                    BorrowRequestId = r.BorrowRequestId,
+                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
+                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
+                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
+                    ReservationDate = r.ReservationDate,
+                    ReservationCode = r.ReservationCode,
+                    IsAppliedLabel = r.IsAppliedLabel,
+                    ExpiryDate = r.ExpiryDate,
+                    CollectedDate = r.CollectedDate,
+                    AssignedDate = r.AssignedDate,
+                    TotalExtendPickup = r.TotalExtendPickup,
+                    IsNotified = r.IsNotified,
+                    CancelledBy = r.CancelledBy,
+                    CancellationReason = r.CancellationReason,
+                    LibraryItem = new LibraryItem()
+                    {
+                        LibraryItemId = r.LibraryItem.LibraryItemId,
+                        Title = r.LibraryItem.Title,
+                        SubTitle = r.LibraryItem.SubTitle,
+                        Responsibility = r.LibraryItem.Responsibility,
+                        Edition = r.LibraryItem.Edition,
+                        EditionNumber = r.LibraryItem.EditionNumber,
+                        Language = r.LibraryItem.Language,
+                        OriginLanguage = r.LibraryItem.OriginLanguage,
+                        Summary = r.LibraryItem.Summary,
+                        CoverImage = r.LibraryItem.CoverImage,
+                        PublicationYear = r.LibraryItem.PublicationYear,
+                        Publisher = r.LibraryItem.Publisher,
+                        PublicationPlace = r.LibraryItem.PublicationPlace,
+                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
+                        CutterNumber = r.LibraryItem.CutterNumber,
+                        Isbn = r.LibraryItem.Isbn,
+                        Ean = r.LibraryItem.Ean,
+                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
+                        PageCount = r.LibraryItem.PageCount,
+                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
+                        Dimensions = r.LibraryItem.Dimensions,
+                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
+                        Genres = r.LibraryItem.Genres,
+                        GeneralNote = r.LibraryItem.GeneralNote,
+                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
+                        TopicalTerms = r.LibraryItem.TopicalTerms,
+                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
+                        CategoryId = r.LibraryItem.CategoryId,
+                        ShelfId = r.LibraryItem.ShelfId,
+                        GroupId = r.LibraryItem.GroupId,
+                        Status = r.LibraryItem.Status,
+                        IsDeleted = r.LibraryItem.IsDeleted,
+                        IsTrained = r.LibraryItem.IsTrained,
+                        CanBorrow = r.LibraryItem.CanBorrow,
+                        TrainedAt = r.LibraryItem.TrainedAt,
+                        CreatedAt = r.LibraryItem.CreatedAt,
+                        UpdatedAt = r.LibraryItem.UpdatedAt,
+                        UpdatedBy = r.LibraryItem.UpdatedBy,
+                        CreatedBy = r.LibraryItem.CreatedBy,
+                        // References
+                        Category = r.LibraryItem.Category,
+                        Shelf = r.LibraryItem.Shelf,
+                        LibraryItemInstances = r.LibraryItem.LibraryItemInstances
+                            .Where(lii => lii.LibraryItemInstanceId == r.LibraryItemInstanceId).ToList(),
+                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
+                        LibraryItemReviews = r.LibraryItem.LibraryItemReviews,
+                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                        {
+                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                            LibraryItemId = ba.LibraryItemId,
+                            AuthorId = ba.AuthorId,
+                            Author = ba.Author
+                        }).ToList()
+                    },
+                    LibraryItemInstance = r.LibraryItemInstance != null
+                        ? new LibraryItemInstance()
+                        {
+                            LibraryItemInstanceId = r.LibraryItemInstance.LibraryItemInstanceId,
+                            LibraryItemId = r.LibraryItemInstance.LibraryItemId,
+                            Barcode = r.LibraryItemInstance.Barcode,
+                            Status = r.LibraryItemInstance.Status,
+                            CreatedAt = r.LibraryItemInstance.CreatedAt,
+                            UpdatedAt = r.LibraryItemInstance.UpdatedAt,
+                            CreatedBy = r.LibraryItemInstance.CreatedBy,
+                            UpdatedBy = r.LibraryItemInstance.UpdatedBy,
+                            IsDeleted = r.LibraryItemInstance.IsDeleted,
+                            IsCirculated = r.LibraryItemInstance.IsCirculated
+                        }
+                        : null,
+                })).ToList();
+            if (entities.Any())
+            {
+                // Map to dto
+                var dtoList = _mapper.Map<List<ReservationQueueDto>>(entities);
+                
+                // Initialize GetReservationDto collection
+                var getReservationQueueList = new List<GetReservationQueueDto>();
+                // Iterate each reservation dto
+                foreach (var reservation in dtoList)
+                {
+                    // Check assignable instances
+                    var existAssignableInstance = (await CheckAssignableByIdAsync(reservation.QueueId)).Data is true;
+                    // Convert and append to collection
+                    getReservationQueueList.Add(reservation.ToGetReservationQueueDto(isAssignable: existAssignableInstance));
+                }
+                
+                // Msg: Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getReservationQueueList);
+            }
+
+            // Msg: Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                new List<GetBorrowRequestDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all pending and assigned reservation by lib card id");
+        }
+    }
+
+    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(br => br.QueueId == id);
+            // Add filter (if any)
+            if (!string.IsNullOrEmpty(email))
+            {
+                baseSpec.AddFilter(r => r.LibraryCard.Users.Any(u => u.Email == email));
+            }
+
+            if (userId.HasValue && userId != Guid.Empty)
+            {
+                baseSpec.AddFilter(r => r.LibraryCard.Users.Any(u => u.UserId == userId));
+            }
+
+            // Retrieve with spec and selector
+            var existingEntity = await _unitOfWork.Repository<ReservationQueue, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: r => new ReservationQueue()
+                {
+                    QueueId = r.QueueId,
+                    LibraryItemId = r.LibraryItemId,
+                    LibraryItemInstanceId = r.LibraryItemInstanceId,
+                    LibraryCardId = r.LibraryCardId,
+                    QueueStatus = r.QueueStatus,
+                    BorrowRequestId = r.BorrowRequestId,
+                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
+                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
+                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
+                    ReservationDate = r.ReservationDate,
+                    ExpiryDate = r.ExpiryDate,
+                    ReservationCode = r.ReservationCode,
+                    IsAppliedLabel = r.IsAppliedLabel,
+                    CollectedDate = r.CollectedDate,
+                    AssignedDate = r.AssignedDate,
+                    TotalExtendPickup = r.TotalExtendPickup,
+                    IsNotified = r.IsNotified,
+                    CancelledBy = r.CancelledBy,
+                    CancellationReason = r.CancellationReason,
+                    LibraryItem = new LibraryItem()
+                    {
+                        LibraryItemId = r.LibraryItemId,
+                        Title = r.LibraryItem.Title,
+                        SubTitle = r.LibraryItem.SubTitle,
+                        Responsibility = r.LibraryItem.Responsibility,
+                        Edition = r.LibraryItem.Edition,
+                        EditionNumber = r.LibraryItem.EditionNumber,
+                        Language = r.LibraryItem.Language,
+                        OriginLanguage = r.LibraryItem.OriginLanguage,
+                        Summary = r.LibraryItem.Summary,
+                        CoverImage = r.LibraryItem.CoverImage,
+                        PublicationYear = r.LibraryItem.PublicationYear,
+                        Publisher = r.LibraryItem.Publisher,
+                        PublicationPlace = r.LibraryItem.PublicationPlace,
+                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
+                        CutterNumber = r.LibraryItem.CutterNumber,
+                        Isbn = r.LibraryItem.Isbn,
+                        Ean = r.LibraryItem.Ean,
+                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
+                        PageCount = r.LibraryItem.PageCount,
+                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
+                        Dimensions = r.LibraryItem.Dimensions,
+                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
+                        Genres = r.LibraryItem.Genres,
+                        GeneralNote = r.LibraryItem.GeneralNote,
+                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
+                        TopicalTerms = r.LibraryItem.TopicalTerms,
+                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
+                        CategoryId = r.LibraryItem.CategoryId,
+                        ShelfId = r.LibraryItem.ShelfId,
+                        GroupId = r.LibraryItem.GroupId,
+                        Status = r.LibraryItem.Status,
+                        IsDeleted = r.LibraryItem.IsDeleted,
+                        IsTrained = r.LibraryItem.IsTrained,
+                        CanBorrow = r.LibraryItem.CanBorrow,
+                        TrainedAt = r.LibraryItem.TrainedAt,
+                        CreatedAt = r.LibraryItem.CreatedAt,
+                        UpdatedAt = r.LibraryItem.UpdatedAt,
+                        UpdatedBy = r.LibraryItem.UpdatedBy,
+                        CreatedBy = r.LibraryItem.CreatedBy,
+                        // References
+                        Category = r.LibraryItem.Category,
+                        Shelf = r.LibraryItem.Shelf,
+                        LibraryItemGroup = r.LibraryItem.LibraryItemGroup,
+                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
+                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                        {
+                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                            LibraryItemId = ba.LibraryItemId,
+                            AuthorId = ba.AuthorId,
+                            Author = ba.Author
+                        }).ToList(),
+                    },
+                    LibraryItemInstance = r.LibraryItemInstance != null
+                        ? new LibraryItemInstance()
+                        {
+                            LibraryItemInstanceId = r.LibraryItemInstance.LibraryItemInstanceId,
+                            LibraryItemId = r.LibraryItemInstance.LibraryItemId,
+                            Barcode = r.LibraryItemInstance.Barcode,
+                            Status = r.LibraryItemInstance.Status,
+                            CreatedAt = r.LibraryItemInstance.CreatedAt,
+                            UpdatedAt = r.LibraryItemInstance.UpdatedAt,
+                            CreatedBy = r.LibraryItemInstance.CreatedBy,
+                            UpdatedBy = r.LibraryItemInstance.UpdatedBy,
+                            IsDeleted = r.LibraryItemInstance.IsDeleted,
+                            IsCirculated = r.LibraryItemInstance.IsCirculated,
+                        }
+                        : null!,
+                    BorrowRequest = r.BorrowRequest
+                });
+            if (existingEntity != null)
+            {
+                // Map to dto
+                var dto = _mapper.Map<ReservationQueueDto>(existingEntity);
+                
+                // Check assignable instance
+                var existAssignableInstance = (await CheckAssignableByIdAsync(dto.QueueId)).Data is true;
+                // Convert to GetReservationQueueDto
+                var getReservationQueueDto = dto.ToGetReservationQueueDto(isAssignable: existAssignableInstance);
+
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getReservationQueueDto);
+            }
+
+            // Msg: Not found {0}
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(errMsg, isEng ? "reservation" : "lịch sử đặt mượn"));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get reservation by id");
+        }
+    }
+    
     public async Task<IServiceResult> GetAssignableInstancesAfterReturnAsync(List<int> libraryItemInstanceIds)
     {
         try
@@ -386,6 +745,226 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             throw new Exception("Error invoke when process chekc assignable by reservation id");
         }
     }
+
+    public async Task<IServiceResult> GetAppliedLabelByIdAsync(int id, string reservationCode)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(r =>
+                r.QueueId == id &&
+                r.ReservationCode == reservationCode && 
+                r.CollectedDate != null);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(r => r.LibraryItem)
+                    .ThenInclude(l => l.LibraryItemInventory)
+                .Include(r => r.LibraryItem)
+                    .ThenInclude(l => l.LibraryItemInstances)
+                .Include(q => q.LibraryCard)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<ReservationQueue, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "reservation" 
+                        : "yêu cầu đặt mượn tài liệu"));
+            }
+            
+            // Check allow to assign
+            var isApplicable = (await CheckAssignableByIdAsync(existingEntity.QueueId)).Data is true;
+            if (isApplicable)
+            {
+                // Convert to AssignReservationResultDto
+                var assignResDto = _mapper.Map<ReservationQueueDto>(existingEntity).ToAssignReservationResultDto();
+                // Get data successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), assignResDto);
+            }
+                        
+            // Msg: Failed to get applied reservation information
+            return new ServiceResult(ResultCodeConst.Reservation_Fail0006,
+                await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0006));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get applied label");
+        }
+    }
+
+    public async Task<IServiceResult> ReapplyLabelByIdAsync(int id, string reservationCode)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(r =>
+                r.QueueId == id &&
+                r.ReservationCode == reservationCode);
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<ReservationQueue, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "reservation" 
+                        : "yêu cầu đặt mượn tài liệu"));
+            }
+            else if (existingEntity.CollectedDate != null)
+            {
+                // Msg: Failed to confirm reservation label application
+                return new ServiceResult(ResultCodeConst.Reservation_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0002));
+            }
+            
+            // Change apply status
+            existingEntity.IsAppliedLabel = true;
+
+            // Check whether entity has changes
+            var unChangeEntity = _unitOfWork.Repository<ReservationQueue, int>().HasChanges(existingEntity);
+            
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved || !unChangeEntity)
+            {
+                // Total {0} items have been confirmed reservation label
+                return new ServiceResult(ResultCodeConst.Reservation_Success0001,
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Success0001), "1"));    
+            }
+
+            // Msg: Failed to confirm reservation label application
+            return new ServiceResult(ResultCodeConst.Reservation_Fail0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0002));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process reapply label for reservation");
+        }
+    }
+
+    public async Task<IServiceResult> ExtendPickupDateAsync(int id)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(r => r.QueueId == id);
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<ReservationQueue, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng 
+                        ? "reservation" 
+                        : "yêu cầu đặt mượn tài liệu"));
+            }
+            
+            
+            // Check reservation has been extended
+            if (existingEntity.TotalExtendPickup > 0)
+            {
+                // Msg: The pick up expiration date has been extended. Cannot extend more
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0008));
+            }
+            
+            // Msg: Unable to extend pickup expiration date as {0}
+            var statusErrMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Warning0009);
+            
+            // Check exist expiry date
+            if (existingEntity.ExpiryDate == null)
+            {
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0009,
+                    StringUtils.Format(statusErrMsg, isEng
+                        ? "not found expiry date"
+                        : "không tìm thấy ngày hết hạn"));
+            }
+            
+            // Check reservation status
+            var customMsg = string.Empty;
+            switch (existingEntity.QueueStatus)
+            {
+                case ReservationQueueStatus.Pending:
+                    customMsg = isEng 
+                        ? "reservation has not been assigned" 
+                        : "yêu cầu đặt mượn chưa được gán tài liệu";
+                    break;
+                case ReservationQueueStatus.Assigned:
+                    // Allow to extend
+                    break;
+                case ReservationQueueStatus.Collected:
+                    customMsg = isEng 
+                        ? "reservation has been collected" 
+                        : "yêu cầu đặt mượn đã được mượn";
+                    break;
+                case ReservationQueueStatus.Expired:
+                    customMsg = isEng 
+                        ? "reservation has been expired" 
+                        : "yêu cầu đặt mượn đã hết hạn";
+                    break;
+                case ReservationQueueStatus.Cancelled:
+                    customMsg = isEng 
+                        ? "reservation has been cancelled" 
+                        : "yêu cầu đặt mượn đã bị hủy";
+                    break;
+            }
+            
+            // Check whether invoke error
+            if (!string.IsNullOrEmpty(customMsg))
+            {
+                return new ServiceResult(ResultCodeConst.Reservation_Warning0009,
+                    StringUtils.Format(statusErrMsg, customMsg));
+            }
+            
+            // Process extend pick up date
+            existingEntity.ExpiryDate = existingEntity.ExpiryDate.Value.AddDays(_borrowSettings.ExtendPickUpInDays);
+            // Increase total extend pick up
+            existingEntity.TotalExtendPickup++;
+            // Process update
+            await _unitOfWork.Repository<ReservationQueue, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: The pickup expiration date has been extended to {0}
+                var successMsg = await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Success0003);
+                return new ServiceResult(ResultCodeConst.Reservation_Success0003,
+                    StringUtils.Format(successMsg, $"{existingEntity.ExpiryDate:dd/MM/yyyy}"));
+            }
+            
+            // Msg: Failed to extend pick up expiration date
+            return new ServiceResult(ResultCodeConst.Reservation_Fail0007,
+                await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0007));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process extend pickup date");
+        }
+    }
     
     public async Task<IServiceResult> AssignInstancesAfterReturnAsync(List<int> libraryItemInstanceIds)
     {
@@ -412,9 +991,9 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(r => r.LibraryItem)
-                .ThenInclude(l => l.LibraryItemInventory)
+                    .ThenInclude(l => l.LibraryItemInventory)
                 .Include(r => r.LibraryItem)
-                .ThenInclude(l => l.LibraryItemInstances)
+                    .ThenInclude(l => l.LibraryItemInstances)
                 .Include(q => q.LibraryCard)
             );
             // Order by reservation date
@@ -477,6 +1056,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                         expectedAvailableDate.AddDays(_borrowSettings.PickUpExpirationInDays);
                                     // Set default is notified is false to allow background svc handle remind user about pick up expiry date (before 24 hrs)
                                     reservation.IsNotified = false;
+                                    // Add assign date
+                                    reservation.AssignedDate = currentLocalDateTime;
                                     // Save updated entity
                                     await _unitOfWork.Repository<ReservationQueue, int>().UpdateAsync(reservation);
 
@@ -534,6 +1115,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                 reservation.ExpectedAvailableDateMin = null;
                                 reservation.ExpectedAvailableDateMax = null;
                                 reservation.ExpiryDate = null;
+                                reservation.AssignedDate = null;
                                 reservation.IsNotified = false;
 
                                 // Add to unhandled list
@@ -640,7 +1222,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                             .SelectMany(list => list).ToList()); // Select all values in dictionary
                         // Convert to collection of assign result
                         var assignReservationResultList =
-                            dtoList.ToAssignReservationResultDto(assignedDate: currentLocalDateTime);
+                            dtoList.ToAssignReservationResultListDto(assignedDate: currentLocalDateTime);
 
                         // Response with assign result
                         // Msg: Assign items success for {0} reservations
@@ -737,6 +1319,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                 expectedAvailableDate.AddDays(_borrowSettings.PickUpExpirationInDays);
             // Set default is notified is false to allow background svc handle remind user about pick up expiry date (before 24 hrs)
             existingEntity.IsNotified = false;
+            // Assign date
+            existingEntity.AssignedDate = currentLocalDateTime;
             
             // Retrieve all existing assigned reservation
             var reserveSpec = new BaseSpecification<ReservationQueue>(r =>
@@ -1011,360 +1595,6 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process count all pending and assigned reservation by lib card id");
-        }
-    }
-
-    public async Task<IServiceResult> GetAllCardHolderReservationAsync(ISpecification<ReservationQueue> spec,
-        bool tracked = false)
-    {
-        try
-        {
-            // Try to parse specification to ReservationQueueSpecification
-            var reservationSpec = spec as ReservationQueueSpecification;
-            // Check if specification is null
-            if (reservationSpec == null)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
-            }
-
-            // Count total reservations
-            var totalReservationWithSpec =
-                await _unitOfWork.Repository<ReservationQueue, int>().CountAsync(reservationSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalReservationWithSpec / reservationSpec.PageSize);
-
-            // Set pagination to specification after count total reservation
-            if (reservationSpec.PageIndex > totalPage
-                || reservationSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                reservationSpec.PageIndex = 1; // Set default to first page
-            }
-
-            // Apply pagination
-            reservationSpec.ApplyPaging(
-                skip: reservationSpec.PageSize * (reservationSpec.PageIndex - 1),
-                take: reservationSpec.PageSize);
-
-            // Retrieve data with spec
-            var entities = await _unitOfWork.Repository<ReservationQueue, int>()
-                .GetAllWithSpecAsync(reservationSpec, tracked);
-            if (entities.Any())
-            {
-                // Convert to dto collection
-                var queueDtos = _mapper.Map<List<ReservationQueueDto>>(entities);
-
-                // Initialize GetReservationDto collection
-                var getReservationQueueList = new List<GetReservationQueueDto>();
-                // Iterate each reservation dto
-                foreach (var reservation in queueDtos)
-                {
-                    // Check assignable instances
-                    var existAssignableInstance = (await CheckAssignableByIdAsync(reservation.QueueId)).Data is true;
-                    // Convert and append to collection
-                    getReservationQueueList.Add(reservation.ToGetReservationQueueDto(isAssignable: existAssignableInstance));
-                }
-
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<GetReservationQueueDto>(getReservationQueueList,
-                    reservationSpec.PageIndex, reservationSpec.PageSize, totalPage, totalReservationWithSpec);
-
-                // Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-
-            // Not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<GetReservationQueueDto>());
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get all reservation queue by user id");
-        }
-    }
-
-    public async Task<IServiceResult> GetAllPendingAndAssignedReservationByLibCardIdAsync(Guid libraryCardId)
-    {
-        try
-        {
-            // Build specification
-            var baseSpec = new BaseSpecification<ReservationQueue>(r =>
-                r.LibraryCardId == libraryCardId && // With specific lib card
-                (
-                    r.QueueStatus == ReservationQueueStatus.Pending || // In pending status
-                    r.QueueStatus == ReservationQueueStatus.Assigned // In assigned status
-                ) &&
-                // Exclude cancellation fields
-                r.CancellationReason == null &&
-                r.CancelledBy == null
-            );
-            // Retrieve all with spec and selector
-            var entities = (await _unitOfWork.Repository<ReservationQueue, int>()
-                .GetAllWithSpecAndSelectorAsync(baseSpec, selector: r => new ReservationQueue()
-                {
-                    QueueId = r.QueueId,
-                    LibraryItemId = r.LibraryItemId,
-                    LibraryItemInstanceId = r.LibraryItemInstanceId,
-                    LibraryCardId = r.LibraryCardId,
-                    QueueStatus = r.QueueStatus,
-                    BorrowRequestId = r.BorrowRequestId,
-                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
-                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
-                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
-                    ReservationDate = r.ReservationDate,
-                    ReservationCode = r.ReservationCode,
-                    IsAppliedLabel = r.IsAppliedLabel,
-                    ExpiryDate = r.ExpiryDate,
-                    CollectedDate = r.CollectedDate,
-                    IsNotified = r.IsNotified,
-                    CancelledBy = r.CancelledBy,
-                    CancellationReason = r.CancellationReason,
-                    LibraryItem = new LibraryItem()
-                    {
-                        LibraryItemId = r.LibraryItem.LibraryItemId,
-                        Title = r.LibraryItem.Title,
-                        SubTitle = r.LibraryItem.SubTitle,
-                        Responsibility = r.LibraryItem.Responsibility,
-                        Edition = r.LibraryItem.Edition,
-                        EditionNumber = r.LibraryItem.EditionNumber,
-                        Language = r.LibraryItem.Language,
-                        OriginLanguage = r.LibraryItem.OriginLanguage,
-                        Summary = r.LibraryItem.Summary,
-                        CoverImage = r.LibraryItem.CoverImage,
-                        PublicationYear = r.LibraryItem.PublicationYear,
-                        Publisher = r.LibraryItem.Publisher,
-                        PublicationPlace = r.LibraryItem.PublicationPlace,
-                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
-                        CutterNumber = r.LibraryItem.CutterNumber,
-                        Isbn = r.LibraryItem.Isbn,
-                        Ean = r.LibraryItem.Ean,
-                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
-                        PageCount = r.LibraryItem.PageCount,
-                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
-                        Dimensions = r.LibraryItem.Dimensions,
-                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
-                        Genres = r.LibraryItem.Genres,
-                        GeneralNote = r.LibraryItem.GeneralNote,
-                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
-                        TopicalTerms = r.LibraryItem.TopicalTerms,
-                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
-                        CategoryId = r.LibraryItem.CategoryId,
-                        ShelfId = r.LibraryItem.ShelfId,
-                        GroupId = r.LibraryItem.GroupId,
-                        Status = r.LibraryItem.Status,
-                        IsDeleted = r.LibraryItem.IsDeleted,
-                        IsTrained = r.LibraryItem.IsTrained,
-                        CanBorrow = r.LibraryItem.CanBorrow,
-                        TrainedAt = r.LibraryItem.TrainedAt,
-                        CreatedAt = r.LibraryItem.CreatedAt,
-                        UpdatedAt = r.LibraryItem.UpdatedAt,
-                        UpdatedBy = r.LibraryItem.UpdatedBy,
-                        CreatedBy = r.LibraryItem.CreatedBy,
-                        // References
-                        Category = r.LibraryItem.Category,
-                        Shelf = r.LibraryItem.Shelf,
-                        LibraryItemInstances = r.LibraryItem.LibraryItemInstances
-                            .Where(lii => lii.LibraryItemInstanceId == r.LibraryItemInstanceId).ToList(),
-                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
-                        LibraryItemReviews = r.LibraryItem.LibraryItemReviews,
-                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
-                        {
-                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
-                            LibraryItemId = ba.LibraryItemId,
-                            AuthorId = ba.AuthorId,
-                            Author = ba.Author
-                        }).ToList()
-                    },
-                    LibraryItemInstance = r.LibraryItemInstance != null
-                        ? new LibraryItemInstance()
-                        {
-                            LibraryItemInstanceId = r.LibraryItemInstance.LibraryItemInstanceId,
-                            LibraryItemId = r.LibraryItemInstance.LibraryItemId,
-                            Barcode = r.LibraryItemInstance.Barcode,
-                            Status = r.LibraryItemInstance.Status,
-                            CreatedAt = r.LibraryItemInstance.CreatedAt,
-                            UpdatedAt = r.LibraryItemInstance.UpdatedAt,
-                            CreatedBy = r.LibraryItemInstance.CreatedBy,
-                            UpdatedBy = r.LibraryItemInstance.UpdatedBy,
-                            IsDeleted = r.LibraryItemInstance.IsDeleted,
-                            IsCirculated = r.LibraryItemInstance.IsCirculated
-                        }
-                        : null,
-                })).ToList();
-            if (entities.Any())
-            {
-                // Map to dto
-                var dtoList = _mapper.Map<List<ReservationQueueDto>>(entities);
-                
-                // Initialize GetReservationDto collection
-                var getReservationQueueList = new List<GetReservationQueueDto>();
-                // Iterate each reservation dto
-                foreach (var reservation in dtoList)
-                {
-                    // Check assignable instances
-                    var existAssignableInstance = (await CheckAssignableByIdAsync(reservation.QueueId)).Data is true;
-                    // Convert and append to collection
-                    getReservationQueueList.Add(reservation.ToGetReservationQueueDto(isAssignable: existAssignableInstance));
-                }
-                
-                // Msg: Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getReservationQueueList);
-            }
-
-            // Msg: Data not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<GetBorrowRequestDto>());
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get all pending and assigned reservation by lib card id");
-        }
-    }
-
-    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
-    {
-        try
-        {
-            // Determine current system lang
-            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-
-            // Build spec
-            var baseSpec = new BaseSpecification<ReservationQueue>(br => br.QueueId == id);
-            // Add filter (if any)
-            if (!string.IsNullOrEmpty(email))
-            {
-                baseSpec.AddFilter(r => r.LibraryCard.Users.Any(u => u.Email == email));
-            }
-
-            if (userId.HasValue && userId != Guid.Empty)
-            {
-                baseSpec.AddFilter(r => r.LibraryCard.Users.Any(u => u.UserId == userId));
-            }
-
-            // Retrieve with spec and selector
-            var existingEntity = await _unitOfWork.Repository<ReservationQueue, int>()
-                .GetWithSpecAndSelectorAsync(baseSpec, selector: r => new ReservationQueue()
-                {
-                    QueueId = r.QueueId,
-                    LibraryItemId = r.LibraryItemId,
-                    LibraryItemInstanceId = r.LibraryItemInstanceId,
-                    LibraryCardId = r.LibraryCardId,
-                    QueueStatus = r.QueueStatus,
-                    BorrowRequestId = r.BorrowRequestId,
-                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
-                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
-                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
-                    ReservationDate = r.ReservationDate,
-                    ExpiryDate = r.ExpiryDate,
-                    ReservationCode = r.ReservationCode,
-                    IsAppliedLabel = r.IsAppliedLabel,
-                    CollectedDate = r.CollectedDate,
-                    IsNotified = r.IsNotified,
-                    CancelledBy = r.CancelledBy,
-                    CancellationReason = r.CancellationReason,
-                    LibraryItem = new LibraryItem()
-                    {
-                        LibraryItemId = r.LibraryItemId,
-                        Title = r.LibraryItem.Title,
-                        SubTitle = r.LibraryItem.SubTitle,
-                        Responsibility = r.LibraryItem.Responsibility,
-                        Edition = r.LibraryItem.Edition,
-                        EditionNumber = r.LibraryItem.EditionNumber,
-                        Language = r.LibraryItem.Language,
-                        OriginLanguage = r.LibraryItem.OriginLanguage,
-                        Summary = r.LibraryItem.Summary,
-                        CoverImage = r.LibraryItem.CoverImage,
-                        PublicationYear = r.LibraryItem.PublicationYear,
-                        Publisher = r.LibraryItem.Publisher,
-                        PublicationPlace = r.LibraryItem.PublicationPlace,
-                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
-                        CutterNumber = r.LibraryItem.CutterNumber,
-                        Isbn = r.LibraryItem.Isbn,
-                        Ean = r.LibraryItem.Ean,
-                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
-                        PageCount = r.LibraryItem.PageCount,
-                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
-                        Dimensions = r.LibraryItem.Dimensions,
-                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
-                        Genres = r.LibraryItem.Genres,
-                        GeneralNote = r.LibraryItem.GeneralNote,
-                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
-                        TopicalTerms = r.LibraryItem.TopicalTerms,
-                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
-                        CategoryId = r.LibraryItem.CategoryId,
-                        ShelfId = r.LibraryItem.ShelfId,
-                        GroupId = r.LibraryItem.GroupId,
-                        Status = r.LibraryItem.Status,
-                        IsDeleted = r.LibraryItem.IsDeleted,
-                        IsTrained = r.LibraryItem.IsTrained,
-                        CanBorrow = r.LibraryItem.CanBorrow,
-                        TrainedAt = r.LibraryItem.TrainedAt,
-                        CreatedAt = r.LibraryItem.CreatedAt,
-                        UpdatedAt = r.LibraryItem.UpdatedAt,
-                        UpdatedBy = r.LibraryItem.UpdatedBy,
-                        CreatedBy = r.LibraryItem.CreatedBy,
-                        // References
-                        Category = r.LibraryItem.Category,
-                        Shelf = r.LibraryItem.Shelf,
-                        LibraryItemGroup = r.LibraryItem.LibraryItemGroup,
-                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
-                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
-                        {
-                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
-                            LibraryItemId = ba.LibraryItemId,
-                            AuthorId = ba.AuthorId,
-                            Author = ba.Author
-                        }).ToList(),
-                    },
-                    LibraryItemInstance = r.LibraryItemInstance != null
-                        ? new LibraryItemInstance()
-                        {
-                            LibraryItemInstanceId = r.LibraryItemInstance.LibraryItemInstanceId,
-                            LibraryItemId = r.LibraryItemInstance.LibraryItemId,
-                            Barcode = r.LibraryItemInstance.Barcode,
-                            Status = r.LibraryItemInstance.Status,
-                            CreatedAt = r.LibraryItemInstance.CreatedAt,
-                            UpdatedAt = r.LibraryItemInstance.UpdatedAt,
-                            CreatedBy = r.LibraryItemInstance.CreatedBy,
-                            UpdatedBy = r.LibraryItemInstance.UpdatedBy,
-                            IsDeleted = r.LibraryItemInstance.IsDeleted,
-                            IsCirculated = r.LibraryItemInstance.IsCirculated,
-                        }
-                        : null!,
-                    BorrowRequest = r.BorrowRequest
-                });
-            if (existingEntity != null)
-            {
-                // Map to dto
-                var dto = _mapper.Map<ReservationQueueDto>(existingEntity);
-                
-                // Check assignable instance
-                var existAssignableInstance = (await CheckAssignableByIdAsync(dto.QueueId)).Data is true;
-                // Convert to GetReservationQueueDto
-                var getReservationQueueDto = dto.ToGetReservationQueueDto(isAssignable: existAssignableInstance);
-
-                // Get data successfully
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getReservationQueueDto);
-            }
-
-            // Msg: Not found {0}
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errMsg, isEng ? "reservation" : "lịch sử đặt mượn"));
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get reservation by id");
         }
     }
 
@@ -1696,6 +1926,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                 if (existingEntity.QueueStatus != ReservationQueueStatus.Pending || 
                     existingEntity.LibraryItemInstanceId != null || 
                     existingEntity.ReservationCode != null ||
+                    existingEntity.AssignedDate != null ||
                     existingEntity.IsAppliedLabel)
                 {
                     // Mark as false
