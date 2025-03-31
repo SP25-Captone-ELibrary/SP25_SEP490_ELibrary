@@ -343,13 +343,22 @@ public class LibraryItemController : ControllerBase
             pageSize: pageSize ?? _appSettings.PageSize));
     }
 
-    [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetOwnResourceAsync))]
+    [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]
+    public async Task<IActionResult> CheckUnavailableItemsAsync([FromQuery] RangeRequest<int> req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _libraryItemService.CheckUnavailableForBorrowRequestAsync(
+            email: email ?? string.Empty,
+            ids: req.Ids));
+    }
+
     [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetOwnResourceAsync))]
     public async Task<IActionResult> GetOwnResourceAsync([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        
         var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId);
-
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is (not null, not null))
         {
             //return base on the type of the resource
@@ -376,52 +385,42 @@ public class LibraryItemController : ControllerBase
 
         return Ok(result);
     }
-
-    [HttpGet(APIRoute.LibraryItem.CheckUnavailableItems, Name = nameof(CheckUnavailableItemsAsync))]
-    public async Task<IActionResult> CheckUnavailableItemsAsync([FromQuery] RangeRequest<int> req)
-    {
-        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _libraryItemService.CheckUnavailableForBorrowRequestAsync(
-            email: email ?? string.Empty,
-            ids: req.Ids));
-    }
-
-    [HttpGet(APIRoute.LibraryItem.GetPartOfAudioResource, Name = nameof(GetPartOfAudioResourceAsync))]
+    
     [Authorize]
-    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId, [FromRoute] int itemId,
-        [FromRoute] int part)
+    [HttpGet(APIRoute.LibraryItem.GetFullAudioFileWithWatermark, Name = nameof(GetPartOfAudioResourceAsync))]
+    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        var result = await _libraryResourceService.GetPartOfOwnAudioReSource(email??string.Empty, itemId, resourceId, part);
-
+        var result = await _libraryResourceService.GetFullAudioFileWithWatermark(
+            email: email ?? string.Empty,
+            resourceId: resourceId);
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
-            return File(result.Data, "audio/mpeg", $"part_{part}.mp3");
+            return File(result.Data, "audio/mpeg", $"audio.mp3");
         }
 
         return Ok(result);
     }
-    
-    [HttpGet(APIRoute.LibraryItem.CountPartToUpload, Name = nameof(CountPartToUpload))]
+
+    [HttpGet(APIRoute.LibraryItem.GetAudioPreview, Name = nameof(GetAudioPreview))]
+    public async Task<IActionResult> GetAudioPreview([FromRoute] int resourceId)
+    {
+        var result = await _libraryResourceService.GetAudioPreview(resourceId);
+        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
+        {
+            return File(result.Data, "audio/mpeg", $"audio.mp3");
+        }
+
+        return Ok(result);
+    }
+
     [Authorize]
-    public async Task<IActionResult> CountPartToUpload([FromRoute] int resourceId, [FromRoute] int itemId)
+    [HttpGet(APIRoute.LibraryItem.CountPartToUpload, Name = nameof(CountPartToUpload))]
+    public async Task<IActionResult> CountPartToUpload([FromRoute] int resourceId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(resourceId, itemId, email ?? string.Empty));
+        return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(
+            email: email ?? string.Empty,
+            resourceId: resourceId));
     }
-    
-    #region Archived Function
-
-    // [Authorize]
-    // [HttpPost(APIRoute.LibraryItem.Import, Name = nameof(ImportLibraryItemAsync))]
-    // public async Task<IActionResult> ImportLibraryItemAsync([FromForm] ImportLibraryItemRequest req)
-    // {
-    //    return Ok(await _libraryItemService.ImportAsync(
-    //        file: req.File,
-    //        coverImageFiles: req.CoverImageFiles,
-    //        scanningFields: req.ScanningFields,
-    //        duplicateHandle: req.DuplicateHandle));
-    // }
-
-    #endregion
 }

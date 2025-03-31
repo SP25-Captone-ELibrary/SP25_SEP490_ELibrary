@@ -151,8 +151,6 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
-			public const string GetPartOfAudioResource = Base + "/library-items/{itemId}/resource/{resourceId}/{part}";
-			public const string CountPartToUpload = Base +"/library-items/{itemId}/resource/{resourceId}/count-part";
 			public const string GetNewArrivals = Base + "/library-items/new-arrivals";
 			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
 			public const string GetTrending = Base + "/library-items/trending";
@@ -166,8 +164,12 @@
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
+			
 			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
 			public const string GetPdfPreview = Base + "/library-items/resource/{resourceId}/preview";
+			public const string GetAudioPreview = Base + "/library-item/resource/{resourceId}/audio/preview";
+			public const string GetFullAudioFileWithWatermark = Base + "/library-items/resource/{resourceId}/audio";
+			public const string CountPartToUpload = Base +"/library-items/resource/{resourceId}/count-part";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -182,7 +184,7 @@
 			public const string GetById = Base + "/management/library-items/resources/{id}";
 			// [POST]
 			public const string AddToBook = Base + "/management/library-items/{libraryItemId}/resources";
-			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";			// [PUT] / [PATCH]
+			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";	
 			public const string Update = Base + "/management/library-items/resources/{id}";
 			public const string SoftDelete = Base + "/management/library-items/resources/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/library-items/resources/soft-delete-range";
@@ -367,6 +369,7 @@
 			public const string CheckAvailableGroup = Base + "/management/groups/check";
 			public const string CheckItemToTrain = Base + "/management/groups/check-item-to-train"; 
 			public const string DefineGroup = Base + "/management/groups/define-group";
+			
 		}
 		
 		/// <summary>
@@ -836,5 +839,18 @@
 			// [PUT]
 			public const string Update = Base + "/admin-configuration";
 		}
+
+		/// <summary>
+		/// AITrainingSession endpoints
+		/// </summary>
+		public static class AITrainingSession
+		{
+			#region Managemant
+			// [GET]
+			public const string GetAll = Base + "/management/sessions";
+			public const string GetById = Base + "/management/sessions/{id}";
+			#endregion
+		}
+
 	}
 }

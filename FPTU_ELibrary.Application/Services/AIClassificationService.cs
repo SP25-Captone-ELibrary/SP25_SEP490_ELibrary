@@ -336,7 +336,7 @@ public class AIClassificationService : IAIClassificationService
                 var newGroup = await _libraryItemGroupService.GetWithSpecAsync(new BaseSpecification<LibraryItemGroup>(
                     lig => lig.AiTrainingCode.Equals(newGroupDto.AiTrainingCode)));
                 var newGroupValue = (LibraryItemGroupDto)newGroup.Data!;
-                if (otherItemIds != null)
+                if (otherItemIds != null && otherItemIds.Count()!=0)
                 {
                     var updateOtherItemResponse =
                         await _libraryItemService.UpdateGroupIdAsync(otherItemIds, newGroupValue.GroupId);
@@ -825,15 +825,18 @@ public class AIClassificationService : IAIClassificationService
         var baseSession =
             new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
         baseSession.EnableSplitQuery();
-        baseSession.ApplyInclude(q => q.Include(s => s.TrainingDetails));
+        baseSession.ApplyInclude(q => q
+            .Include(s => s.TrainingDetails)
+            .ThenInclude(td => td.TrainingImages));
         var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
         if (session.Data != null)
         {
+            var sessionValue = (AITrainingSessionDto)session.Data!;
             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
             return new ServiceResult(ResultCodeConst.AIService_Warning0009,
                 isEng
                     ? errMsg
-                    : "Đang có một tiến trình huấn luyện AI diễn ra!");
+                    : "Đang có một tiến trình huấn luyện AI diễn ra!", sessionValue);
         }
 
         return new ServiceResult(ResultCodeConst.AIService_Success0007,
@@ -911,6 +914,22 @@ public class AIClassificationService : IAIClassificationService
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
+            var baseSession =
+                new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+            baseSession.EnableSplitQuery();
+            baseSession.ApplyInclude(q => q
+                .Include(s => s.TrainingDetails)
+                .ThenInclude(td => td.TrainingImages));
+            var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
+            if (session.Data != null)
+            {
+                var sessionValue = (AITrainingSessionDto)session.Data!;
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
+                return new ServiceResult(ResultCodeConst.AIService_Warning0009,
+                    isEng
+                        ? errMsg
+                        : "Đang có một tiến trình huấn luyện AI diễn ra!", sessionValue);
+            }
 
             if (dto.TrainingData.Any(x => x.ItemsInGroup.Any(iig
                     => iig.ImageFiles.Count() < 5 || iig.ImageUrls.Count() < 5)))
@@ -986,27 +1005,27 @@ public class AIClassificationService : IAIClassificationService
         Dictionary<Guid, List<(byte[] FileBytes, string FileName)>> trainingDataDic,
         Dictionary<int, List<string>> detailParam, string email)
     {
+        // define services that use in background task
+        using var scope = _service.CreateScope();
+        var libraryItemService = scope.ServiceProvider.GetRequiredService<ILibraryItemService<LibraryItemDto>>();
+        var libraryItemGroupService =
+            scope.ServiceProvider.GetRequiredService<ILibraryItemGroupService<LibraryItemGroupDto>>();
+        var aiTrainingDetailService = scope.ServiceProvider
+            .GetRequiredService<IAITrainingDetailService<AITrainingDetailDto>>();
+        var aiTrainingSessionService = scope.ServiceProvider
+            .GetRequiredService<IAITrainingSessionService<AITrainingSessionDto>>();
+        var aiTrainingImageService = scope.ServiceProvider
+            .GetRequiredService<IAITraningImageService<AITrainingImageDto>>();
+        var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AiHub>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+        var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CustomVisionSettings>>();
+        var httpClient = scope.ServiceProvider.GetRequiredService<HttpClient>();
+        var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
+        // define monitor value
+        var currentAiConfiguration = monitor.CurrentValue;
+        int currentSession = 0;
         try
         {
-            // define services that use in background task
-            using var scope = _service.CreateScope();
-            var libraryItemService = scope.ServiceProvider.GetRequiredService<ILibraryItemService<LibraryItemDto>>();
-            var libraryItemGroupService =
-                scope.ServiceProvider.GetRequiredService<ILibraryItemGroupService<LibraryItemGroupDto>>();
-            var aiTrainingDetailService = scope.ServiceProvider
-                .GetRequiredService<IAITrainingDetailService<AITrainingDetailDto>>();
-            var aiTrainingSessionService = scope.ServiceProvider
-                .GetRequiredService<IAITrainingSessionService<AITrainingSessionDto>>();
-            var aiTrainingImageService = scope.ServiceProvider
-                .GetRequiredService<IAITraningImageService<AITrainingImageDto>>();
-            var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AiHub>>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
-            var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CustomVisionSettings>>();
-            var httpClient = scope.ServiceProvider.GetRequiredService<HttpClient>();
-            var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
-            // define monitor value
-            var currentAiConfiguration = monitor.CurrentValue;
-
             //Get or create new tag
             // Get or create new tag
             var baseConfig = new BaseConfigurationBackgroudDto
@@ -1069,7 +1088,7 @@ public class AIClassificationService : IAIClassificationService
                 new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
             var session = await aiTrainingSessionService.GetWithSpecAsync(baseSession);
             var sessionValue = (AITrainingSessionDto)session.Data!;
-
+            currentSession = sessionValue.TrainingSessionId;
             // Handle uploading image to tag in ai cloud
             foreach (var (key, value) in trainingDataDic)
             {
@@ -1119,49 +1138,123 @@ public class AIClassificationService : IAIClassificationService
                 await CreateImagesFromDataAsync(baseConfig, memoryStreams, tag.Id);
             }
 
-            await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
-                new { message = 20, session = sessionValue.TrainingSessionId });
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new
+                {
+                    message = 20,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
+            );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 20);
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 30, session = sessionValue.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 30,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 30);
             if (iteration is null)
             {
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
+                await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionValue.TrainingSessionId, false,
+                    "Can not get iteration");
                 await Task.CompletedTask;
             }
 
             // Wait until the training is completed before publishing
             await WaitForTrainingCompletionAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 40, session = sessionValue.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 40,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 40);
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 50, session = sessionValue.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 50,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 50);
             // Publish the new iteration and update appsettings.json
             await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 60, session = sessionValue.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 60,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 60);
             await libraryItemService.UpdateTrainingStatusAsync(detailParam.Keys.ToList());
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 80, session = sessionValue.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 80,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 80);
             sessionValue.TrainingStatus = AITrainingStatus.Completed;
             await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionValue.TrainingSessionId, true);
-            await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
-                new { message = 90, session = sessionValue.TrainingSessionId });
+            await hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new
+                {
+                    message = 90,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
+            );
             //Send notification when finish
             await hubContext.Clients.User(email).SendAsync(
-                "AIProcessMessage", new { message = 100, session = initSession.TrainingSessionId }
+                "AIProcessMessage", new
+                {
+                    message = 100,
+                    session = initSession.TrainingSessionId,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = detailParam.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
             );
+            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 100);
         }
         catch (Exception ex)
         {
+            await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
+            if (currentSession != 0)
+            {
+                await aiTrainingSessionService.UpdateSuccessSessionStatus(currentSession, false,
+                    "Can not get iteration");
+            }
+
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when Grouping Items");
         }
@@ -1805,11 +1898,11 @@ public class AIClassificationService : IAIClassificationService
                     var matchCount = coverObjectCounts.Count(pair =>
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
-                    var matchRate = (double)matchCount / totalObject * 100;
+                    var matchRate = Math.Ceiling((double)matchCount / totalObject * 100);
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -1831,11 +1924,11 @@ public class AIClassificationService : IAIClassificationService
                         }
                     };
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
-                    var compareResultValue = (MatchResultDto)compareResult.Data!;
-                    var ocrPoint = compareResultValue.TotalPoint;
+                    var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
+                    var ocrPoint = compareResultValue.First().TotalPoint;
                     itemTotalPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate * 0.5 * 100 + ocrPoint * 0.5);
                     itemOrcMatchResult.Add(groupValueLibraryItem.LibraryItemId,
-                        compareResultValue.ToMinimisedMatchResultDto());
+                        compareResultValue.First().ToMinimisedMatchResultDto());
                     matchObjectPoint.Add(groupValueLibraryItem.LibraryItemId, matchRate);
                 }
             }
@@ -1926,7 +2019,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -1996,7 +2089,7 @@ public class AIClassificationService : IAIClassificationService
             throw new Exception("Error invoke when Recommend Book");
         }
     }
-
+    
     private int CalculateMatchScore(LibraryItemDto currentBook, LibraryItemDto otherBook)
     {
         int score = 0;
@@ -2020,8 +2113,21 @@ public class AIClassificationService : IAIClassificationService
         if (currentBookMainAuthor.Equals(otherBookMainAuthor)) score++;
         if (currentBookGenres.Intersect(otherBookGenres).Any())
             score += currentBookGenres.Intersect(otherBookGenres).Count();
+        // remember those to generate code
         if (currentBook.Isbn!.Equals(otherBook.Isbn)) score++;
         if (currentBook.PublicationYear == otherBook.PublicationYear) score++;
+        if (currentBook.Ean == otherBook.Ean) score++;
+        if (currentBook.Summary == otherBook.Summary) score++;
+        if (currentBook.EstimatedPrice == otherBook.EstimatedPrice) score++;
+        if (currentBook.PageCount == otherBook.PageCount) score++;
+        if (currentBook.PhysicalDetails == otherBook.PhysicalDetails) score++;
+        if (currentBook.Dimensions == otherBook.Dimensions) score++;
+        if (currentBook.AccompanyingMaterial == otherBook.AccompanyingMaterial) score++;
+        if (currentBook.GeneralNote == otherBook.GeneralNote) score++;
+        if (currentBook.BibliographicalNote == otherBook.BibliographicalNote) score++;
+        if (currentBook.AdditionalAuthors == otherBook.AdditionalAuthors) score++;
+
+
         return score;
     }
 
@@ -2043,7 +2149,33 @@ public class AIClassificationService : IAIClassificationService
                 IsMatched = currentBook.ClassificationNumber == otherBook.ClassificationNumber
             },
             new MatchedProperties
-                { Name = "CutterNumber", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber }
+                { Name = "CutterNumber", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+
+            //create more field to compare base on that i told you to remember
+            new MatchedProperties
+                { Name = "Isbn", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "PublicationYear", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "Ean", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "Summary", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "EstimatedPrice", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "PageCount", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "PhysicalDetails", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "Dimensions", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "AccompanyingMaterial", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "BibliographicalNote", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "AdditionalAuthors", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber },
+            new MatchedProperties
+                { Name = "GeneralNote", IsMatched = currentBook.CutterNumber == otherBook.CutterNumber }
         };
     }
 
@@ -2360,11 +2492,11 @@ public class AIClassificationService : IAIClassificationService
                     var matchCount = coverObjectCounts.Count(pair =>
                         itemCountObjects.TryGetValue(pair.Key, out int value) && value == pair.Value);
                     var totalObject = coverObjectCounts.Count;
-                    var matchRate =Math.Round((double)matchCount / totalObject);
+                    var matchRate = Math.Round((double)matchCount / totalObject);
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2469,7 +2601,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2484,7 +2616,7 @@ public class AIClassificationService : IAIClassificationService
                             image
                         },
                         SubTitle = groupValueLibraryItem.SubTitle,
-                        GeneralNote = groupValueLibraryItem.GeneralNote
+                        // GeneralNote = groupValueLibraryItem.GeneralNote
                     };
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
                     var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
@@ -2595,7 +2727,7 @@ public class AIClassificationService : IAIClassificationService
             foreach (var item in groupValue.LibraryItems)
             {
                 List<string> mainAuthor = new List<string>();
-                mainAuthor.Add(item.GeneralNote!);
+                // mainAuthor.Add(item.GeneralNote!);
                 mainAuthor.Add(item.LibraryItemAuthors.First(x
                         => x.LibraryItemId == item.LibraryItemId)!
                     .Author.FullName);
@@ -2604,6 +2736,7 @@ public class AIClassificationService : IAIClassificationService
                 var ocrCheck = new CheckedItemDto()
                 {
                     Title = item.Title,
+                    SubTitle = item.SubTitle,
                     Authors = mainAuthor,
                     Publisher = item.Publisher ?? " ",
                     Images = new List<IFormFile>()

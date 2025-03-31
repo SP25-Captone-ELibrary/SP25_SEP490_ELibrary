@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Domain.Common.Enums;
+using FuzzySharp;
 using MimeKit.Tnef;
 using Org.BouncyCastle.Asn1.X509;
 
@@ -235,10 +236,10 @@ namespace FPTU_ELibrary.Application.Utils
 
                         // Calculate FuzzinessPoint and MatchPhrasePoint
                         int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
-                        int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
-
+                        // int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+                        int matchPhrasePoint = Fuzz.PartialRatio(normalizedValue, finalContent);
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
-                        int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+                        int matchedPoint = Math.Max(fuzzinessPoint,matchPhrasePoint);
 
                         if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
@@ -275,10 +276,10 @@ namespace FPTU_ELibrary.Application.Utils
 
                         // Calculate FuzzinessPoint and MatchPhrasePoint
                         int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
-                        int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
-
+                        // int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+                        int matchPhrasePoint = Fuzz.PartialRatio(normalizedValue, finalContent);
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
-                        int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+                        int matchedPoint = Math.Max(fuzzinessPoint,matchPhrasePoint);
 
                         if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {
@@ -309,8 +310,10 @@ namespace FPTU_ELibrary.Application.Utils
                     var normalizedValue = RemoveSpecialCharactersOfVietnamese(field.Values.First()).ToLower().Trim();
 
                     int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
-                    int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
-                    int matchedPoint = (fuzzinessPoint + matchPhrasePoint) / 2;
+                    // int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
+                    int matchPhrasePoint = Fuzz.PartialRatio(normalizedValue, finalContent);
+                    // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
+                    int matchedPoint = Math.Max(fuzzinessPoint,matchPhrasePoint);
 
                     matchResult.FieldPointsWithThreshole.Add(new FieldMatchedResult()
                     {

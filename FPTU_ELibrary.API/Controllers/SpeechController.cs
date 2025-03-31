@@ -30,12 +30,11 @@ public class SpeechController : ControllerBase
     }
 
     [HttpGet(APIRoute.AIServices.TextToVoice, Name = nameof(TextToVoice))]
-    [Authorize]
     public async Task<IActionResult> TextToVoice()
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        // var result = await _voiceService.TextToVoice("en", email??string.Empty);
-        // return File((MemoryStream)result.Data!, "audio/mpeg", $"textToVoice.mp3");
-        return Ok(_voiceService.TextToVoiceFile("en", email??string.Empty));
+        var result = await _voiceService.TextToVoiceFile( email??string.Empty);
+        return File((MemoryStream)result.Data!, "audio/mpeg", $"textToVoice.mp3");
+        // return Ok(_voiceService.TextToVoiceFile("en", email??string.Empty));
     }
 }

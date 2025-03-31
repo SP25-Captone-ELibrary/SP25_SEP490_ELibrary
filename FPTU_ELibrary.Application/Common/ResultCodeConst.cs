@@ -813,6 +813,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Unable to update item instance status as {0}
         /// </summary>
         public const string LibraryItem_Warning0022 = "LibraryItem.Warning0022";
+        /// <summary>
+        /// [WARNING] Resource does not belong to this item
+        /// </summary>
+        public const string LibraryItem_Warning0023 = "LibraryItem.Warning0023";
 		/// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>

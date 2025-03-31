@@ -132,6 +132,8 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<AdsScriptSettings>(updatedConfiguration.GetSection("AdsScriptSettings"));
             //Configure RedisSettings
             services.Configure<RedisSettings>(updatedConfiguration.GetSection("RedisSettings"));
+        	//Configure FFMPEGSettings
+            services.Configure<FFMPEGSettings>(updatedConfiguration.GetSection("FFMPEGSettings"));
         	
             #region Development stage
         

@@ -31,6 +31,9 @@ public class AITrainingSessionConfiguration : IEntityTypeConfiguration<AITrainin
         builder.Property(e => e.ErrorMessage)
             .HasColumnType("nvarchar(250)")
             .HasColumnName("error_message");
+        builder.Property(e => e.TrainingPercentage)
+            .HasColumnType("int")
+            .HasColumnName("training_percentage");
         builder.Property(e => e.TrainDate)
             .HasColumnType("datetime")
             .HasColumnName("train_date");

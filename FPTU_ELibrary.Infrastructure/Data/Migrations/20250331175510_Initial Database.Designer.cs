@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250328155026_Initial Database")]
+    [Migration("20250331175510_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -114,6 +114,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<DateTime>("TrainDate")
                         .HasColumnType("datetime")
                         .HasColumnName("train_date");
+
+                    b.Property<int?>("TrainingPercentage")
+                        .HasColumnType("int")
+                        .HasColumnName("training_percentage");
 
                     b.Property<string>("TrainingStatus")
                         .IsRequired()
@@ -1131,12 +1135,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("additional_authors");
 
-                    b.Property<double>("AverageRating")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("float")
-                        .HasDefaultValue(0.0)
-                        .HasColumnName("average_rating");
-
                     b.Property<string>("BibliographicalNote")
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("bibliographical_note");
@@ -1246,12 +1244,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<string>("Publisher")
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("publisher");
-
-                    b.Property<int>("RatingCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0)
-                        .HasColumnName("rating_count");
 
                     b.Property<string>("Responsibility")
                         .HasColumnType("nvarchar(155)")
@@ -1685,8 +1677,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("rating_value");
 
                     b.Property<string>("ReviewText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("review_text");
 
                     b.Property<DateTime?>("UpdatedDate")
@@ -3223,6 +3215,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
                         .WithMany("BorrowRequestResources")
                         .HasForeignKey("BorrowRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRequestResource_RequestId");
 

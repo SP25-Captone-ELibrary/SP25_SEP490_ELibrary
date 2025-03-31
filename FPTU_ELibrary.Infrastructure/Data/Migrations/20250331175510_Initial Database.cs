@@ -22,6 +22,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     total_trained_time = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     training_status = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     error_message = table.Column<string>(type: "nvarchar(250)", nullable: true),
+                    training_percentage = table.Column<int>(type: "int", nullable: true),
                     train_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     train_by = table.Column<string>(type: "nvarchar(250)", nullable: false)
                 },
@@ -849,8 +850,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     bibliographical_note = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     topical_terms = table.Column<string>(type: "nvarchar(500)", nullable: true),
                     additional_authors = table.Column<string>(type: "nvarchar(500)", nullable: true),
-                    average_rating = table.Column<double>(type: "float", nullable: false, defaultValue: 0.0),
-                    rating_count = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     category_id = table.Column<int>(type: "int", nullable: false),
                     shelf_id = table.Column<int>(type: "int", nullable: true),
                     group_id = table.Column<int>(type: "int", nullable: true),
@@ -1025,7 +1024,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     library_item_id = table.Column<int>(type: "int", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     rating_value = table.Column<double>(type: "float", nullable: false),
-                    review_text = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    review_text = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_date = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
@@ -1428,7 +1427,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_BorrowRequestResource_RequestId",
                         column: x => x.borrow_request_id,
                         principalTable: "Borrow_Request",
-                        principalColumn: "borrow_request_id");
+                        principalColumn: "borrow_request_id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_BorrowRequestResource_ResourceId",
                         column: x => x.resource_id,
