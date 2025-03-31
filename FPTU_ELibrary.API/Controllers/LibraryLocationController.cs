@@ -42,7 +42,6 @@ public class LibraryLocationController : ControllerBase
         return Ok(await _floorService.GetMapByFloorIdAsync(floorId: floorId));
     }
 
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetMapShelfDetailById, Name = nameof(GetMapShelfDetailByIdAsync))]
     public async Task<IActionResult> GetMapShelfDetailByIdAsync([FromRoute] int shelfId,
         [FromQuery] LibraryItemSpecParams specParams)
@@ -70,7 +69,6 @@ public class LibraryLocationController : ControllerBase
         return Ok(await _shelfService.GetAllAsync());
     }
 
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetShelfWithFloorZoneSectionById, Name = nameof(GetShelfWithFloorZoneSectionByIdAsync))]
     public async Task<IActionResult> GetShelfWithFloorZoneSectionByIdAsync([FromRoute] int shelfId)
     {

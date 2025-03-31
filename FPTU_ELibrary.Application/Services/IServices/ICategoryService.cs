@@ -7,7 +7,7 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 
 public interface ICategoryService<TDto> : IGenericService<Category, TDto, int>
     where TDto : class
-{ 
+{
     Task<IServiceResult> DeleteRangeAsync(int[] bookCategoryIds);
     Task<IServiceResult> ImportCategoryAsync(IFormFile bookCategories, DuplicateHandle duplicateHandle);
 }

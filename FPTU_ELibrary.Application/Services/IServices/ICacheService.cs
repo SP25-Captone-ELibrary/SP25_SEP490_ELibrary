@@ -1,3 +1,5 @@
+using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+
 namespace FPTU_ELibrary.Application.Services.IServices;
 
 /// <summary>
@@ -6,4 +8,5 @@ namespace FPTU_ELibrary.Application.Services.IServices;
 /// </summary>
 public interface ICacheService
 {
+    Task<IServiceResult> GetOrAddLibraryItemForRecommendationAsync();
 }

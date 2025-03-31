@@ -2,6 +2,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 
+// TODO: Change total units into nullable
 public class WarehouseTrackingCategorySummaryDto
 {
     public CategoryDto Category { get; set; } = null!;

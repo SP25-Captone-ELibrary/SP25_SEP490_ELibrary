@@ -40,7 +40,7 @@ public class LibraryItemInstanceDetailDto
 
 public static class LibraryItemInstanceDetailDtoExtensions
 {
-    public static LibraryItemInstanceDetailDto ToItemInstanceDetailDtoAsync(this LibraryItemInstanceDto dto)
+    public static LibraryItemInstanceDetailDto ToItemInstanceDetailDto(this LibraryItemInstanceDto dto)
     {
         return new()
         {

@@ -6,5 +6,6 @@ public interface INotificationRecipientService<TDto> :IGenericService<Notificati
     where TDto: class
 {
     Task<IServiceResult> GetNumberOfUnreadNotificationsAsync(string email);
-    Task<IServiceResult> UpdateReadStatusAsync(string email);
+    Task<IServiceResult> UpdateRangeReadStatusAsync(string email, List<int> notificationIds);
+    Task<IServiceResult> MarkAsReadAllAsync(string email);
 }

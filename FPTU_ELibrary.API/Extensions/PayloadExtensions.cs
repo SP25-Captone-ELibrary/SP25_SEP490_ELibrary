@@ -8,6 +8,7 @@ using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
+using FPTU_ELibrary.API.Payloads.Requests.Notification;
 using FPTU_ELibrary.API.Payloads.Requests.Role;
 using FPTU_ELibrary.API.Payloads.Requests.Supplier;
 using FPTU_ELibrary.API.Payloads.Requests.Transaction;
@@ -23,6 +24,7 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Dtos.Suppliers;
@@ -384,7 +386,6 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 		
-
 		#region Library Item Instance
 
 		// Mapping from typeof(UpdateItemInstanceRequest) to typeof(LibraryItemInstanceDto)
@@ -421,6 +422,17 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 
+		#region Library Item Review
+		// Mapping from typeof(ReviewItemRequest) to typeof(LibraryItemReviewDto)
+		public static LibraryItemReviewDto ToLibraryItemReviewDto(this ReviewItemRequest req)
+			=> new()
+			{
+				LibraryItemId = req.LibraryItemId,
+				RatingValue = req.RatingValue,
+				ReviewText = req.ReviewText
+			};
+		#endregion
+		
 		#region Library Item Condition
 		// Mapping from typeof(CreateLibraryItemConditionRequest) to typeof(LibraryItemConditionDto)
 		public static LibraryItemConditionDto ToLibraryItemConditionDto(this CreateLibraryItemConditionRequest req)
@@ -1026,6 +1038,17 @@ namespace FPTU_ELibrary.API.Extensions
 			};
 		}
 
+		#endregion
+
+		#region Notification
+		// Mapping from typeof(UpdateNotificationRequest) to typeof(NotificationDto)
+		public static NotificationDto ToNotificationDto(this UpdateNotificationRequest req)
+			=> new()
+			{
+				Title = req.Title,
+				Message = req.Message,
+				NotificationType = req.NotificationType
+			};
 		#endregion
 	}
 }

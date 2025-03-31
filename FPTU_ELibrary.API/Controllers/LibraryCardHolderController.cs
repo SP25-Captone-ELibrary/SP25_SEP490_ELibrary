@@ -156,21 +156,25 @@ public class LibraryCardHolderController : ControllerBase
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderDigitalBorrowById, Name = nameof(GetCardHolderDigitalBorrowByIdAsync))]
-    public async Task<IActionResult> GetCardHolderDigitalBorrowByIdAsync([FromRoute] Guid userId,
-        [FromRoute] int digitalBorrowId)
+    public async Task<IActionResult> GetCardHolderDigitalBorrowByIdAsync([FromRoute] Guid userId, [FromRoute] int digitalBorrowId)
     {
         return Ok(await _digitalBorrowSvc.GetByIdAsync(id: digitalBorrowId, userId: userId));
     }
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderTransactionById, Name = nameof(GetCardHolderTransactionByIdAsync))]
-    public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId,
-        [FromRoute] int transactionId)
+    public async Task<IActionResult> GetCardHolderTransactionByIdAsync([FromRoute] Guid userId, [FromRoute] int transactionId)
     {
-        return Ok(await _transactionSvc.GetCardHolderTransactionByIdAsync(userId: userId,
-            transactionId: transactionId));
+        return Ok(await _transactionSvc.GetByIdAsync(id: transactionId, userId: userId));
     }
 
+    [Authorize]
+    [HttpGet(APIRoute.LibraryCardHolder.GetCardHolderReservationById, Name = nameof(GetCardHolderReservationByIdAsync))]
+    public async Task<IActionResult> GetCardHolderReservationByIdAsync([FromRoute] Guid userId, [FromRoute] int reservationId)
+    {
+        return Ok(await _reservationQueueSvc.GetByIdAsync(id: reservationId, userId: userId));
+    }
+    
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderBorrowRequest, Name = nameof(GetAllCardHolderBorrowRequestAsync))]
     public async Task<IActionResult> GetAllCardHolderBorrowRequestAsync([FromRoute] Guid userId,
@@ -210,37 +214,38 @@ public class LibraryCardHolderController : ControllerBase
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderReservation, Name = nameof(GetAllCardHolderReservationAsync))]
-    public async Task<IActionResult> GetAllCardHolderReservationAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetAllCardHolderReservationAsync([FromRoute] Guid userId, [FromQuery] ReservationQueueSpecParams specParams)
     {
-        return Ok(await _reservationQueueSvc.GetAllCardHolderReservationByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _reservationQueueSvc.GetAllCardHolderReservationAsync(new ReservationQueueSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize,
+            userId: userId)));
     }
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderTransaction, Name = nameof(GetAllCardHolderTransactionAsync))]
-    public async Task<IActionResult> GetAllCardHolderTransactionAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetAllCardHolderTransactionAsync([FromRoute] Guid userId, [FromQuery] TransactionSpecParams specParams)
     {
-        return Ok(await _transactionSvc.GetAllCardHolderTransactionByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _transactionSvc.GetAllCardHolderTransactionAsync(
+            new TransactionSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                userId: userId)));
     }
 
     [Authorize]
     [HttpGet(APIRoute.LibraryCardHolder.GetAllCardHolderNotification, Name = nameof(GetAllCardHolderNotificationAsync))]
-    public async Task<IActionResult> GetAllCardHolderNotificationAsync([FromRoute] Guid userId,
-        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    public async Task<IActionResult> GetAllCardHolderNotificationAsync([FromRoute] Guid userId, [FromQuery] NotificationSpecParams specParams)
     {
-        return Ok(await _notificationSvc.GetAllCardHolderNotificationByUserIdAsync(
-            userId: userId,
-            pageIndex: pageIndex ?? 1,
-            pageSize: pageSize ?? _appSettings.PageSize));
+        return Ok(await _notificationSvc.GetAllWithSpecAsync(new NotificationSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize,
+            isCallFromManagement: true)));
     }
-
+    
     [Authorize]
     [HttpPatch(APIRoute.LibraryCardHolder.SoftDeleteCardHolder, Name = nameof(SoftDeleteCardHolderAsync))]
     public async Task<IActionResult> SoftDeleteCardHolderAsync([FromRoute] Guid userId)
@@ -282,7 +287,6 @@ public class LibraryCardHolderController : ControllerBase
     {
         return Ok(await _userSvc.DeleteRangeLibraryCardHolderAsync(userIds: req.Ids));
     }
-
     #endregion
 
     [Authorize]

@@ -780,8 +780,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId
-        , int itemId)
+    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId)
     {
         try
         {
@@ -789,19 +788,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-
-            //get item of the resource
-            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
-            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
-            if (libraryItem.Data is null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult<(Stream, string)>(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
-            }
-
-            var itemValue = (LibraryItemDto)libraryItem.Data!;
-
+            
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
             resourceSpec.EnableSplitQuery();
@@ -865,7 +852,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
     #region mp3 v1
 
-    public async Task<IServiceResult<Stream>> GetFullAudioFileWithWatermark(string email, int itemId, int resourceId)
+    public async Task<IServiceResult<Stream>> GetFullAudioFileWithWatermark(string email, int resourceId)
     {
         try
         {
@@ -873,17 +860,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            //get item of the resource
-            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
-            var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
-            if (libraryItem.Data is null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
-            }
-
-            var itemValue = (LibraryItemDto)libraryItem.Data!;
 
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
@@ -946,25 +922,15 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     #endregion
 
 
-    public async Task<IServiceResult> GetNumberOfUploadAudioFile(int resourceId, int itemId, string email)
+    public async Task<IServiceResult> GetNumberOfUploadAudioFile(string email, int resourceId)
     {
         // Determine current system language
         var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
             LanguageContext.CurrentLanguage);
         var isEng = sysLang == SystemLanguage.English;
-        //get item of the resource
-        var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
-        var libraryItem = await _libraryItemService.GetWithSpecAsync(itemSpec);
-        if (libraryItem.Data is null)
-        {
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                StringUtils.Format(errMsg, isEng ? "item" : "tài liệu"));
-        }
 
-        var itemValue = (LibraryItemDto)libraryItem.Data!;
-        //Get Speech Size
-        var textToVoice = await _voiceService.TextToVoice(itemValue.Language, email);
+        // Get Speech Size
+        var textToVoice = await _voiceService.TextToVoice(LanguageContext.CurrentLanguage, email);
         var audioStream = (MemoryStream)textToVoice.Data!;
         var speechSize = audioStream.Length;
 
@@ -1175,7 +1141,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     }
 
 
-    public async Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId, int itemId)
+    public async Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId)
     {
         try
         {
@@ -1192,13 +1158,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             );
             var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
             if (resource is null)
-            {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult<MemoryStream>(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
-            }
-
-            if (!resource.LibraryItemResources.Any(ir => ir.LibraryItemId == itemId && ir.ResourceId == resourceId))
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult<MemoryStream>(ResultCodeConst.SYS_Warning0002,

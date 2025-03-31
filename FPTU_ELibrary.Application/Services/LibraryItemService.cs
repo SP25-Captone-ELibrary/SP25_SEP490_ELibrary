@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Dtos.Recommendation;
 using FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 using FPTU_ELibrary.Application.Elastic.Mappers;
 using FPTU_ELibrary.Application.Elastic.Models;
@@ -103,7 +104,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _whTrackingService = whTrackingService;
         _appSettings = monitor.CurrentValue;
     }
-    
+
     public async Task<IServiceResult> CreateAsync(LibraryItemDto dto, int trackingDetailId)
     {
         try
@@ -982,8 +983,9 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
-    public async Task<IServiceResult> GetAllWithSpecAndWithOutFilterAsync(
-        ISpecification<LibraryItem> specification, bool tracked = true)
+    public async Task<IServiceResult> GetAllWithoutAdvancedSpecAsync(
+        ISpecification<LibraryItem> specification,
+        bool tracked = true)
     {
         return await base.GetAllWithSpecAsync(specification, tracked);
     }
@@ -1970,6 +1972,19 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetFirstAuthorAsync(int id)
+    {
+        try
+        {
+            return await _itemAuthorService.Value.GetFirstByLibraryItemIdAsync(libraryItemId: id);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get first author for specific item");
+        }
+    }
+    
     public async Task<IServiceResult> GetByInstanceBarcodeAsync(string barcode)
     {
         try
@@ -2003,6 +2018,163 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         }
     }
 
+    public async Task<IServiceResult> GetItemClassificationNumAsync(int id)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == id);
+            // Get with spec and selector
+            var itemClassificationNum = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: s => s.ClassificationNumber);
+            
+            // Mark as call success
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Success0002,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                data: itemClassificationNum);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get item classification number by id");
+        }
+    }
+    
+    public async Task<IServiceResult> GetItemClassificationNumAsync(int[] ids)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId));
+            // Get with spec and selector
+            var itemClassificationNums = (await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAndSelectorAsync(baseSpec, selector: s => s.ClassificationNumber)).ToList();
+
+            // Mark as call success
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Success0002,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                data: itemClassificationNums.Distinct().ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get item classification number by id");
+        }
+    }
+    
+    public async Task<IServiceResult> GetItemClassificationNumForVectorAsync(int[] ids)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => ids.Contains(li.LibraryItemId));
+            // Get with spec and selector
+            var itemClassificationNums = (await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAndSelectorAsync(baseSpec, selector: s => new GetVectorClassificationNumResult()
+                {
+                    LibraryItemId = s.LibraryItemId,
+                    ClassificationNumber = s.ClassificationNumber
+                })).ToList();
+
+            // Mark as call success
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Success0002,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                data: itemClassificationNums.ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get item classification number by id");
+        }
+    }
+
+    public async Task<IServiceResult> GetAllForRecommendationAsync()
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => 
+                li.Status == LibraryItemStatus.Published); // In published status (able to circulation)
+            // Retrieve all with spec
+            var entities = await _unitOfWork.Repository<LibraryItem, int>()
+                .GetAllWithSpecAndSelectorAsync(baseSpec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList()
+                }, tracked: false);
+            if (entities.Any())
+            {
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: _mapper.Map<List<LibraryItemDto>>(entities));
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<LibraryItemDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all items for recommendation");
+        }
+    }
+    
     public async Task<IServiceResult> CheckUnavailableForBorrowRequestAsync(string email, int[] ids)
     {
         try
@@ -2469,12 +2641,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         foreach (var libraryItemId in libraryItemIds)
         {
             var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
-
             if (item is null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
-                        , "item"));
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "item"));
             }
             item.GroupId = newGroupId;
             await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(item);
@@ -2499,8 +2669,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             if (item is null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
-                        , "item"));
+                    StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "item"));
             }
             item.IsTrained = true;
             item.TrainedAt = DateTime.Now;
@@ -3225,7 +3394,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     ? "DDC number must not exceed than 50 characters"
                     : "Mã DDC tài liệu phải nhỏ hơn 50 ký tự");
             }
-            else if (!StringUtils.IsValidDeweyDecimal(record.ClassificationNumber)
+            else if (!DeweyDecimalUtils.IsValidDeweyDecimal(record.ClassificationNumber)
                      || StringUtils.IsDateTime(record.ClassificationNumber))
             {
                 rowErrors.Add(isEng
@@ -3239,7 +3408,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     ? "Cutter number must not exceed than 50 characters"
                     : "Ký hiệu xếp giá phải nhỏ hơn 50 ký tự");
             }
-            else if (!StringUtils.IsValidCutterNumber(record.CutterNumber)
+            else if (!DeweyDecimalUtils.IsValidCutterNumber(record.CutterNumber)
                      || StringUtils.IsDateTime(record.CutterNumber))
             {
                 rowErrors.Add(isEng

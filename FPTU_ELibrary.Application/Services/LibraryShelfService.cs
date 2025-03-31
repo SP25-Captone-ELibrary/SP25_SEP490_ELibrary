@@ -315,7 +315,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                         : "mã DDC của tài liệu để tìm kiếm kệ phù hợp"));
             }
             else if (!decimal.TryParse(libItemDto.ClassificationNumber, out ddc) || // Try parsed to decimal
-                     !StringUtils.IsValidDeweyDecimal(libItemDto.ClassificationNumber)) // Check valid
+                     !DeweyDecimalUtils.IsValidDeweyDecimal(libItemDto.ClassificationNumber)) // Check valid
             {
                 // Invalid DDC 
                 var invalidInputMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0001);

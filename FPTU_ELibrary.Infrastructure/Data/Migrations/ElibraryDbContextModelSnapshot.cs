@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -1674,8 +1674,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         .HasColumnName("rating_value");
 
                     b.Property<string>("ReviewText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
                         .HasColumnName("review_text");
 
                     b.Property<DateTime?>("UpdatedDate")
@@ -2178,6 +2178,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QueueId"));
 
+                    b.Property<DateTime?>("AssignedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("assigned_date");
+
                     b.Property<int?>("BorrowRequestId")
                         .HasColumnType("int")
                         .HasColumnName("borrow_request_id");
@@ -2246,6 +2250,12 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<DateTime>("ReservationDate")
                         .HasColumnType("datetime")
                         .HasColumnName("reservation_date");
+
+                    b.Property<int>("TotalExtendPickup")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_extend_pickup");
 
                     b.HasKey("QueueId")
                         .HasName("PK_ReservationQueue_QueueId");
@@ -3202,6 +3212,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
                         .WithMany("BorrowRequestResources")
                         .HasForeignKey("BorrowRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_BorrowRequestResource_RequestId");
 

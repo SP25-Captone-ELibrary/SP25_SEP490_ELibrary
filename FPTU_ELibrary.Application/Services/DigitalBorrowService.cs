@@ -120,7 +120,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         }
     }
 
-    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
+    public async Task<IServiceResult> GetByIdAsync(int id, 
+        string? email = null, Guid? userId = null, bool isCallFromManagement = false)
     {
         try
         {
@@ -153,13 +154,19 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 var digitalBorrowDto = _mapper.Map<DigitalBorrowDto>(existingEntity);
                 
                 // Try to retrieve all transaction
-                var tranSpec = new BaseSpecification<Transaction>(t =>
-                    (
+                var tranSpec = new BaseSpecification<Transaction>(t => 
+                    t.ResourceId == existingEntity.ResourceId); // Must equals to specific resource ids
+                // Add filter
+                if (isCallFromManagement) // Management
+                {
+                    tranSpec.AddFilter(t => t.TransactionStatus == TransactionStatus.Paid); // Only retrieve paid status
+                }
+                else // User
+                {
+                    tranSpec.AddFilter(t =>
                         (!string.IsNullOrEmpty(email) && t.User.Email == email) || // Exist any email match
-                        (userId.HasValue && userId != Guid.Empty && t.UserId == userId) // Exist any userId match
-                    ) &&
-                    // Must equals to specific resource ids
-                    t.ResourceId == existingEntity.ResourceId);
+                        (userId.HasValue && userId != Guid.Empty && t.UserId == userId)); // Exist any userId match
+                }
                 // Apply include 
                 tranSpec.ApplyInclude(q => q.Include(t => t.User));
                 // Retrieve all transaction dto with spec

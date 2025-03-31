@@ -5,6 +5,7 @@ using FPTU_ELibrary.API.Payloads.Requests;
 using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
@@ -20,16 +21,20 @@ public class BorrowRequestController : ControllerBase
 {
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;
     private readonly AppSettings _appSettings;
+    private readonly IBorrowRequestResourceService<BorrowRequestResourceDto> _borrowReqResourceSvc;
 
     public BorrowRequestController(
         IBorrowRequestService<BorrowRequestDto> borrowReqSvc,
+        IBorrowRequestResourceService<BorrowRequestResourceDto> borrowReqResourceSvc,
         IOptionsMonitor<AppSettings> monitor)
     {
         _borrowReqSvc = borrowReqSvc;
+        _borrowReqResourceSvc = borrowReqResourceSvc;
         _appSettings = monitor.CurrentValue;
     }
-    
+
     #region Management
+
     [Authorize]
     [HttpGet(APIRoute.BorrowRequest.GetAllManagement, Name = nameof(GetAllManagementAsync))]
     public async Task<IActionResult> GetAllManagementAsync([FromQuery] BorrowRequestSpecParams specParams)
@@ -44,26 +49,40 @@ public class BorrowRequestController : ControllerBase
     [HttpGet(APIRoute.BorrowRequest.GetByIdManagement, Name = nameof(GetByIdManagementAsync))]
     public async Task<IActionResult> GetByIdManagementAsync([FromRoute] int id)
     {
-        return Ok(await _borrowReqSvc.GetByIdAsync(id));
+        return Ok(await _borrowReqSvc.GetByIdAsync(id, email: null, userId: null));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.BorrowRequest.CheckExistBarcode, Name = nameof(CheckExistBarcodeInRequestAsync))]
     public async Task<IActionResult> CheckExistBarcodeInRequestAsync([FromRoute] int id, [FromQuery] string barcode)
     {
         return Ok(await _borrowReqSvc.CheckExistBarcodeInRequestAsync(id: id, barcode: barcode));
     }
-    
-    [Authorize]    
-    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificItemManagement, Name = nameof(CancelSpecificBorrowRequestDetailManagementAsync))]
+
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificItemManagement,
+        Name = nameof(CancelSpecificBorrowRequestDetailManagementAsync))]
     public async Task<IActionResult> CancelSpecificBorrowRequestDetailManagementAsync(
-        [FromRoute] int id, 
+        [FromRoute] int id,
         [FromRoute] int libraryItemId,
         [FromQuery] Guid libraryCardId)
     {
-        return Ok(await _borrowReqSvc.CancelSpecificItemManagementAsync(libraryCardId: libraryCardId, id: id, libraryItemId: libraryItemId));
+        return Ok(await _borrowReqSvc.CancelSpecificItemManagementAsync(libraryCardId: libraryCardId, id: id,
+            libraryItemId: libraryItemId));
     }
 
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificDigitalManagement, Name = nameof(CancelSpecificDigitalBorrowRequestManagementAsync))]
+    public async Task<IActionResult> CancelSpecificDigitalBorrowRequestManagementAsync([FromRoute] int id,
+        [FromRoute] int resourceId,
+        [FromQuery] Guid libraryCardId)
+    {
+        return Ok(await _borrowReqSvc.CancelSpecificDigitalManagementAsync(
+            libraryCardId: libraryCardId,
+            id: id,
+            resourceId: resourceId));
+    }
+    
     [Authorize]
     [HttpPatch(APIRoute.BorrowRequest.CancelManagement, Name = nameof(CancelBorrowRequestManagementAsync))]
     public async Task<IActionResult> CancelBorrowRequestManagementAsync([FromRoute] int id,
@@ -74,13 +93,14 @@ public class BorrowRequestController : ControllerBase
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowReqSvc.CancelManagementAsync(
             libraryCardId: libraryCardId,
-            id: id, 
+            id: id,
             isConfirmed: isConfirmed,
             cancellationReason: cancellationReason));
     }
+
     #endregion
-    
-    [Authorize]    
+
+    [Authorize]
     [HttpPost(APIRoute.BorrowRequest.Create, Name = nameof(CreateBorrowRequestAsync))]
     public async Task<IActionResult> CreateBorrowRequestAsync([FromBody] CreateBorrowRequest req)
     {
@@ -103,28 +123,51 @@ public class BorrowRequestController : ControllerBase
             libraryItemId: libraryItemId));
     }
 
-    [Authorize]    
+    [Authorize]
     [HttpPatch(APIRoute.BorrowRequest.Cancel, Name = nameof(CancelBorrowRequestAsync))]
-    public async Task<IActionResult> CancelBorrowRequestAsync([FromRoute] int id, 
+    public async Task<IActionResult> CancelBorrowRequestAsync([FromRoute] int id,
         [FromQuery] bool isConfirmed = false,
         [FromQuery] string? cancellationReason = null)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowReqSvc.CancelAsync(
             email: email ?? string.Empty,
-            id: id, 
+            id: id,
             isConfirmed: isConfirmed,
             cancellationReason: cancellationReason));
     }
-    
-    [Authorize]    
+
+    [Authorize]
     [HttpPatch(APIRoute.BorrowRequest.CancelSpecificItem, Name = nameof(CancelSpecificBorrowRequestDetailAsync))]
-    public async Task<IActionResult> CancelSpecificBorrowRequestDetailAsync([FromRoute] int id, [FromRoute] int libraryItemId)
+    public async Task<IActionResult> CancelSpecificBorrowRequestDetailAsync([FromRoute] int id,
+        [FromRoute] int libraryItemId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _borrowReqSvc.CancelSpecificItemAsync(
             email: email ?? string.Empty,
             id: id,
             libraryItemId: libraryItemId));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificDigital, Name = nameof(CancelSpecificDigitalBorrowRequestAsync))]
+    public async Task<IActionResult> CancelSpecificDigitalBorrowRequestAsync([FromRoute] int id,
+        [FromRoute] int resourceId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.CancelSpecificDigitalAsync(
+            email: email ?? string.Empty,
+            id: id,
+            resourceId: resourceId));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.BorrowRequest.ConfirmCreateTransaction, Name = nameof(ConfirmCreateTransactionForRequestResourceAsync))]
+    public async Task<IActionResult> ConfirmCreateTransactionForRequestResourceAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqResourceSvc.GetAllByRequestIdToConfirmCreateTransactionAsync(
+            email: email ?? string.Empty,
+            borrowRequestId: id));
     }
 }

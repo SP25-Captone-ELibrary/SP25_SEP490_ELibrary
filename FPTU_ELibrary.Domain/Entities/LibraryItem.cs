@@ -61,8 +61,6 @@ public class LibraryItem : IAuditableEntity
     public ICollection<LibraryItemInstance> LibraryItemInstances { get; set; } = new List<LibraryItemInstance>();
     public ICollection<LibraryItemAuthor> LibraryItemAuthors { get; set; } = new List<LibraryItemAuthor>();
     public ICollection<LibraryItemResource> LibraryItemResources { get; set; } = new List<LibraryItemResource>();
-    
-    [JsonIgnore]
     public ICollection<LibraryItemReview> LibraryItemReviews { get; set; } = new List<LibraryItemReview>();
     
     [JsonIgnore]

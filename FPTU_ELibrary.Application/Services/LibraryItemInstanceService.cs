@@ -661,14 +661,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             // Error msg: The item's shelf status cannot be updated as {0}
             var constraintMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0020); 
             // Check constraint
-            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.InShelf))
-            {
-                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
-                    StringUtils.Format(constraintMsg, isEng 
-                        ? "the item has been shelved" 
-                        : "tài liệu ở tình trạng đã được xếp lên kệ"));
-            }
-            else if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Borrowed))
+            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Borrowed))
             {
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0020,
                     StringUtils.Format(constraintMsg, isEng 
@@ -696,7 +689,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
                 // Convert to library item instance detail
-                instanceDto.ToItemInstanceDetailDtoAsync());
+                instanceDto.ToItemInstanceDetailDto());
         }
         catch (Exception ex)
         {

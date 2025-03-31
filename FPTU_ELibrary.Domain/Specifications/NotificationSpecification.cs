@@ -10,8 +10,10 @@ public class NotificationSpecification : BaseSpecification<Notification>
 {
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
+    public bool IsCallFromManagement { get; set; }
 
-    public NotificationSpecification(NotificationSpecParams specParams, int pageIndex, int pageSize) 
+    public NotificationSpecification(NotificationSpecParams specParams, int pageIndex, int pageSize,
+        bool isCallFromManagement = false) 
         : base(n =>
         string.IsNullOrEmpty(specParams.Search) ||
         (
@@ -26,6 +28,9 @@ public class NotificationSpecification : BaseSpecification<Notification>
             )
         ))
     {
+        // Assign bool
+        IsCallFromManagement = isCallFromManagement;
+        
         // Pagination
         PageIndex = pageIndex;
         PageSize = pageSize;
@@ -33,15 +38,32 @@ public class NotificationSpecification : BaseSpecification<Notification>
         // Enable split query
         EnableSplitQuery();
 
-        if (specParams.IsPublic != null)
+        // Filter for specific usage (privacy or management)
+        if (!string.IsNullOrEmpty(specParams.Email))
+        {
+            // Check whether is call from management
+            if (!isCallFromManagement) // Used by user
+            {
+                AddFilter(s => 
+                    s.IsPublic == true || // All with public  
+                    (
+                        // Combined with privacy of their email
+                        s.IsPublic == false && s.NotificationRecipients.Any(r => r.Recipient.Email == specParams.Email)
+                    )
+                );
+            }
+            else if (isCallFromManagement) // Called by employee
+            {
+                // Only process get all user's privacy notification
+                AddFilter(s => s.IsPublic == false && s.NotificationRecipients.Any(r => r.Recipient.Email == specParams.Email));
+            }
+        }
+        else if (string.IsNullOrEmpty(specParams.Email) && isCallFromManagement)
         {
             // Filter default as public only
-            AddFilter(s => s.IsPublic == specParams.IsPublic);
+            AddFilter(s => s.IsPublic == true);
         }
-        if (specParams.Email != null)
-        {            
-            AddFilter(x => x.NotificationRecipients.Any(nr => nr.Recipient.Email == specParams.Email));
-        }
+        
         if (specParams.CreatedBy != null) // Created by
         {
             AddFilter(x => x.CreatedBy == specParams.CreatedBy);

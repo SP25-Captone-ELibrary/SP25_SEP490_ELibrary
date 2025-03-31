@@ -68,19 +68,22 @@
 			// [PATCH]
 			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
+			public const string CancelSpecificDigitalManagement = Base + "/management/borrows/requests/{id}/digitals/{resourceId}/cancel";
 			#endregion
 			
 			// [GET]
+			public const string ConfirmCreateTransaction = Base + "/borrows/requests/{id}/confirm-transaction";
 			// [POST]
 			public const string Create = Base + "/borrows/requests";
 			public const string AddItemToRequest = Base + "/borrows/requests/{id}/details/add-item";
 			// [PATCH]
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
+			public const string CancelSpecificDigital = Base + "/borrows/requests/{id}/digitals/{resourceId}/cancel";
 		}
 
 		/// <summary>
-		/// Borrow
+		/// Borrow Record
 		/// </summary>
 		public static class BorrowRecord
 		{
@@ -96,8 +99,20 @@
 			public const string ProcessReturn = Base + "/mangement/borrows/records/process-return";
 			#endregion
 			
+			public const string GetAllFineById = Base + "/borrows/records/{id}/fines";
 			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
 			public const string Extend = Base + "/borrows/records/{id}/extend";
+		}
+
+		/// <summary>
+		/// Digital Borrow
+		/// </summary>
+		public static class DigitalBorrow
+		{
+			#region Management
+			public const string GetAll = Base + "/management/borrows/digital";
+			public const string GetById = Base + "/management/borrows/digital/{id}";
+			#endregion
 		}
 		
 		/// <summary>
@@ -136,8 +151,6 @@
 			public const string DeleteRange = Base + "/management/library-items";
 			#endregion
 
-			public const string GetFullAudioFileWithWatermark = Base + "/library-items/{itemId}/resource/{resourceId}/audio";
-			public const string CountPartToUpload = Base +"/library-items/{itemId}/resource/{resourceId}/count-part";
 			public const string GetNewArrivals = Base + "/library-items/new-arrivals";
 			public const string GetRecentReadByIds = Base + "/library-items/recent-read";
 			public const string GetTrending = Base + "/library-items/trending";
@@ -151,9 +164,12 @@
 			public const string GetRelatedAuthorItems = Base + "/library-items/author-related-items";
 			public const string Search = Base + "/library-items/q";
 			public const string CheckUnavailableItems = Base + "/library-items/unavailable";
-			public const string GetOwnResource = Base + "/library-items/{itemId}/resource/{resourceId}";
-			public const string GetPdfPreview = Base + "/library-item/{itemId}/resource/{resourceId}/preview";
-			public const string GetAudioPreview = Base+"/library-item/{itemId}/resource/{resourceId}/audio/preview";
+			
+			public const string GetOwnResource = Base + "/library-items/resource/{resourceId}";
+			public const string GetPdfPreview = Base + "/library-items/resource/{resourceId}/preview";
+			public const string GetAudioPreview = Base + "/library-item/resource/{resourceId}/audio/preview";
+			public const string GetFullAudioFileWithWatermark = Base + "/library-items/resource/{resourceId}/audio";
+			public const string CountPartToUpload = Base +"/library-items/resource/{resourceId}/count-part";
 			public const string CheckEmgu = "emgu/test";
 		}
 
@@ -168,7 +184,7 @@
 			public const string GetById = Base + "/management/library-items/resources/{id}";
 			// [POST]
 			public const string AddToBook = Base + "/management/library-items/{libraryItemId}/resources";
-			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";			// [PUT] / [PATCH]
+			public const string AddAudioBook = Base + "/management/library-items/{libraryItemId}/resources/audio";	
 			public const string Update = Base + "/management/library-items/resources/{id}";
 			public const string SoftDelete = Base + "/management/library-items/resources/{id}/soft-delete";
 			public const string SoftDeleteRange = Base + "/management/library-items/resources/soft-delete-range";
@@ -178,6 +194,9 @@
 			public const string Delete = Base + "/management/library-items/resources/{id}";
 			public const string DeleteRange = Base + "/management/library-items/resources";
 			#endregion
+			
+			// [GET]
+			public const string GetByIdPublic = Base + "/library-items/resources/{id}";
 		}
 
 		/// <summary>
@@ -209,6 +228,16 @@
 			public const string Delete = Base + "/management/library-items/instances/{id}";
 			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
 			#endregion
+		}
+
+		/// <summary>
+		/// Library item review
+		/// </summary>
+		public static class LibraryItemReview
+		{
+			public const string GetByItemId = Base + "/library-item-reviews/{libraryItemId}";
+			public const string Review = Base + "/library-item-reviews";
+			public const string Delete = Base + "/library-item-reviews/{libraryItemId}";
 		}
 
 		/// <summary>
@@ -260,6 +289,7 @@
 			public const string GetCardHolderBorrowRecordById = Base + "/management/library-card-holders/{userId}/borrows/records/{borrowRecordId}";
 			public const string GetCardHolderDigitalBorrowById = Base + "/management/library-card-holders/{userId}/borrows/digital/{digitalBorrowId}";
 			public const string GetCardHolderTransactionById = Base + "/management/library-card-holders/{userId}/borrows/transactions/{transactionId}";
+			public const string GetCardHolderReservationById = Base + "/management/library-card-holders/{userId}/reservations/{reservationId}";
 			public const string GetAllCardHolders = Base + "/management/library-card-holders";
 			public const string GetAllCardHolderBorrowRequest = Base + "/management/library-card-holders/{userId}/borrows/requests";
 			public const string GetAllCardHolderBorrowRecord = Base + "/management/library-card-holders/{userId}/borrows/records";
@@ -366,10 +396,6 @@
 			// [DELETE]
 			public const string HardDelete = Base + "/management/users/{id}";
 			public const string HardDeleteRange = Base + "/management/users";
-			
-			// public const string CreateMany = Base + "/admin/createMany";
-			//admin update role from general user(GU) to Student or Teacher role
-			// public const string UpdateRole = Base + "/users/{id}/role";
 			#endregion
 			
 			// [GET]
@@ -380,10 +406,11 @@
 			public const string GetAllUserDigitalBorrow = Base + "/users/borrows/digital";
 			public const string GetAllUserReservation = Base + "/users/reservations";
 			public const string GetAllUserTransaction = Base + "/users/transactions";
-			public const string GetAllUserNotification = Base + "/users/notifications";
 			public const string GetBorrowRequestById = Base + "/users/borrows/requests/{id}";
 			public const string GetBorrowRecordById = Base + "/users/borrows/records/{id}";
 			public const string GetDigitalBorrowById = Base + "/users/borrows/digital/{id}";
+			public const string GetTransactionById = Base + "/users/transactions/{id}";
+			public const string GetReservationById = Base + "/users/reservations/{id}";
 			// [POST]
 			// [PATCH]
 			// [PUT]
@@ -474,14 +501,31 @@
 		}
 
 		/// <summary>
-		/// Return endpoints
+		/// Reservation endpoints
 		/// </summary>
-		public static class Return
+		public static class Reservation
 		{
 			#region Management
-			public const string InLibraryReturn = Base + "/management/returns/in-library";
-			public const string SelfCheckoutReturn = Base + "/managmenet/returns/self-checkout";
+			// [GET]
+			public const string GetAllAssignableAfterReturn = Base + "/management/reservations/assignable-after-return";
+			public const string GetAll = Base + "/management/reservations";
+			public const string GetById = Base + "/management/reservations/{id}";
+			public const string GetAssignableById = Base + "/management/reservations/{id}/get-assignable-instances";
+			public const string GetAppliedLabelById = Base + "/management/reservations/{id}/applied-label";
+			// [POST]
+			public const string AssignAfterReturn = Base + "/management/reservations/assign-after-return";
+			public const string AssignById = Base + "/management/reservations/{id}/assign";
+			// [PUT] OR [PATCH]
+			public const string ConfirmApplyLabel = Base + "/management/reservations/confirm-apply-label";
+			public const string ReapplyLabel = Base + "/management/reservations/{id}/re-apply-label";
+			public const string ExtendPickupDate = Base + "/management/reservations/{id}/extend-pick-up-date";
+			// [DELETE]
 			#endregion
+		}
+
+		public static class Recommender
+		{
+			public const string GetUserRecommend = Base + "/recommend";
 		}
 		
 		/// <summary>
@@ -492,6 +536,15 @@
 			// [POST]
 			public const string ImportToExcel = Base + "/management/system-messages/import-excel";
 			public const string ExportToExcel = Base + "/management/system-messages/export-excel";
+		}
+
+		/// <summary>
+		/// System configuration endpoints
+		/// </summary>
+		public static class SystemConfiguration
+		{
+			// [GET]
+			public const string GetBorrowSettings = Base + "/system-configurations/borrow-settings";
 		}
 
 		/// <summary>
@@ -574,6 +627,7 @@
 			//	[POST]
 			public const string Create = Base + "/management/notifications";
 			//	[PUT]
+			public const string Update = Base + "/management/notifications/{id}";
 			//	[PATCH]
 			//	[DELETE]
 			#endregion
@@ -582,9 +636,10 @@
 			public const string GetPrivacyById = Base + "/privacy/notifications/{id}";
 			//	[POST]
 			public const string GetAllPrivacy = Base + "/privacy/notifications";
-			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; //filter unread notification
+			public const string GetNumberOfUnreadNotifications = Base + "/privacy/unread-noti"; 
 			//	[PUT]
 			public const string UpdateReadStatus = Base + "/privacy/notifications";
+			public const string MarkAsReadAll = Base + "/privacy/notifications/mark-as-read-all";
 			//	[PATCH]
 			//	[DELETE]
 		}
@@ -772,6 +827,7 @@
 			// [GET]
 			public const string GetAll = Base + "/user-favorite";
 		}
+		
 		/// <summary>
 		/// AdminConfiguration endpoints
 		/// </summary>
@@ -779,13 +835,14 @@
 		{
 			// [GET]
 			public const string GetAll = Base + "/admin-configuration";
-
 			public const string GetDetail = Base + "/admin-configuration/{name}";
 			// [PUT]
 			public const string Update = Base + "/admin-configuration";
-			
 		}
 
+		/// <summary>
+		/// AITrainingSession endpoints
+		/// </summary>
 		public static class AITrainingSession
 		{
 			#region Managemant

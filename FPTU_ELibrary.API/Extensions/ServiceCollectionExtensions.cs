@@ -130,6 +130,8 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
             //Configure AdsScriptSettings
             services.Configure<AdsScriptSettings>(updatedConfiguration.GetSection("AdsScriptSettings"));
+            //Configure RedisSettings
+            services.Configure<RedisSettings>(updatedConfiguration.GetSection("RedisSettings"));
         	//Configure FFMPEGSettings
             services.Configure<FFMPEGSettings>(updatedConfiguration.GetSection("FFMPEGSettings"));
         	
@@ -187,9 +189,11 @@ namespace FPTU_ELibrary.API.Extensions
                 var payGate = "https://api-merchant.payos.vn";
                 var returnUrl = env.IsDevelopment()
                     ? "http://localhost:3000/payment-return"
+                    // TODO: change to deploy URL
                     : "https://prep4ielts.vercel.app/payment-return";
                 var cancelUrl = env.IsDevelopment()
                     ? "http://localhost:3000/payment-cancel"
+                    // TODO: change to deploy URL
                     : "https://prep4ielts.vercel.app/payment-cancel";
 
                 services.Configure<PayOSSettings>(options =>

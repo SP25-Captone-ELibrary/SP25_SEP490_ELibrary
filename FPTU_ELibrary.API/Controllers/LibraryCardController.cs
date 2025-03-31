@@ -75,7 +75,7 @@ public class LibraryCardController : ControllerBase
     [HttpGet(APIRoute.LibraryCard.GetCardById, Name = nameof(GetLibraryCardByIdAsync))]
     public async Task<IActionResult> GetLibraryCardByIdAsync([FromRoute] Guid id)
     {
-        return Ok(await _cardSvc.GetByIdAsync(id));
+        return Ok(await _cardSvc.GetDetailAsync(id));
     }
 
     [Authorize]

@@ -1,9 +1,9 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Employees;
-using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Application.Validations;
@@ -41,40 +41,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         _employeeService = employeeService;
         _userService = userService;
     }
-
-    public override async Task<IServiceResult> GetByIdAsync(int id)
-    {
-        try
-        {
-            // Build spec
-            var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(n => n.NotificationRecipients)
-                    .ThenInclude(nr => nr.Recipient)
-                .Include(n => n.CreatedByNavigation)
-            );
-            // Retrieve notification with spec
-            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
-            if (existingEntity == null)
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), _mapper.Map<NotificationDto>(existingEntity));
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when get notification by id");
-        }
-    }
     
-    public override async Task<IServiceResult> GetAllWithSpecAsync(
-        ISpecification<Notification> spec, bool tracked = true)
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<Notification> spec, bool tracked = true)
     {
         try
         {
@@ -87,11 +55,22 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
             
-            // Apply include
-            notificationSpec.ApplyInclude(q => q
-                .Include(n => n.NotificationRecipients)
+            if (notificationSpec.IsCallFromManagement)
+            {
+                // Apply include
+                notificationSpec.ApplyInclude(q => q
+                    .Include(n => n.NotificationRecipients)
+                    .ThenInclude(nr => nr.Recipient)
                     .Include(n => n.CreatedByNavigation)
-            );
+                );
+            }
+            else
+            {
+                // Apply include
+                notificationSpec.ApplyInclude(q => q
+                    .Include(n => n.CreatedByNavigation)
+                );
+            }
             
             // Count total actual items in DB
             var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
@@ -132,6 +111,110 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         }
     }
 
+    public override async Task<IServiceResult> UpdateAsync(int id, NotificationDto dto)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Retrieve notification by id
+            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "notification to process update"
+                        : "thông báo để tiến hành sửa đổi"));
+            }
+            
+            // Change props
+            existingEntity.Title = dto.Title;
+            existingEntity.Message = dto.Message;
+            existingEntity.NotificationType = dto.NotificationType;
+            
+            // Process update
+            await _unitOfWork.Repository<Notification, int>().UpdateAsync(existingEntity);
+            
+            // Check if has changed or not
+            if (!_unitOfWork.Repository<Notification, int>().HasChanges(existingEntity))
+            {
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+            // Save DB
+            if (await _unitOfWork.SaveChangesAsync() > 0)
+            {
+                // Mark as update success
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+            
+            // Mark as failed to update
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update notification");
+        }
+    }
+
+    public async Task<IServiceResult> GetByIdAsync(int id, string? email = null)
+    {
+        try
+        {
+            // Build spec
+            var baseSpec = new BaseSpecification<Notification>(q => 
+                q.NotificationId == id &&
+                (
+                    string.IsNullOrEmpty(email) || 
+                    q.IsPublic || 
+                    q.NotificationRecipients.Any(n => n.Recipient.Email == email) 
+                ));
+
+            if (string.IsNullOrEmpty(email)) // Call from management
+            {
+                // Apply include
+                baseSpec.ApplyInclude(q => q
+                    .Include(n => n.NotificationRecipients)
+                    .ThenInclude(nr => nr.Recipient)
+                    .Include(n => n.CreatedByNavigation)
+                );
+            }
+            else
+            {
+                // Apply include
+                baseSpec.ApplyInclude(q => q
+                    .Include(n => n.CreatedByNavigation)
+                );
+            }
+            
+            // Retrieve notification with spec
+            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Data not found or empty
+                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), _mapper.Map<NotificationDto>(existingEntity));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when get notification by id");
+        }
+    }
+    
     public async Task<IServiceResult> CreateNotificationAsync(
         string createdByEmail, NotificationDto dto, List<string>? recipients)
     {
@@ -222,187 +305,6 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         }
     }
 
-    public async Task<IServiceResult> GetAllPrivacyNotificationAsync(
-        string email, ISpecification<Notification> spec)
-    {
-        try
-        {
-            // Initialize check exist field
-            var isEmailExist = false;
-            // Check exist user or employee 
-            isEmailExist |= (await _userService.AnyAsync(u => Equals(u.Email, email))).Data is true;
-            isEmailExist |= (await _employeeService.AnyAsync(e => Equals(e.Email, email))).Data is true;
-
-            // Not found any match
-            if (!isEmailExist)
-            {
-                throw new ForbiddenException("Not allow to access");
-            }
-
-            // Try to parse specification to NotificationSpecification
-            var notificationSpec = spec as NotificationSpecification;
-            // Check if specification is null
-            if (notificationSpec == null)
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
-            }
-
-            // Apply include
-            notificationSpec.ApplyInclude(q => q.Include(n => n.CreatedByNavigation));
-            
-            // Filtering 
-            notificationSpec.AddFilter(x => x.NotificationRecipients.Any(nr => nr.Recipient.Email == email));
-            
-            // Enable to see privacy email
-            notificationSpec.AddFilter(s => s.IsPublic || !s.IsPublic);
-            
-            // Count total actual items in DB
-            var totalNotification = await _unitOfWork.Repository<Notification, int>().CountAsync(notificationSpec);
-            var totalPage = (int)Math.Ceiling((double)totalNotification / notificationSpec.PageSize);
-
-            // Set pagination to specification after count total notification 
-            if (notificationSpec.PageIndex > totalPage
-                || notificationSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                notificationSpec.PageIndex = 1; // Set default to first page
-            }
-
-            // Apply paging
-            notificationSpec.ApplyPaging(
-                skip: notificationSpec.PageSize * (notificationSpec.PageIndex - 1),
-                take: notificationSpec.PageSize
-            );
-
-            // Retrieve all data with spec
-            var entities = await _unitOfWork.Repository<Notification, int>()
-                .GetAllWithSpecAsync(notificationSpec, false);
-            if (entities.Any())
-            {
-                var paginationResultDto = new PaginatedResultDto<NotificationDto>(
-                    _mapper.Map<IEnumerable<NotificationDto>>(entities),
-                    notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalNotification);
-
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                _mapper.Map<IEnumerable<NotificationDto>>(entities));
-        }
-        catch (ForbiddenException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get all privacy notifications");
-        }
-    }
-    
-    public async Task<IServiceResult> GetPrivacyNotificationAsync(int id, string email)
-    {
-        try
-        {
-            // Initialize check exist field
-            var isEmailExist = false;
-            // Check exist user or employee 
-            isEmailExist |= (await _userService.AnyAsync(u => Equals(u.Email, email))).Data is true;
-            isEmailExist |= (await _employeeService.AnyAsync(e => Equals(e.Email, email))).Data is true;
-
-            // Not found any match
-            if (!isEmailExist)
-            {
-                throw new ForbiddenException("Not allow to access");
-            }
-            
-            // Build spec
-            var baseSpec = new BaseSpecification<Notification>(q => q.NotificationId == id);
-            // Apply include
-            baseSpec.ApplyInclude(q => q.Include(n => n.CreatedByNavigation));
-            // Retrieve notification with spec
-            var existingEntity = await _unitOfWork.Repository<Notification, int>().GetWithSpecAsync(baseSpec);
-            if (existingEntity == null)
-            {
-                // Data not found or empty
-                return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
-            }
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                _mapper.Map<NotificationDto>(existingEntity));
-        }
-        catch (ForbiddenException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when get notification by id");
-        }
-    }
-    
-    public async Task<IServiceResult> GetAllCardHolderNotificationByUserIdAsync(Guid userId, int pageIndex, int pageSize)
-    {
-        try
-        {
-            // Build spec
-            var baseSpec = new BaseSpecification<NotificationRecipient>(n => n.RecipientId == userId);   
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(db => db.Notification)
-            );
-            
-            // Add default order by
-            baseSpec.AddOrderByDescending(n => n.Notification.CreateDate);
-
-            // Count total borrow request
-            var totalNotiWithSpec = await _unitOfWork.Repository<NotificationRecipient, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalNotiWithSpec / pageSize);
-
-            // Set pagination to specification after count total notification 
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                pageIndex = 1; // Set default to first page
-            }
-            // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
-            
-            // Retrieve data with spec
-            var entities = await _unitOfWork.Repository<NotificationRecipient, int>()
-                .GetAllWithSpecAsync(baseSpec);
-            if (entities.Any())
-            {
-                var notiDtos = _mapper.Map<List<NotificationRecipientDto>>(entities);
-                
-                // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<LibraryCardHolderNotificationRecipientDto>(
-                    notiDtos.Select(n => n.ToCardHolderNotiRecipientDto()),
-                    pageIndex, pageSize, totalPage, totalNotiWithSpec);
-
-                // Response with pagination 
-                return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
-            }
-            
-            // Data not found or empty
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                new List<LibraryCardHolderNotificationRecipientDto>());
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process get all notification by user id");
-        }
-    }
-    
     private async Task SendHubNotificationAsync(
         NotificationDto notificationDto, List<string>? recipients, bool isPublic)
     {

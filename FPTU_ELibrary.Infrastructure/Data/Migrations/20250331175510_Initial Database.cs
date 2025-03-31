@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -1024,7 +1024,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     library_item_id = table.Column<int>(type: "int", nullable: false),
                     user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     rating_value = table.Column<double>(type: "float", nullable: false),
-                    review_text = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    review_text = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     create_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_date = table.Column<DateTime>(type: "datetime", nullable: true)
                 },
@@ -1265,6 +1265,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     reservation_code = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     is_applied_label = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     collected_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    assigned_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    total_extend_pickup = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     is_notified = table.Column<bool>(type: "bit", nullable: false),
                     cancelled_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true)
@@ -1425,7 +1427,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                         name: "FK_BorrowRequestResource_RequestId",
                         column: x => x.borrow_request_id,
                         principalTable: "Borrow_Request",
-                        principalColumn: "borrow_request_id");
+                        principalColumn: "borrow_request_id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_BorrowRequestResource_ResourceId",
                         column: x => x.resource_id,

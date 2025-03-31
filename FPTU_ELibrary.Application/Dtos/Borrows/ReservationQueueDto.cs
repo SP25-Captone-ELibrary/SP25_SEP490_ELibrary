@@ -47,6 +47,12 @@ public class ReservationQueueDto
     // Collected date
     public DateTime? CollectedDate { get; set; }
     
+    // Assigned date
+    public DateTime? AssignedDate { get; set; }
+    
+    // Extend pick up time
+    public int TotalExtendPickup { get; set; }
+    
     // If the user was notified
     public bool IsNotified { get; set; }
     

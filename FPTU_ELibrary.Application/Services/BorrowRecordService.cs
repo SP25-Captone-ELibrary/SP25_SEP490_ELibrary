@@ -345,6 +345,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		                        ExpectedAvailableDateMax = rq.ExpectedAvailableDateMax,
 		                        ReservationDate = rq.ReservationDate,
 		                        ExpiryDate = rq.ExpiryDate,
+		                        AssignedDate = rq.AssignedDate,
+		                        TotalExtendPickup = rq.TotalExtendPickup,
 		                        IsNotified = rq.IsNotified,
 		                        CancelledBy = rq.CancelledBy,
 		                        CancellationReason = rq.CancellationReason,
@@ -504,7 +506,20 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	                        },
                         },
                         BorrowDetailExtensionHistories = brd.BorrowDetailExtensionHistories,
-                        Fines = brd.Fines
+                        Fines = brd.Fines.Select(f => new Fine()
+                        {
+	                        FineId = f.FineId,
+	                        BorrowRecordDetailId = f.BorrowRecordDetailId,
+	                        FinePolicyId = f.FinePolicyId,
+	                        FineAmount = f.FineAmount,
+	                        FineNote = f.FineNote,
+	                        Status = f.Status,
+	                        CreatedAt = f.CreatedAt,
+	                        ExpiryAt = f.ExpiryAt,
+	                        CreatedBy = f.CreatedBy,
+	                        CreateByNavigation = f.CreateByNavigation,
+	                        FinePolicy = f.FinePolicy
+                        }).ToList()
                     }).ToList()
 			    });
 		    if (existingEntity != null)
@@ -550,6 +565,36 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	    }
     }
 
+    public async Task<IServiceResult> GetAllBorrowSettingValuesAsync()
+    {
+	    try
+	    {
+		    var getBorrowSettings = new GetBorrowSettingsDto()
+		    {
+			    PickUpExpirationInDays = _borrowSettings.PickUpExpirationInDays,
+			    ExtendPickUpInDays = _borrowSettings.ExtendPickUpInDays,
+			    BorrowAmountOnceTime = _borrowSettings.BorrowAmountOnceTime,
+			    TotalMissedPickUpAllow = _borrowSettings.TotalMissedPickUpAllow,
+			    EndSuspensionInDays = _borrowSettings.EndSuspensionInDays,
+			    MaxBorrowExtension = _borrowSettings.MaxBorrowExtension,
+			    AllowToExtendInDays = _borrowSettings.AllowToExtendInDays,
+			    TotalBorrowExtensionInDays = _borrowSettings.TotalBorrowExtensionInDays,
+			    OverdueOrLostHandleInDays = _borrowSettings.OverdueOrLostHandleInDays,
+			    FineExpirationInDays = _borrowSettings.FineExpirationInDays,
+			    LostAmountPercentagePerDay = _borrowSettings.LostAmountPercentagePerDay,
+		    };
+		    
+		    // Get data successfully
+		    return new ServiceResult(ResultCodeConst.SYS_Success0002,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getBorrowSettings);
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get borrow settings");
+	    }
+    }
+    
     public async Task<IServiceResult> GetAllBorrowingByItemIdAsync(int itemId)
     {
 	    try
@@ -742,8 +787,53 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
             throw new Exception("Error invoke when process get all pending request by lib card id");
         }
     }
-	
-    public async Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, BorrowRecordDto dto)
+
+	public async Task<IServiceResult> GetAllPendingAndExpiredFineAsync(int id)
+	{
+		try
+		{
+			// Determine current system lang 
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+
+			// Build spec
+			var baseSpec = new BaseSpecification<BorrowRecord>(r => r.BorrowRecordId == id);
+			// Apply include
+			baseSpec.ApplyInclude(q => q
+				.Include(r => r.BorrowRecordDetails)
+					.ThenInclude(brd => brd.Fines)
+						.ThenInclude(f => f.FinePolicy)
+			);
+			// Retrieve with spec
+			var existingEntity = await _unitOfWork.Repository<BorrowRecord, int>().GetWithSpecAsync(baseSpec);
+			if (existingEntity == null)
+			{
+				// Mark as not found 
+				return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), new List<FineDto>());
+			}
+			
+			// Extract all pending or expired fines
+			var validFines = existingEntity.BorrowRecordDetails.Any()
+				? existingEntity.BorrowRecordDetails.SelectMany(brd =>
+						brd.Fines.Where(f => f.Status == FineStatus.Pending || f.Status == FineStatus.Expired))
+					.ToList()
+				: new();
+			
+			// Mark as get success
+			return new ServiceResult(ResultCodeConst.SYS_Success0002,
+				await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+				_mapper.Map<List<FineDto>>(validFines));
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process get all pending and expired fine");
+		}
+	}
+
+	public async Task<IServiceResult> ProcessRequestToBorrowRecordAsync(string processedByEmail, BorrowRecordDto dto)
 	{
 		try
 		{
@@ -1214,8 +1304,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			var libraryItemIdHashSet = new HashSet<int>();
 			// Initialize fields to store handled item (use to count for total amount and check whether exceeding threshold)
 			var handledInstances = new List<int>();
-			// Initialize borrow request details to check exist in request items
-			var borrowReqInDetailList = new List<BorrowRequestDetailDto>();
+			// Initialize borrow request details to check exist in request items and combined with specific instance
+			var borrowReqInDetailList = new List<(BorrowRequestDetailDto BorrowReq, int LibraryItemInstanceId)>();
 			// Initialize assigned reservations to check exist in request items
 			var assignedReservationInDetailList = new List<ReservationQueueDto>();
 			// Iterate each borrow record details to check for item instance quantity status
@@ -1290,7 +1380,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 						switch (status)
 						{
 							case LibraryItemInstanceStatus.InShelf:
-								// Skip, continue to check for other instance
+								// Skip, continue to check for other instance (Get item directly in library)
 								break;
 							case LibraryItemInstanceStatus.OutOfShelf:
 								// Announce that item has not in borrowing status yet
@@ -1309,12 +1399,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 										: "Trạng thái của bản sao đang được mượn");
 								break;
 							case LibraryItemInstanceStatus.Reserved:
-								// Announce that item has not in borrowing status yet
-								customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-									$"borrowRecordDetails[{i}].libraryItemInstanceId",
-									isEng
-										? "Item instance is in reserved status"
-										: "Bản sao đang ở trạng thái được đặt trước");
+								// Skip, continue to check for other instance (In case of assigning to reservations)
 								break;
 							case LibraryItemInstanceStatus.Lost:
 								// Announce that item has not in borrowing status yet
@@ -1425,11 +1510,13 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 							{
 								case BorrowRequestStatus.Created:
 									// Add to borrow request details list to check total with request items
-									borrowReqInDetailList.Add(new ()
-									{
-										BorrowRequestId = req.BorrowRequestId,
-										LibraryItemId = itemInstanceDto.LibraryItemId
-									});
+									borrowReqInDetailList.Add(new(
+										new BorrowRequestDetailDto()
+										{
+											BorrowRequestId = req.BorrowRequestId,
+											LibraryItemId = itemInstanceDto.LibraryItemId
+										}, 
+										itemInstanceDto.LibraryItemInstanceId));
 									// Add instance to handled list
 									handledInstances.Add(itemInstanceDto.LibraryItemInstanceId);
 									break;
@@ -1441,25 +1528,6 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 									break;
 							}
 						}
-					}
-					
-					// Check whether user has already requested item of this instance
-					var userRequestedItemIds = userRequestedItems?.Select(q => q.BorrowRequestId).ToList();
-					var hasAlreadyRequestByOther = (await _borrowReqSvc.Value.AnyAsync(br =>
-							(userRequestedItemIds == null || !userRequestedItemIds.Contains(br.BorrowRequestId)) && // Exclude all user's borrow request
-							br.Status == BorrowRequestStatus.Created && // In requesting status
-							br.BorrowRequestDetails.Any(brd => // From each borrow request
-								brd.LibraryItem.LibraryItemInstances.Any(li => // Retrieve list instance of a single item 
-									li.LibraryItemInstanceId == itemInstanceDto.LibraryItemInstanceId)) // Check exist instance id in that list
-					)).Data is true;
-					if (hasAlreadyRequestByOther)
-					{
-						// Add error
-						customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-							key: $"borrowRecordDetails[{i}].libraryItemInstanceId",
-							msg: isEng
-								? "This instance has requested by other reader"
-								: "Bản sao đã được bạn đọc khác yêu cầu mượn");
 					}
 					
 					// Check whether user has already borrowed item of this instance
@@ -1540,7 +1608,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 					}
 					
 					// Extract all request item ids detected while handling validate borrow record
-					var extractedRequestItemIds = borrowReqInDetailList.Select(brd => brd.LibraryItemId).ToList();
+					var extractedRequestItemIds = borrowReqInDetailList.Select(brd => brd.BorrowReq.LibraryItemId).ToList();
 					// Compare with all items existing in borrow record details
 					foreach (var requestingItemId in allRequestingItemIds)
 					{
@@ -1560,7 +1628,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 					
 					// All requesting items have been processed in requested borrow record details
 					// Then update borrow request status without save
-					var borrowReqId = borrowReqInDetailList[0].BorrowRequestId;
+					var borrowReqId = borrowReqInDetailList[0].BorrowReq.BorrowRequestId;
 					await _borrowReqSvc.Value.UpdateStatusWithoutSaveChangesAsync(
 						id: borrowReqId,
 						status: BorrowRequestStatus.Borrowed);
@@ -1645,13 +1713,38 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 			dto.ProcessedBy = employeeDto.EmployeeId;
 			dto.TotalRecordItem = dto.BorrowRecordDetails.Count;
 			
+			// Extract all items mark as requested
+			var requestItemInstanceIds = borrowReqInDetailList.Select(r => r.LibraryItemInstanceId).ToList();
+			// Exclude all request item instance ids in borrow record details
+			var itemInstanceIdsAfterExcluded = dto.BorrowRecordDetails.Select(x => x.LibraryItemInstanceId).ToList()
+				.Except(requestItemInstanceIds)
+				.ToList();
+			
 			// Process add borrow record
 			await _unitOfWork.Repository<BorrowRecord, int>().AddAsync(_mapper.Map<BorrowRecord>(dto));
-			// Update range library item status
-			await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
-				libraryItemInstanceIds: dto.BorrowRecordDetails.Select(x => x.LibraryItemInstanceId).ToList(),
-				status: LibraryItemInstanceStatus.Borrowed,
-				isProcessBorrowRequest: false);
+			// Process update library item instance status
+			if (requestItemInstanceIds.Any())
+			{
+				// Update range library item status
+				await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+					libraryItemInstanceIds: requestItemInstanceIds,
+					status: LibraryItemInstanceStatus.Borrowed,
+					isProcessBorrowRequest: true); // Mark as handled from borrow request
+			}
+			if (itemInstanceIdsAfterExcluded.Any())
+			{
+				// Update range library item status
+				await _itemInstanceSvc.Value.UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+					libraryItemInstanceIds: itemInstanceIdsAfterExcluded,
+					status: LibraryItemInstanceStatus.Borrowed,
+					isProcessBorrowRequest: false); // Set handled from borrow request as false
+			}
+			
+			// Update library item borrow more status if it true in current request
+			if (libCard.IsAllowBorrowMore)
+			{
+				await _cardSvc.UpdateBorrowMoreStatusWithoutSaveChangesAsync(libCard.LibraryCardId);
+			}
 
 			// Save DB with transaction
 			var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
@@ -2446,7 +2539,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                     		key: $"{errKey}[{i}].LibraryItemInstanceId",
                     		msg: StringUtils.Format(errMsg, isEng 
                     			? "any borrow record match for this item" 
-                    			: "lịch sử mượn cho bản sao bị báo mất"));
+                    			: "lịch sử mượn cho bản sao"));
                     }
 					else
 					{
@@ -2783,9 +2876,14 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 					libName: _appSettings.LibraryName,
 					libContact: _appSettings.LibraryContact);
 				
-				// Response along with trying to assign return item to reservations
-				return await _reservationQueueSvc.Value.AssignReturnItemAsync(
-					libraryItemInstanceIds: returnItemIds);
+				// Response return items success
+				var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0008);
+				return new ServiceResult(ResultCodeConst.Borrow_Success0008,
+					StringUtils.Format(msg, returnItemIds.Count.ToString()),
+					new
+					{
+						ReturnItemInstanceIds = returnItemIds
+					});
 			}
 			
 			// Msg: Failed to process return items

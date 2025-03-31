@@ -27,13 +27,19 @@ namespace FPTU_ELibrary.Application.Services;
 
 public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorService<AuthorDto>
 {
+	// Lazy services
+	private readonly Lazy<ILibraryItemService<LibraryItemDto>> _libItemSvc;
+	
     public AuthorService(
+	    // Lazy services
+		Lazy<ILibraryItemService<LibraryItemDto>> libItemSvc,    
+	    
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
-        ILogger logger) 
-        : base(msgService, unitOfWork, mapper, logger)
+        ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
+	    _libItemSvc = libItemSvc;
     }
 
     public override async Task<IServiceResult> CreateAsync(AuthorDto dto)
@@ -292,6 +298,52 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when progress get related author items");
         }
+    }
+
+    public async Task<IServiceResult> GetFirstByLibraryItemIdAsync(int libraryItemId)
+    {
+	    try
+	    {
+		    // Determine current system lang
+		    var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+		    
+			// Check exist lib item id 
+			var isExistItem = (await _libItemSvc.Value.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
+			if (!isExistItem)
+			{
+				// Not found {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+			}
+			
+			// Build spec
+			var libAuthorSpec = new BaseSpecification<LibraryItemAuthor>(lia => lia.LibraryItemId == libraryItemId);
+			// Apply include
+			libAuthorSpec.ApplyInclude(q => q.Include(lia => lia.Author));
+			// Retrieve with spec
+			var libAuthor = await _unitOfWork.Repository<LibraryItemAuthor, int>().GetWithSpecAsync(libAuthorSpec);
+			
+			// Response author information (if any)
+			if (libAuthor != null)
+			{
+				return new ServiceResult(ResultCodeConst.SYS_Success0002,
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+					_mapper.Map<AuthorDto>(libAuthor.Author));
+			}
+			
+			// Not found {0}
+			var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				StringUtils.Format(msg, isEng ? "any author in library item" : "tác giả nào gắn với tài liệu"));
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process get first author by library item id");
+	    }
     }
     
     public override async Task<IServiceResult> UpdateAsync(int id, AuthorDto dto)

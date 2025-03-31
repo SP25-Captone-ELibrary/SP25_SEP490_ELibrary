@@ -122,7 +122,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
             .WithMessage(isEng
                 ? "DDC number must not exceed 50 characters"
                 : "Mã DDC tài liệu không vượt quá 50 ký tự")
-            .Must(str => StringUtils.IsValidDeweyDecimal(str) && !StringUtils.IsDateTime(str))
+            .Must(str => DeweyDecimalUtils.IsValidDeweyDecimal(str) && !StringUtils.IsDateTime(str))
             .WithMessage(isEng
                 ? "DDC number is not valid"
                 : "Mã DDC tài liệu không hợp lệ");
@@ -132,7 +132,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
             .WithMessage(isEng
                 ? "Cutter number must not exceed 50 characters"
                 : "Ký hiệu xếp giá không vượt quá 50 ký tự")
-            .Must(str => StringUtils.IsValidCutterNumber(str) && !StringUtils.IsDateTime(str))
+            .Must(str => DeweyDecimalUtils.IsValidCutterNumber(str) && !StringUtils.IsDateTime(str))
             .WithMessage(isEng
                 ? "Cutter number is not valid"
                 : "Ký hiệu xếp giá không hợp lệ");

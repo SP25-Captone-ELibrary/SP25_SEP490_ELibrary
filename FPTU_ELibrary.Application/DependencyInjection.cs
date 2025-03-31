@@ -40,6 +40,7 @@ namespace FPTU_ELibrary.Application
         public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
         {
 			// Register external services 
+			services.AddScoped<IRecommenderService, RecommenderService>();
 			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<ISearchService, SearchService>(); 
 			services.AddScoped<ICacheService, CacheService>();
@@ -61,6 +62,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IAuditTrailService<AuditTrailDto>, AuditTrailService>();
             services.AddScoped<IBorrowRequestService<BorrowRequestDto>, BorrowRequestService>();
+            services.AddScoped<IBorrowRequestResourceService<BorrowRequestResourceDto>, BorrowRequestResourceService>();
             services.AddScoped<IBorrowRecordService<BorrowRecordDto>, BorrowRecordService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
             services.AddScoped<IDigitalBorrowService<DigitalBorrowDto>, DigitalBorrowService>();
@@ -72,6 +74,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ILibraryResourceService<LibraryResourceDto>, LibraryResourceService>(); 
 			services.AddScoped<ILibraryItemInventoryService<LibraryItemInventoryDto>, LibraryItemInventoryService>(); 
 			services.AddScoped<ILibraryItemAuthorService<LibraryItemAuthorDto>, LibraryItemAuthorService>();
+			services.AddScoped<ILibraryItemReviewService<LibraryItemReviewDto>, LibraryItemReviewService>();
 			services.AddScoped<ILibraryCardService<LibraryCardDto>, LibraryCardService>();
             services.AddScoped<ILibraryItemConditionHistoryService<LibraryItemConditionHistoryDto>, LibraryItemConditionHistoryService>();
             services.AddScoped<ILibraryFloorService<LibraryFloorDto>, LibraryFloorService>();

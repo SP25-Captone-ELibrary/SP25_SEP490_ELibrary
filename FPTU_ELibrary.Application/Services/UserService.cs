@@ -733,7 +733,7 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke while get user by email");
 			}
 		}
-
+		
 		public async Task<IServiceResult> GetPendingLibraryActivityAsync(Guid libraryCardId)
 		{
 			try
@@ -800,7 +800,7 @@ namespace FPTU_ELibrary.Application.Services
 					ActiveBorrowRecords = activeBorrowRecords ?? new(),
 					PendingReservationQueues = currentReservationQueues != null && currentReservationQueues.Any()
 						? currentReservationQueues.Where(r => 
-							r.QueueStatus == ReservationQueueStatus.Pending).ToList()
+							r.QueueStatus == ReservationQueueStatus.Pending).OrderBy(r => r.IsAssignable).ToList()
 						: new(),
 					AssignedReservationQueues = currentReservationQueues != null && currentReservationQueues.Any()
 						? currentReservationQueues.Where(r => 
@@ -870,7 +870,8 @@ namespace FPTU_ELibrary.Application.Services
 					? user.LibraryCard.MaxItemOnceTime // Use updated max amount
 					: _borrowSettings.BorrowAmountOnceTime; // Use default
 				// Count remain total
-				var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalPendingReserving + totalAssignedReserving);
+				// Not count pending reservation to total borrow amount as ensuring that user only assigned when borrowing amount smaller than threshold
+				var remainTotal = _borrowSettings.BorrowAmountOnceTime - (totalRequesting + totalBorrowing + totalAssignedReserving);
 				
 				// Initialize summary
 				var summaryActivity = new UserPendingActivitySummaryDto()
@@ -948,7 +949,7 @@ namespace FPTU_ELibrary.Application.Services
         			? user.LibraryCard.MaxItemOnceTime // Use updated max amount
         			: _borrowSettings.BorrowAmountOnceTime; // Use default
         		// Count remain total
-        		var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalPendingReserving + totalAssignedReserving);
+        		var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalAssignedReserving);
         		
         		// Initialize summary
         		var summaryActivity = new UserPendingActivitySummaryDto()

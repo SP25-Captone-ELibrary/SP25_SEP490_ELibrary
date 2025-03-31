@@ -7,6 +7,7 @@ using FPTU_ELibrary.API.Payloads.Requests.User;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
+using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
@@ -24,7 +25,9 @@ public class UserController:ControllerBase
     private readonly IUserService<UserDto> _userService;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;
     private readonly IBorrowRecordService<BorrowRecordDto> _borrowRecSvc;
+    private readonly ITransactionService<TransactionDto> _transactionSvc;
     private readonly IDigitalBorrowService<DigitalBorrowDto> _digitalBorrowSvc;
+    private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
     
     private readonly AppSettings _appSettings;
 
@@ -32,13 +35,17 @@ public class UserController:ControllerBase
         IBorrowRequestService<BorrowRequestDto> borrowReqSvc,
         IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
         IDigitalBorrowService<DigitalBorrowDto> digitalBorrowSvc,
+        ITransactionService<TransactionDto> transactionSvc,
+        IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         IOptionsMonitor<AppSettings> monitor,
         IUserService<UserDto> userService)
     {
         _userService = userService;
         _borrowReqSvc = borrowReqSvc;
         _borrowRecSvc = borrowRecSvc;
+        _transactionSvc = transactionSvc;
         _digitalBorrowSvc = digitalBorrowSvc;
+        _reservationQueueSvc = reservationQueueSvc;
         _appSettings = monitor.CurrentValue;
     }
 
@@ -219,6 +226,48 @@ public class UserController:ControllerBase
         return Ok(await _digitalBorrowSvc.GetByIdAsync(id: id, email: email ?? string.Empty));
     }
 
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserTransaction, Name = nameof(GetAllUserTransactionAsync))]
+    public async Task<IActionResult> GetAllUserTransactionAsync([FromQuery] TransactionSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _transactionSvc.GetAllCardHolderTransactionAsync(
+            spec: new TransactionSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetTransactionById, Name = nameof(GetUserTransactionByIdAsync))]
+    public async Task<IActionResult> GetUserTransactionByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _transactionSvc.GetByIdAsync(id: id, email: email));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetAllUserReservation, Name = nameof(GetAllUserReservationAsync))]
+    public async Task<IActionResult> GetAllUserReservationAsync([FromQuery] ReservationQueueSpecParams specParams)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _reservationQueueSvc.GetAllCardHolderReservationAsync(
+            spec: new ReservationQueueSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize,
+                email: email ?? string.Empty)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.User.GetReservationById, Name = nameof(GetUserReservationByIdAsync))]
+    public async Task<IActionResult> GetUserReservationByIdAsync([FromRoute] int id)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _reservationQueueSvc.GetByIdAsync(id: id, email: email));
+    }
+    
     [Authorize]
     [HttpGet(APIRoute.User.CalculateBorrowReturnSummary, Name = nameof(CalculateBorrowReturnSummaryAsync))]
     public async Task<IActionResult> CalculateBorrowReturnSummaryAsync()
