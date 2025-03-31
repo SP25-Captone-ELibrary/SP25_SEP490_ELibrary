@@ -1903,7 +1903,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2020,7 +2020,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2497,7 +2497,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2602,7 +2602,7 @@ public class AIClassificationService : IAIClassificationService
 
                     // ocr check
                     List<string> mainAuthor = new List<string>();
-                    mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
+                    // mainAuthor.Add(groupValueLibraryItem.GeneralNote!);
                     mainAuthor.Add(groupValueLibraryItem.LibraryItemAuthors.First(x
                             => x.LibraryItemId == groupValueLibraryItem.LibraryItemId)!
                         .Author.FullName);
@@ -2617,7 +2617,7 @@ public class AIClassificationService : IAIClassificationService
                             image
                         },
                         SubTitle = groupValueLibraryItem.SubTitle,
-                        GeneralNote = groupValueLibraryItem.GeneralNote
+                        // GeneralNote = groupValueLibraryItem.GeneralNote
                     };
                     var compareResult = await _ocrService.CheckBookInformationAsync(ocrCheck);
                     var compareResultValue = (List<MatchResultDto>)compareResult.Data!;
@@ -2728,7 +2728,7 @@ public class AIClassificationService : IAIClassificationService
             foreach (var item in groupValue.LibraryItems)
             {
                 List<string> mainAuthor = new List<string>();
-                mainAuthor.Add(item.GeneralNote!);
+                // mainAuthor.Add(item.GeneralNote!);
                 mainAuthor.Add(item.LibraryItemAuthors.First(x
                         => x.LibraryItemId == item.LibraryItemId)!
                     .Author.FullName);
