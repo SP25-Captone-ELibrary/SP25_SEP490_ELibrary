@@ -923,15 +923,14 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0019,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
             }
-
-            var resourceLang = itemValue.Language;
             
+
             // Default part size to upload: 40MB
-            var responseChunkedSize = 1 *1024*1024;
+            var responseChunkedSize = 1 * 1024 * 1024;
 
             var memoryStream = await AddAudioWatermark(resource.ResourceId,
-                resourceLang, email, responseChunkedSize);
-            
+                lang.ToString()??"en", email);
+
             // Return the part of the stream
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
@@ -943,6 +942,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             throw new Exception("Error invoke when process get digital resource");
         }
     }
+
     #endregion
 
 
@@ -987,6 +987,141 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             Math.Ceiling(times ?? 0));
     }
 
+    private async Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId, string resourceLang, string email)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var ffmpegPath = _ffmpegSettings.Path;
+            if (string.IsNullOrEmpty(ffmpegPath))
+            {
+                throw new Exception("FFmpeg path is not configured.");
+            }
+
+            var ffmpegExePath = Path.Combine(ffmpegPath, "ffmpeg.exe");
+            
+            var audioFileResult = await GetFullLargeFile(resourceId);
+
+            var ttsResult = await _voiceService.TextToVoiceFile(email);
+            
+            var tempDir = Path.Combine(Path.GetTempPath(), "AudioProcessing");
+            Directory.CreateDirectory(tempDir);
+
+            var audioBookPath = Path.Combine(tempDir, "audio-book.mp3");
+            var watermarkPath = Path.Combine(tempDir, "watermark.mp3");
+            var concatListPath = Path.Combine(tempDir, "concat_list.txt");
+            var outputPath = Path.Combine(tempDir, "output.mp3");
+
+            await File.WriteAllBytesAsync(audioBookPath, ((MemoryStream)audioFileResult.Data!).ToArray());
+            await File.WriteAllBytesAsync(watermarkPath, ((MemoryStream)ttsResult.Data!).ToArray());
+            
+            double audioBookDuration = GetMp3Duration(audioBookPath);
+            double watermarkDuration = GetMp3Duration(watermarkPath);
+            int chunkInterval = 20*60; // 10 phút (600 giây)
+            int numberOfSegments = (int)Math.Ceiling(audioBookDuration / chunkInterval);
+            
+            List<string> segmentFiles = new();
+            for (int i = 0; i < numberOfSegments; i++)
+            {
+                string segmentFile = Path.Combine(tempDir, $"segment_{i}.mp3");
+                double startTime = i * chunkInterval;
+                double duration = Math.Min(chunkInterval, audioBookDuration - startTime);
+
+                var splitProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegExePath,
+                        Arguments = $"-i \"{audioBookPath}\" -ss {startTime} -t {duration} -c copy \"{segmentFile}\"",
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                splitProcess.Start();
+                await splitProcess.WaitForExitAsync();
+
+                if (splitProcess.ExitCode != 0)
+                {
+                    return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002, "Failed to split audio file");
+                }
+
+                segmentFiles.Add(segmentFile);
+            }
+            
+            using (var writer = new StreamWriter(concatListPath))
+            {
+                await writer.WriteLineAsync($"file '{watermarkPath}'");
+                for (int i = 0; i < segmentFiles.Count; i++)
+                {
+                    await writer.WriteLineAsync($"file '{segmentFiles[i]}'");
+                    if (i < segmentFiles.Count - 1)
+                    {
+                        await writer.WriteLineAsync($"file '{watermarkPath}'");
+                    }
+                }
+            }
+            
+            var concatProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ffmpegExePath,
+                    Arguments = $"-f concat -safe 0 -i \"{concatListPath}\" -c:a mp3 -b:a 192k \"{outputPath}\"",
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            concatProcess.Start();
+            string errorOutput = await concatProcess.StandardError.ReadToEndAsync();
+            await concatProcess.WaitForExitAsync();
+
+            if (concatProcess.ExitCode != 0)
+            {
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002, $"FFmpeg failed: {errorOutput}");
+            }
+            
+            var finalStream = new MemoryStream(await File.ReadAllBytesAsync(outputPath));
+            
+            CleanupTempFiles(tempDir);
+
+            stopwatch.Stop();
+            Console.WriteLine($"Total execution time: {stopwatch.ElapsedMilliseconds}ms");
+
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002, "Successfully added watermark",
+                finalStream);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002, "Error processing audio");
+        }
+    }
+    private void CleanupTempFiles(string tempDir)
+    {
+        try
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cleaning up temp files: {ex.Message}");
+        }
+    }
+    private double GetMp3Duration(string filePath)
+    {
+        using var reader = new MediaFoundationReader(filePath);
+        return reader.TotalTime.TotalSeconds;
+    }
+
+
     private async Task<IServiceResult<Stream>> GetFullLargeFile(int resourceId)
     {
         try
@@ -1019,7 +1154,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             throw new Exception("Error invoke when process get digital resource preview");
         }
     }
-    
+
     private async Task<MemoryStream> DownloadAndMergeFileChunks(List<string> urls)
     {
         var combinedStream = new MemoryStream();
@@ -1040,7 +1175,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     }
 
 
-    public async Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId,int itemId)
+    public async Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId, int itemId)
     {
         try
         {
@@ -1073,9 +1208,9 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             using HttpClient httpClient = new HttpClient();
             byte[] fileBytes = await httpClient.GetByteArrayAsync(resource.ResourceUrl);
             MemoryStream stream = new MemoryStream(fileBytes);
-        
+
             return new ServiceResult<MemoryStream>(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),stream);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), stream);
         }
         catch (Exception ex)
         {
@@ -1156,7 +1291,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             document.Open();
             PdfContentByte contentByte = writer.DirectContent;
 
-            int pagesToProcess = isPreview ? Math.Min(5, totalPages) : totalPages;
+            int pagesToProcess = isPreview ? Math.Min(10, totalPages) : totalPages;
             for (int i = 1; i <= pagesToProcess; i++)
             {
                 document.SetPageSize(reader.GetPageSizeWithRotation(i));
@@ -1234,14 +1369,14 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
     private void AddWatermark(PdfContentByte contentByte, Rectangle pageSize, string watermarkText)
     {
-        float fontSize = pageSize.Height * 0.05f;  
+        float fontSize = pageSize.Height * 0.05f;
         BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
-        
+
         contentByte.SaveState();
         contentByte.SetGState(new PdfGState { FillOpacity = 0.2f });
         contentByte.SetFontAndSize(baseFont, fontSize);
-        contentByte.SetColorFill(BaseColor.Gray); 
-        
+        contentByte.SetColorFill(BaseColor.Gray);
+
 
         float xPosition = pageSize.Width / 2;
         float yPosition = pageSize.Height / 2;
@@ -1255,10 +1390,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         contentByte.RestoreState();
     }
 
-    public async Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId,string resourceLang, string email,int chunkSize)
+    public async Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId, string resourceLang, string email,
+        int chunkSize)
     {
         var outputStream = new MemoryStream();
-        var tts = await _voiceService.TextToVoiceFile(resourceLang, email);
+        var tts = await _voiceService.TextToVoiceFile(email);
         var ttsMemoryStream = (MemoryStream)tts.Data!;
         var ttsFile = new FormFile(ttsMemoryStream, 0, ttsMemoryStream.Length, "tts.mp3", "tts.mp3")
         {
@@ -1271,32 +1407,32 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             Headers = new HeaderDictionary(),
             ContentType = "audio/pmeg"
         };
-    
+
         using (var largeStream = largeFile.OpenReadStream())
         using (var smallStream = ttsFile.OpenReadStream())
         {
             smallStream.Position = 0;
-            
-            byte[] smallBuffer = new byte[smallStream.Length]; 
+
+            byte[] smallBuffer = new byte[smallStream.Length];
             int smallBytesRead = await smallStream.ReadAsync(smallBuffer, 0, smallBuffer.Length);
             await outputStream.WriteAsync(smallBuffer, 0, smallBytesRead);
-    
+
             byte[] buffer = new byte[chunkSize];
             int bytesRead;
-    
+
             while ((bytesRead = await largeStream.ReadAsync(buffer, 0, chunkSize)) > 0)
             {
                 // Write chunk from the large file
                 await outputStream.WriteAsync(buffer, 0, bytesRead);
-    
+
                 // Write the full small stream (TTS)
-                smallStream.Position = 0; 
+                smallStream.Position = 0;
                 await smallStream.CopyToAsync(outputStream);
             }
         }
-    
+
         outputStream.Position = 0;
-    
+
         return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), outputStream);
     }

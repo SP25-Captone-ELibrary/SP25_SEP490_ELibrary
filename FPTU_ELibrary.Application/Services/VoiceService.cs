@@ -3,8 +3,10 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.AIServices.Speech;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using Microsoft.AspNetCore.Http;
@@ -160,12 +162,14 @@ public class VoiceService : IVoiceService
         return mp3Stream;
     }
 
-    public async Task<IServiceResult> TextToVoiceFile(string lang, string email)
+    public async Task<IServiceResult> TextToVoiceFile(string email)
     {
-        _speechConfig.SpeechSynthesisVoiceName = lang.ToLower() switch
+        var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        _speechConfig.SpeechSynthesisVoiceName = sysLang.ToString()!.ToLower() switch
         {
-            "vi" => "vi-VN-HoaiMyNeural",
-            "en" => "en-US-AriaNeural",
+            "VietNamese" => "vi-VN-HoaiMyNeural",
+            "English" => "en-US-AriaNeural",
             _ => "en-US-AriaNeural"
         };
 
@@ -173,7 +177,8 @@ public class VoiceService : IVoiceService
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
         using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
-        var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
+        var script = sysLang.ToString()!.ToLower().Equals("english")
+             ? _adsMonitor.En : _adsMonitor.Vi;
         var editedScript = StringUtils.Format(script, email);
         var result = await synthesizer.SpeakTextAsync(editedScript);
 

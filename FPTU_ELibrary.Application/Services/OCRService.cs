@@ -149,22 +149,22 @@ public class OCRService : IOCRService
                 }
 
                 // check if GeneralNote is existed
-                compareFields.Add(new FieldMatchInputDto()
-                {
-                    FieldName = "Authors",
-                    Values = dto.Authors,
-                    Weight = _monitor.AuthorNamePercentage
-                });
+                // compareFields.Add(new FieldMatchInputDto()
+                // {
+                //     FieldName = "Authors",
+                //     Values = dto.Authors,
+                //     Weight = _monitor.AuthorNamePercentage
+                // });
                 // check if GeneralNote is existed
-                if (dto.GeneralNote is not null)
-                {
-                    compareFields.Add(new FieldMatchInputDto()
-                    {
-                        FieldName = "Authors",
-                        Values = new List<string>() { dto.GeneralNote },
-                        Weight = _monitor.AuthorNamePercentage
-                    });
-                }
+                // if (dto.GeneralNote is not null)
+                // {
+                //     compareFields.Add(new FieldMatchInputDto()
+                //     {
+                //         FieldName = "Authors",
+                //         Values = new List<string>() { dto.GeneralNote },
+                //         Weight = _monitor.AuthorNamePercentage
+                //     });
+                // }
 
                 var matchResult =
                     StringUtils.CalculateFieldMatchScore(result.Data.ToString(), compareFields,
@@ -248,15 +248,15 @@ public class OCRService : IOCRService
                     Weight = _monitor.AuthorNamePercentage
                 });
                 // check if GeneralNote is existed
-                if (dto.GeneralNote is not null)
-                {
-                    compareFields.Add(new FieldMatchInputDto()
-                    {
-                        FieldName = "Authors",
-                        Values = new List<string>() { dto.GeneralNote },
-                        Weight = _monitor.AuthorNamePercentage
-                    });
-                }
+                // if (dto.GeneralNote is not null)
+                // {
+                //     compareFields.Add(new FieldMatchInputDto()
+                //     {
+                //         FieldName = "Authors",
+                //         Values = new List<string>() { dto.GeneralNote },
+                //         Weight = _monitor.AuthorNamePercentage
+                //     });
+                // }
 
                 var matchResult =
                     StringUtils.CalculateFieldMatchScore(processedOcrValue[i], compareFields,
@@ -525,15 +525,15 @@ public class OCRService : IOCRService
                 Weight = _monitor.AuthorNamePercentage
             });
             // check if GeneralNote is existed
-            if (dto.GeneralNote is not null)
-            {
-                combineCompareFields.Add(new FieldMatchInputDto()
-                {
-                    FieldName = "Authors",
-                    Values = new List<string>() { dto.GeneralNote },
-                    Weight = _monitor.AuthorNamePercentage
-                });
-            }
+            // if (dto.GeneralNote is not null)
+            // {
+            //     combineCompareFields.Add(new FieldMatchInputDto()
+            //     {
+            //         FieldName = "Authors",
+            //         Values = new List<string>() { dto.GeneralNote },
+            //         Weight = _monitor.AuthorNamePercentage
+            //     });
+            // }
 
             var combineMatchResult =
                 StringUtils.CalculateFieldMatchScore(ocrValue, combineCompareFields,
