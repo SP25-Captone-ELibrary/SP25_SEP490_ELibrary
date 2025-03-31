@@ -22,6 +22,7 @@ services:
     depends_on:
       - sqlserver
       - elasticsearch
+      - redis
   # SQL Server
   sqlserver:
     container_name: sqlserver
@@ -78,6 +79,14 @@ services:
       - 5601:5601
     networks:
       - app-net
+  # Redis
+  redis:
+      container_name: redis
+      image: redis:latest
+      ports:
+        - 6379:6379
+      networks:
+        - app-net
 volumes:
   elasticsearch-data:
   sqlserver-data:

@@ -8,6 +8,7 @@ public interface ILibraryCardService<TDto> : IGenericService<LibraryCard, TDto, 
     where TDto : class
 {
     Task<IServiceResult> GetDetailAsync(Guid id);
+    Task<IServiceResult> GetAllUserActivityAsync(Guid userId);
     Task<IServiceResult> RegisterCardAsync(string email, TDto dto);
     Task<IServiceResult> RegisterCardByEmployeeAsync(string processedByEmail, 
         Guid userId, TDto dto, TransactionMethod method, int? paymentMethodId, int libraryCardPackageId);

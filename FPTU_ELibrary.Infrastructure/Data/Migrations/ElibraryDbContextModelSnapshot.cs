@@ -1128,6 +1128,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("additional_authors");
 
+                    b.Property<double>("AverageRating")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("float")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("average_rating");
+
                     b.Property<string>("BibliographicalNote")
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("bibliographical_note");
@@ -1237,6 +1243,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<string>("Publisher")
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("publisher");
+
+                    b.Property<int>("RatingCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("rating_count");
 
                     b.Property<string>("Responsibility")
                         .HasColumnType("nvarchar(155)")
@@ -2174,6 +2186,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QueueId"));
 
+                    b.Property<DateTime?>("AssignedDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("assigned_date");
+
                     b.Property<int?>("BorrowRequestId")
                         .HasColumnType("int")
                         .HasColumnName("borrow_request_id");
@@ -2242,6 +2258,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<DateTime>("ReservationDate")
                         .HasColumnType("datetime")
                         .HasColumnName("reservation_date");
+
+                    b.Property<int>("TotalExtendPickup")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_extend_pickup");
 
                     b.HasKey("QueueId")
                         .HasName("PK_ReservationQueue_QueueId");

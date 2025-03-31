@@ -733,7 +733,7 @@ namespace FPTU_ELibrary.Application.Services
 				throw new Exception("Error invoke while get user by email");
 			}
 		}
-
+		
 		public async Task<IServiceResult> GetPendingLibraryActivityAsync(Guid libraryCardId)
 		{
 			try
@@ -949,7 +949,7 @@ namespace FPTU_ELibrary.Application.Services
         			? user.LibraryCard.MaxItemOnceTime // Use updated max amount
         			: _borrowSettings.BorrowAmountOnceTime; // Use default
         		// Count remain total
-        		var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalPendingReserving + totalAssignedReserving);
+        		var remainTotal = maxAmountToBorrow - (totalRequesting + totalBorrowing + totalAssignedReserving);
         		
         		// Initialize summary
         		var summaryActivity = new UserPendingActivitySummaryDto()

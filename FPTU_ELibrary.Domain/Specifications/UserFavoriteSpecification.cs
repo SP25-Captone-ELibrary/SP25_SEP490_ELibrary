@@ -14,26 +14,26 @@ public class UserFavoriteSpecification : BaseSpecification<UserFavorite>
         : base(uf =>
             string.IsNullOrEmpty(specParams.Search) || (
                 uf.LibraryItem.Title.Contains(specParams.Search) ||
-                uf.LibraryItem.SubTitle.Contains(specParams.Search) ||
-                uf.LibraryItem.Responsibility.Contains(specParams.Search) ||
-                uf.LibraryItem.Edition.Contains(specParams.Search) ||
-                uf.LibraryItem.Language.Contains(specParams.Search) ||
-                uf.LibraryItem.OriginLanguage.Contains(specParams.Search) ||
-                uf.LibraryItem.Summary.Contains(specParams.Search) ||
-                uf.LibraryItem.Publisher.Contains(specParams.Search) ||
-                uf.LibraryItem.PublicationPlace.Contains(specParams.Search) ||
-                uf.LibraryItem.ClassificationNumber.Contains(specParams.Search) ||
-                uf.LibraryItem.CutterNumber.Contains(specParams.Search) ||
-                uf.LibraryItem.Isbn.Contains(specParams.Search) ||
-                uf.LibraryItem.Ean.Contains(specParams.Search) ||
-                uf.LibraryItem.PhysicalDetails.Contains(specParams.Search) ||
-                uf.LibraryItem.Dimensions.Contains(specParams.Search) ||
-                uf.LibraryItem.AccompanyingMaterial.Contains(specParams.Search) ||
-                uf.LibraryItem.Genres.Contains(specParams.Search) ||
-                uf.LibraryItem.GeneralNote.Contains(specParams.Search) ||
-                uf.LibraryItem.BibliographicalNote.Contains(specParams.Search) ||
-                uf.LibraryItem.TopicalTerms.Contains(specParams.Search) ||
-                uf.LibraryItem.AdditionalAuthors.Contains(specParams.Search)
+                (!string.IsNullOrEmpty(uf.LibraryItem.SubTitle) && uf.LibraryItem.SubTitle.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Responsibility) && uf.LibraryItem.Responsibility.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Edition) && uf.LibraryItem.Edition.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Language) && uf.LibraryItem.Language.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.OriginLanguage) && uf.LibraryItem.OriginLanguage.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Summary) && uf.LibraryItem.Summary.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Publisher) && uf.LibraryItem.Publisher.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.PublicationPlace) && uf.LibraryItem.PublicationPlace.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.ClassificationNumber) && uf.LibraryItem.ClassificationNumber.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.CutterNumber) && uf.LibraryItem.CutterNumber.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Isbn) && uf.LibraryItem.Isbn.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Ean) && uf.LibraryItem.Ean.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.PhysicalDetails) && uf.LibraryItem.PhysicalDetails.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Dimensions) && uf.LibraryItem.Dimensions.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.AccompanyingMaterial) && uf.LibraryItem.AccompanyingMaterial.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.Genres) && uf.LibraryItem.Genres.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.GeneralNote) && uf.LibraryItem.GeneralNote.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.BibliographicalNote) && uf.LibraryItem.BibliographicalNote.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.TopicalTerms) && uf.LibraryItem.TopicalTerms.Contains(specParams.Search)) ||
+                (!string.IsNullOrEmpty(uf.LibraryItem.AdditionalAuthors) && uf.LibraryItem.AdditionalAuthors.Contains(specParams.Search))
             )
         )
     {
@@ -54,43 +54,66 @@ public class UserFavoriteSpecification : BaseSpecification<UserFavorite>
             .Include(uf => uf.User)
         );
 
+        // Apply filter for specific user
         AddFilter(uf => uf.User.Email.Equals(email));
+        
         // Apply filters
-        if (!string.IsNullOrEmpty(specParams.Title))
+        if (!string.IsNullOrEmpty(specParams.Title)) // Title
         {
             AddFilter(uf => uf.LibraryItem.Title.Contains(specParams.Title));
         }
-
-        if (!string.IsNullOrEmpty(specParams.Author))
+        if (!string.IsNullOrEmpty(specParams.Author)) // Author
         {
             AddFilter(uf => uf.LibraryItem.LibraryItemAuthors.Any(a => a.Author.FullName.Contains(specParams.Author)));
         }
-
-        if (!string.IsNullOrEmpty(specParams.Isbn))
+        if (!string.IsNullOrEmpty(specParams.Isbn)) // Isbn
         {
-            AddFilter(uf => uf.LibraryItem.Isbn.Contains(specParams.Isbn));
+            AddFilter(uf => !string.IsNullOrEmpty(uf.LibraryItem.Isbn) && uf.LibraryItem.Isbn.Contains(specParams.Isbn));
         }
-
-        if (!string.IsNullOrEmpty(specParams.ClassificationNumber))
+        if (!string.IsNullOrEmpty(specParams.ClassificationNumber)) // Classification number
         {
-            AddFilter(uf => uf.LibraryItem.ClassificationNumber.Contains(specParams.ClassificationNumber));
+            AddFilter(uf => 
+                !string.IsNullOrEmpty(uf.LibraryItem.ClassificationNumber) &&
+                uf.LibraryItem.ClassificationNumber.Contains(specParams.ClassificationNumber));
         }
-
-        if (!string.IsNullOrEmpty(specParams.Genres))
+        if (!string.IsNullOrEmpty(specParams.Genres)) // Genres
         {
-            AddFilter(uf => uf.LibraryItem.Genres.Contains(specParams.Genres));
+            AddFilter(uf => 
+                !string.IsNullOrEmpty(uf.LibraryItem.Genres) &&
+                uf.LibraryItem.Genres.Contains(specParams.Genres));
         }
-
-        if (!string.IsNullOrEmpty(specParams.Publisher))
+        if (!string.IsNullOrEmpty(specParams.Publisher)) // Publisher
         {
-            AddFilter(uf => uf.LibraryItem.Publisher.Contains(specParams.Publisher));
+            AddFilter(uf => 
+                !string.IsNullOrEmpty(uf.LibraryItem.Publisher) &&
+                uf.LibraryItem.Publisher.Contains(specParams.Publisher));
         }
-
-        if (!string.IsNullOrEmpty(specParams.TopicalTerms))
+        if (!string.IsNullOrEmpty(specParams.TopicalTerms)) // Topical terms
         {
-            AddFilter(uf => uf.LibraryItem.TopicalTerms.Contains(specParams.TopicalTerms));
+            AddFilter(uf => 
+                !string.IsNullOrEmpty(uf.LibraryItem.TopicalTerms) &&
+                uf.LibraryItem.TopicalTerms.Contains(specParams.TopicalTerms));
         }
-
+        // Entry date range
+        if (specParams.CreatedAtRange != null
+            && specParams.CreatedAtRange.Length > 1) 
+        {
+            if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1].HasValue)
+            {
+                AddFilter(x => 
+                    x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date
+                    && x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);
+            }
+            else if (specParams.CreatedAtRange[0] is null && specParams.CreatedAtRange[1].HasValue)
+            {
+                AddFilter(x => x.CreatedAt.Date <= specParams.CreatedAtRange[1]!.Value.Date);
+            }
+            else if (specParams.CreatedAtRange[0].HasValue && specParams.CreatedAtRange[1] is null)
+            {
+                AddFilter(x => x.CreatedAt.Date >= specParams.CreatedAtRange[0]!.Value.Date);
+            }
+        }
+        
         // Apply sorting
         if (!string.IsNullOrEmpty(specParams.Sort))
         {

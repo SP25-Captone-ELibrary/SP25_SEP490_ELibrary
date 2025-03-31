@@ -181,27 +181,6 @@ namespace FPTU_ELibrary.Application.Utils
                    && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
         }
 
-        // Validate DCC number
-        public static bool IsValidDeweyDecimal(string classificationNumber)
-        {
-            if (string.IsNullOrWhiteSpace(classificationNumber))
-                return false;
-
-            classificationNumber = classificationNumber.Trim();
-
-            var regex = new Regex(@"^\d{1,3}(\.\d{1,10})?$", RegexOptions.Compiled);
-            return regex.IsMatch(classificationNumber);
-        }
-
-        // Validate Cutter number
-        // TODO: Fix pattern
-        public static bool IsValidCutterNumber(string cutterNumber)
-        {
-            // Regex for Cutter Numbers
-            var regex = new Regex(@"^[A-Z]{1,2}\d{1,4}(\.\d+)?[A-Z]?$");
-            return regex.IsMatch(cutterNumber);
-        }
-
         // Validate prefix code 
         public static bool IsValidBarcodeWithPrefix(string barcode, string prefix)
         {
@@ -551,6 +530,7 @@ namespace FPTU_ELibrary.Application.Utils
             if (!string.IsNullOrEmpty(input) && char.IsPunctuation(input[^1])) input = input[..^1];
             return input;
         }
+        
         public static string DecodeSecretPrefix(string secretName)
         {
             var result = new List<string>();

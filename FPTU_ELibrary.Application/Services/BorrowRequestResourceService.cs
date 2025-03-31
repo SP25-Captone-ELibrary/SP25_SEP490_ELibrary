@@ -48,8 +48,8 @@ public class BorrowRequestResourceService : GenericService<BorrowRequestResource
             if (userDto == null) throw new ForbiddenException("Not allow to access");
             
             // Retrieve borrow request by id
-            var isExistBorrowReq = (await _borrowReqSvc.Value.AnyAsync(b => b.BorrowRequestId == borrowRequestId)).Data is true;
-            if (!isExistBorrowReq)
+            var borrowReqDto = (await _borrowReqSvc.Value.GetByIdAsync(borrowRequestId)).Data as BorrowRequestDto;
+            if (borrowReqDto == null || borrowReqDto.Status != BorrowRequestStatus.Created)
             {
                 // Data is empty or null
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,

@@ -73,6 +73,8 @@ public class LibraryItemDetailDto
     public List<LibraryItemInstanceDto> LibraryItemInstances { get; set; } = new();
     // Digital borrows
     public List<DigitalBorrowDto> DigitalBorrows { get; set; } = new();
+    // Reviews
+    public List<LibraryItemReviewDto> LibraryItemReviews { get; set; } = new();
 }
 
 public static class LibraryItemDetailDtoExtensions
@@ -138,6 +140,8 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Library item reviews
+            LibraryItemReviews = dto.LibraryItemReviews.Any() ? dto.LibraryItemReviews.ToList() : new(),
             // Digital borrows
             DigitalBorrows = digitalBorrows ?? new()
         };
@@ -204,6 +208,8 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = dto.LibraryItemInstances.Any() ? dto.LibraryItemInstances.ToList() : new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Library item reviews
+            LibraryItemReviews = dto.LibraryItemReviews.Any() ? dto.LibraryItemReviews.ToList() : new(),
             // Digital borrows
             DigitalBorrows = digitalBorrows ?? new()
         };
@@ -271,6 +277,8 @@ public static class LibraryItemDetailDtoExtensions
             LibraryItemInstances = new(),
             // Average item reviews
             AvgReviewedRate = dto.LibraryItemReviews.Any() ? Math.Round(dto.LibraryItemReviews.Average(lir => lir.RatingValue) * 2, MidpointRounding.AwayFromZero) / 2 : 0,
+            // Library item reviews
+            LibraryItemReviews = dto.LibraryItemReviews.Any() ? dto.LibraryItemReviews.ToList() : new(),
             // Digital borrows
             DigitalBorrows = digitalBorrows ?? new()
         };

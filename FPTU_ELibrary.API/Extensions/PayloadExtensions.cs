@@ -422,6 +422,17 @@ namespace FPTU_ELibrary.API.Extensions
 
 		#endregion
 
+		#region Library Item Review
+		// Mapping from typeof(ReviewItemRequest) to typeof(LibraryItemReviewDto)
+		public static LibraryItemReviewDto ToLibraryItemReviewDto(this ReviewItemRequest req)
+			=> new()
+			{
+				LibraryItemId = req.LibraryItemId,
+				RatingValue = req.RatingValue,
+				ReviewText = req.ReviewText
+			};
+		#endregion
+		
 		#region Library Item Condition
 		// Mapping from typeof(CreateLibraryItemConditionRequest) to typeof(LibraryItemConditionDto)
 		public static LibraryItemConditionDto ToLibraryItemConditionDto(this CreateLibraryItemConditionRequest req)

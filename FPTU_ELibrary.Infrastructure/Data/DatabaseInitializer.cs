@@ -127,8 +127,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				else _logger.Information("Already seed data for table {0}", "LibraryItem");
 				
 				// [LibraryItemReviews]
-				if (!await _context.LibraryItemReviews.AnyAsync()) await SeedLibraryItemReviewsAsync();
-				else _logger.Information("Already seed data for table {0}", "LibraryItemReview");
+				// if (!await _context.LibraryItemReviews.AnyAsync()) await SeedLibraryItemReviewsAsync();
+				// else _logger.Information("Already seed data for table {0}", "LibraryItemReview");
 				
 				// [LibraryCards]
 				if (!await _context.LibraryCards.AnyAsync()) await SeedLibraryCardAsync();
@@ -687,7 +687,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Biography = "<p><strong>Nguyễn Sen</strong>, thường được biết đến với b&uacute;t danh <strong>T&ocirc; Ho&agrave;i</strong> (27 th&aacute;ng 9 năm 1920 &ndash; 6 th&aacute;ng 7 năm 2014),<a href=\"\\&quot;https://vi.wikipedia.org/wiki/T%C3%B4_Ho%C3%A0i#cite_note-1\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">[</sup></span><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">1</sup><span class=\"\\&quot;cite-bracket\\&quot;\"><sup id=\"\\&quot;cite_ref-1\\&quot;\" class=\"\\&quot;reference\\&quot;\">]</sup></span></a> l&agrave; một nh&agrave; văn người <a title=\"\\&quot;Việt\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Vi%E1%BB%87t_Nam\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Việt Nam</a>.</p>\n<p>&nbsp;</p>\n<p>&Ocirc;ng được nh&agrave; nước Việt Nam trao tặng <a title=\"\\&quot;Giải\" href=\"\\&quot;https://vi.wikipedia.org/wiki/Gi%E1%BA%A3i_th%C6%B0%E1%BB%9Fng_H%E1%BB%93_Ch%C3%AD_Minh\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\">Giải thưởng Hồ Ch&iacute; Minh</a> về Văn học &ndash; Nghệ thuật đợt 1 (1996) cho c&aacute;c t&aacute;c phẩm: <em>X&oacute;m giếng</em>, <em>Nh&agrave; ngh&egrave;o</em>, <em>O chuột</em>, <a class=\"\\&quot;mw-redirect\\&quot;\" title=\"\\&quot;Dế\" href=\"\\&quot;https://vi.wikipedia.org/wiki/D%E1%BA%BF_m%C3%A8n_phi%C3%AAu_l%C6%B0u_k%C3%BD\\&quot;\" target=\"\\&quot;_blank\\&quot;\" rel=\"\\&quot;noopener\"><em>Dế m&egrave;n phi&ecirc;u lưu k&yacute;</em></a>, <em>N&uacute;i Cứu quốc</em>, <em>Truyện T&acirc;y Bắc</em>, <em>Mười năm</em>, <em>Xuống l&agrave;ng</em>, <em>Vỡ tỉnh</em>, <em>T&agrave;o lường</em>, <em>Họ Gi&agrave;ng ở Ph&igrave;n Sa</em>, <em>Miền T&acirc;y</em>, <em>Vợ chồng A Phủ</em>, <em>Tuổi trẻ Ho&agrave;ng Văn Thụ</em>. Một số t&aacute;c phẩm đề t&agrave;i thiếu nhi của &ocirc;ng được dịch ra nhiều ngoại ngữ kh&aacute;c nhau.</p>",
 			        Dob = new DateTime(1920, 9, 27),
 			        DateOfDeath = new DateTime(2014, 7, 6),
-			        Nationality = "Vietnam",
+			        Nationality = "Việt Nam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -699,7 +699,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Biography = "<p><strong>Đo&agrave;n Giỏi</strong> (17 th&aacute;ng 5 năm 1925 &ndash; 2 th&aacute;ng 4 năm 1989) l&agrave; một nh&agrave; văn Việt Nam nổi tiếng với c&aacute;c s&aacute;ng t&aacute;c về cuộc sống, thi&ecirc;n nhi&ecirc;n v&agrave; con người Nam Bộ; trong đ&oacute; ti&ecirc;u biểu nhất l&agrave; t&aacute;c phẩm Đất rừng phương Nam được tr&iacute;ch đoạn trong s&aacute;ch gi&aacute;o khoa Ngữ văn lớp 6 v&agrave; lớp 10. &Ocirc;ng được truy tặng Giải thưởng Nh&agrave; nước về Văn học Nghệ thuật đợt 1 năm 2001.</p>",
 			        Dob = new DateTime(1925, 7, 17),
 			        DateOfDeath = new DateTime(1989, 4,2),
-			        Nationality = "Vietnam",
+			        Nationality = "Việt Nam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -711,7 +711,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Biography = "<p><strong>Carlo Lorenzini</strong>&nbsp;(24 th&aacute;ng 11 năm 1826 - 26 th&aacute;ng 10 năm 1890), được biết nhiều hơn với&nbsp;<a title=\"B&uacute;t danh\" href=\"https://vi.wikipedia.org/wiki/B%C3%BAt_danh\">b&uacute;t danh</a>&nbsp;Carlo Collodi, l&agrave; một nh&agrave; văn &Yacute; của trẻ em nổi tiếng với cuốn tiểu thuyết cổ t&iacute;ch nổi tiếng thế giới&nbsp;<em><a title=\"Những cuộc phi&ecirc;u lưu của Pinocchio\" href=\"https://vi.wikipedia.org/wiki/Nh%E1%BB%AFng_cu%E1%BB%99c_phi%C3%AAu_l%C6%B0u_c%E1%BB%A7a_Pinocchio\">Những cuộc phi&ecirc;u lưu của Pinocchio</a></em>. Collodi sinh ra tại&nbsp;<a title=\"Firenze\" href=\"https://vi.wikipedia.org/wiki/Firenze\">Firenze</a>. &Ocirc;ng c&ograve;n l&agrave; một nh&agrave; b&aacute;o, vừa l&agrave; một nh&acirc;n vi&ecirc;n cao cấp trong Ch&iacute;nh phủ, đ&atilde; từng được thưởng Qu&acirc;n c&ocirc;ng bội tinh. Trong c&aacute;c cuộc chiến tranh độc lập năm 1848 v&agrave; 1860 Collodi đ&atilde; l&agrave;m một t&igrave;nh nguyện vi&ecirc;n qu&acirc;n đội Tuscan</p>",
 			        Dob = new DateTime(1826, 11, 24),
 			        DateOfDeath = new DateTime(1890, 10,26),
-			        Nationality = "Italy",
+			        Nationality = "Ý",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -723,7 +723,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        Biography = "<p><strong>Antoine Marie Jean-Baptiste Roger de Saint-Exup&eacute;ry</strong>, thường được biết tới với t&ecirc;n&nbsp;<strong>Antoine de Saint-Exup&eacute;ry</strong>&nbsp;hay gọi tắt l&agrave;&nbsp;<strong>Saint-Ex</strong>&nbsp;(sinh ng&agrave;y&nbsp;<a title=\"29 th&aacute;ng 6\" href=\"https://vi.wikipedia.org/wiki/29_th%C3%A1ng_6\">29 th&aacute;ng 6</a>&nbsp;năm&nbsp;<a title=\"1900\" href=\"https://vi.wikipedia.org/wiki/1900\">1900</a>&nbsp;- mất t&iacute;ch ng&agrave;y&nbsp;<a title=\"31 th&aacute;ng 7\" href=\"https://vi.wikipedia.org/wiki/31_th%C3%A1ng_7\">31 th&aacute;ng 7</a>&nbsp;năm&nbsp;<a title=\"1944\" href=\"https://vi.wikipedia.org/wiki/1944\">1944</a>) l&agrave; một&nbsp;<a title=\"Nh&agrave; văn\" href=\"https://vi.wikipedia.org/wiki/Nh%C3%A0_v%C4%83n\">nh&agrave; văn</a>&nbsp;v&agrave;&nbsp;<a title=\"Phi c&ocirc;ng\" href=\"https://vi.wikipedia.org/wiki/Phi_c%C3%B4ng\">phi c&ocirc;ng</a>&nbsp;<a title=\"Ph&aacute;p\" href=\"https://vi.wikipedia.org/wiki/Ph%C3%A1p\">Ph&aacute;p</a>&nbsp;nổi tiếng. Saint-Exup&eacute;ry được biết tới nhiều nhất với kiệt t&aacute;c văn học&nbsp;<a class=\"mw-redirect\" title=\"Ho&agrave;ng Tử B&eacute;\" href=\"https://vi.wikipedia.org/wiki/Ho%C3%A0ng_T%E1%BB%AD_B%C3%A9\">Ho&agrave;ng tử b&eacute;</a>&nbsp;(<em>Le Petit Prince</em>).</p>",
 			        Dob = new DateTime(1900, 6, 29),
 			        DateOfDeath = new DateTime(1944, 7,31),
-			        Nationality = "France",
+			        Nationality = "Pháp",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = true
 			    },
@@ -733,7 +733,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        AuthorImage = "https://img.giaoduc.net.vn/w1000/Uploaded/2025/edxwpcqdh/2022_07_01/gdvn-thay-nam-3039.jpg",
 			        FullName = "PGS. TS. Nguyễn Văn Nam",
 			        Biography = "<p>L&agrave; một trong những sinh vi&ecirc;n xuất sắc của sinh vi&ecirc;n chuy&ecirc;n ng&agrave;nh Xử l&yacute; th&ocirc;ng tin&nbsp;kinh tế kh&oacute;a 1 (tương ứng với kh&oacute;a 14 của Trường), <strong>GS.TS Nguyễn Văn Nam</strong> được&nbsp;c&aacute;c thầy, c&ocirc; gi&aacute;o v&agrave; c&aacute;c bạn sinh vi&ecirc;n nhớ đến với h&igrave;nh ảnh m&aacute;i t&oacute;c bồng bềnh l&atilde;ng&nbsp;tử nhưng cũng rất &ldquo;si&ecirc;u&rdquo; trong học tập.</p>\n<p>Sau khi tốt nghiệp chuy&ecirc;n Xử l&yacute; th&ocirc;ng tin kinh tế v&agrave; được giữ lại l&agrave;m giảng vi&ecirc;n ở Khoa Ng&acirc;n h&agrave;ng (nay l&agrave; Viện Ng&acirc;n h&agrave;ng &ndash; T&agrave;i ch&iacute;nh), với tố chất của một người học to&aacute;n &Ocirc;ng đ&atilde; dấn th&acirc;n v&agrave;o ng&agrave;nh Ng&acirc;n h&agrave;ng v&agrave; Thị trường t&agrave;i ch&iacute;nh. Đ&oacute; l&agrave; ng&agrave;nh học mới mẻ ở Việt Nam v&agrave;o những năm 80 của thập kỷ trước. &Ocirc;ng đ&atilde; bảo vệ th&agrave;nh c&ocirc;ng luận &aacute;n Tiến sỹ một c&aacute;ch xuất sắc ở trường Đại học tổng hợp Humboldt &ndash; Berlin, sau đ&oacute; l&agrave;m thực tập sinh khoa học tại Thị trường chứng kho&aacute;n Franfurt/ Main, Deutsche Bank (Đức).</p>",
-			        Nationality = "Vietnam",
+			        Nationality = "Việt Nam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -742,7 +742,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        AuthorCode = "AUTH00006",
 			        AuthorImage = "https://staff.hnue.edu.vn/Portals/0/Images/20fa5cd3-788b-4fd4-9d97-383b95edf53a.jpg",
 			        FullName = "PGS. TS. Lê Minh Hoàng",
-			        Nationality = "Vietnam",
+			        Nationality = "Việt Nam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -750,7 +750,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			    {
 			        AuthorCode = "AUTH00007",
 			        FullName = "PGS. TS. Trần Văn Lượng",
-			        Nationality = "Vietnam",
+			        Nationality = "Việt Nam",
 			        CreateDate = DateTime.UtcNow,
 			        IsDeleted = false
 			    },
@@ -761,10 +761,282 @@ namespace FPTU_ELibrary.Infrastructure.Data
                     FullName = "Rowling, J. K.",
                     Biography = "Joanne Rowling CH OBE FRSL, known by her pen name J. K. Rowling, is a British author and philanthropist. She wrote Harry Potter, a seven-volume fantasy series published from 1997 to 2007.",
                     Dob = new DateTime(1965, 7, 31),
-                    Nationality = "British",
+                    Nationality = "Gloucestershire, Anh",
                     CreateDate = DateTime.UtcNow,
                     IsDeleted = false
-			    }
+			    },
+			    new ()
+			    {
+				    AuthorCode = "AUTH00009",
+				    AuthorImage = "https://media.baoquangninh.vn/upload/image/202407/medium/2231419_6dea9ae532595ef6080e0db2bdb446a6.jpg",
+				    FullName = "Aoyama Gosho",
+				    Biography = "Gosho Aoyama là một họa sĩ truyện tranh nổi tiếng, được biết đến nhiều nhất với việc tạo ra loạt truyện trinh thám 'Thám tử lừng danh Conan'. Bộ truyện, được ra mắt vào năm 1994, đã trở thành một trong những series truyện tranh bán chạy nhất từ trước đến nay.",
+				    Dob = new DateTime(1963, 6, 21),
+				    Nationality = "Nhật Bản",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+			    },
+			    new ()
+			    {
+				    AuthorCode =  "AUTH00010",
+				    AuthorImage =  "https://example.com/path/to/barbieayumi.jpg",
+				    FullName =  "Barbie Ayumi",
+				    Biography =  "Barbie Ayumi là dịch giả nổi tiếng trong lĩnh vực manga tại Việt Nam. Cô đã đảm nhận vai trò chuyển ngữ cho nhiều tựa manga đình đám như 'Shin – Cậu Bé Bút Chì', 'One-Punch Man' và 'Dragon Ball Super'. Với phong cách dịch trung thực và sáng tạo, Barbie Ayumi giúp độc giả Việt Nam tiếp cận văn hóa Nhật Bản một cách mượt mà và đầy cảm xúc.",
+				    Dob = new DateTime(1990, 01, 01),
+				    Nationality =  "Nhật Bản",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted =  false
+			    },
+			    // Hector Malot
+	            new Author
+	            {
+	                AuthorCode = "AUTH00011",
+	                FullName = "Hector Malot",
+	                Biography = "<p>Hector-Henri Malot (20 tháng 5 năm 1830 – 17 tháng 7 năm 1907) là một nhà văn người Pháp, nổi tiếng với tiểu thuyết <i>Sans Famille</i> (Cậu bé không gia đình).</p>",
+	                Dob = new DateTime(1830, 5, 20),
+	                DateOfDeath = new DateTime(1907, 7, 17),
+	                Nationality = "Pháp",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Edmondo De Amicis
+	            new Author
+	            {
+	                AuthorCode = "AUTH00012",
+	                FullName = "Edmondo De Amicis",
+	                Biography = "<p>Edmondo De Amicis (21 tháng 10 năm 1846 – 11 tháng 3 năm 1908) là một nhà tiểu thuyết gia, nhà báo, nhà thơ và tác giả truyện ngắn người Ý, được biết đến nhiều nhất với tiểu thuyết thiếu nhi <i>Cuore</i> (Trái tim).</p>",
+	                Dob = new DateTime(1846, 10, 21),
+	                DateOfDeath = new DateTime(1908, 3, 11),
+	                Nationality = "Ý",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Alexander Grin (Aleksandr Stepanovich Grinevsky)
+	            new Author
+	            {
+	                AuthorCode = "AUTH00013",
+	                FullName = "Alexander Grin",
+	                Biography = "<p>Aleksandr Stepanovich Grinevsky (23 tháng 8 năm 1880 – 8 tháng 7 năm 1932), nổi tiếng với bút danh Alexander Grin, là một nhà văn người Nga, được biết đến với các tiểu thuyết và truyện ngắn lãng mạn.</p>",
+	                Dob = new DateTime(1880, 8, 23),
+	                DateOfDeath = new DateTime(1932, 7, 8),
+	                Nationality = "Nga",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Tetsuko Kuroyanagi
+	            new Author
+	            {
+	                AuthorCode = "AUTH00014",
+	                FullName = "Tetsuko Kuroyanagi",
+	                Biography = "<p>Tetsuko Kuroyanagi (sinh ngày 9 tháng 8 năm 1933) là một nữ diễn viên, diễn viên lồng tiếng và tác giả bán chạy người Nhật, nổi tiếng với cuốn sách <i>Totto-chan, the Little Girl at the Window</i> (Totto-chan, cô bé bên khung cửa sổ).</p>",
+	                Dob = new DateTime(1933, 8, 9),
+	                Nationality = "Nhật",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Frances Hodgson Burnett
+	            new Author
+	            {
+	                AuthorCode = "AUTH00015",
+	                FullName = "Frances Hodgson Burnett",
+	                Biography = "<p>Frances Hodgson Burnett (24 tháng 11 năm 1849 – 29 tháng 10 năm 1924) là một nhà tiểu thuyết gia và nhà viết kịch người Anh-Mỹ, nổi tiếng với các tác phẩm <i>The Secret Garden</i> (Vườn bí mật), <i>A Little Princess</i> (Công chúa nhí) và <i>Little Lord Fauntleroy</i> (Chàng bé quý tộc).</p>",
+	                Dob = new DateTime(1849, 11, 24),
+	                DateOfDeath = new DateTime(1924, 10, 29),
+	                Nationality = "Anh-Mỹ",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Lewis Carroll
+	            new Author
+	            {
+	                AuthorCode = "AUTH00016",
+	                FullName = "Lewis Carroll",
+	                Biography = "<p>Lewis Carroll là bút danh của Charles Lutwidge Dodgson (27 tháng 1 năm 1832 – 14 tháng 1 năm 1898), một nhà văn người Anh nổi tiếng với tác phẩm thiếu nhi thế giới như <i>Alice's Adventures in Wonderland</i> (Cuộc phiêu lưu của Alice ở xứ sở diệu kì).</p>",
+	                Dob = new DateTime(1832, 1, 27),
+	                DateOfDeath = new DateTime(1898, 1, 14),
+	                Nationality = "Anh",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+
+	            // Laura Ingalls Wilder
+	            new Author
+	            {
+	                AuthorCode = "AUTH00017",
+	                FullName = "Laura Ingalls Wilder",
+	                Biography = "<p>Laura Ingalls Wilder (7 tháng 2 năm 1867 – 10 tháng 2 năm 1957) là một nhà văn người Mỹ, được biết đến qua loạt sách thiếu nhi <i>Little House on the Prairie</i> (Ngôi nhà nhỏ trên thảo nguyên).</p>",
+	                Dob = new DateTime(1867, 2, 7),
+	                DateOfDeath = new DateTime(1957, 2, 10),
+	                Nationality = "Mỹ",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Ernst Hans Josef Gombrich
+	            new Author
+	            {
+	                AuthorCode = "AUTH00018",
+	                FullName = "Ernst Hans Josef Gombrich",
+	                Biography = "<p>Ernst Hans Josef Gombrich (30 tháng 3 năm 1909 – 3 tháng 11 năm 2001) là một nhà sử học nghệ thuật người Áo-Anh và tác giả của <i>The Story of Art</i> (Câu chuyện nghệ thuật).</p>",
+	                Dob = new DateTime(1909, 3, 30),
+	                DateOfDeath = new DateTime(2001, 11, 3),
+	                Nationality = "Áo-Anh",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Lê Hải Oanh
+	            new Author
+	            {
+	                AuthorCode = "AUTH00019",
+	                FullName = "Lê Hải Oanh",
+	                Biography = null,
+	                Dob = null,
+	                DateOfDeath = null,
+	                Nationality = null,
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Luis Sepúlveda
+	            new Author
+	            {
+	                AuthorCode = "AUTH00020",
+	                FullName = "Luis Sepúlveda",
+	                Biography = "<p>Luis Sepúlveda (4 tháng 10 năm 1949 – 16 tháng 4 năm 2020) là một nhà văn và nhà báo người Chile, nổi tiếng với các tác phẩm như <i>The Old Man Who Read Love Stories</i> (Ông lão đọc những câu chuyện tình yêu).</p>",
+	                Dob = new DateTime(1949, 10, 4),
+	                DateOfDeath = new DateTime(2020, 4, 16),
+	                Nationality = "Chile",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Trần Đăng Khoa
+	            new Author
+	            {
+	                AuthorCode = "AUTH00021",
+	                FullName = "Trần Đăng Khoa",
+	                Biography = "<p>Trần Đăng Khoa (sinh ngày 26 tháng 4 năm 1958) là một nhà thơ và nhân vật văn hóa người Việt, được biết đến rộng rãi qua những bài thơ viết từ thuở nhỏ.</p>",
+	                Dob = new DateTime(1958, 4, 26),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Võ Quảng
+	            new Author
+	            {
+	                AuthorCode = "AUTH00022",
+	                FullName = "Võ Quảng",
+	                Biography = "<p>Võ Quảng (1 tháng 3 năm 1920 – 15 tháng 2 năm 2007) là một nhà văn người Việt chuyên viết văn học thiếu nhi, nổi tiếng với tác phẩm <i>Dế Mèn Phiêu Lưu Ký</i> và các tác phẩm khác.</p>",
+	                Dob = new DateTime(1920, 3, 1),
+	                DateOfDeath = new DateTime(2007, 2, 15),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Phạm Hổ
+	            new Author
+	            {
+	                AuthorCode = "AUTH00023",
+	                FullName = "Phạm Hổ",
+	                Biography = "<p>Phạm Hổ (28 tháng 4 năm 1926 – 2 tháng 5 năm 2007) là một nhà thơ và tác giả người Việt, được biết đến đặc biệt qua văn học thiếu nhi.</p>",
+	                Dob = new DateTime(1926, 4, 28),
+	                DateOfDeath = new DateTime(2007, 5, 2),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Sơn Tùng
+	            new Author
+	            {
+	                AuthorCode = "AUTH00024",
+	                FullName = "Sơn Tùng",
+	                Biography = "<p>Sơn Tùng (8 tháng 8 năm 1928 – 22 tháng 7 năm 2021) là một nhà văn người Việt, được biết đến với tác phẩm tiểu sử có ảnh hưởng <i>Búp sen xanh</i> về Chủ tịch Hồ Chí Minh.</p>",
+	                Dob = new DateTime(1928, 8, 8),
+	                DateOfDeath = new DateTime(2021, 7, 22),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Phùng Quán
+	            new Author
+	            {
+	                AuthorCode = "AUTH00025",
+	                FullName = "Phùng Quán",
+	                Biography = "<p>Phùng Quán (10 tháng 1 năm 1932 – 22 tháng 1 năm 1995) là một nhà thơ và tiểu thuyết gia người Việt, nổi bật với các tác phẩm trong phong trào Nhân Văn–Giai Phẩm.</p>",
+	                Dob = new DateTime(1932, 1, 10),
+	                DateOfDeath = new DateTime(1995, 1, 22),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Nguyễn Nhật Ánh
+	            new Author
+	            {
+	                AuthorCode = "AUTH00026",
+	                FullName = "Nguyễn Nhật Ánh",
+	                Biography = "<p>Nguyễn Nhật Ánh (sinh ngày 7 tháng 5 năm 1955) là một tác giả văn học thiếu nhi người Việt, nổi tiếng với tiểu thuyết <i>Mắt biếc</i> và nhiều tác phẩm được yêu thích khác.</p>",
+	                Dob = new DateTime(1955, 5, 7),
+	                Nationality = "Việt Nam",
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Nguyễn Hoàng Trung
+	            new Author
+	            {
+	                AuthorCode = "AUTH00027",
+	                FullName = "Nguyễn Hoàng Trung",
+	                Biography = null,
+	                Dob = null,
+	                DateOfDeath = null,
+	                Nationality = null,
+	                AuthorImage = null,
+	                CreateDate = DateTime.Now,
+	                UpdateDate = null,
+	                IsDeleted = false
+	            },
+	            // Tolkien J. R. R.
+	            new Author
+	            {
+		            AuthorCode = "AUTH00028",
+		            FullName = "Tolkien J. R. R.",
+		            Biography = "<p>John Ronald Reuel Tolkien (3 tháng 1 năm 1892 – 2 tháng 9 năm 1973) là một tác giả người Anh, nổi tiếng với tác phẩm giả tưởng <i>The Hobbit</i> (Người Hobbit) và <i>The Lord of the Rings</i> (Chúa tể những chiếc nhẫn).</p>",
+		            Dob = new DateTime(1892, 1, 3),
+		            DateOfDeath = new DateTime(1973, 9, 2),
+		            Nationality = "Anh",
+		            AuthorImage = null,
+		            CreateDate = DateTime.Now,
+		            UpdateDate = null,
+		            IsDeleted = false
+	            }
 			};
 	        
 	        // Add Range
@@ -1613,7 +1885,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			        {
 				        new()
 				        {
-					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00001").AuthorId
+					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00008").AuthorId
 				        }
 			        }
 			    },
@@ -1812,13 +2084,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						ReservedUnits = 0,
 						RequestUnits = 0,
 						LostUnits = 0
-			        },
-			        LibraryItemAuthors = new List<LibraryItemAuthor>()
-			        {
-				        new()
-				        {
-					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00004").AuthorId
-				        }
 			        }
 			    },
 			    new LibraryItem
@@ -1859,13 +2124,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 						ReservedUnits = 0,
 						RequestUnits = 0,
 						LostUnits = 0
-			        },
-			        LibraryItemAuthors = new List<LibraryItemAuthor>()
-			        {
-				        new()
-				        {
-					        AuthorId = authors.First(a => a.AuthorCode == "AUTH00005").AuthorId
-				        }
 			        }
 			    },
 			    new LibraryItem

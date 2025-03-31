@@ -11,6 +11,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -22,8 +23,9 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
     private readonly ILibraryItemService<LibraryItemDto> _itemService;
 
     public LibraryItemAuthorService(
-        ILibraryItemService<LibraryItemDto> itemService,
+        // Lazy services
         IAuthorService<AuthorDto> authorService,
+        ILibraryItemService<LibraryItemDto> itemService,
         ISystemMessageService msgService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -33,6 +35,52 @@ public class LibraryItemAuthorService : GenericService<LibraryItemAuthor, Librar
         _itemService = itemService;
     }
 
+    public async Task<IServiceResult> GetFirstByLibraryItemIdAsync(int libraryItemId)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+		    
+            // Check exist lib item id 
+            var isExistItem = (await _itemService.AnyAsync(x => x.LibraryItemId == libraryItemId)).Data is true;
+            if (!isExistItem)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+            }
+			
+            // Build spec
+            var libAuthorSpec = new BaseSpecification<LibraryItemAuthor>(lia => lia.LibraryItemId == libraryItemId);
+            // Apply include
+            libAuthorSpec.ApplyInclude(q => q.Include(lia => lia.Author));
+            // Retrieve with spec
+            var libAuthor = await _unitOfWork.Repository<LibraryItemAuthor, int>().GetWithSpecAsync(libAuthorSpec);
+			
+            // Response author information (if any)
+            if (libAuthor != null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), 
+                    _mapper.Map<LibraryItemAuthorDto>(libAuthor));
+            }
+			
+            // Not found {0}
+            var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                StringUtils.Format(msg, isEng ? "any author in library item" : "tác giả nào gắn với tài liệu"));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get first author by library item id");
+        }
+    }
+    
     public async Task<IServiceResult> AddAuthorToLibraryItemAsync(int libraryItemId, int authorId)
     {
         try

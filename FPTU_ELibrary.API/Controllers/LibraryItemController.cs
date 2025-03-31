@@ -392,10 +392,7 @@ public class LibraryItemController : ControllerBase
         [FromRoute] int part)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        var result = await _libraryResourceService.GetPartOfOwnAudioReSource(email??string.Empty
-            , itemId
-            , resourceId
-            , part);
+        var result = await _libraryResourceService.GetPartOfOwnAudioReSource(email??string.Empty, itemId, resourceId, part);
 
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
@@ -410,7 +407,7 @@ public class LibraryItemController : ControllerBase
     public async Task<IActionResult> CountPartToUpload([FromRoute] int resourceId, [FromRoute] int itemId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(resourceId, itemId, email));
+        return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(resourceId, itemId, email ?? string.Empty));
     }
     
     #region Archived Function

@@ -411,7 +411,7 @@ public class AIClassificationService : IAIClassificationService
             candidateItemsSpec.EnableSplitQuery();
             candidateItemsSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author));
-            var candidateItems = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(candidateItemsSpec);
+            var candidateItems = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(candidateItemsSpec);
             if (candidateItems.Data is null)
             {
                 // only root item in the group
@@ -672,11 +672,10 @@ public class AIClassificationService : IAIClassificationService
             ungroupedItemSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
                 .ThenInclude(lia => lia.Author));
 
-            var ungroupedItems = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(ungroupedItemSpec);
+            var ungroupedItems = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(ungroupedItemSpec);
             if (ungroupedItems.Data is null)
             {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0002
-                    , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002, await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
 
             var ungroupedItemsValue = (List<LibraryItemDto>)ungroupedItems.Data!;
@@ -1660,7 +1659,7 @@ public class AIClassificationService : IAIClassificationService
             .Include(li => li.LibraryItemReviews)
         );
 
-        var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
+        var allItem = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(recommendBookBaseSpec);
         if (allItem.Data is null)
         {
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
@@ -1961,7 +1960,7 @@ public class AIClassificationService : IAIClassificationService
                 q.Include(x => x.LibraryItemAuthors)
                     .ThenInclude(ea => ea.Author));
 
-            var allItem = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(recommendBookBaseSpec);
+            var allItem = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(recommendBookBaseSpec);
             if (allItem.Data is null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,

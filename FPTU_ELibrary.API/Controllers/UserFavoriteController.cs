@@ -22,29 +22,31 @@ public class UserFavoriteController: ControllerBase
         _userFavoriteService = userFavoriteService;
         _monitor = monitor.CurrentValue;
     }
-    [HttpPost(APIRoute.UserFavorite.AddFavorite, Name = nameof(AddFavorite))]
+    
     [Authorize]
+    [HttpPost(APIRoute.UserFavorite.AddFavorite, Name = nameof(AddFavorite))]
     public async Task<IActionResult> AddFavorite([FromRoute] int id)
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
         return Ok(await _userFavoriteService.AddFavoriteAsync(id, email));
     }
-    [HttpDelete(APIRoute.UserFavorite.RemoveFavorite, Name = nameof(RemoveFavorite))]
+    
     [Authorize]
+    [HttpDelete(APIRoute.UserFavorite.RemoveFavorite, Name = nameof(RemoveFavorite))]
     public async Task<IActionResult> RemoveFavorite([FromRoute] int id)
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
         return Ok(await _userFavoriteService.RemoveFavoriteAsync(id, email));
     }
-    [HttpGet(APIRoute.UserFavorite.GetAll, Name = nameof(GetAllFavorite))]
+    
     [Authorize]
-    public async Task<IActionResult> GetAllFavorite([FromQuery]UserFavoriteSpecParams specParams)
+    [HttpGet(APIRoute.UserFavorite.GetAll, Name = nameof(GetAllUserFavoriteAsync))]
+    public async Task<IActionResult> GetAllUserFavoriteAsync([FromQuery] UserFavoriteSpecParams specParams)
     {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
         return Ok(await _userFavoriteService.GetAllWithSpecAsync(new UserFavoriteSpecification(
-            specParams,
+            specParams: specParams,
             pageIndex: specParams.PageIndex ?? 1,
             pageSize: specParams.PageSize ?? _monitor.PageSize,email), tracked: false));
     }
-    
 }

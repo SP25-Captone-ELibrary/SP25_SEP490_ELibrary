@@ -24,7 +24,7 @@ namespace FPTU_ELibrary.Application.Services;
 public class CategoryService : GenericService<Category, CategoryDto, int>,
     ICategoryService<CategoryDto>
 {
-     public CategoryService(
+    public CategoryService(
          ISystemMessageService msgService, 
          IUnitOfWork unitOfWork, 
          IMapper mapper, 

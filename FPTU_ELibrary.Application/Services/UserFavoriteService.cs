@@ -44,32 +44,27 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
-            // Check if item was added to favorite list
-            var user = await _userService.GetByEmailAsync(email);
-            if (user.Data is null)
+            // Retrieve user by email
+            var userDto = (await _userService.GetByEmailAsync(email)).Data as UserDto;
+            if (userDto == null)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg,
-                        isEng
-                            ? "Cannot found user that match with email"
-                            : "Không tìm thấy người dùng phù hợp với email"
-                    ));
+                // Mark as authentication required to access this feature
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.Auth_Warning0013,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0013));
             }
-
+            
+            // Build spec
             var userFavoriteSpec = new BaseSpecification<UserFavorite>(u =>
-                u.UserId == (user.Data as UserDto)!.UserId && u.LibraryItemId == libraryItemId);
+                u.UserId == userDto.UserId && u.LibraryItemId == libraryItemId);
+            // Retrieve with spec
             var userFavorite = await GetWithSpecAsync(userFavoriteSpec);
             if (userFavorite.Data != null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-                    StringUtils.Format(errMsg,
-                        isEng ? "favorite item" : "mục yêu thích",
-                        isEng
-                            ? "Item already added to favorite list"
-                            : "Mục đã được thêm vào danh sách yêu thích"
-                    ));
+                return new ServiceResult(ResultCodeConst.SYS_Warning0003, isEng 
+                    ? "Library item has already existed in favorite list" 
+                    : "Tài liệu đã tồn tại trong mục yêu thích");
             }
 
             // Current local datetime
@@ -77,22 +72,26 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
+            // Initialize user favorite
             var dto = new UserFavoriteDto()
             {
                 LibraryItemId = libraryItemId,
-                UserId = (user.Data as UserDto)!.UserId,
+                UserId = userDto.UserId,
                 CreatedAt = currentLocalDateTime
             };
-            var entity = _mapper.Map<UserFavorite>(dto);
-            await _unitOfWork.Repository<UserFavorite, int>().AddAsync(entity);
+            // Process add new entity            
+            await _unitOfWork.Repository<UserFavorite, int>().AddAsync(_mapper.Map<UserFavorite>(dto));
+            // Save DB            
             if (await _unitOfWork.SaveChangesAsync() <= 0)
             {
+                // Failed to save
                 return new ServiceResult(ResultCodeConst.SYS_Fail0001,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
             }
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), entity);
+                
+            // Msg: Added to favorites successfully
+            return new ServiceResult(ResultCodeConst.LibraryItem_Success0006,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0006));
         }
         catch (Exception ex)
         {
@@ -110,45 +109,42 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
-            // Check if item was added to favorite list
-            var user = await _userService.GetByEmailAsync(email);
-            if (user.Data is null)
+            // Retrieve user by email
+            var userDto = (await _userService.GetByEmailAsync(email)).Data as UserDto;
+            if (userDto == null)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg,
-                        isEng
-                            ? "Cannot found user that match with email"
-                            : "Không tìm thấy người dùng phù hợp với email"
-                    ));
+                // Mark as authentication required to access this feature
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.Auth_Warning0013,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0013));
             }
 
+            // Build spec
             var userFavoriteSpec = new BaseSpecification<UserFavorite>(u =>
-                u.UserId == (user.Data as UserDto)!.UserId && u.LibraryItemId == libraryItemId);
-            var userFavorite = await GetWithSpecAsync(userFavoriteSpec);
-            if (userFavorite.Data is null)
+                u.UserId == userDto.UserId && u.LibraryItemId == libraryItemId);
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<UserFavorite, int>().GetWithSpecAsync(userFavoriteSpec);
+            if (existingEntity == null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.SYS_Warning0003,
-                    StringUtils.Format(errMsg,
-                        isEng
-                            ? "Cannot find this item in favorite list"
-                            : "Không tìm thấy sản phẩm này trong mục yêu thích"
-                    ));
+                    StringUtils.Format(errMsg, isEng ? "item in favorite list" : "tài liệu trong mục yêu thích"));
             }
+            
+            // Process delete existing entity
+            await _unitOfWork.Repository<UserFavorite, int>().DeleteAsync(existingEntity.FavoriteId);
 
-            await _unitOfWork.Repository<UserFavorite, int>()
-                .DeleteAsync((userFavorite.Data as UserFavoriteDto)!.FavoriteId);
             // Save to DB
             if (await _unitOfWork.SaveChangesAsync() > 0)
             {
-                return new ServiceResult(ResultCodeConst.SYS_Success0004,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+                // Msg: Item removed from favorites successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0007,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0007));
             }
 
             // Fail to delete
             return new ServiceResult(ResultCodeConst.SYS_Fail0004,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004), false);
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
         }
         catch (DbUpdateException ex)
         {
@@ -172,8 +168,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
         }
     }
 
-    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<UserFavorite> specification,
-        bool tracked = true)
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<UserFavorite> specification, bool tracked = true)
     {
         try
         {
@@ -192,12 +187,12 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
             
-            // Count total library items
-            var totalLibItemWithSpec = await _unitOfWork.Repository<UserFavorite, int>().CountAsync(itemSpecification);
+            // Count total user favorites
+            var totalFavWithSpec = await _unitOfWork.Repository<UserFavorite, int>().CountAsync(itemSpecification);
             // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalLibItemWithSpec / itemSpecification.PageSize);
+            var totalPage = (int)Math.Ceiling((double)totalFavWithSpec / itemSpecification.PageSize);
             
-            // Set pagination to specification after count total library item
+            // Set pagination to specification after count total user favorite
             if (itemSpecification.PageIndex > totalPage
                 || itemSpecification.PageIndex < 1) // Exceed total page or page index smaller than 1
             {
@@ -208,6 +203,8 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
             itemSpecification.ApplyPaging(
                 skip: itemSpecification.PageSize * (itemSpecification.PageIndex - 1),
                 take: itemSpecification.PageSize);
+            
+            // Retrieve all with spec
             var userFavorites = await _unitOfWork.Repository<UserFavorite, int>()
                 .GetAllWithSpecAndSelectorAsync(itemSpecification, uf=> new UserFavorite()
                     {
@@ -257,9 +254,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                             // References
                             Category = uf.LibraryItem.Category,
                             Shelf = uf.LibraryItem.Shelf,
-                            LibraryItemGroup = uf.LibraryItem.LibraryItemGroup,
                             LibraryItemInventory = uf.LibraryItem.LibraryItemInventory,
-                            LibraryItemInstances = uf.LibraryItem.LibraryItemInstances,
                             LibraryItemReviews = uf.LibraryItem.LibraryItemReviews,
                             LibraryItemAuthors = uf.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
                             {
@@ -270,15 +265,15 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                             }).ToList()
                         }
                     });
-            var enumerable = userFavorites.ToList();
-            if (enumerable.Any())
+            var userFavoriteList = userFavorites.ToList();
+            if (userFavoriteList.Any())
             {
                 // Convert to dto collection
-                var itemDtos = _mapper.Map<List<UserFavoriteDto>>(enumerable.ToList());
+                var favoriteDtos = _mapper.Map<List<UserFavoriteDto>>(userFavoriteList.ToList());
 
                 // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<UserFavoriteDto>(itemDtos,
-                    itemSpecification.PageIndex, itemSpecification.PageSize, totalPage, totalLibItemWithSpec);
+                var paginationResultDto = new PaginatedResultDto<UserFavoriteDto>(favoriteDtos,
+                    itemSpecification.PageIndex, itemSpecification.PageSize, totalPage, totalFavWithSpec);
 
                 // Response with pagination 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
@@ -288,8 +283,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
                 // Mapping entities to dto and ignore sensitive user data
-                _mapper.Map<IEnumerable<UserFavoriteDto>>(userFavorites));
-
+                _mapper.Map<List<UserFavoriteDto>>(userFavorites));
         }
         catch (Exception ex)
         {

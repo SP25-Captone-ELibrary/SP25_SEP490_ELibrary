@@ -467,6 +467,13 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     .ThenInclude(l => l.LibraryItemInventory)
                 .Include(r => r.LibraryItem)
                     .ThenInclude(l => l.LibraryItemInstances)
+                .Include(r => r.LibraryItem)
+                    .ThenInclude(l => l.Category)
+                .Include(r => r.LibraryItem)
+                    .ThenInclude(l => l.Shelf)
+                .Include(r => r.LibraryItem)
+                    .ThenInclude(l => l.LibraryItemAuthors)
+                        .ThenInclude(lia => lia.Author)
             );
             // Order by reservation date
             baseSpec.AddOrderBy(r => r.ReservationDate);
@@ -569,6 +576,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                     instanceSpec.ApplyInclude(q => q
                                         .Include(li => li.LibraryItem)
                                         .Include(li => li.LibraryItemConditionHistories)
+                                            .ThenInclude(h => h.Condition)
                                     );
                                     // Retrieve with spec
                                     if ((await _itemInstanceSvc.Value.GetWithSpecAsync(instanceSpec)

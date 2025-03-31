@@ -32,22 +32,6 @@ public class SystemMessageService : ISystemMessageService
         _logger = logger;
     }
 
-    public async Task<IServiceResult> GetByIdAsync(string msgId)
-    {
-        var entity =
-            await _unitOfWork.Repository<SystemMessage, string>().GetByIdAsync(msgId);
-        
-        if (entity == null)
-        {
-            return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
-                "Fail to get data");
-        }
-
-        return new ServiceResult(ResultCodeConst.SYS_Success0002, 
-            "Get data successfully", 
-            _mapper.Map<SystemMessageDto>(entity));
-    }
-    
     public async Task<string> GetMessageAsync(string msgId)
     {
         try

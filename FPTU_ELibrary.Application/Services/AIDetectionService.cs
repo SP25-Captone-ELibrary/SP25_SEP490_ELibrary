@@ -475,7 +475,7 @@ public class AIDetectionService : IAIDetectionService
                 .Equals(groupCode));
             groupBaseSpec.EnableSplitQuery();
             groupBaseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemGroup!));
-            var itemsInGroup = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(groupBaseSpec);
+            var itemsInGroup = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(groupBaseSpec);
             if (itemsInGroup.Data is null)
             {
                 var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),"Items");

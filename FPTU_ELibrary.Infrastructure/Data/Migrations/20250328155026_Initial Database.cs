@@ -849,6 +849,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     bibliographical_note = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     topical_terms = table.Column<string>(type: "nvarchar(500)", nullable: true),
                     additional_authors = table.Column<string>(type: "nvarchar(500)", nullable: true),
+                    average_rating = table.Column<double>(type: "float", nullable: false, defaultValue: 0.0),
+                    rating_count = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     category_id = table.Column<int>(type: "int", nullable: false),
                     shelf_id = table.Column<int>(type: "int", nullable: true),
                     group_id = table.Column<int>(type: "int", nullable: true),
@@ -1264,6 +1266,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     reservation_code = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     is_applied_label = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     collected_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    assigned_date = table.Column<DateTime>(type: "datetime", nullable: true),
+                    total_extend_pickup = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     is_notified = table.Column<bool>(type: "bit", nullable: false),
                     cancelled_by = table.Column<string>(type: "nvarchar(100)", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(500)", nullable: true)

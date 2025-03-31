@@ -3,6 +3,7 @@ namespace FPTU_ELibrary.Domain.Specifications.Params;
 public class UserFavoriteSpecParams :BaseSpecParams
 {
     public bool? CanBorrow { get; set; }
+    public DateTime?[]? CreatedAtRange { get; set; }
     
     // Basic search
     public string? Title { get; set; }

@@ -1,11 +1,14 @@
+using System.Diagnostics;
 using System.Globalization;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
+using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Payments.PayOS;
+using FPTU_ELibrary.Application.Dtos.Recommendation;
 using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
@@ -35,6 +38,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
     private readonly IEmployeeService<EmployeeDto> _employeeSvc;
     private readonly ITransactionService<TransactionDto> _tranSvc;
     private readonly IPaymentMethodService<PaymentMethodDto> _paymentMethodSvc;
+    private readonly ILibraryItemService<LibraryItemDto> _libItemSvc;
+    private readonly ILibraryItemReviewService<LibraryItemReviewDto> _itemReviewSvc;
     private readonly ILibraryCardPackageService<LibraryCardPackageDto> _cardPackageSvc;
 
     private readonly IEmailService _emailSvc;
@@ -49,6 +54,8 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         IEmployeeService<EmployeeDto> employeeSvc,
         ITransactionService<TransactionDto> tranSvc,
         IPaymentMethodService<PaymentMethodDto> paymentMethodSvc,
+        ILibraryItemService<LibraryItemDto> libItemSvc,
+        ILibraryItemReviewService<LibraryItemReviewDto> itemReviewSvc,
         ILibraryCardPackageService<LibraryCardPackageDto> cardPackageSvc,
         IOptionsMonitor<AppSettings> monitor,
         IOptionsMonitor<BorrowSettings> monitor1,
@@ -66,7 +73,9 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
         _tranSvc = tranSvc;
         _cloudSvc = cloudSvc;
         _emailSvc = emailSvc;
+        _libItemSvc = libItemSvc;
         _employeeSvc = employeeSvc;
+        _itemReviewSvc = itemReviewSvc;
         _cardPackageSvc = cardPackageSvc;
         _paymentMethodSvc = paymentMethodSvc;
         _tokenValidationParams = tokenValidationParams;
@@ -433,6 +442,118 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
 	        throw new Exception("Error invoke when process register library card");
 	    }
 	}
+
+    public async Task<IServiceResult> GetAllUserActivityAsync(Guid userId)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build specification
+            var baseSpec = new BaseSpecification<LibraryCard>(c => c.Users.Any(u => u.UserId == userId));
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(c => c.BorrowRecords)
+                    .ThenInclude(br => br.BorrowRecordDetails)
+                        .ThenInclude(brd => brd.LibraryItemInstance)
+                .Include(c => c.BorrowRequests)
+                    .ThenInclude(br => br.BorrowRequestDetails)
+                .Include(c => c.ReservationQueues)
+            );  
+            // Add order by 
+            baseSpec.AddOrderByDescending(c => c.IssueDate);
+            // Retrieve with spec
+            var libCard = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(baseSpec);
+            if (libCard == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
+            }
+
+            // Retrieve user information
+            var userSpec = new BaseSpecification<User>(u => u.UserId == userId);
+            // Apply include
+            userSpec.ApplyInclude(q => q
+                .Include(u => u.UserFavorites)
+                .Include(u => u.LibraryItemReviews)
+            );
+            // Retrieve user with spec
+            var userDto = (await _userSvc.GetWithSpecAsync(userSpec)).Data as UserDto;
+            if (userDto == null)
+            {
+                // Unknown error
+                return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+            }
+            
+            // Initialize collection of user profile activities
+            var userProfileActivities = new List<UserProfileActivity>();
+            // Retrieve all existing lib item ids
+            var itemSpec = new BaseSpecification<LibraryItem>();
+            // Get all with spec and selector
+            var libItemIds = (await _libItemSvc.GetAllWithSpecAndSelectorAsync(
+                specification: itemSpec, 
+                selector: s => s.LibraryItemId)).Data as IEnumerable<int>;
+            // Convert to list
+            var libItemIdList = libItemIds != null ? libItemIds.ToList() : new List<int>();
+            // Iterate each lib item to create user profile activity
+            foreach (var itemId in libItemIdList)
+            {
+                // Initialize user profile activity
+                var userProfileActivity = new UserProfileActivity();
+                
+                // Retrieve lib item review (if any)
+                var itemReview = userDto.LibraryItemReviews.FirstOrDefault(li => li.LibraryItemId == itemId);
+                // Add item rating val
+                userProfileActivity.Rating = itemReview?.RatingValue ?? 0;
+                
+                // Check whether consuming item or not
+                var borrowedCount = libCard.BorrowRecords
+                    .SelectMany(br => br.BorrowRecordDetails)
+                    .Select(brd => brd.LibraryItemInstance.LibraryItemId)
+                    .Where(libItemId => libItemId == itemId).ToList();
+                if (borrowedCount.Any())
+                {
+                    userProfileActivity.Borrowed = true;
+                    userProfileActivity.BorrowCount = borrowedCount.Count;
+                }
+                
+                // Check whether reserving item or not 
+                var reserveCount = libCard.ReservationQueues
+                    .Select(r => r.LibraryItemId)
+                    .Where(libItemId => libItemId == itemId).ToList();
+                if (reserveCount.Any())
+                {
+                    userProfileActivity.Reserved = true;
+                    userProfileActivity.ReserveCount = reserveCount.Count;
+                }
+                
+                // Check whether adding item to favorite list or not
+                userProfileActivity.Favorite = userDto.UserFavorites.Any(f => f.LibraryItemId == itemId);
+                
+                // Assign user and lib item id
+                userProfileActivity.LibraryItemId = itemId;
+                userProfileActivity.UserId = userDto.UserId;
+                
+                // Add to collection
+                userProfileActivities.Add(userProfileActivity);
+            }
+            
+            // Mark as get data successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), userProfileActivities);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invokes when process get all user's activity");
+        }
+    }
     
     public async Task<IServiceResult> RegisterCardByEmployeeAsync(
         string processedByEmail, Guid userId, 

@@ -26,7 +26,7 @@ public class BorrowRequestResourceConfiguration : IEntityTypeConfiguration<Borro
         builder.Property(e => e.BorrowRequestId).HasColumnName("borrow_request_id");
         builder.HasOne(e => e.BorrowRequest).WithMany(p => p.BorrowRequestResources)
             .HasForeignKey(e => e.BorrowRequestId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
+            .OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("FK_BorrowRequestResource_RequestId");
         
         builder.Property(e => e.ResourceId).HasColumnName("resource_id");

@@ -209,6 +209,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [WARNING] Backup code is not valid
 		/// </summary>
 		public static string Auth_Warning0012 = "Auth.Warning0012";
+		/// <summary>
+		/// [WARNING] Please sign in to access this feature
+		/// </summary>
+		public static string Auth_Warning0013 = "Auth.Warning0013";
 		
 		/// <summary>
 		/// [FAIL] Fail to update password
@@ -257,6 +261,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [SUCCESS] Total {0} items have been returned successfully
 		/// </summary>
 		public const string Borrow_Success0008 = "Borrow.Success0008";
+		/// <summary>
+		/// [SUCCESS] Cancel borrowing {0} digital item(s) successfully
+		/// </summary>
+		public const string Borrow_Success0009 = "Borrow.Success0009";
 		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
@@ -471,6 +479,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Error has been occurred. An item instance belongs to several reservations at the same time
         /// </summary>
         public const string Borrow_Fail0011 = "Borrow.Fail0011";
+        /// <summary>
+        /// [FAIL] Failed to cancel digital borrow request
+        /// </summary>
+        public const string Borrow_Fail0012 = "Borrow.Fail0012";
 		#endregion
 
 		#region Reservatation
@@ -701,6 +713,18 @@ namespace FPTU_ELibrary.Application.Common
         /// [SUCCESS] Total {0} item have been unshelved successfully
         /// </summary>
         public const string LibraryItem_Success0004 = "LibraryItem.Success0004";
+        /// <summary>
+        /// [SUCCESS] You have succesfully rated the item
+        /// </summary>
+        public const string LibraryItem_Success0005 = "LibraryItem.Success0005";
+        /// <summary>
+        /// [SUCCESS] Added to favorites successfully
+        /// </summary>
+        public const string LibraryItem_Success0006 = "LibraryItem.Success0006";
+        /// <summary>
+        /// [SUCCESS] Item removed from favorites successfully
+        /// </summary>
+        public const string LibraryItem_Success0007 = "LibraryItem.Success0007";
 		/// <summary>
 		/// [WARNING] Some authors are unavailable or do not exist
 		/// </summary>
@@ -805,6 +829,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Unshelving the item was unsuccessful
 		/// </summary>
 		public const string LibraryItem_Fail0004 = "LibraryItem.Fail0004";
+		/// <summary>
+		/// [FAIL] Failed to rating for the item
+		/// </summary>
+		public const string LibraryItem_Fail0005 = "LibraryItem.Fail0005";
 		#endregion
 
 		#region Library Card

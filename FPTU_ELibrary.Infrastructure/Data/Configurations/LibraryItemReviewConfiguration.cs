@@ -19,7 +19,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnName("create_date");
             builder.Property(e => e.RatingValue).HasColumnName("rating_value");
             builder.Property(e => e.ReviewText)
-                .HasMaxLength(2000)
+                .HasMaxLength(1000)
                 .HasColumnName("review_text");
             builder.Property(e => e.UpdatedDate)
                 .HasColumnType("datetime")

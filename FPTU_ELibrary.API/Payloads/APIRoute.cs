@@ -68,6 +68,7 @@
 			// [PATCH]
 			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
+			public const string CancelSpecificDigitalManagement = Base + "/management/borrows/requests/{id}/digitals/{resourceId}/cancel";
 			#endregion
 			
 			// [GET]
@@ -78,6 +79,7 @@
 			// [PATCH]
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
+			public const string CancelSpecificDigital = Base + "/borrows/requests/{id}/digitals/{resourceId}/cancel";
 		}
 
 		/// <summary>
@@ -224,6 +226,16 @@
 			public const string Delete = Base + "/management/library-items/instances/{id}";
 			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
 			#endregion
+		}
+
+		/// <summary>
+		/// Library item review
+		/// </summary>
+		public static class LibraryItemReview
+		{
+			public const string GetByItemId = Base + "/library-item-reviews/{libraryItemId}";
+			public const string Review = Base + "/library-item-reviews";
+			public const string Delete = Base + "/library-item-reviews/{libraryItemId}";
 		}
 
 		/// <summary>
@@ -391,7 +403,6 @@
 			public const string GetAllUserDigitalBorrow = Base + "/users/borrows/digital";
 			public const string GetAllUserReservation = Base + "/users/reservations";
 			public const string GetAllUserTransaction = Base + "/users/transactions";
-			public const string GetAllUserNotification = Base + "/users/notifications";
 			public const string GetBorrowRequestById = Base + "/users/borrows/requests/{id}";
 			public const string GetBorrowRecordById = Base + "/users/borrows/records/{id}";
 			public const string GetDigitalBorrowById = Base + "/users/borrows/digital/{id}";
@@ -507,6 +518,11 @@
 			public const string ExtendPickupDate = Base + "/management/reservations/{id}/extend-pick-up-date";
 			// [DELETE]
 			#endregion
+		}
+
+		public static class Recommender
+		{
+			public const string GetUserRecommend = Base + "/recommend";
 		}
 		
 		/// <summary>

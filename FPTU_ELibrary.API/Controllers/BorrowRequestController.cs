@@ -72,6 +72,18 @@ public class BorrowRequestController : ControllerBase
     }
 
     [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificDigitalManagement, Name = nameof(CancelSpecificDigitalBorrowRequestManagementAsync))]
+    public async Task<IActionResult> CancelSpecificDigitalBorrowRequestManagementAsync([FromRoute] int id,
+        [FromRoute] int resourceId,
+        [FromQuery] Guid libraryCardId)
+    {
+        return Ok(await _borrowReqSvc.CancelSpecificDigitalManagementAsync(
+            libraryCardId: libraryCardId,
+            id: id,
+            resourceId: resourceId));
+    }
+    
+    [Authorize]
     [HttpPatch(APIRoute.BorrowRequest.CancelManagement, Name = nameof(CancelBorrowRequestManagementAsync))]
     public async Task<IActionResult> CancelBorrowRequestManagementAsync([FromRoute] int id,
         [FromQuery] Guid libraryCardId,
@@ -135,6 +147,18 @@ public class BorrowRequestController : ControllerBase
             email: email ?? string.Empty,
             id: id,
             libraryItemId: libraryItemId));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificDigital, Name = nameof(CancelSpecificDigitalBorrowRequestAsync))]
+    public async Task<IActionResult> CancelSpecificDigitalBorrowRequestAsync([FromRoute] int id,
+        [FromRoute] int resourceId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.CancelSpecificDigitalAsync(
+            email: email ?? string.Empty,
+            id: id,
+            resourceId: resourceId));
     }
 
     [Authorize]

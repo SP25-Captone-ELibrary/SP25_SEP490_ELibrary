@@ -18,6 +18,8 @@ public interface IBorrowRequestService<TDto> : IGenericService<BorrowRequest, TD
     Task<IServiceResult> CancelAsync(string email, int id, string? cancellationReason, bool isConfirmed = false);
     Task<IServiceResult> CancelManagementAsync(Guid libraryCardId, int id, string? cancellationReason, bool isConfirmed = false);
     Task<IServiceResult> CancelSpecificItemAsync(string email, int id, int libraryItemId);
+    Task<IServiceResult> CancelSpecificDigitalAsync(string email, int id, int resourceId);
+    Task<IServiceResult> CancelSpecificDigitalManagementAsync(Guid libraryCardId, int id, int resourceId);
     Task<IServiceResult> CancelSpecificItemManagementAsync(Guid libraryCardId, int id, int libraryItemId);
     Task<IServiceResult> UpdateStatusWithoutSaveChangesAsync(int id, BorrowRequestStatus status);
     Task<IServiceResult> CheckExistBarcodeInRequestAsync(int id, string barcode);
