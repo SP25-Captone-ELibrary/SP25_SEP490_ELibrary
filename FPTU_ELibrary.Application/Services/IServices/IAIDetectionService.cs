@@ -12,5 +12,4 @@ public interface IAIDetectionService
     Task<List<DetectResultDto>> DetectAllAsync(IFormFile image);
     Task<IServiceResult> RawDetectAsync(IFormFile image,int id);
     Task<IServiceResult> DetectWithEmgu(IFormFile image, string groupCode);
-    
 }

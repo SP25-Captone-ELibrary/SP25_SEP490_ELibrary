@@ -1,8 +1,10 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AIServices;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -28,47 +30,46 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
     {
     }
 
-    public async Task<IServiceResult> UpdateSuccessSessionStatus(int sessionId, bool isSuccess, string? errorMessage = null)
+    public override async Task<IServiceResult> CreateAsync(AITrainingSessionDto dto)
     {
         try
         {
-            // Determine current system lang
-            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-
-            var baseSpec = new BaseSpecification<AITrainingSession>(s 
-                => s.TrainingSessionId == sessionId);
-            // Check exist warehouse tracking 
-            var existingEntity = await _unitOfWork.Repository<AITrainingSession, int>().GetWithSpecAsync(baseSpec);
-            if (existingEntity == null)
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
             {
-                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(msg, isEng ? "training session" : "phiên huấn luyện"));
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
             }
-            existingEntity.TrainingStatus = isSuccess ? AITrainingStatus.Completed : AITrainingStatus.Failed;
-            existingEntity.ErrorMessage = errorMessage;
-            if (errorMessage != null) existingEntity.TrainingPercentage = 0;
-            // Progress update to DB
-            await _unitOfWork.Repository<AITrainingSession, int>().UpdateAsync(existingEntity);
+            
+            // Mapping to entity
+            var entity = _mapper.Map<AITrainingSession>(dto);
+            // Process add new entity
+            await _unitOfWork.Repository<AITrainingSession, int>().AddAsync(entity);
             // Save DB
-            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
-            if (isSaved)
+            if (await _unitOfWork.SaveChangesAsync() > 0)
             {
-                return new ServiceResult(ResultCodeConst.SYS_Success0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+                return new ServiceResult(ResultCodeConst.SYS_Success0001,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001), 
+                    _mapper.Map<AITrainingSessionDto>(entity));
             }
-
-            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+            
+            return new ServiceResult(ResultCodeConst.SYS_Fail0001,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
         }
-        catch (Exception e)
+        catch (UnprocessableEntityException)
         {
-            Console.WriteLine(e);
             throw;
         }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process create AI training session");
+        }
     }
+
     public override async Task<IServiceResult> GetByIdAsync(int id)
     {
         try
@@ -153,6 +154,48 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
         }
     }
 
+    public async Task<IServiceResult> UpdateSuccessSessionStatus(int sessionId, bool isSuccess, string? errorMessage = null)
+    {
+        try
+        {
+            // Determine current system lang
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            var baseSpec = new BaseSpecification<AITrainingSession>(s 
+                => s.TrainingSessionId == sessionId);
+            // Check exist warehouse tracking 
+            var existingEntity = await _unitOfWork.Repository<AITrainingSession, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(msg, isEng ? "training session" : "phiên huấn luyện"));
+            }
+            existingEntity.TrainingStatus = isSuccess ? AITrainingStatus.Completed : AITrainingStatus.Failed;
+            existingEntity.ErrorMessage = errorMessage;
+            if (errorMessage != null) existingEntity.TrainingPercentage = 0;
+            // Progress update to DB
+            await _unitOfWork.Repository<AITrainingSession, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+    
     public async Task<IServiceResult> UpdatePercentage(int sessionId, int? percentage)
     {
         try

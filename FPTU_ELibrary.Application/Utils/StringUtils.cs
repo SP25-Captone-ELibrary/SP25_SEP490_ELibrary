@@ -233,13 +233,13 @@ namespace FPTU_ELibrary.Application.Utils
                     foreach (var value in field.Values)
                     {
                         var normalizedValue = RemoveSpecialCharactersOfVietnamese(value).ToLower().Trim();
-
+                        
                         // Calculate FuzzinessPoint and MatchPhrasePoint
                         int fuzzinessPoint = FuzzySharp.Fuzz.TokenSetRatio(normalizedValue, finalContent);
                         // int matchPhrasePoint = MatchPhraseWithScore(finalContent, normalizedValue);
                         int matchPhrasePoint = Fuzz.PartialRatio(normalizedValue, finalContent);
                         // Calculate MatchedPoint (average of FuzzinessPoint and MatchPhrasePoint)
-                        int matchedPoint = Math.Max(fuzzinessPoint,matchPhrasePoint);
+                        int matchedPoint = Math.Max(fuzzinessPoint, matchPhrasePoint);
 
                         if (!titlePoints.Any() || titlePoints.First().Value.MatchedPoint < matchedPoint)
                         {

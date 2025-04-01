@@ -1007,14 +1007,17 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string AIService_Warning0007 = "AIService.Warning0007";
         /// <summary>
-        /// [WARNING] Not import at least 5 pictures each item
+        /// [WARNING] Required at least 5 images for single book
         /// </summary>
         public static string AIService_Warning0008 = "AIService.Warning0008";
         /// <summary>
-        /// [WARNING] There is existed training session uncompletely!
+        /// [WARNING] There is existing AI training session
         /// </summary>
         public static string AIService_Warning0009 = "AIService.Warning0009";
-
+		/// <summary>
+        /// [WARNING] Required at least 5 items for book series
+        /// </summary>
+        public static string AIService_Warning0010 = "AIService.Warning0010";
         #endregion
 
         #region Warehouse Tracking
