@@ -12,6 +12,7 @@ using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.AIServices.Detection;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Utils;
@@ -33,41 +34,52 @@ namespace FPTU_ELibrary.Application.Services;
 
 public class AIClassificationService : IAIClassificationService
 {
-    private readonly HttpClient _httpClient;
-    private readonly CustomVisionSettings _monitor;
-    private readonly string _baseUrl;
-    private readonly ILogger _logger;
-    private readonly ISystemMessageService _msgService;
-    private IHubContext<AiHub> _hubContext;
-    private ILibraryItemService<LibraryItemDto> _libraryItemService;
-    private readonly IServiceProvider _service;
-    private readonly IAIDetectionService _aiDetectionService;
     private readonly string _basePredictUrl;
+    
+    private readonly ILogger _logger;
+    private readonly HttpClient _httpClient;
+    private readonly IServiceProvider _service;
+    
     private readonly IOCRService _ocrService;
+    private readonly CustomVisionSettings _monitor;
+    private readonly ISystemMessageService _msgService;
+    private readonly IAIDetectionService _aiDetectionService;
+    
+    private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAITrainingSessionService<AITrainingSessionDto> _aiTrainingSessionService;
     private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
+    private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
 
-    public AIClassificationService(HttpClient httpClient, ISystemMessageService msgService,
+    public AIClassificationService(
+        ILogger logger,
+        HttpClient httpClient, 
+        IOCRService ocrService,
+        IServiceProvider service, 
+        ISystemMessageService msgService,
+        IAIDetectionService aiDetectionService,
+        ICategoryService<CategoryDto> cateService,
         ILibraryItemService<LibraryItemDto> libraryItemService,
-        IHubContext<AiHub> hubContext, IAIDetectionService aiDetectionService
-        , IOptionsMonitor<CustomVisionSettings> monitor, ILogger logger,
-        IServiceProvider service, IOCRService ocrService,
+        ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService,
         IAITrainingSessionService<AITrainingSessionDto> aiTrainingSessionService,
-        ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService)
+        IOptionsMonitor<CustomVisionSettings> monitor)
     {
-        _ocrService = ocrService;
-        _aiTrainingSessionService = aiTrainingSessionService;
-        _libraryItemGroupService = libraryItemGroupService;
-        _aiDetectionService = aiDetectionService;
-        _hubContext = hubContext;
-        _msgService = msgService;
-        _httpClient = httpClient;
-        _libraryItemService = libraryItemService;
-        _monitor = monitor.CurrentValue;
         _logger = logger;
         _service = service;
-        _baseUrl = string.Format(_monitor.BaseAIUrl, _monitor.TrainingEndpoint, _monitor.ProjectId);
-        _basePredictUrl = string.Format(_monitor.BasePredictUrl, _monitor.PredictionEndpoint, _monitor.ProjectId,
+        _ocrService = ocrService;
+        _msgService = msgService;
+        _httpClient = httpClient;
+        _cateService = cateService;
+        _aiDetectionService = aiDetectionService;
+        _libraryItemService = libraryItemService;
+        _aiTrainingSessionService = aiTrainingSessionService;
+        _libraryItemGroupService = libraryItemGroupService;
+        
+        _monitor = monitor.CurrentValue;
+        
+        _basePredictUrl = string.Format(
+            _monitor.BasePredictUrl, 
+            _monitor.PredictionEndpoint, 
+            _monitor.ProjectId,
             _monitor.PublishedName);
     }
 
@@ -243,24 +255,36 @@ public class AIClassificationService : IAIClassificationService
     {
         try
         {
+            // Initialize item group
             ItemGroupForAIDto response = new ItemGroupForAIDto()
             {
                 NewLibraryIdsToTrain = otherItemIds ?? new List<int>()
             };
+            
             // Find suitable group for items
-            var suitableGroupId = await SuitableLibraryGroup(rootItemId);
+            // Build item spec
             var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == rootItemId);
-            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-                .ThenInclude(lia => lia.Author)
-                .Include(li => li.LibraryItemGroup)!);
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author)
+                .Include(li => li.LibraryItemGroup!));
+            // Retrieve root item
+            var rootItemValue = (await _libraryItemService.GetWithSpecAsync(baseSpec)).Data as LibraryItemDto;
+            if (rootItemValue is null)
+            {
+                // Unknown error
+                return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+            }
+            
+            // Check whether root item suitable in library group
+            var suitableGroupId = await SuitableLibraryGroup(rootItemValue);
+            
             // Get root item
-            var rootItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
-            var rootItemValue = (LibraryItemDto)rootItem.Data!;
             if (rootItemValue.GroupId != null)
             {
                 response.TrainingCode = Guid.Parse(rootItemValue.LibraryItemGroup!.AiTrainingCode);
                 response.NewLibraryIdsToTrain.Add(rootItemId);
-                if (otherItemIds != null) response.NewLibraryIdsToTrain.AddRange(otherItemIds);
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
                     response);
@@ -366,7 +390,6 @@ public class AIClassificationService : IAIClassificationService
             throw new Exception("Error invoking Get Available Group");
         }
     }
-
 
     // create a function with List<int> libraryItemIds as parameter and check if their field could be able to be in a group or not
     // base on CutterNumber,ClassificationNumber,mainAuthor,Title
@@ -510,189 +533,80 @@ public class AIClassificationService : IAIClassificationService
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
+            // Initialize responses
             var response = new List<CheckedGroupResponseDto<string>>();
             var processedItemIds = new HashSet<int>();
-            // Check if is there any training session or not
-
+            
+            // Build training session spec
             var baseSession =
                 new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+            // Apply split query
             baseSession.EnableSplitQuery();
+            // Apply include
             baseSession.ApplyInclude(q => q.Include(s => s.TrainingDetails));
-            var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
-            AITrainingSessionDto? sessionValue = null;
-            if (session.Data != null)
-            {
-                sessionValue = (AITrainingSessionDto)session.Data!;
-            }
-
+            // Retrieve session with spec
+            var sessionValue = (await _aiTrainingSessionService.GetWithSpecAsync(baseSession)).Data as AITrainingSessionDto;
+            // Check exist any training items 
             var isTrainingLibraryItems = sessionValue != null
                 ? sessionValue.TrainingDetails.Select(td => td.LibraryItemId).ToList()
                 : new List<int>();
 
-            // foreach (var selectedItemId in selectedItemIds)
-            // {
-            //     if (processedItemIds.Contains(selectedItemId))
-            //         continue; // Bỏ qua nếu item đã được xử lý
-            //
-            //     processedItemIds.Add(selectedItemId);
-            //
-            //     // Get selected item
-            //     var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == selectedItemId);
-            //     baseSpec.EnableSplitQuery();
-            //     baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-            //         .ThenInclude(lia => lia.Author));
-            //     var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
-            //     var rootLibraryItemValue = (LibraryItemDto)libraryItem.Data!;
-            //     var mainAuthor = rootLibraryItemValue.LibraryItemAuthors
-            //         .First(x => x.LibraryItemId == selectedItemId)!.Author.FullName;
-            //
-            //     // Create list of checked properties compare to root item
-            //     var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
-            //     var listPropertiesChecked = new List<CheckedGroupDetailDto<string>>
-            //     {
-            //         new CheckedGroupDetailDto<string>()
-            //         {
-            //             PropertiesChecked = new Dictionary<string, int>()
-            //             {
-            //                 { nameof(rootLibraryItemValue.CutterNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
-            //                 {
-            //                     nameof(rootLibraryItemValue.ClassificationNumber),
-            //                     (int)FieldGroupCheckedStatus.GroupSuccess
-            //                 },
-            //                 { nameof(Author), (int)FieldGroupCheckedStatus.GroupSuccess },
-            //                 { nameof(rootLibraryItemValue.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
-            //                 { nameof(rootLibraryItemValue.SubTitle), (int)FieldGroupCheckedStatus.GroupSuccess }
-            //             },
-            //             Item = rootLibraryItemValue,
-            //             IsRoot = true
-            //         }
-            //     };
-            //
-            //     var candidateItemsSpec = new BaseSpecification<LibraryItem>(
-            //         li => li.CutterNumber!.Equals(rootLibraryItemValue.CutterNumber) &&
-            //               li.ClassificationNumber!.Equals(rootLibraryItemValue.ClassificationNumber) &&
-            //               li.LibraryItemAuthors.Any(lia => lia.Author.FullName.Equals(mainAuthor)) &&
-            //               li.LibraryItemId != selectedItemId
-            //     );
-            //
-            //     candidateItemsSpec.EnableSplitQuery();
-            //     candidateItemsSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-            //         .ThenInclude(lia => lia.Author));
-            //     var candidateItems = await _libraryItemService.GetAllWithSpecAndWithOutFilterAsync(candidateItemsSpec);
-            //
-            //     if (candidateItems.Data is null)
-            //     {
-            //         // only root item in the group
-            //         var responseData = new CheckedGroupResponseDto<string>()
-            //         {
-            //             IsAbleToCreateGroup = (int)FieldGroupCheckedStatus.GroupSuccess,
-            //             ListCheckedGroupDetail = listPropertiesChecked
-            //         };
-            //         return new ServiceResult(ResultCodeConst.AIService_Success0005,
-            //             await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005), responseData);
-            //     }
-            //     else
-            //     {
-            //         var candidateItemsValue = (List<LibraryItemDto>)candidateItems.Data!;
-            //
-            //         // Loại bỏ các item đã được xử lý trước đó
-            //         candidateItemsValue.RemoveAll(item => processedItemIds.Contains(item.LibraryItemId));
-            //
-            //         foreach (var libraryItemDto in candidateItemsValue)
-            //         {
-            //             var itemCheckedResult = new CheckedGroupDetailDto<string>()
-            //             {
-            //                 PropertiesChecked = new Dictionary<string, int>()
-            //             };
-            //
-            //             var titleStatus = CompareFieldStatus(
-            //                 StringUtils.RemoveSpecialCharacter(libraryItemDto.Title),
-            //                 StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
-            //
-            //             int subTitleStatus;
-            //             if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle is null)
-            //             {
-            //                 subTitleStatus = titleStatus;
-            //             }
-            //             else if (rootLibraryItemValue.SubTitle is null && libraryItemDto.SubTitle != null)
-            //             {
-            //                 subTitleStatus = CompareFieldStatus(
-            //                     StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
-            //                     StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.Title));
-            //             }
-            //             else if (rootLibraryItemValue.SubTitle != null && libraryItemDto.SubTitle != null)
-            //             {
-            //                 subTitleStatus = CompareFieldStatus(
-            //                     StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
-            //                     StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""));
-            //             }
-            //             else
-            //             {
-            //                 subTitleStatus = CompareFieldStatus(
-            //                     StringUtils.RemoveSpecialCharacter(rootLibraryItemValue.SubTitle ?? ""),
-            //                     StringUtils.RemoveSpecialCharacter(libraryItemDto.Title));
-            //             }
-            //
-            //             var isSubTitleNull = string.IsNullOrEmpty(rootLibraryItemValue.SubTitle);
-            //
-            //             var titleSubTitleStatus =
-            //                 CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
-            //
-            //             itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.CutterNumber)
-            //                 , (int)FieldGroupCheckedStatus.GroupSuccess);
-            //             itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.ClassificationNumber)
-            //                 , (int)FieldGroupCheckedStatus.GroupSuccess);
-            //             itemCheckedResult.PropertiesChecked.Add(nameof(Author)
-            //                 , (int)FieldGroupCheckedStatus.GroupSuccess);
-            //             itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
-            //             determineOverallStatus.Add(itemCheckedResult);
-            //             itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.Title), titleStatus);
-            //             itemCheckedResult.PropertiesChecked.Add(nameof(rootLibraryItemValue.SubTitle), subTitleStatus);
-            //             itemCheckedResult.Item = libraryItemDto;
-            //             itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
-            //             listPropertiesChecked.Add(itemCheckedResult);
-            //         }
-            //
-            //         var overallStatus = DetermineOverallStatus(determineOverallStatus);
-            //
-            //         var responseData = new CheckedGroupResponseDto<string>()
-            //         {
-            //             IsAbleToCreateGroup = overallStatus,
-            //             ListCheckedGroupDetail = listPropertiesChecked
-            //         };
-            //         response.Add(responseData);
-            //     }
-            // }
-
-            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => !li.IsTrained ||
-                                                                             (isTrainingLibraryItems.Any() &&
-                                                                              !isTrainingLibraryItems.Contains(
-                                                                                  li.LibraryItemId)));
+            // Retrieve all ungrouped items
+            var ungroupedItemSpec = new BaseSpecification<LibraryItem>(li => 
+                li.LibraryItemAuthors.Any() && // Must exist at least one author enabling to train image-based detection
+                li.CutterNumber != null &&  // Must exist cutter number 
+                li.ClassificationNumber != null && // Must exist classification number
+                (
+                    !li.IsTrained || // Is not in train status
+                    (isTrainingLibraryItems.Any() && !isTrainingLibraryItems.Contains(li.LibraryItemId)) // Filter out all training items
+                ) &&
+                // Filter out category (Magazine, Newspaper, Book reference, Digital book)
+                (
+                    li.Category.EnglishName != nameof(LibraryItemCategory.Magazine) &&
+                    li.Category.EnglishName != nameof(LibraryItemCategory.Newspaper) &&
+                    li.Category.EnglishName != nameof(LibraryItemCategory.ReferenceBook) &&
+                    li.Category.EnglishName != nameof(LibraryItemCategory.DigitalBook)
+                )
+            );
+            // Apply split query
             ungroupedItemSpec.EnableSplitQuery();
-            ungroupedItemSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-                .ThenInclude(lia => lia.Author));
-
-            var ungroupedItems = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(ungroupedItemSpec);
-            if (ungroupedItems.Data is null)
+            // Apply include
+            ungroupedItemSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author)
+                .Include(li => li.Category)
+            );
+            // Retrieve with spec
+            var ungroupedItemsValue = (await _libraryItemService.GetAllWithoutAdvancedSpecAsync(ungroupedItemSpec)).Data as List<LibraryItemDto>;
+            if (ungroupedItemsValue == null)
             {
-                return new ServiceResult(ResultCodeConst.SYS_Fail0002, await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+                // Data not found or empty
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0004,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    data: response);
             }
 
-            var ungroupedItemsValue = (List<LibraryItemDto>)ungroupedItems.Data!;
-
+            // Iterate each item to group item sharing the unique features (Title, Subtitle, DDC, Cutter number)
             foreach (var libraryItem in ungroupedItemsValue)
             {
+                // Skip processed items
                 if (processedItemIds.Contains(libraryItem.LibraryItemId))
                 {
                     continue;
                 }
-
+                
+                // Mark item as processed
                 processedItemIds.Add(libraryItem.LibraryItemId);
+                
+                // Try to extract author's fullname
                 var mainAuthor = libraryItem.LibraryItemAuthors
-                    .First(x => x.LibraryItemId == libraryItem.LibraryItemId)!.Author.FullName;
+                    .First(x => x.LibraryItemId == libraryItem.LibraryItemId).Author.FullName;
 
                 // Create list of checked properties compare to root item
                 var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
+                
+                // Build up unique features to seek out for other groupable items (mark current item as root)
                 var listPropertiesChecked = new List<CheckedGroupDetailDto<string>>
                 {
                     new CheckedGroupDetailDto<string>()
@@ -701,8 +615,7 @@ public class AIClassificationService : IAIClassificationService
                         {
                             { nameof(libraryItem.CutterNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
                             {
-                                nameof(libraryItem.ClassificationNumber),
-                                (int)FieldGroupCheckedStatus.GroupSuccess
+                                nameof(libraryItem.ClassificationNumber), (int)FieldGroupCheckedStatus.GroupSuccess
                             },
                             { nameof(Author), (int)FieldGroupCheckedStatus.GroupSuccess },
                             { nameof(libraryItem.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
@@ -712,6 +625,8 @@ public class AIClassificationService : IAIClassificationService
                         IsRoot = true
                     }
                 };
+                
+                // Find out for other items sharing same unique feature
                 var candidateItems = ungroupedItemsValue.Where(
                     li => li.CutterNumber!.Equals(libraryItem.CutterNumber) &&
                           li.ClassificationNumber!.Equals(libraryItem.ClassificationNumber) &&
@@ -719,57 +634,81 @@ public class AIClassificationService : IAIClassificationService
                           li.LibraryItemId != libraryItem.LibraryItemId
                 ).ToList();
 
-                if (!candidateItems.Any())
+                // Check whether exist any candidate items
+                if (!candidateItems.Any()) // Not found
                 {
+                    int groupStatus = listPropertiesChecked.Any(item => 
+                        isTrainingLibraryItems.Contains(item.Item.LibraryItemId)) ? 1 : 0;
+                    
+                    // Initialize response data (only exist 1 item in group)
                     var responseData = new CheckedGroupResponseDto<string>()
                     {
                         IsAbleToCreateGroup = (int)FieldGroupCheckedStatus.GroupSuccess,
-                        ListCheckedGroupDetail = listPropertiesChecked
+                        ListCheckedGroupDetail = listPropertiesChecked,
+                        GroupStatus = groupStatus
                     };
+                    // Add to response
                     response.Add(responseData);
+                    // Skip to next item
                     continue;
                 }
-                else
+                else // Found candidate items
                 {
+                    // Filter out all processed item in candidate items
                     candidateItems.RemoveAll(item => processedItemIds.Contains(item.LibraryItemId));
 
+                    // Iterate each candidate items to add for property match level
                     foreach (var libraryItemDto in candidateItems)
                     {
+                        // Initialize check group detail
                         var itemCheckedResult = new CheckedGroupDetailDto<string>()
                         {
                             PropertiesChecked = new Dictionary<string, int>()
                         };
 
+                        // Compare title
                         var titleStatus = CompareFieldStatus(
                             StringUtils.RemoveSpecialCharacter(libraryItemDto.Title),
                             StringUtils.RemoveSpecialCharacter(libraryItem.Title));
 
+                        // Compare subtitle
                         int subTitleStatus;
-                        if (libraryItem.SubTitle is null && libraryItemDto.SubTitle is null)
+                        // Only process check subtitle for category is not book series
+                        if (libraryItem.Category.EnglishName != nameof(LibraryItemCategory.BookSeries)) 
                         {
-                            subTitleStatus = titleStatus;
-                        }
-                        else if (libraryItem.SubTitle is null && libraryItemDto.SubTitle != null)
-                        {
-                            subTitleStatus = CompareFieldStatus(
-                                StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
-                                StringUtils.RemoveSpecialCharacter(libraryItem.Title));
-                        }
-                        else if (libraryItem.SubTitle != null && libraryItemDto.SubTitle != null)
-                        {
-                            subTitleStatus = CompareFieldStatus(
-                                StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
-                                StringUtils.RemoveSpecialCharacter(libraryItem.SubTitle ?? ""));
+                            if (libraryItem.SubTitle is null && libraryItemDto.SubTitle is null)
+                            {
+                                subTitleStatus = titleStatus;
+                            }
+                            else if (libraryItem.SubTitle is null && libraryItemDto.SubTitle != null)
+                            {
+                                subTitleStatus = CompareFieldStatus(
+                                    StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                                    StringUtils.RemoveSpecialCharacter(libraryItem.Title));
+                            }
+                            else if (libraryItem.SubTitle != null && libraryItemDto.SubTitle != null)
+                            {
+                                subTitleStatus = CompareFieldStatus(
+                                    StringUtils.RemoveSpecialCharacter(libraryItemDto.SubTitle ?? ""),
+                                    StringUtils.RemoveSpecialCharacter(libraryItem.SubTitle ?? ""));
+                            }
+                            else
+                            {
+                                subTitleStatus = CompareFieldStatus(
+                                    StringUtils.RemoveSpecialCharacter(libraryItem.SubTitle ?? ""),
+                                    StringUtils.RemoveSpecialCharacter(libraryItemDto.Title));
+                            }
                         }
                         else
                         {
-                            subTitleStatus = CompareFieldStatus(
-                                StringUtils.RemoveSpecialCharacter(libraryItem.SubTitle ?? ""),
-                                StringUtils.RemoveSpecialCharacter(libraryItemDto.Title));
+                            // Mark as able to group
+                            subTitleStatus = (int)FieldGroupCheckedStatus.AbleToForceGrouped;
                         }
-
+                        
+                        // Check whether subtitle is null
                         var isSubTitleNull = string.IsNullOrEmpty(libraryItem.SubTitle);
 
+                        // Compare subtitle status
                         var titleSubTitleStatus =
                             CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
                         if (titleSubTitleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
@@ -792,21 +731,28 @@ public class AIClassificationService : IAIClassificationService
                         }
                     }
 
+                    // Determine overall status
                     var overallStatus = DetermineOverallStatus(determineOverallStatus);
 
+                    int groupStatus = listPropertiesChecked.Any(item => 
+                        isTrainingLibraryItems.Contains(item.Item.LibraryItemId)) ? 1 : 0;
+                    
+                    // Initialize response data
                     var responseData = new CheckedGroupResponseDto<string>()
                     {
                         IsAbleToCreateGroup = overallStatus,
-                        ListCheckedGroupDetail = listPropertiesChecked
+                        ListCheckedGroupDetail = listPropertiesChecked,
+                        GroupStatus = groupStatus
                     };
+                    
+                    // Add to response
                     response.Add(responseData);
                 }
             }
-
+            
             return new ServiceResult(
-                ResultCodeConst.AIService_Success0005,
-                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005),
-                response);
+                resultCode: ResultCodeConst.AIService_Success0005,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0005), response);
         }
         catch (Exception e)
         {
@@ -817,28 +763,24 @@ public class AIClassificationService : IAIClassificationService
 
     public async Task<IServiceResult> IsAvailableToTrain()
     {
-        // Determine current system language
-        var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-            LanguageContext.CurrentLanguage);
-        var isEng = lang == SystemLanguage.English;
-
+        // Build spec
         var baseSession =
             new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+        // Apply split query
         baseSession.EnableSplitQuery();
+        // Apply include
         baseSession.ApplyInclude(q => q
             .Include(s => s.TrainingDetails)
             .ThenInclude(td => td.TrainingImages));
-        var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
-        if (session.Data != null)
+        // Retrieve data with spec
+        if ((await _aiTrainingSessionService.GetWithSpecAsync(baseSession)).Data is AITrainingSessionDto sessionValue)
         {
-            var sessionValue = (AITrainingSessionDto)session.Data!;
-            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
+            // Msg: There is existing AI training session
             return new ServiceResult(ResultCodeConst.AIService_Warning0009,
-                isEng
-                    ? errMsg
-                    : "Đang có một tiến trình huấn luyện AI diễn ra!", sessionValue);
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009), sessionValue);
         }
 
+        // Msg: Is able to train
         return new ServiceResult(ResultCodeConst.AIService_Success0007,
             await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0007));
     }
@@ -914,67 +856,132 @@ public class AIClassificationService : IAIClassificationService
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
+
+            // Build training session spec
             var baseSession =
                 new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
+            // Apply split query
             baseSession.EnableSplitQuery();
+            // Apply include
             baseSession.ApplyInclude(q => q
                 .Include(s => s.TrainingDetails)
                 .ThenInclude(td => td.TrainingImages));
-            var session = await _aiTrainingSessionService.GetWithSpecAsync(baseSession);
-            if (session.Data != null)
+            // Retrieve session with spec
+            var sessionValue =
+                (await _aiTrainingSessionService.GetWithSpecAsync(baseSession)).Data as AITrainingSessionDto;
+            if (sessionValue != null)
             {
-                var sessionValue = (AITrainingSessionDto)session.Data!;
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009);
                 return new ServiceResult(ResultCodeConst.AIService_Warning0009,
-                    isEng
-                        ? errMsg
-                        : "Đang có một tiến trình huấn luyện AI diễn ra!", sessionValue);
+                    await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009), sessionValue);
             }
+            
+            // Initialize custom errors
+            var customErrs = new Dictionary<string, string[]>();
 
-            if (dto.TrainingData.Any(x => x.ItemsInGroup.Any(iig
-                    => iig.ImageFiles.Count() < 5 || iig.ImageUrls.Count() < 5)))
+            // Iterate each untrained group
+            for (int i = 0; i < dto.TrainingData.Count; ++i)
             {
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0008);
-                return new ServiceResult(ResultCodeConst.AIService_Warning0008,
-                    isEng
-                        ? errMsg
-                        : "Vui lòng truyền vào ít nhất đúng 5 ảnh cho mỗi tài liệu để tiến hành train");
-            }
+                var untrainedGr = dto.TrainingData[i];
 
+                // Iterate each item in group
+                for (int j = 0; j < untrainedGr.ItemsInGroup.Count; ++j)
+                {
+                    var item = untrainedGr.ItemsInGroup[j];
+
+                    // Check item's category
+                    // Build spec
+                    var cateSpec = new BaseSpecification<Category>(c =>
+                        c.LibraryItems.Any(li => li.LibraryItemId == item.LibraryItemId));
+                    // Retrieve with spec
+                    if ((await _cateService.GetWithSpecAsync(cateSpec)).Data is CategoryDto itemCateDto)
+                    {
+                        // Determine category
+                        switch (itemCateDto.EnglishName)
+                        {
+                            case nameof(LibraryItemCategory.SingleBook):
+                                // Required at least 5 images
+                                if (item.ImageFiles.Count < 5)
+                                {
+                                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                        key: $"trainingData[{i}].itemsInGroup[{j}]",
+                                        // Msg: Required at least 5 images for single book
+                                        msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0008));
+                                }
+                                break;
+                            case nameof(LibraryItemCategory.BookSeries):
+                                // Required at least 5 items in group to process train book series 
+                                if (untrainedGr.ItemsInGroup.Count < 5)
+                                {
+                                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                        key: $"trainingData[{i}].itemsInGroup[{j}]",
+                                        // Msg: Required at least 5 images for single book
+                                        msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
+                                    
+                                    throw new UnprocessableEntityException("Invalid data", customErrs);
+                                }
+                                
+                                // Required at least 1 image
+                                // if (item.ImageFiles.Count < 1)
+                                // {
+                                //     customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                //         key: $"trainingData[{i}].itemsInGroup[{j}]",
+                                //         // Msg: Required at least 1 image for book series
+                                //         msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
+                                // }
+                                break;
+                        }
+                    }
+                }
+            }
+            
+            // Check whether invoke any errors
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+            
             // Merge group from previous stage (input) to db and get code
             var trainingDataDic = new Dictionary<Guid, List<(byte[] FileBytes, string FileName)>>();
-            // parameter for creating history
+            // Initialize dictionary lib -> images to save to history
             var itemWithImages = new Dictionary<int, List<string>>();
-            foreach (var untrainedGroup in dto.TrainingData)
+            // Iterate each group to process train AI
+            for (int i = 0; i < dto.TrainingData.Count; ++i)
             {
-                // add value for itemWithImages 
-                foreach (var itemWithImagesForTraining in untrainedGroup.ItemsInGroup)
+                var untrainedGroup = dto.TrainingData[i];
+                
+                // Check if group exist any items
+                if(!untrainedGroup.ItemsInGroup.Any()) continue; // Move to next group
+                
+                // Add images
+                foreach (var item in untrainedGroup.ItemsInGroup)
                 {
-                    itemWithImages.Add(itemWithImagesForTraining.LibraryItemId
-                        , itemWithImagesForTraining.ImageUrls);
+                    itemWithImages.Add(item.LibraryItemId, item.ImageUrls);
                 }
-
+                
+                // Retrieve first item in group
                 var representItemInGroup = untrainedGroup.ItemsInGroup.First();
+                // Extract other items in group
                 var otherItemsInGroup = untrainedGroup.ItemsInGroup
                     .Where(x => x.LibraryItemId != representItemInGroup.LibraryItemId).ToList();
+                // Extract all other item ids
                 var otherItemInGroupIds = otherItemsInGroup.Select(x => x.LibraryItemId)
                     .ToList();
+                
                 // Get available group or create new one
-                var availableGroup =
+                var checkGroupRes =
                     await GetAvailableGroup(email, representItemInGroup.LibraryItemId, otherItemInGroupIds);
-                if (availableGroup.Data is null)
-                {
-                    return availableGroup;
-                }
+                if (checkGroupRes.Data is null) return checkGroupRes;
+                
+                // Parse to ItemGroupForAIDto
+                var availableGroupValue = (ItemGroupForAIDto)checkGroupRes.Data!;
 
-                var availableGroupValue = (ItemGroupForAIDto)availableGroup.Data!;
-
+                // Extract training code 
                 var code = availableGroupValue.TrainingCode;
+                
+                // Initialize training dictionary
                 if (!trainingDataDic.ContainsKey(code))
                 {
                     trainingDataDic[code] = new List<(byte[] FileBytes, string FileName)>();
                 }
-
+            
+                // Extract all image fields
                 var files = untrainedGroup.ItemsInGroup.SelectMany(x => x.ImageFiles).ToList();
                 foreach (var file in files)
                 {
@@ -983,7 +990,7 @@ public class AIClassificationService : IAIClassificationService
                     trainingDataDic[code].Add((memoryStream.ToArray(), file.FileName));
                 }
             }
-
+            
             var backgroundTask = Task.Run(() => ExtendProcessTrainingTask(trainingDataDic, itemWithImages, email));
 
             // Trả về kết quả ngay lập tức
@@ -993,6 +1000,10 @@ public class AIClassificationService : IAIClassificationService
             _ = backgroundTask; // Bảo đảm task chạy tiếp trong background
 
             return result;
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -1005,29 +1016,26 @@ public class AIClassificationService : IAIClassificationService
         Dictionary<Guid, List<(byte[] FileBytes, string FileName)>> trainingDataDic,
         Dictionary<int, List<string>> detailParam, string email)
     {
-        // define services that use in background task
+        // Define services that use in background task
         using var scope = _service.CreateScope();
-        var libraryItemService = scope.ServiceProvider.GetRequiredService<ILibraryItemService<LibraryItemDto>>();
-        var libraryItemGroupService =
-            scope.ServiceProvider.GetRequiredService<ILibraryItemGroupService<LibraryItemGroupDto>>();
-        var aiTrainingDetailService = scope.ServiceProvider
-            .GetRequiredService<IAITrainingDetailService<AITrainingDetailDto>>();
+        var libraryItemService = scope.ServiceProvider
+            .GetRequiredService<ILibraryItemService<LibraryItemDto>>();
+        var libraryItemGroupService = scope.ServiceProvider
+            .GetRequiredService<ILibraryItemGroupService<LibraryItemGroupDto>>();
         var aiTrainingSessionService = scope.ServiceProvider
             .GetRequiredService<IAITrainingSessionService<AITrainingSessionDto>>();
-        var aiTrainingImageService = scope.ServiceProvider
-            .GetRequiredService<IAITraningImageService<AITrainingImageDto>>();
         var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<AiHub>>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
         var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CustomVisionSettings>>();
         var httpClient = scope.ServiceProvider.GetRequiredService<HttpClient>();
         var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
-        // define monitor value
+        
+        // Define monitor value
         var currentAiConfiguration = monitor.CurrentValue;
         int currentSession = 0;
         try
         {
-            //Get or create new tag
-            // Get or create new tag
+            // Initialize base configuration
             var baseConfig = new BaseConfigurationBackgroudDto
             {
                 Client = httpClient,
@@ -1036,8 +1044,11 @@ public class AIClassificationService : IAIClassificationService
                 BaseUrl = string.Format(currentAiConfiguration.BaseAIUrl,
                     currentAiConfiguration.TrainingEndpoint, currentAiConfiguration.ProjectId)
             };
+            
+            // Get or create new tag
             List<TagDto> tags = await GetTagAsync(baseConfig);
-            //Create session
+            
+            // Create session
             var initSession = new AITrainingSessionDto()
             {
                 Model = AIModel.AzureAIVision,
@@ -1051,23 +1062,38 @@ public class AIClassificationService : IAIClassificationService
             // Create relative object
             foreach (var itemId in detailParam.Keys)
             {
+                // Initialize training detail
                 var detail = new AITrainingDetailDto()
                 {
                     LibraryItemId = itemId,
                     TrainingImages = new List<AITrainingImageDto>()
                 };
 
+                // Extract all images by itemId
                 var itemImages = detailParam[itemId];
+                // Initialize training images
                 var aiTrainingImageDtos = new List<AITrainingImageDto>();
                 foreach (var itemImage in itemImages)
                 {
-                    var aiTrainingImageDto = new AITrainingImageDto()
+                    // Add image 
+                    aiTrainingImageDtos.Add(new AITrainingImageDto()
                     {
                         ImageUrl = itemImage,
-                    };
-                    aiTrainingImageDtos.Add(aiTrainingImageDto);
+                    });
                 }
-
+        
+                // Add book cover
+                // Build spec
+                var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == itemId);
+                var coverImageUrl = (await libraryItemService.GetWithSpecAndSelectorAsync(itemSpec, selector: s => s.CoverImage)).Data as string;
+                if (!string.IsNullOrEmpty(coverImageUrl))
+                {
+                    aiTrainingImageDtos.Add(new AITrainingImageDto()
+                    {
+                        ImageUrl = coverImageUrl
+                    });
+                }
+                
                 // Add training images to training detail
                 detail.TrainingImages = aiTrainingImageDtos;
                 // Add training detail to session
@@ -1075,49 +1101,51 @@ public class AIClassificationService : IAIClassificationService
             }
 
             // Add all session, detail and image to db
-            var createSession = await aiTrainingSessionService.CreateAsync(initSession);
-            var sessionEntity = mapper.Map<AITrainingSession>(initSession);
-            if (createSession.ResultCode != ResultCodeConst.SYS_Success0001)
+            var sessionDto = (await aiTrainingSessionService.CreateAsync(initSession)).Data as AITrainingSessionDto;
+            if (sessionDto == null)
             {
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully. Err when create Session");
                 await Task.CompletedTask;
+                return;
             }
 
-            //Get recently created session
-            var baseSession =
-                new BaseSpecification<AITrainingSession>(ts => ts.TrainingStatus.Equals(AITrainingStatus.InProgress));
-            var session = await aiTrainingSessionService.GetWithSpecAsync(baseSession);
-            var sessionValue = (AITrainingSessionDto)session.Data!;
-            currentSession = sessionValue.TrainingSessionId;
+            // Assign training session
+            currentSession = sessionDto.TrainingSessionId;
             // Handle uploading image to tag in ai cloud
             foreach (var (key, value) in trainingDataDic)
             {
-                TagDto tag = tags.FirstOrDefault(x => x.Name == key.ToString()) ??
-                             await CreateTagAsync(baseConfig, key);
+                // Try to get or create tag
+                TagDto tag = tags.FirstOrDefault(x => x.Name == key.ToString()) 
+                             ?? await CreateTagAsync(baseConfig, key);
+                
+                // Initialize memory streams
                 var memoryStreams = new List<(MemoryStream Stream, string FileName)>();
-                // Get cover image of current 
 
+                // Get cover image of current 
+                // Build group spec
                 var groupBaseSpec = new BaseSpecification<LibraryItemGroup>(lig
                     => lig.AiTrainingCode.Equals(key.ToString()));
+                // Apply include
                 groupBaseSpec.ApplyInclude(q => q.Include(lig => lig.LibraryItems));
-
-                var group = await libraryItemGroupService.GetWithSpecAsync(groupBaseSpec);
-                if (group.Data == null)
+                // Retrieve with spec
+                var groupValue = (await libraryItemGroupService.GetWithSpecAsync(groupBaseSpec)).Data as LibraryItemGroupDto;
+                if (groupValue == null)
                 {
                     await hubContext.Clients.User(email).SendAsync("AIProcessMessage",
                         new { message = "Error retrieving group", key });
                     await Task.CompletedTask;
+                    return;
                 }
 
-                var groupValue = (LibraryItemGroupDto)group.Data!;
-
-                foreach (var groupValueLibraryItem in groupValue.LibraryItems
-                             .Where(li => li.IsTrained == false)
-                             .ToList()
-                        )
+                // Extract all untrained item
+                var untrainedItems = groupValue.LibraryItems
+                    .Where(li => li.IsTrained == false)
+                    .ToList();
+                foreach (var groupValueLibraryItem in untrainedItems)
                 {
+                    // Try to get image
                     var response = await httpClient.GetAsync(groupValueLibraryItem.CoverImage);
-                    // using response.IsSuccessStatusCode to check if the request is successful
+                    // Using response.IsSuccessStatusCode to check if the request is successful
                     if (!response.IsSuccessStatusCode)
                     {
                         await hubContext.Clients.User(email).SendAsync("Get cover image unsuccessfully");
@@ -1148,7 +1176,10 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 20);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 20);
+            
             // Train the model after adding the images
             var iteration = await TrainProjectAsync(baseConfig);
             await hubContext.Clients.User(email).SendAsync(
@@ -1161,13 +1192,18 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 30);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 30);
+            
+            // Invoke error
             if (iteration is null)
             {
                 await hubContext.Clients.User(email).SendAsync("Trained Unsuccessfully");
-                await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionValue.TrainingSessionId, false,
+                await aiTrainingSessionService.UpdateSuccessSessionStatus(currentSession, false,
                     "Can not get iteration");
                 await Task.CompletedTask;
+                return;
             }
 
             // Wait until the training is completed before publishing
@@ -1182,7 +1218,10 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 40);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 40);
+            
             // Unpublish previous iteration if necessary (optional)
             await UnpublishPreviousIterationAsync(baseConfig, iteration.Id);
             await hubContext.Clients.User(email).SendAsync(
@@ -1195,9 +1234,12 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 50);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 50);
+            
             // Publish the new iteration and update appsettings.json
-            await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName);
+            await PublishIterationAsync(baseConfig, iteration.Id, monitor.CurrentValue.PublishedName!);
             await hubContext.Clients.User(email).SendAsync(
                 "AIProcessMessage", new
                 {
@@ -1208,7 +1250,11 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 60);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 60);
+            
+            // Process update training status list
             await libraryItemService.UpdateTrainingStatusAsync(detailParam.Keys.ToList());
             await hubContext.Clients.User(email).SendAsync(
                 "AIProcessMessage", new
@@ -1220,9 +1266,13 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 80);
-            sessionValue.TrainingStatus = AITrainingStatus.Completed;
-            await aiTrainingSessionService.UpdateSuccessSessionStatus(sessionValue.TrainingSessionId, true);
+            
+            // Process update percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 80);
+            // Update session status
+            sessionDto.TrainingStatus = AITrainingStatus.Completed;
+            // Process update session status
+            await aiTrainingSessionService.UpdateSuccessSessionStatus(currentSession, true);
             await hubContext.Clients.User(email).SendAsync(
                 "AIProcessMessage", new
                 {
@@ -1233,6 +1283,7 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
+            
             //Send notification when finish
             await hubContext.Clients.User(email).SendAsync(
                 "AIProcessMessage", new
@@ -1244,7 +1295,9 @@ public class AIClassificationService : IAIClassificationService
                     NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
                 }
             );
-            await aiTrainingSessionService.UpdatePercentage(sessionValue.TrainingSessionId, 100);
+            
+            // Update session percentage
+            await aiTrainingSessionService.UpdatePercentage(currentSession, 100);
         }
         catch (Exception ex)
         {
@@ -1567,56 +1620,38 @@ public class AIClassificationService : IAIClassificationService
 
     private int CombineTitleSubTitleStatus(int titleStatus, int subTitleStatus, bool isSubTitleNull)
     {
-        // if (isSubTitleNull)
-        // {
         return (titleStatus, subTitleStatus) switch
         {
+            // Failed + Failed -> Failed
             ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
                 FieldGroupCheckedStatus.GroupFailed),
+            // Failed + Success -> Success
             ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
                 FieldGroupCheckedStatus.GroupSuccess),
+            // Failed + Able to force -> Able to force
             ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
                 (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            // Success + Failed -> Failed
             ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
                 FieldGroupCheckedStatus.GroupFailed),
+            // Able to force + Failed -> Failed
             ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
                 (int)(FieldGroupCheckedStatus.GroupFailed),
+            // Able to force + Able to force -> Able to force
             ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
                 => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            // Able to force + Success -> Able to force
             ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
                 (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            // Success + Able to force -> Able to force
             ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
                 (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
+            // Success + Success -> Success
             ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
                 FieldGroupCheckedStatus.GroupSuccess),
+            // Default -> Failed
             _ => (int)(FieldGroupCheckedStatus.GroupFailed)
         };
-        // }
-        // else
-        // {
-        //     return (titleStatus, subTitleStatus) switch
-        //     {
-        //         ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupFailed) => (int)
-        //             FieldGroupCheckedStatus.GroupFailed,
-        //         ((int)FieldGroupCheckedStatus.GroupFailed, (int)FieldGroupCheckedStatus.GroupSuccess) => (int)
-        //             FieldGroupCheckedStatus.GroupSuccess,
-        //         ((int)(FieldGroupCheckedStatus.GroupFailed), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupFailed)) =>
-        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupFailed)) => (int)(
-        //             FieldGroupCheckedStatus.GroupSuccess),
-        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.AbleToForceGrouped))
-        //             => (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-        //         ((int)(FieldGroupCheckedStatus.AbleToForceGrouped), (int)(FieldGroupCheckedStatus.GroupSuccess)) =>
-        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.AbleToForceGrouped)) =>
-        //             (int)(FieldGroupCheckedStatus.AbleToForceGrouped),
-        //         ((int)(FieldGroupCheckedStatus.GroupSuccess), (int)(FieldGroupCheckedStatus.GroupSuccess)) => (int)(
-        //             FieldGroupCheckedStatus.GroupSuccess),
-        //         _ => (int)(FieldGroupCheckedStatus.GroupFailed)
-        //     };
-        // }
     }
 
     private int DetermineOverallStatus(List<CheckedGroupDetailDto<string>> listPropertiesChecked)
@@ -1633,43 +1668,37 @@ public class AIClassificationService : IAIClassificationService
 
     #endregion
 
-    private async Task<int> SuitableLibraryGroup(int currentLibraryItemId)
+    private async Task<int> SuitableLibraryGroup(LibraryItemDto libraryItemValue)
     {
         try
         {
-            // get current LibraryItem 
-            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == currentLibraryItemId);
-            baseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemAuthors)
-                .ThenInclude(lia => lia.Author));
-            var libraryItem = await _libraryItemService.GetWithSpecAsync(baseSpec);
-            var libraryItemValue = (LibraryItemDto)libraryItem.Data!;
-            var mainAuthor =
-                libraryItemValue.LibraryItemAuthors.First(x => x.LibraryItemId == currentLibraryItemId)!
-                    .Author.FullName;
+            // Check not exist author
+            if (!libraryItemValue.LibraryItemAuthors.Any()) return 0;
+            
+            // Extract main author
+            var mainAuthor = libraryItemValue.LibraryItemAuthors.First().Author.FullName;
 
+            // Build group spec
             var groupSpec = new BaseSpecification<LibraryItemGroup>(lig =>
                 lig.CutterNumber == libraryItemValue.CutterNumber &&
                 lig.ClassificationNumber == libraryItemValue.ClassificationNumber &&
                 lig.Author.Equals(mainAuthor));
-
-            var potentialGroups = await _libraryItemGroupService.GetAllWithSpecAsync(groupSpec);
-
-            if (potentialGroups.Data is null || !((List<LibraryItemGroupDto>)potentialGroups.Data).Any())
-                return 0;
-
-            var groupList = (List<LibraryItemGroupDto>)potentialGroups.Data!;
+            // Retrieve all potential group
+            var potentialGroupList = (await _libraryItemGroupService.GetAllWithSpecAsync(groupSpec)).Data as List<LibraryItemGroupDto>;
+            if (potentialGroupList == null || potentialGroupList.Count == 0) return 0;
+            
             int bestGroupId = 0;
             double bestScore = 0;
-
-            foreach (var group in groupList)
+            // Iterate each group
+            foreach (var group in potentialGroupList)
             {
-                // calculate Title and SubTitle
+                // Calculate title and subtitle score
                 var titleScore = StringUtils.CombinedFuzzinessScore(libraryItemValue.Title, group.Title);
                 var subTitleScore = libraryItemValue.SubTitle != null && group.SubTitle != null
                     ? StringUtils.CombinedFuzzinessScore(libraryItemValue.SubTitle, group.SubTitle)
                     : 0;
 
-                // check status for Title and SubTitle
+                // Check status for title and subtitle
                 var titleStatus = CompareFieldStatus(libraryItemValue.Title, group.Title);
                 int subTitleStatus;
                 if (string.IsNullOrEmpty(libraryItemValue.SubTitle) &&
@@ -1679,21 +1708,33 @@ public class AIClassificationService : IAIClassificationService
                 }
                 else
                 {
-                    subTitleStatus = CompareFieldStatus(
-                        StringUtils.RemoveSpecialCharacter(libraryItemValue.SubTitle ?? ""),
-                        StringUtils.RemoveSpecialCharacter(group.SubTitle ?? ""));
+                    // Set default as groupable 
+                    subTitleStatus = (int) FieldGroupCheckedStatus.AbleToForceGrouped;
+                    
+                    // Check whether check subtitle for book series
+                    var category = libraryItemValue.Category.EnglishName;
+                    if (category != nameof(LibraryItemCategory.BookSeries))
+                    {
+                        // Process check subtitle 
+                        subTitleStatus = CompareFieldStatus(
+                            StringUtils.RemoveSpecialCharacter(libraryItemValue.SubTitle ?? ""),
+                            StringUtils.RemoveSpecialCharacter(group.SubTitle ?? ""));
+                    }
                 }
 
-                // combine Title and SubTitle status
+                // Combine title and subtitle status
                 var combinedStatus =
                     CombineTitleSubTitleStatus(titleStatus, subTitleStatus, group.SubTitle == null);
-
+                
+                // Determine group score based on status
                 double groupScore = combinedStatus switch
                 {
                     (int)FieldGroupCheckedStatus.GroupSuccess => 100,
                     (int)FieldGroupCheckedStatus.AbleToForceGrouped => 50,
                     _ => 0
                 };
+                
+                // Found groupable
                 if (groupScore > bestScore)
                 {
                     bestScore = groupScore;
@@ -3021,9 +3062,13 @@ public class AIClassificationService : IAIClassificationService
     {
         try
         {
+            // Initialize url
             var getTagUrl = dto.BaseUrl + "/tags";
+            // Add request header
             dto.Client.DefaultRequestHeaders.Add("Training-Key", dto.Configuration.TrainingKey);
+            // Process call to specific route
             var response = await dto.Client.GetAsync(getTagUrl);
+            // Throws an exception if !IsSuccessStatusCode
             response.EnsureSuccessStatusCode();
 
             var jsonResponse = await response.Content.ReadAsStringAsync();

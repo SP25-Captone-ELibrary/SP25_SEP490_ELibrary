@@ -14,4 +14,5 @@ public class CheckedGroupResponseDto<T> where T : notnull
 {
     public List<CheckedGroupDetailDto<T>> ListCheckedGroupDetail { get; set; } = new List<CheckedGroupDetailDto<T>>();
     public int IsAbleToCreateGroup { get; set; }
+    public int GroupStatus { get; set; }
 }

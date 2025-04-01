@@ -117,20 +117,18 @@ public class CustomVisionController : ControllerBase
         return Ok(await _aiClassificationService.NumberOfGroupForTraining());
     }
 
-
-    [HttpPost(APIRoute.AIServices.TrainingLatestVersion, Name = nameof(ExtendTrainingProgress))]
     [Authorize]
+    [HttpPost(APIRoute.AIServices.TrainingLatestVersion, Name = nameof(ExtendTrainingProgress))]
     public async Task<IActionResult> ExtendTrainingProgress([FromForm] TrainedBookDetailDto req)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         return Ok(await _aiClassificationService.ExtendModelTraining(req, email));
     }
 
-    [HttpGet(APIRoute.AIServices.GetStatusToTrain, Name = nameof(GetStatusToTrain))]
     [Authorize]
+    [HttpGet(APIRoute.AIServices.GetStatusToTrain, Name = nameof(GetStatusToTrain))]
     public async Task<IActionResult> GetStatusToTrain()
     {
         return Ok(await _aiClassificationService.IsAvailableToTrain());
     }
-
 }

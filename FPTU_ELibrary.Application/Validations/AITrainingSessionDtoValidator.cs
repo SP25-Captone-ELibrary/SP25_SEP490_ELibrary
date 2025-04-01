@@ -5,5 +5,4 @@ namespace FPTU_ELibrary.Application.Validations;
 
 public class AITrainingSessionDtoValidator : AbstractValidator<AITrainingSessionDto>
 {
-    
 }

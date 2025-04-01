@@ -699,7 +699,7 @@
 			public const string CheckBookEdition = Base + "/management/library-items/ai/check-book-edition";
 			public const string TrainingAfterCreate = Base + "/management/library-items/ai/train";
 			public const string Training = Base + "/management/library-items/ai/extend-train";
-			public const string TrainingLatestVersion = Base+"/management/library-items/ai/extend-train/v2";
+			public const string TrainingLatestVersion = Base + "/management/library-items/ai/extend-train/v2";
 			public const string Predict = Base + "/library-items/ai/predict";
 			public const string PredictWithEmgu = Base + "/library-items/ai/predict/v2";
 			public const string Recommendation = Base + "/library-items/ai/recommendation";
