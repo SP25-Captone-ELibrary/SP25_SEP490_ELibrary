@@ -1,7 +1,9 @@
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
+using Microsoft.CognitiveServices.Speech;
 
 namespace FPTU_ELibrary.Application.Dtos.Borrows;
 
@@ -37,6 +39,9 @@ public class GetBorrowRecordDto
     // Mark as has fine to payment
     public bool HasFineToPayment { get; set; }
     
+    // Library card
+    public LibraryCardDto Librarycard { get; set; } = null!;
+    
     public GetBorrowRequestDto? BorrowRequest { get; set; }
     public EmployeeDto? ProcessedByNavigation { get; set; }
     public List<GetBorrowRecordDetailDto> BorrowRecordDetails { get; set; } = new();
@@ -60,6 +65,7 @@ public static class GetBorrowRecordDtoExtensions
             TotalRecordItem = dto.TotalRecordItem,
             ProcessedBy = dto.ProcessedBy,
             // References, Navigations
+            Librarycard = dto.LibraryCard != null! ? dto.LibraryCard : null,
             ProcessedByNavigation = dto.ProcessedByNavigation,
             BorrowRequest = dto.BorrowRequest?.ToGetBorrowRequestDto(),
             BorrowRecordDetails = dto.BorrowRecordDetails.Any() 

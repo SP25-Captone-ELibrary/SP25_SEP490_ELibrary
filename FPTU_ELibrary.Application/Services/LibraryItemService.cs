@@ -1136,9 +1136,36 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     // Add range new digital borrows
                     digitalBorrows.AddRange(newestBorrows);
                 }
+                
+                // Initialize instance units
+                var totalInShelfUnits = 0;
+                var totalOutOfShelfUnits = 0;
+                // Initialize count spec
+                var countInSpec = new BaseSpecification<LibraryItemInstance>();
+                // Count total in-shelf units
+                countInSpec.AddFilter(li =>
+                    li.Status == nameof(LibraryItemInstanceStatus.InShelf) && // In-shelf status
+                    li.LibraryItemId == itemEntity.LibraryItemId); // Exclude update instance
+                if ((await _itemInstanceService.Value.CountAsync(countInSpec)).Data is int countInRes)
+                {
+                    totalInShelfUnits = countInRes;
+                }
 
+                // Count total out-of-shelf units
+                var countOutSpec = new BaseSpecification<LibraryItemInstance>();
+                countOutSpec.AddFilter(li =>
+                    li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) && // In-shelf status
+                    li.LibraryItemId == itemEntity.LibraryItemId); // Exclude update instance
+                if ((await _itemInstanceService.Value.CountAsync(countOutSpec)).Data is int countOutRes)
+                {
+                    totalOutOfShelfUnits = countOutRes; 
+                }
+                
                 // Convert to library item detail dto
-                var itemDetailDto = dto.ToLibraryItemDetailDto(digitalBorrows: digitalBorrows);
+                var itemDetailDto = dto.ToLibraryItemDetailDto(
+                    digitalBorrows: digitalBorrows,
+                    totalInstancesInShelf: totalInShelfUnits,
+                    totalInstanceOutOfShelf: totalOutOfShelfUnits);
                 
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), itemDetailDto);

@@ -817,7 +817,19 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Resource does not belong to this item
         /// </summary>
         public const string LibraryItem_Warning0023 = "LibraryItem.Warning0023";
+        /// <summary>
+	    /// [WARNING] There are currently {0} pending reservations.Please assign appropriate items for pending reservations
+	    /// </summary>
+	    public const string LibraryItem_Warning0024 = "LibraryItem.Warning0024";
+        /// <summary>
+        /// [WARNING] Unable to put the items out of shelf because the available quantity cannot be less than the total number of borrowing requests
+        /// </summary>
+        public const string LibraryItem_Warning0025 = "LibraryItem.Warning0025";
 		/// <summary>
+        /// [WARNING] Unable to put out of shelf for item {0} as the number of items on shelf cannot be less than the number of borrowing requests
+        /// </summary>
+        public const string LibraryItem_Warning0026 = "LibraryItem.Warning0026";
+        /// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
 		public const string LibraryItem_Fail0001 = "LibraryItem.Fail0001";

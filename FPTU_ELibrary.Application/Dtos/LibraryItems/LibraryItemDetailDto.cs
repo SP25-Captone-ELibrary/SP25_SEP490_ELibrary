@@ -79,7 +79,9 @@ public class LibraryItemDetailDto
 
 public static class LibraryItemDetailDtoExtensions
 {
-    public static LibraryItemDetailDto ToLibraryItemDetailDto(this LibraryItemDto dto, List<DigitalBorrowDto>? digitalBorrows = null)
+    public static LibraryItemDetailDto ToLibraryItemDetailDto(this LibraryItemDto dto,
+        List<DigitalBorrowDto>? digitalBorrows = null, 
+        int totalInstancesInShelf = 0, int totalInstanceOutOfShelf = 0)
     {
         return new LibraryItemDetailDto()
         {
@@ -131,7 +133,20 @@ public static class LibraryItemDetailDtoExtensions
             // Status
             Status = dto.Status,
             // Inventory 
-            LibraryItemInventory = dto.LibraryItemInventory,
+            LibraryItemInventory = dto.LibraryItemInventory != null
+                ? new LibraryItemInventoryDto()
+                {
+                    LibraryItemId = dto.LibraryItemId,
+                    TotalUnits = dto.LibraryItemInventory.TotalUnits,
+                    AvailableUnits = dto.LibraryItemInventory.AvailableUnits,
+                    RequestUnits = dto.LibraryItemInventory.RequestUnits,
+                    BorrowedUnits = dto.LibraryItemInventory.BorrowedUnits,
+                    ReservedUnits = dto.LibraryItemInventory.ReservedUnits,
+                    LostUnits = dto.LibraryItemInventory.LostUnits,
+                    TotalInShelfUnits = totalInstancesInShelf,
+                    TotalInWarehouseUnits = totalInstanceOutOfShelf
+                } 
+                : null,
             // Authors
             Authors = dto.LibraryItemAuthors.Any() ? dto.LibraryItemAuthors.Select(lia => lia.Author).ToList() : new(),
             // Resources

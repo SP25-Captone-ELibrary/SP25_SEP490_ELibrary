@@ -21,7 +21,6 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
     Task<IServiceResult> DeleteRangeAsync(int libraryItemId, List<int> libraryItemInstanceIds);
     Task<IServiceResult> CountTotalItemInstanceAsync(int libraryItemId);
     Task<IServiceResult> CountTotalItemInstanceAsync(List<int> libraryItemIds);
-    // TODO: Check assumptions before update units
     Task<IServiceResult> UpdateInShelfAsync(string barcode);
     Task<IServiceResult> UpdateOutOfShelfAsync(string barcode);
     Task<IServiceResult> UpdateRangeInShelfAsync(List<string> barcodes);
