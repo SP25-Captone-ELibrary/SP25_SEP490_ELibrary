@@ -156,7 +156,108 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
                             IsReminderSent = br.BorrowRequest.IsReminderSent,
                             TotalRequestItem = br.BorrowRequest.TotalRequestItem
                         }
-                        : null
+                        : null,
+	                BorrowRecordDetails = br.BorrowRecordDetails.Select(brd => new BorrowRecordDetail()
+	                {
+	                    BorrowRecordDetailId = brd.BorrowRecordDetailId,
+	                    BorrowRecordId = brd.BorrowRecordId,
+	                    LibraryItemInstanceId = brd.LibraryItemInstanceId,
+	                    ImagePublicIds = brd.ImagePublicIds,
+	                    ConditionId = brd.ConditionId,
+	                    ReturnConditionId = brd.ReturnConditionId,
+	                    DueDate = brd.DueDate,
+	                    ReturnDate = brd.ReturnDate,
+	                    Status = brd.Status,
+	                    ConditionCheckDate = brd.ConditionCheckDate,
+	                    Condition = brd.Condition,
+	                    ReturnCondition = brd.ReturnCondition,
+	                    TotalExtension = brd.TotalExtension,
+	                    IsReminderSent = brd.IsReminderSent,
+	                    LibraryItemInstance = new LibraryItemInstance()
+                        {
+                            LibraryItemInstanceId = brd.LibraryItemInstanceId,
+                            LibraryItemId = brd.LibraryItemInstance.LibraryItemId,
+                            Barcode = brd.LibraryItemInstance.Barcode,
+                            Status = brd.LibraryItemInstance.Status,
+                            CreatedAt = brd.LibraryItemInstance.CreatedAt,
+                            UpdatedAt = brd.LibraryItemInstance.UpdatedAt,
+                            CreatedBy = brd.LibraryItemInstance.CreatedBy,
+                            UpdatedBy = brd.LibraryItemInstance.UpdatedBy,
+                            IsDeleted = brd.LibraryItemInstance.IsDeleted,
+                            IsCirculated = brd.LibraryItemInstance.IsCirculated,
+                            LibraryItem = new LibraryItem()
+	                        {
+	                            LibraryItemId = brd.LibraryItemInstance.LibraryItem.LibraryItemId,
+	                            Title = brd.LibraryItemInstance.LibraryItem.Title,
+	                            SubTitle = brd.LibraryItemInstance.LibraryItem.SubTitle,
+	                            Responsibility = brd.LibraryItemInstance.LibraryItem.Responsibility,
+	                            Edition = brd.LibraryItemInstance.LibraryItem.Edition,
+	                            EditionNumber = brd.LibraryItemInstance.LibraryItem.EditionNumber,
+	                            Language = brd.LibraryItemInstance.LibraryItem.Language,
+	                            OriginLanguage = brd.LibraryItemInstance.LibraryItem.OriginLanguage,
+	                            Summary = brd.LibraryItemInstance.LibraryItem.Summary,
+	                            CoverImage = brd.LibraryItemInstance.LibraryItem.CoverImage,
+	                            PublicationYear = brd.LibraryItemInstance.LibraryItem.PublicationYear,
+	                            Publisher = brd.LibraryItemInstance.LibraryItem.Publisher,
+	                            PublicationPlace = brd.LibraryItemInstance.LibraryItem.PublicationPlace,
+	                            ClassificationNumber = brd.LibraryItemInstance.LibraryItem.ClassificationNumber,
+	                            CutterNumber = brd.LibraryItemInstance.LibraryItem.CutterNumber,
+	                            Isbn = brd.LibraryItemInstance.LibraryItem.Isbn,
+	                            Ean = brd.LibraryItemInstance.LibraryItem.Ean,
+	                            EstimatedPrice = brd.LibraryItemInstance.LibraryItem.EstimatedPrice,
+	                            PageCount = brd.LibraryItemInstance.LibraryItem.PageCount,
+	                            PhysicalDetails = brd.LibraryItemInstance.LibraryItem.PhysicalDetails,
+	                            Dimensions = brd.LibraryItemInstance.LibraryItem.Dimensions,
+	                            AccompanyingMaterial = brd.LibraryItemInstance.LibraryItem.AccompanyingMaterial,
+	                            Genres = brd.LibraryItemInstance.LibraryItem.Genres,
+	                            GeneralNote = brd.LibraryItemInstance.LibraryItem.GeneralNote,
+	                            BibliographicalNote = brd.LibraryItemInstance.LibraryItem.BibliographicalNote,
+	                            TopicalTerms = brd.LibraryItemInstance.LibraryItem.TopicalTerms,
+	                            AdditionalAuthors = brd.LibraryItemInstance.LibraryItem.AdditionalAuthors,
+	                            CategoryId = brd.LibraryItemInstance.LibraryItem.CategoryId,
+	                            ShelfId = brd.LibraryItemInstance.LibraryItem.ShelfId,
+	                            GroupId = brd.LibraryItemInstance.LibraryItem.GroupId,
+	                            Status = brd.LibraryItemInstance.LibraryItem.Status,
+	                            IsDeleted = brd.LibraryItemInstance.LibraryItem.IsDeleted,
+	                            IsTrained = brd.LibraryItemInstance.LibraryItem.IsTrained,
+	                            CanBorrow = brd.LibraryItemInstance.LibraryItem.CanBorrow,
+	                            TrainedAt = brd.LibraryItemInstance.LibraryItem.TrainedAt,
+	                            CreatedAt = brd.LibraryItemInstance.LibraryItem.CreatedAt,
+	                            UpdatedAt = brd.LibraryItemInstance.LibraryItem.UpdatedAt,
+	                            UpdatedBy = brd.LibraryItemInstance.LibraryItem.UpdatedBy,
+	                            CreatedBy = brd.LibraryItemInstance.LibraryItem.CreatedBy,
+	                            // References
+	                            Category = brd.LibraryItemInstance.LibraryItem.Category,
+	                            Shelf = brd.LibraryItemInstance.LibraryItem.Shelf,
+	                            LibraryItemInstances = brd.LibraryItemInstance.LibraryItem.LibraryItemInstances
+		                            .Where(lii => lii.LibraryItemInstanceId == brd.LibraryItemInstance.LibraryItemInstanceId).ToList(),
+	                            LibraryItemInventory = brd.LibraryItemInstance.LibraryItem.LibraryItemInventory,
+	                            LibraryItemReviews = brd.LibraryItemInstance.LibraryItem.LibraryItemReviews,
+	                            LibraryItemAuthors = brd.LibraryItemInstance.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+	                            {
+	                                LibraryItemAuthorId = ba.LibraryItemAuthorId,
+	                                LibraryItemId = ba.LibraryItemId,
+	                                AuthorId = ba.AuthorId,
+	                                Author = ba.Author
+	                            }).ToList()
+	                        },
+                        },
+	                    BorrowDetailExtensionHistories = brd.BorrowDetailExtensionHistories,
+	                    Fines = brd.Fines.Select(f => new Fine()
+	                    {
+	                        FineId = f.FineId,
+	                        BorrowRecordDetailId = f.BorrowRecordDetailId,
+	                        FinePolicyId = f.FinePolicyId,
+	                        FineAmount = f.FineAmount,
+	                        FineNote = f.FineNote,
+	                        Status = f.Status,
+	                        CreatedAt = f.CreatedAt,
+	                        ExpiryAt = f.ExpiryAt,
+	                        CreatedBy = f.CreatedBy,
+	                        CreateByNavigation = f.CreateByNavigation,
+	                        FinePolicy = f.FinePolicy
+	                    }).ToList()
+	                }).ToList()
 			    });
 			
 		    if (entities.Any())
