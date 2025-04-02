@@ -118,7 +118,83 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
 
             // Retrieve data with spec
             var entities = await _unitOfWork.Repository<ReservationQueue, int>()
-                .GetAllWithSpecAsync(reservationSpec, tracked);
+                .GetAllWithSpecAndSelectorAsync(reservationSpec, selector: r => new ReservationQueue()
+                {
+                    QueueId = r.QueueId,
+                    LibraryItemId = r.LibraryItemId,
+                    LibraryItemInstanceId = r.LibraryItemInstanceId,
+                    LibraryCardId = r.LibraryCardId,
+                    QueueStatus = r.QueueStatus,
+                    BorrowRequestId = r.BorrowRequestId,
+                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
+                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
+                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
+                    ReservationDate = r.ReservationDate,
+                    ExpiryDate = r.ExpiryDate,
+                    ReservationCode = r.ReservationCode,
+                    IsAppliedLabel = r.IsAppliedLabel,
+                    CollectedDate = r.CollectedDate,
+                    AssignedDate = r.AssignedDate,
+                    TotalExtendPickup = r.TotalExtendPickup,
+                    IsNotified = r.IsNotified,
+                    CancelledBy = r.CancelledBy,
+                    CancellationReason = r.CancellationReason,
+                    LibraryCard = r.LibraryCard,
+                    LibraryItem = new LibraryItem()
+                    {
+                        LibraryItemId = r.LibraryItemId,
+                        Title = r.LibraryItem.Title,
+                        SubTitle = r.LibraryItem.SubTitle,
+                        Responsibility = r.LibraryItem.Responsibility,
+                        Edition = r.LibraryItem.Edition,
+                        EditionNumber = r.LibraryItem.EditionNumber,
+                        Language = r.LibraryItem.Language,
+                        OriginLanguage = r.LibraryItem.OriginLanguage,
+                        Summary = r.LibraryItem.Summary,
+                        CoverImage = r.LibraryItem.CoverImage,
+                        PublicationYear = r.LibraryItem.PublicationYear,
+                        Publisher = r.LibraryItem.Publisher,
+                        PublicationPlace = r.LibraryItem.PublicationPlace,
+                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
+                        CutterNumber = r.LibraryItem.CutterNumber,
+                        Isbn = r.LibraryItem.Isbn,
+                        Ean = r.LibraryItem.Ean,
+                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
+                        PageCount = r.LibraryItem.PageCount,
+                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
+                        Dimensions = r.LibraryItem.Dimensions,
+                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
+                        Genres = r.LibraryItem.Genres,
+                        GeneralNote = r.LibraryItem.GeneralNote,
+                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
+                        TopicalTerms = r.LibraryItem.TopicalTerms,
+                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
+                        CategoryId = r.LibraryItem.CategoryId,
+                        ShelfId = r.LibraryItem.ShelfId,
+                        GroupId = r.LibraryItem.GroupId,
+                        Status = r.LibraryItem.Status,
+                        IsDeleted = r.LibraryItem.IsDeleted,
+                        IsTrained = r.LibraryItem.IsTrained,
+                        CanBorrow = r.LibraryItem.CanBorrow,
+                        TrainedAt = r.LibraryItem.TrainedAt,
+                        CreatedAt = r.LibraryItem.CreatedAt,
+                        UpdatedAt = r.LibraryItem.UpdatedAt,
+                        UpdatedBy = r.LibraryItem.UpdatedBy,
+                        CreatedBy = r.LibraryItem.CreatedBy,
+                        // References
+                        Category = r.LibraryItem.Category,
+                        Shelf = r.LibraryItem.Shelf,
+                        LibraryItemGroup = r.LibraryItem.LibraryItemGroup,
+                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
+                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                        {
+                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                            LibraryItemId = ba.LibraryItemId,
+                            AuthorId = ba.AuthorId,
+                            Author = ba.Author
+                        }).ToList(),
+                    }
+                }, tracked: tracked);
             if (entities.Any())
             {
                 // Convert to dto collection
@@ -344,6 +420,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     IsNotified = r.IsNotified,
                     CancelledBy = r.CancelledBy,
                     CancellationReason = r.CancellationReason,
+                    BorrowRequest = r.BorrowRequest,
+                    LibraryCard = r.LibraryCard,
                     LibraryItem = new LibraryItem()
                     {
                         LibraryItemId = r.LibraryItemId,
@@ -412,8 +490,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                             IsDeleted = r.LibraryItemInstance.IsDeleted,
                             IsCirculated = r.LibraryItemInstance.IsCirculated,
                         }
-                        : null!,
-                    BorrowRequest = r.BorrowRequest
+                        : null!
                 });
             if (existingEntity != null)
             {
