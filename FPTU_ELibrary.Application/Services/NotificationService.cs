@@ -60,7 +60,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 // Apply include
                 notificationSpec.ApplyInclude(q => q
                     .Include(n => n.NotificationRecipients)
-                    .ThenInclude(nr => nr.Recipient)
+                        .ThenInclude(nr => nr.Recipient)
                     .Include(n => n.CreatedByNavigation)
                 );
             }
@@ -68,6 +68,8 @@ public class NotificationService : GenericService<Notification, NotificationDto,
             {
                 // Apply include
                 notificationSpec.ApplyInclude(q => q
+                    .Include(n => n.NotificationRecipients)
+                        .ThenInclude(nr => nr.Recipient)
                     .Include(n => n.CreatedByNavigation)
                 );
             }
@@ -88,10 +90,32 @@ public class NotificationService : GenericService<Notification, NotificationDto,
                 take: notificationSpec.PageSize
             );
 
-            var entities = await _unitOfWork.Repository<Notification, int>()
-                .GetAllWithSpecAsync(notificationSpec, false);
+            var entities = (await _unitOfWork.Repository<Notification, int>()
+                .GetAllWithSpecAsync(notificationSpec, false)).ToList();
             if (entities.Any())
             {
+                // Check whether is not call from management -> exclude all recipients are not belong to user
+                if (!notificationSpec.IsCallFromManagement && !string.IsNullOrEmpty(notificationSpec.Email))
+                {
+                    var email = notificationSpec.Email;
+                    foreach (var notification in entities)
+                    {
+                        if (notification.NotificationRecipients.Any())
+                        {
+                            notification.NotificationRecipients = notification.NotificationRecipients
+                                .Where(r => Equals(r.Recipient.Email, email))
+                                .Select(n => new NotificationRecipient()
+                                {
+                                    NotificationRecipientId = n.NotificationRecipientId,
+                                    NotificationId = n.NotificationId,
+                                    RecipientId = n.RecipientId,
+                                    IsRead = n.IsRead
+                                })
+                                .ToList();
+                        }
+                    }
+                }
+                
                 var paginationResultDto = new PaginatedResultDto<NotificationDto>(
                     _mapper.Map<IEnumerable<NotificationDto>>(entities),
                     notificationSpec.PageIndex, notificationSpec.PageSize, totalPage, totalNotification);

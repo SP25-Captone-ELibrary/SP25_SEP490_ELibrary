@@ -14,6 +14,10 @@ public class LibraryItemInventoryDto
     public int BorrowedUnits { get; set; }
     public int ReservedUnits { get; set; }
     public int LostUnits { get; set; }
+    
+    // Instances units
+    public int TotalInShelfUnits { get; set; } = 0;
+    public int TotalInWarehouseUnits { get; set; } = 0;
 
     // Mapping entity
     [JsonIgnore]

@@ -637,7 +637,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                Prefix = "SS",
 	                EnglishName = nameof(LibraryItemCategory.DigitalBook),
 	                VietnameseName = LibraryItemCategory.DigitalBook.GetDescription(),
-	                IsAllowAITraining = true,
+	                IsAllowAITraining = false,
 	                TotalBorrowDays = 30
                 },
                 new()
@@ -645,7 +645,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                Prefix = "STK",
 	                EnglishName = nameof(LibraryItemCategory.ReferenceBook),
 	                VietnameseName = LibraryItemCategory.ReferenceBook.GetDescription(),
-					IsAllowAITraining = true,
+					IsAllowAITraining = false,
 					TotalBorrowDays = 90
                 },
                 new()
