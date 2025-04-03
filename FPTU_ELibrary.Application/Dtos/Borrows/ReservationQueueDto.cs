@@ -65,7 +65,6 @@ public class ReservationQueueDto
     
     public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
 
-    [JsonIgnore]
     public LibraryCardDto LibraryCard { get; set; } = null!;
     
     [JsonIgnore] 

@@ -114,6 +114,23 @@
 			public const string GetById = Base + "/management/borrows/digital/{id}";
 			#endregion
 		}
+
+		/// <summary>
+		/// Dashboard endpoints
+		/// </summary>
+		public static class Dashboard
+		{
+			#region Management
+			public const string GetDashboardOverview = Base + "/management/dashboard/overview";
+			public const string GetDashboardCirculationAnalyst = Base + "/management/dashboard/circulation-analyst";
+			public const string GetDashboardDigitalResourceAnalyst = Base + "/management/dashboard/digital-resource-analyst";
+			public const string GetDashboardFinancialAndTransactionAnalyst = Base + "/management/dashboard/financial-and-transaction-analyst";
+			
+			public const string GetAllOverdueBorrow = Base + "/management/dashboard/overdue-borrows";
+			public const string GetAllLatestBorrow = Base + "/management/dashboard/latest-borrows";
+			public const string GetAllAssignableReservation = Base + "/management/dashboard/assignable-reservations";
+			#endregion
+		}
 		
 		/// <summary>
 		/// Library item endpoints

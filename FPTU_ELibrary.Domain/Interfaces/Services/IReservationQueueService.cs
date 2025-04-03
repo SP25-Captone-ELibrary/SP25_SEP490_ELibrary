@@ -13,6 +13,7 @@ public interface IReservationQueueService<TDto> : IGenericService<ReservationQue
     Task<IServiceResult> ConfirmApplyLabelAsync(List<int> queueIds);
     Task<IServiceResult> GetAssignableByIdAsync(int id);
     Task<IServiceResult> GetAssignableInstancesAfterReturnAsync(List<int> libraryItemInstanceIds);
+    Task<IServiceResult> GetAllAssignableForDashboardAsync(DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize);
     Task<IServiceResult> GetAllCardHolderReservationAsync(ISpecification<ReservationQueue> spec, bool tracked = false);
     Task<IServiceResult> GetAllPendingAndAssignedReservationByLibCardIdAsync(Guid libraryCardId);
     Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);

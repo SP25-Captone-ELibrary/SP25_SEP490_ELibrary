@@ -20,6 +20,8 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services.Base
 			bool tracked = true);
 		Task<IServiceResult> AnyAsync(Expression<Func<TEntity, bool>> predicate);
 		Task<IServiceResult> AnyAsync(ISpecification<TEntity> specification);
+		Task<IServiceResult> SumAsync(Expression<Func<TEntity, int>> predicate);
+		Task<IServiceResult> SumWithSpecAsync(ISpecification<TEntity> specification, Expression<Func<TEntity, int>> predicate);
 		Task<IServiceResult> CountAsync(ISpecification<TEntity> specification);
 		Task<IServiceResult> CountAsync();
 	}

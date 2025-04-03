@@ -62,6 +62,11 @@ public class AuthorizationService : IAuthorizationService
     {
         #region LibraryItemManagement 
         // Route: [LibraryItemManagement] -> Combined with 
+        // [DashboardManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.DashboardManagement))
+        {
+            return SystemFeatureEnum.LibraryItemManagement;
+        }
         // [AuthorManagement]
         if (requestFeature.Equals(SystemFeatureEnum.AuthorManagement))
         {
@@ -169,7 +174,7 @@ public class AuthorizationService : IAuthorizationService
         {
             rootFeature = SystemFeatureEnum.LibraryItemManagement;
         }
-
+        
         return await CheckPermissionAsync(role, rootFeature.ToString(), httpMethod);
     }
 

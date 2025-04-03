@@ -149,6 +149,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				// [PaymentMethods]
 				if (!await _context.PaymentMethods.AnyAsync()) await SeedPaymentMethodsAsync();
 				else _logger.Information("Already seed data for table {0}", "PaymentMethods");
+				
+				// [Transactions]
+				if (!await _context.Transactions.AnyAsync()) await SeedTransactionsAsync();
+				else _logger.Information("Already seed data for table {0}", "Transactions");
             }
             catch (Exception ex)
             {
@@ -632,14 +636,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					IsAllowAITraining = true,
 					TotalBorrowDays = 30
                 },
-                new()
-                {
-	                Prefix = "SS",
-	                EnglishName = nameof(LibraryItemCategory.DigitalBook),
-	                VietnameseName = LibraryItemCategory.DigitalBook.GetDescription(),
-	                IsAllowAITraining = false,
-	                TotalBorrowDays = 30
-                },
+                // new()
+                // {
+	               //  Prefix = "SS",
+	               //  EnglishName = nameof(LibraryItemCategory.DigitalBook),
+	               //  VietnameseName = LibraryItemCategory.DigitalBook.GetDescription(),
+	               //  IsAllowAITraining = false,
+	               //  TotalBorrowDays = 30
+                // },
                 new()
                 {
 	                Prefix = "STK",
@@ -2378,6 +2382,60 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		    var saveSucc = await _context.SaveChangesAsync() > 0;
 		    if (saveSucc) _logger.Information("Seed supplier successfully.");
 		}
+		
+        //	Summary:
+        //		Seed transactions
+        private async Task SeedTransactionsAsync()
+        {
+	        // Retrieve all existing users
+	        var users = await _context.Users
+		        .Where(u => u.Role.EnglishName != nameof(Role.Administration))
+		        .ToListAsync();
+	        if (users.Any())
+	        {
+		        var rnd = new Random();
+		        var transactions = new List<Transaction>();
+		        
+		        // Define start and end dates for transaction generation
+		        var startDate = new DateTime(DateTime.Today.Year - 1, 1, 1);
+		        var endDate = DateTime.Today;
+		        var totalDays = (endDate - startDate).Days;
+
+				// Generate transaction code
+		        string GenerateTransactionCode(int minLength = 10, int maxLength = 12)
+		        {
+			        int codeLength = rnd.Next(minLength, maxLength + 1);
+			        var code = new char[codeLength];
+			        for (int i = 0; i < codeLength; i++)
+			        {
+				        code[i] = (char)('0' + rnd.Next(10));
+			        }
+			        return new string(code);
+		        }
+
+		        for (int i = 0; i < 500; i++)
+		        {
+			        var randomDays = rnd.Next(totalDays + 1);
+			        var transactionDate = startDate.AddDays(randomDays);
+
+			        transactions.Add(new Transaction
+			        {
+				        TransactionDate = transactionDate,
+				        Amount = rnd.Next(5000, 500000),
+				        TransactionType = (i % 2 == 0) ? TransactionType.Fine : TransactionType.DigitalBorrow,
+				        CreatedAt = transactionDate.AddHours(rnd.Next(0, 24)).AddMinutes(rnd.Next(0, 60)),
+				        TransactionCode = GenerateTransactionCode(), 
+				        UserId = users[rnd.Next(users.Count)].UserId,
+				        TransactionStatus = TransactionStatus.Paid
+			        });
+		        }
+		        
+		        await _context.Transactions.AddRangeAsync(transactions);
+		        // Save DB
+		        var saveSucc = await _context.SaveChangesAsync() > 0;
+		        if (saveSucc) _logger.Information("Seed transactions successfully.");
+	        }
+        }
     }
 
 	//	Summary:
