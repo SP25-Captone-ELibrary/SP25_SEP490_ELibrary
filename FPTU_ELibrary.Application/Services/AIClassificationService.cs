@@ -749,6 +749,12 @@ public class AIClassificationService : IAIClassificationService
                     response.Add(responseData);
                 }
             }
+            // If there is group of BookSeries and have <5 items, remove it from response
+            response = response.Where(group => 
+                !(group.ListCheckedGroupDetail.Any(detail => 
+                    detail.Item.Category.EnglishName == nameof(LibraryItemCategory.BookSeries) &&
+                    group.ListCheckedGroupDetail.Count < 5))
+            ).ToList();
             
             return new ServiceResult(
                 resultCode: ResultCodeConst.AIService_Success0005,
@@ -776,8 +782,8 @@ public class AIClassificationService : IAIClassificationService
         if ((await _aiTrainingSessionService.GetWithSpecAsync(baseSession)).Data is AITrainingSessionDto sessionValue)
         {
             // Msg: There is existing AI training session
-            return new ServiceResult(ResultCodeConst.AIService_Warning0009,
-                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009), sessionValue);
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), sessionValue);
         }
 
         // Msg: Is able to train
