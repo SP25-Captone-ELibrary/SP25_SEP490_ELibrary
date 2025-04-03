@@ -19,8 +19,8 @@ public class AITrainingSessionController : ControllerBase
         _trainingSessionService = trainingSessionService;
     }
 
-    [HttpGet(APIRoute.AITrainingSession.GetAll, Name = nameof(GetAll))]
     [Authorize]
+    [HttpGet(APIRoute.AITrainingSession.GetAll, Name = nameof(GetAll))]
     public async Task<IActionResult> GetAll([FromQuery] AITrainingSessionSpecParams specParams)
     {
         return Ok(await _trainingSessionService.GetAllWithSpecAsync(new AITrainingSessionSpecification(
@@ -29,8 +29,8 @@ public class AITrainingSessionController : ControllerBase
             pageSize: specParams.PageSize ?? 10)));
     }
 
-    [HttpGet(APIRoute.AITrainingSession.GetById, Name = nameof(GetById))]
     [Authorize]
+    [HttpGet(APIRoute.AITrainingSession.GetById, Name = nameof(GetById))]
     public async Task<IActionResult> GetById([FromRoute] int id)
     {
         return Ok(await _trainingSessionService.GetByIdAsync(id));

@@ -10,9 +10,8 @@ public class AITrainingSessionSpecification: BaseSpecification<AITrainingSession
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
 
-    public AITrainingSessionSpecification(AITrainingSessionSpecParams aiTrainingSessionSpecParams
-        ,int pageIndex, int pageSize)
-    :base(ats =>
+    public AITrainingSessionSpecification(AITrainingSessionSpecParams aiTrainingSessionSpecParams, int pageIndex, int pageSize)
+    : base(ats =>
         // Search with terms
         string.IsNullOrEmpty(aiTrainingSessionSpecParams.Search) ||
         (
@@ -21,20 +20,23 @@ public class AITrainingSessionSpecification: BaseSpecification<AITrainingSession
                 .Contains(aiTrainingSessionSpecParams.Search))
         ))
     {
+        // Pagination
         PageIndex = pageIndex;
         PageSize = pageSize;
+        
         // Enable split query
         EnableSplitQuery();
-        //Include AITrainingDetail
-        ApplyInclude(q => q
-            .Include(e => e.TrainingDetails)
-            .ThenInclude(atd => atd.TrainingImages));
+        
+        // Add order
         AddOrderBy(ats => ats.TrainingSessionId);
-        if(!string.IsNullOrEmpty(aiTrainingSessionSpecParams.TrainingStatus))
+    
+        // Training status
+        if(aiTrainingSessionSpecParams.TrainingStatus != null)
         {
-            AddFilter(x => x.TrainingStatus.ToString() == aiTrainingSessionSpecParams.TrainingStatus);
+            AddFilter(x => x.TrainingStatus == aiTrainingSessionSpecParams.TrainingStatus);
         }
-
+        
+        // Train date range
         if (aiTrainingSessionSpecParams.TrainDateRange != null
             && aiTrainingSessionSpecParams.TrainDateRange.Length > 1)
         {
@@ -53,6 +55,7 @@ public class AITrainingSessionSpecification: BaseSpecification<AITrainingSession
                                && x.TrainDate.Date <= aiTrainingSessionSpecParams.TrainDateRange[1]!.Value.Date);
             }
         }
+        
         if (!string.IsNullOrEmpty(aiTrainingSessionSpecParams.Sort))
         {
             var sortBy = aiTrainingSessionSpecParams.Sort.Trim();
@@ -67,6 +70,7 @@ public class AITrainingSessionSpecification: BaseSpecification<AITrainingSession
             AddOrderByDescending(u => u.TrainDate);
         }
     }
+    
     private void ApplySorting(string propertyName, bool isDescending)
     {
         if (string.IsNullOrEmpty(propertyName)) return;
