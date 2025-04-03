@@ -57,7 +57,4 @@
   <ItemGroup>
 	<Using Include="BCrypt.Net.BCrypt" Alias="BC" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Dtos\Dashboard\" />
-  </ItemGroup>
 </Project>

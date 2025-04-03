@@ -120,6 +120,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         }
     }
 
+    public async Task<IServiceResult> GetAllWithSpecFromDashboardAsync(ISpecification<DigitalBorrow> spec)
+    {
+        return await base.GetAllWithSpecAsync(spec);
+    }
+    
     public async Task<IServiceResult> GetByIdAsync(int id, 
         string? email = null, Guid? userId = null, bool isCallFromManagement = false)
     {

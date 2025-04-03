@@ -188,6 +188,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     CancellationReason = br.CancellationReason,
                     IsReminderSent = br.IsReminderSent,
                     TotalRequestItem = br.TotalRequestItem,
+                    LibraryCard = br.LibraryCard,
                     BorrowRequestDetails = br.BorrowRequestDetails.Select(brd => new BorrowRequestDetail()
                     {
                         BorrowRequestDetailId = brd.BorrowRequestDetailId,

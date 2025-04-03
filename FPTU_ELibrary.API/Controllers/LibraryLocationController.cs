@@ -35,7 +35,6 @@ public class LibraryLocationController : ControllerBase
     }
     
     #region Map
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetMapByFloorId, Name = nameof(GetMapByFloorIdAsync))]
     public async Task<IActionResult> GetMapByFloorIdAsync([FromRoute] int floorId)
     {
@@ -55,14 +54,12 @@ public class LibraryLocationController : ControllerBase
     }
     #endregion
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetFloors, Name = nameof(GetAllLibraryFloorAsync))]
     public async Task<IActionResult> GetAllLibraryFloorAsync()
     {
         return Ok(await _floorService.GetAllAsync());
     }
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetShelvesForFilter, Name = nameof(GetAllLibraryShelvesAsync))]
     public async Task<IActionResult> GetAllLibraryShelvesAsync()
     {
@@ -75,21 +72,18 @@ public class LibraryLocationController : ControllerBase
         return Ok(await _shelfService.GetDetailWithFloorZoneSectionByIdAsync(shelfId: shelfId));
     }
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetZonesByFloorId, Name = nameof(GetAllLibraryZoneByFloorIdAsync))]
     public async Task<IActionResult> GetAllLibraryZoneByFloorIdAsync([FromQuery] int floorId)
     {
         return Ok(await _zoneService.GetAllByFloorIdAsync(floorId));
     }
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetSectionsByZoneId, Name = nameof(GetAllLibrarySectionByZoneIdAsync))]
     public async Task<IActionResult> GetAllLibrarySectionByZoneIdAsync([FromQuery] int zoneId)
     {
         return Ok(await _sectionService.GetAllByZoneIdAsync(zoneId));
     }
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryLocation.GetShelvesBySectionId, Name = nameof(GetAllLibraryShelfBySectionIdAsync))]
     public async Task<IActionResult> GetAllLibraryShelfBySectionIdAsync([FromQuery] int sectionId)
     {

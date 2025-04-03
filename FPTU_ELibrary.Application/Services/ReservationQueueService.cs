@@ -375,6 +375,122 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         }
     }
 
+    public async Task<IServiceResult> GetAllAssignableForDashboardAsync(DateTime? startDate, DateTime? endDate,
+        int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Initialize assignable collection
+            var assignableReservations = new List<ReservationQueueDto>();
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(r => 
+                r.QueueStatus == ReservationQueueStatus.Pending && 
+                r.LibraryItemInstanceId == null &&
+                r.ReservationCode == null && 
+                r.IsAppliedLabel == false);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(r => r.LibraryItem)
+                .Include(r => r.LibraryCard)
+            );
+            // Add filter date range (if any)
+            if (startDate != null && endDate != null)
+            {
+                baseSpec.AddFilter(r => r.ReservationDate >= startDate && r.ReservationDate <= endDate);
+            }
+            // Add ascending order 
+            baseSpec.AddOrderBy(r => r.ReservationDate);
+            
+            // Count total with spec
+            var totalWithSpec = await _unitOfWork.Repository<ReservationQueue, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalWithSpec / pageSize);
+        
+            // Set pagination to specification after count total resource 
+            if (pageIndex > totalPage
+                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+        
+            // Apply pagination
+            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+            
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<ReservationQueue, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (!entities.Any())
+            {
+                // Msg: Data not found or empty
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0004,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    data: new List<GetBorrowRequestDto>());
+            }
+            
+            // Iterate each reservation to check for assignable
+            foreach (var queue in entities)
+            {
+                // Check current user library activity
+                if ((await _userSvc.GetPendingLibraryActivitySummaryAsync(
+                        libraryCardId: queue.LibraryCardId)
+                    ).Data is UserPendingActivitySummaryDto userActivitySummary)
+                {
+                    // Check whether user's active/pending activity borrow/reserve reaching threshold
+                    var isReachedThreshold = userActivitySummary.RemainTotal == 0;
+                    if (isReachedThreshold)
+                    {
+                        // Skip to next reservation
+                        continue;
+                    }
+                }
+    
+                // Retrieve inventory
+                var inventory = (await _inventorySvc.Value.GetByIdAsync(queue.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (inventory == null)
+                {
+                    // Skip to next reservation
+                    continue;
+                }
+                    
+                // Build spec
+                var itemInstanceSpec = new BaseSpecification<LibraryItemInstance>(li =>
+                    li.LibraryItemId == queue.LibraryItemId &&
+                    (
+                        // Out-of-shelf status
+                        li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) ||
+                        // In-shelf status and still available
+                        (li.Status == nameof(LibraryItemInstanceStatus.InShelf) && inventory.AvailableUnits > 0)
+                    ));
+                // Check if exist any
+                var isAssignable = (await _itemInstanceSvc.Value.AnyAsync(itemInstanceSpec)).Data is true;
+                if (isAssignable)
+                {
+                    assignableReservations.Add(_mapper.Map<ReservationQueueDto>(queue));
+                }
+            }
+            
+            // Convert to dto
+            var dtoList = _mapper.Map<List<ReservationQueueDto>>(entities);
+            
+            // Pagination result 
+            var paginationRes = new PaginatedResultDto<ReservationQueueDto>(
+                dtoList, pageIndex, pageSize, totalPage, totalWithSpec);
+            
+            // Get data successfully
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Success0002,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                data: paginationRes);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all assignable reservations");
+        }
+    }
+    
     public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
     {
         try
@@ -791,6 +907,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             itemInstanceSpec.ApplyInclude(q => q
                 .Include(l => l.LibraryItem)
                 .Include(l => l.LibraryItemConditionHistories)
+                    .ThenInclude(c => c.Condition)
             );
             // Retrieve all assignable item instances id
             var itemInstanceList = (await _itemInstanceSvc.Value

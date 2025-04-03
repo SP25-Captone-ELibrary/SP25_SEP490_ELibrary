@@ -98,6 +98,16 @@ namespace FPTU_ELibrary.Infrastructure.Repositories
         {
             return await ApplySpecification(specification).CountAsync();
         }
+
+        public async Task<int> SumAsync(Expression<Func<TEntity, int>> predicate)
+        {
+	        return await _dbSet.SumAsync(predicate);
+        }
+
+        public async Task<int> SumWithSpecAsync(ISpecification<TEntity> specification, Expression<Func<TEntity, int>> predicate)
+        {
+	        return await ApplySpecification(specification).SumAsync(predicate);
+        }
         
         public async Task<bool> AllAsync(Expression<Func<TEntity, bool>> expression)
         {

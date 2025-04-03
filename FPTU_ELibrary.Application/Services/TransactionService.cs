@@ -82,6 +82,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
         _payOsSettings = payOsMonitor.CurrentValue;
     }
 
+    public async Task<IServiceResult> GetAllWithSpecFromDashboardAsync(ISpecification<Transaction> spec)
+    {
+        return await base.GetAllWithSpecAsync(spec);
+    }
+    
     public async Task<IServiceResult> GetAllCardHolderTransactionAsync(ISpecification<Transaction> specification, bool tracked = true)
     {
         try

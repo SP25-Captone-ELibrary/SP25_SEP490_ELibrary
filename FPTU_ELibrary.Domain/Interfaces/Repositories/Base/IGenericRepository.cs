@@ -21,6 +21,8 @@ namespace FPTU_ELibrary.Domain.Interfaces.Repositories.Base
             Expression<Func<TEntity, TResult>> selector, bool tracked = true);
         Task<int> CountAsync();
         Task<int> CountAsync(ISpecification<TEntity> specification);
+        Task<int> SumAsync(Expression<Func<TEntity, int>> predicate);
+        Task<int> SumWithSpecAsync(ISpecification<TEntity> specification, Expression<Func<TEntity, int>> predicate);
         Task<bool> AllAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> AnyAsync(ISpecification<TEntity> specification);

@@ -14,6 +14,7 @@ public interface ITransactionService<TDto> : IGenericService<Transaction, TDto, 
     Task<IServiceResult> CreateWithoutSaveChangesAsync(TDto dto);
     Task<IServiceResult> GetAllByTransactionCodeAsync(string transactionCode);
     Task<IServiceResult> GetAllCardHolderTransactionAsync(ISpecification<Transaction> spec, bool tracked = false);
+    Task<IServiceResult> GetAllWithSpecFromDashboardAsync(ISpecification<Transaction> spec);
     Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null);
     Task<IServiceResult> UpdateStatusByTransactionCodeAsync(
         string transactionCode, DateTime? transactionDate,

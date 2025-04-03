@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -31,6 +32,8 @@ public class GetBorrowRequestDto
     
     // Mark as allow to pay for pending resources
     public bool IsExistPendingResources { get; set; }
+
+    public LibraryCardDto LibraryCard { get; set; } = null!;
     
     public List<LibraryItemDetailDto> LibraryItems { get; set; } = new();
 
@@ -55,6 +58,7 @@ public static class GetBorrowRequestDtoExtensions
             CancellationReason = dto.CancellationReason,
             IsReminderSent = dto.IsReminderSent,
             TotalRequestItem = dto.TotalRequestItem,
+            LibraryCard = dto.LibraryCard,
             LibraryItems = dto.BorrowRequestDetails
                 .Select(brd => brd.LibraryItem)
                 .Select(li => li.ToLibraryItemDetailDto()).ToList(),
