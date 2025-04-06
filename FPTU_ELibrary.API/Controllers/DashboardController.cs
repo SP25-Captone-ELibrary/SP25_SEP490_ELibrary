@@ -93,7 +93,8 @@ public class DashboardController : ControllerBase
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize),
             startDate: req.StartDate,
-            endDate: req.EndDate
+            endDate: req.EndDate,
+            period: req.Period
         ));
     }
     
@@ -109,7 +110,8 @@ public class DashboardController : ControllerBase
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize),
             startDate: req.StartDate,
-            endDate: req.EndDate
+            endDate: req.EndDate,
+            period: req.Period
         ));
     }
     
@@ -125,7 +127,25 @@ public class DashboardController : ControllerBase
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize),
             startDate: req.StartDate,
-            endDate: req.EndDate
+            endDate: req.EndDate,
+            period: req.Period
+        ));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.Dashboard.GetAllTopCirculationItems, Name = nameof(GetAllTopCirculationItemsAsync))]
+    public async Task<IActionResult> GetAllTopCirculationItemsAsync(
+        [FromQuery] TopCirculationItemSpecPrams specParams,
+        [FromQuery] DashboardFilterRequest req)
+    {
+        return Ok(await _dashboardSvc.GetTopCirculationItemsAsync(
+            new TopCirculationItemSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize),
+            startDate: req.StartDate,
+            endDate: req.EndDate,
+            period: req.Period
         ));
     }
 }

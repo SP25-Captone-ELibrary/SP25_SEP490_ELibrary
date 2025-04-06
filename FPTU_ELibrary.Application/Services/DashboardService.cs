@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -40,6 +41,7 @@ public class DashboardService : IDashboardService
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceSvc;
     private readonly IBorrowRecordDetailService<BorrowRecordDetailDto> _borrowRecDetailSvc;
     private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _whTrackingDetailSvc;
+    private readonly IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto> _extensionHistorySvc;
 
     public DashboardService(
         ILogger logger,
@@ -58,7 +60,8 @@ public class DashboardService : IDashboardService
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceSvc,
         IBorrowRecordDetailService<BorrowRecordDetailDto> borrowRecDetailSvc,
-        IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> whTrackingDetailSvc
+        IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> whTrackingDetailSvc,
+        IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto> extensionHistorySvc
     )
     {
         _mapper = mapper;
@@ -78,6 +81,7 @@ public class DashboardService : IDashboardService
         _borrowRecDetailSvc = borrowRecDetailSvc;
         _whTrackingDetailSvc = whTrackingDetailSvc;
         _reservationQueueSvc = reservationQueueSvc;
+        _extensionHistorySvc = extensionHistorySvc;
     }
     
     public async Task<IServiceResult> GetDashboardOverviewAsync(DateTime? startDate, DateTime? endDate, TrendPeriod period)
@@ -361,7 +365,8 @@ public class DashboardService : IDashboardService
                 
                 // Retrieve borrow dates
                 var borrowSpec = new BaseSpecification<BorrowRecordDetail>(
-                    br => br.BorrowRecord.BorrowDate >= validStartDate && br.BorrowRecord.BorrowDate <= validEndDate);
+                    br => br.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                          br.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
                 var borrowDates = (await _borrowRecDetailSvc.GetAllWithSpecAndSelectorAsync(
                     specification: borrowSpec,
                     selector: s => s.BorrowRecord.BorrowDate)).Data as List<DateTime>;
@@ -374,7 +379,7 @@ public class DashboardService : IDashboardService
                 // Retrieve return dates
                 var returnSpec = new BaseSpecification<BorrowRecordDetail>(
                     br => br.ReturnDate.HasValue &&
-                          br.ReturnDate.Value >= validStartDate && br.ReturnDate.Value <= validEndDate);
+                          br.ReturnDate.Value.Date >= validStartDate.Date && br.ReturnDate.Value.Date <= validEndDate.Date);
                 var returnDates = (await _borrowRecDetailSvc.GetAllWithSpecAndSelectorAsync(
                     specification: returnSpec,
                     selector: s => s.ReturnDate)).Data as List<DateTime>;
@@ -463,11 +468,9 @@ public class DashboardService : IDashboardService
             
             // Count total existing digital borrow
             var totalSpec = new BaseSpecification<DigitalBorrow>();
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
-            {
-                totalSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
-            }
+            // Add filter date range
+            totalSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            // Count with spec
             if ((await _digitalBorrowSvc.CountAsync(totalSpec)).Data is int totalBorrowRes)
             {
                 totalBorrows = totalBorrowRes;
@@ -475,11 +478,9 @@ public class DashboardService : IDashboardService
             
             // Count borrows with extension
             var totalWithExtensionSpec = new BaseSpecification<DigitalBorrow>(db => db.ExtensionCount > 0);
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
-            {
-                totalWithExtensionSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
-            }
+            // Add filter date range
+            totalWithExtensionSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            // Count with spec
             if ((await _digitalBorrowSvc.CountAsync(totalWithExtensionSpec)).Data is int borrowsWithExtensionRes)
             {
                 borrowsWithExtension = borrowsWithExtensionRes;
@@ -487,11 +488,9 @@ public class DashboardService : IDashboardService
             
             // Count total extensions
             var sumSpec = new BaseSpecification<DigitalBorrow>();
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
-            {
-                sumSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
-            }
+            // Add filter date range
+            sumSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            // Sum with spec
             if ((await _digitalBorrowSvc.SumWithSpecAsync(sumSpec, db => db.ExtensionCount)).Data is int totalExtensionRes)
             {
                 totalExtensions = totalExtensionRes;
@@ -543,11 +542,9 @@ public class DashboardService : IDashboardService
                     
                     // Retrieve all digital borrows by resource id
                     var digitalBrSpec = new BaseSpecification<DigitalBorrow>(db => db.ResourceId == resource.ResourceId);
-                    // Add filter date range (if any)
-                    if (startDate != null || endDate != null)
-                    {
-                        digitalBrSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
-                    }
+                    // Add filter date rang
+                    digitalBrSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+                    // Retrieve all with spec
                     var digitalBorrows = (await _digitalBorrowSvc.GetAllWithSpecFromDashboardAsync(digitalBrSpec)).Data as List<DigitalBorrowDto>;
                     if (digitalBorrows != null && digitalBorrows.Any())
                     {
@@ -595,7 +592,7 @@ public class DashboardService : IDashboardService
     public async Task<IServiceResult> GetDashboardFinancialAndTransactionAnalyticsAsync(
         TransactionSpecification spec,
         DateTime? startDate, DateTime? endDate,
-        TrendPeriod period = TrendPeriod.Monthly,
+        TrendPeriod period,
         TransactionType? transactionType = null)
     {
         try
@@ -677,16 +674,13 @@ public class DashboardService : IDashboardService
                 period: period, lang: lang);
             
             // Calculate overall revenue for each period
-            var totalRevenueCurrent = trendCurrent?.Sum(t => (decimal)t.Count) ?? 0;
-            var totalRevenueLast = trendLast?.Sum(t => (decimal)t.Count) ?? 0;
+            var totalRevenueCurrent = trendCurrent?.Sum(t => (decimal)t.Value) ?? 0;
+            var totalRevenueLast = trendLast?.Sum(t => (decimal)t.Value) ?? 0;
             
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
-            {
-                spec.AddFilter(db => db.TransactionDate.HasValue &&
-                     db.TransactionDate.Value.Date >= validStartDate.Date &&
-                     db.TransactionDate.Value.Date <= validEndDate.Date);
-            }
+            // Add filter date range
+            spec.AddFilter(db => db.TransactionDate.HasValue &&
+                                 db.TransactionDate.Value.Date >= validStartDate.Date &&
+                                 db.TransactionDate.Value.Date <= validEndDate.Date);
             // Retrieve current transactions
             spec.AddOrderByDescending(t => t.TransactionDate ?? t.CreatedAt);
             // Add filter 
@@ -744,7 +738,7 @@ public class DashboardService : IDashboardService
     }
 
     public async Task<IServiceResult> GetAllOverdueBorrowAsync(BorrowRecordDetailSpecification spec,
-        DateTime? startDate, DateTime? endDate)
+        DateTime? startDate, DateTime? endDate, TrendPeriod period)
     {
         try
         {
@@ -754,16 +748,13 @@ public class DashboardService : IDashboardService
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
             // Calculate valid date range based on period
-            (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, TrendPeriod.Monthly, currentLocalDateTime);
+            (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
             
             // Add spec filter
             spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Overdue && !brd.Fines.Any());
-            // Add date range filter (if any)
-            if (startDate != null || endDate != null)
-            {
-                spec.AddFilter(brd => brd.DueDate.Date >= validStartDate && 
-                                      brd.DueDate.Date <= validEndDate);
-            }
+            // Add date range filter
+            spec.AddFilter(brd => brd.DueDate.Date >= validStartDate.Date && 
+                                  brd.DueDate.Date <= validEndDate.Date);
             // Add order
             spec.AddOrderByDescending(d => d.DueDate);
             // Apply include
@@ -827,7 +818,7 @@ public class DashboardService : IDashboardService
     }
 
     public async Task<IServiceResult> GetLatestBorrowAsync(BorrowRecordDetailSpecification spec,
-        DateTime? startDate, DateTime? endDate)
+        DateTime? startDate, DateTime? endDate, TrendPeriod period)
     {
         // Current local date time
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(
@@ -835,16 +826,13 @@ public class DashboardService : IDashboardService
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
         
         // Calculate valid date range based on period
-        (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, TrendPeriod.Monthly, currentLocalDateTime);
+        (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
         
         // Add spec filter
         spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Borrowing);
-        // Add date range filter (if any)
-        if (startDate != null || endDate != null)
-        {
-            spec.AddFilter(brd => brd.DueDate.Date >= validStartDate && 
-                                  brd.DueDate.Date <= validEndDate);
-        }
+        // Add date range filter
+        spec.AddFilter(brd => brd.DueDate.Date >= validStartDate.Date && 
+                              brd.DueDate.Date <= validEndDate.Date);
         // Add order
         spec.AddOrderByDescending(d => d.DueDate);
         // Apply include
@@ -902,13 +890,363 @@ public class DashboardService : IDashboardService
     }
 
     public async Task<IServiceResult> GetAssignableReservationAsync(ReservationQueueSpecification spec,
-        DateTime? startDate, DateTime? endDate)
+        DateTime? startDate, DateTime? endDate, TrendPeriod period)
     {
+        // Current local date time
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Calculate valid date range based on period
+        (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
+        
         return await _reservationQueueSvc.GetAllAssignableForDashboardAsync(
-            startDate: startDate,
-            endDate: endDate,
+            startDate: validStartDate,
+            endDate: validEndDate,
+            period: period,
             pageIndex: spec.PageIndex,
             pageSize: spec.PageSize);
+    }
+
+    public async Task<IServiceResult> GetTopCirculationItemsAsync(TopCirculationItemSpecification spec,
+        DateTime? startDate, DateTime? endDate, TrendPeriod period)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage) ?? SystemLanguage.English;
+            
+            // Current local date time
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.UtcNow,
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
+            // Calculate valid date range based on period
+            (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
+            
+            // Retrieve all library items with spec
+            var getItemRes = await _itemSvc.GetAllWithSpecAndSelectorAsync(spec, be => new LibraryItem()
+                {
+                    LibraryItemId = be.LibraryItemId,
+                    Title = be.Title,
+                    SubTitle = be.SubTitle,
+                    Responsibility = be.Responsibility,
+                    Edition = be.Edition,
+                    EditionNumber = be.EditionNumber,
+                    Language = be.Language,
+                    OriginLanguage = be.OriginLanguage,
+                    Summary = be.Summary,
+                    CoverImage = be.CoverImage,
+                    PublicationYear = be.PublicationYear,
+                    Publisher = be.Publisher,
+                    PublicationPlace = be.PublicationPlace,
+                    ClassificationNumber = be.ClassificationNumber,
+                    CutterNumber = be.CutterNumber,
+                    Isbn = be.Isbn,
+                    Ean = be.Ean,
+                    EstimatedPrice = be.EstimatedPrice,
+                    PageCount = be.PageCount,
+                    PhysicalDetails = be.PhysicalDetails,
+                    Dimensions = be.Dimensions,
+                    AccompanyingMaterial = be.AccompanyingMaterial,
+                    Genres = be.Genres,
+                    GeneralNote = be.GeneralNote,
+                    BibliographicalNote = be.BibliographicalNote,
+                    TopicalTerms = be.TopicalTerms,
+                    AdditionalAuthors = be.AdditionalAuthors,
+                    CategoryId = be.CategoryId,
+                    ShelfId = be.ShelfId,
+                    GroupId = be.GroupId,
+                    Status = be.Status,
+                    IsDeleted = be.IsDeleted,
+                    IsTrained = be.IsTrained,
+                    CanBorrow = be.CanBorrow,
+                    TrainedAt = be.TrainedAt,
+                    CreatedAt = be.CreatedAt,
+                    UpdatedAt = be.UpdatedAt,
+                    UpdatedBy = be.UpdatedBy,
+                    CreatedBy = be.CreatedBy,
+                    // References
+                    Category = be.Category,
+                    Shelf = be.Shelf,
+                    LibraryItemInventory = be.LibraryItemInventory,
+                    LibraryItemReviews = be.LibraryItemReviews,
+                    LibraryItemAuthors = be.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                    {
+                        LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                        LibraryItemId = ba.LibraryItemId,
+                        AuthorId = ba.AuthorId,
+                        Author = ba.Author
+                    }).ToList()
+                });
+            if (getItemRes.Data != null && getItemRes.Data is List<LibraryItem> itemEntities && itemEntities.Any())
+            {
+                // Convert to dto collection
+                var itemList = _mapper.Map<List<LibraryItemDto>>(itemEntities);
+                // Initialize dashboard response
+                var response = new DashboardTopCirculationItemDto();
+                // Initialize top circulation items
+                var topCirculationItemList = new List<GetTopCirculationItemDto>();
+                // Iterate each item to calculate and filter circulation
+                foreach (var item in itemList)
+                {
+                    // Initialize service response
+                    IServiceResult svcResponse;
+                    
+                    // Initialize get top circulation item
+                    var topCirculationItem = new GetTopCirculationItemDto();
+                    
+                    // Calculate borrow count
+                    var countBorrowSpec = new BaseSpecification<BorrowRecordDetail>(brd => brd.LibraryItemInstance.LibraryItemId == item.LibraryItemId);
+                    // Add filter date range
+                    countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                                                     brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    // Count with spec
+                    svcResponse = await _borrowRecDetailSvc.CountAsync(countBorrowSpec);
+                    // Convert data of response to integer
+                    topCirculationItem.BorrowSuccessCount = svcResponse.Data != null ? Convert.ToInt32(svcResponse.Data) : 0;
+                    
+                    // Calculate borrow failed count
+                    var countBorrowFailedSpec = new BaseSpecification<ReservationQueue>(r => 
+                        r.LibraryItemId == item.LibraryItemId && r.IsReservedAfterRequestFailed == true);
+                    // Filter reservation date
+                    countBorrowFailedSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
+                                                         r.ReservationDate.Date <= validEndDate.Date);
+                    // Count with spec
+                    svcResponse = await _reservationQueueSvc.CountAsync(countBorrowFailedSpec);
+                    // Convert data of response to integer
+                    topCirculationItem.BorrowFailedCount = svcResponse.Data != null ? Convert.ToInt32(svcResponse.Data) : 0;
+                    
+                    // Calculate reserve count
+                    var countReserveSpec = new BaseSpecification<ReservationQueue>(r => 
+                        r.LibraryItemId == item.LibraryItemId && 
+                        r.QueueStatus == ReservationQueueStatus.Pending);
+                    // Filter reservation date
+                    countReserveSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
+                                                    r.ReservationDate.Date <= validEndDate.Date);
+                    // Count with spec
+                    svcResponse = await _reservationQueueSvc.CountAsync(countReserveSpec);
+                    // Convert data of response to integer
+                    topCirculationItem.ReserveCount = svcResponse.Data != null ? Convert.ToInt32(svcResponse.Data) : 0;
+                    
+                    // Calculate borrows that have been extended
+                    var countExtendedBorrowSpec = new BaseSpecification<BorrowRecordDetail>(br =>
+                        br.LibraryItemInstance.LibraryItemId == item.LibraryItemId &&
+                        br.BorrowDetailExtensionHistories.Any());
+                    // Add filter date range
+                    countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                                                     brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    // Count with spec
+                    svcResponse = await _borrowRecDetailSvc.CountAsync(countExtendedBorrowSpec);
+                    // Convert data of response to integer
+                    topCirculationItem.ExtendedBorrowCount = svcResponse.Data != null ? Convert.ToInt32(svcResponse.Data) : 0;
+                    
+                    // Calculate digital borrow count
+                    var countDigitalBorrowSpec = new BaseSpecification<DigitalBorrow>(db => db.LibraryResource.LibraryItemResources.Any(li => li.LibraryItemId == item.LibraryItemId));
+                    // Add filter date range
+                    countDigitalBorrowSpec.AddFilter(r => r.RegisterDate.Date >= validStartDate.Date && 
+                                                          r.RegisterDate.Date <= validEndDate.Date);
+                    // Count with spec
+                    svcResponse = await _digitalBorrowSvc.CountAsync(countDigitalBorrowSpec);
+                    // Convert data of response to integer
+                    topCirculationItem.DigitalBorrowCount = svcResponse.Data != null ? Convert.ToInt32(svcResponse.Data) : 0;
+                    
+                    // Extract borrow success and failed units
+                    var borrowSuccessCount = topCirculationItem.BorrowSuccessCount;
+                    var borrowFailedCount = topCirculationItem.BorrowFailedCount;
+                    var totalBorrowAttempts = borrowSuccessCount + borrowFailedCount;
+    
+                    // Calculate borrow failed rate only if there are borrow attempts
+                    if (totalBorrowAttempts > 0)
+                    {
+                        // Calculate raw rate then multiply by 100 for percentage
+                        var borrowFailedRate = (double)borrowFailedCount / totalBorrowAttempts * 100;
+                        // Round up and truncate
+                        topCirculationItem.BorrowFailedRate = Math.Ceiling(borrowFailedRate);
+                        topCirculationItem.BorrowFailedRate = Math.Truncate(topCirculationItem.BorrowFailedRate * 100) / 100;
+                    }
+                    else
+                    {
+                        topCirculationItem.BorrowFailedRate = 0;
+                    }
+    
+                    // Count total borrow extension
+                    var countBorrowExtensionSpec = new BaseSpecification<BorrowDetailExtensionHistory>(brd =>
+                        brd.BorrowRecordDetail.LibraryItemInstance.LibraryItemId == item.LibraryItemId);
+                    
+                    // Sum total extension
+                    if ((await _extensionHistorySvc.CountAsync(countBorrowExtensionSpec)).Data is int countExtensionRes)
+                    {
+                        // Calculate borrow extension rate only if there are successful borrows
+                        if (borrowSuccessCount > 0)
+                        {
+                            topCirculationItem.BorrowExtensionRate = (double)countExtensionRes / borrowSuccessCount * 100;
+                            topCirculationItem.BorrowExtensionRate = Math.Truncate(topCirculationItem.BorrowExtensionRate * 100) / 100;
+                        }
+                        else
+                        {
+                            topCirculationItem.BorrowExtensionRate = 0;
+                        }
+                    }
+    
+                    // Retrieve item's inventory
+                    var itemInventory = (await _inventorySvc.GetByIdAsync(item.LibraryItemId)).Data as LibraryItemInventoryDto;
+                    if (itemInventory != null)
+                    {
+                        // Initialize instance
+                        var availableAndNeedChart = new AvailableVsNeedChartItemDto();
+                        // Assign available and need units
+                        availableAndNeedChart.AvailableUnits = itemInventory.AvailableUnits;
+                        availableAndNeedChart.NeedUnits = itemInventory.ReservedUnits;
+                        
+                        // Calculate average need satisfaction rate
+                        if (availableAndNeedChart.NeedUnits > 0)
+                        {
+                            // Calculate rate value and round with 2 digits
+                            double rate = Math.Round((double)availableAndNeedChart.AvailableUnits / availableAndNeedChart.NeedUnits * 100, 2);
+                            // Cap the rate at 100%
+                            availableAndNeedChart.AverageNeedSatisfactionRate = rate > 100 ? 100 : rate;
+                        }
+                        else
+                        {
+                            // Set default as 100
+                            availableAndNeedChart.AverageNeedSatisfactionRate = 100;
+                        }
+                        
+                        // Assign chart data to circulation dto
+                        topCirculationItem.AvailableVsNeedChart = availableAndNeedChart;
+                    }
+                    
+                    // Retrieve borrow dates
+                    var borrowSpec = new BaseSpecification<BorrowRecordDetail>(br =>
+                              br.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                              br.BorrowRecord.BorrowDate.Date <= validEndDate.Date &&
+                              br.LibraryItemInstance.LibraryItemId == item.LibraryItemId);
+                    var borrowDates = (await _borrowRecDetailSvc.GetAllWithSpecAndSelectorAsync(
+                        specification: borrowSpec,
+                        selector: s => s.BorrowRecord.BorrowDate)).Data as List<DateTime>;
+                    var borrowTrends = GetTrendData(
+                        dates: borrowDates,
+                        startDate: validStartDate,
+                        endDate: validEndDate,
+                        period: period, lang: lang);
+    
+                    // Retrieve return dates
+                    var reserveSpec = new BaseSpecification<ReservationQueue>(r =>
+                        r.LibraryItemId == item.LibraryItemId &&
+                        r.ReservationDate.Date >= validStartDate.Date && 
+                        r.ReservationDate.Date <= validEndDate.Date);
+                    var reservationDates = (await _reservationQueueSvc.GetAllWithSpecAndSelectorAsync(
+                        specification: reserveSpec,
+                        selector: s => s.ReservationDate)).Data as List<DateTime>;
+                    var reservationTrends = GetTrendData(
+                        dates: reservationDates,
+                        startDate: validStartDate,
+                        endDate: validEndDate,
+                        period: period, lang: lang);
+    
+                    // Assign borrow and reservation trends
+                    topCirculationItem.BorrowTrends = borrowTrends;
+                    topCirculationItem.ReservationTrends = reservationTrends;
+                    // Assign item
+                    topCirculationItem.LibraryItem = item.ToLibraryItemDetailDto();      
+                    // Add to list 
+                    topCirculationItemList.Add(topCirculationItem);
+                }
+                
+                // Calculate total available need chart
+                response.AvailableVsNeedChart = new()
+                {
+                    AvailableUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.AvailableUnits),
+                    NeedUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.NeedUnits)
+                };
+                
+                // Apply sorting 
+                if (spec.Sort != null)
+                {
+                    // Check is descending sorting 
+                    var isDescending = spec.Sort.StartsWith("-");
+                    if (isDescending)
+                    {
+                        spec.Sort = spec.Sort.Trim('-');
+                    }
+
+                    spec.Sort = spec.Sort.ToUpper();
+            
+                    // Define sorting pattern
+                    var sortMappings = new Dictionary<string, Func<GetTopCirculationItemDto, object>>()
+                    {
+                        { "BORROWSUCCESSCOUNT", x => x.BorrowSuccessCount },
+                        { "BORROWFAILEDCOUNT", x => x.BorrowFailedCount },
+                        { "RESERVECOUNT", x => x.ReserveCount },
+                        { "EXTENDEDBORROWCOUNT", x => x.ExtendedBorrowCount },
+                        { "DIGITALBORROWCOUNT", x => x.DigitalBorrowCount },
+                        { "BORROWFAILEDRATE", x => x.BorrowFailedRate },
+                        { "BORROWEXTENSIONRATE", x => x.BorrowExtensionRate },
+                    };
+        
+                    // Get sorting pattern
+                    if (sortMappings.TryGetValue(spec.Sort.ToUpper(), 
+                            out var sortExpression))
+                    {
+                        if(isDescending) topCirculationItemList = topCirculationItemList.OrderByDescending(sortExpression).ToList();
+                        else topCirculationItemList = topCirculationItemList.OrderBy(sortExpression).ToList();    
+                    }
+                }
+                else
+                {
+                    // Default sorting using multiple fields to improve data reliability
+                    // First, order by the AverageNeedSatisfactionRate (lower means more need)
+                    // Then, use various circulation metrics to further prioritize items
+                    topCirculationItemList = topCirculationItemList
+                        .OrderBy(x => x.AvailableVsNeedChart.AverageNeedSatisfactionRate)
+                        .ThenByDescending(x => x.BorrowFailedRate)
+                        .ThenByDescending(x => x.BorrowFailedCount)
+                        .ThenByDescending(x => x.ReserveCount)
+                        .ThenByDescending(x => x.ExtendedBorrowCount)
+                        .ThenByDescending(x => x.DigitalBorrowCount)
+                        .ToList();
+                }
+                
+                // Count total library items
+                var totalActualItem = topCirculationItemList.Count;
+                // Count total page
+                var totalPage = (int)Math.Ceiling((double) totalActualItem / spec.PageSize);
+                
+                // Set pagination to specification after count total item
+                if (spec.PageIndex > totalPage
+                    || spec.PageIndex < 1) // Exceed total page or page index smaller than 1
+                {
+                    spec.PageIndex = 1; // Set default to first page
+                }
+                
+                // Apply pagination
+                topCirculationItemList = topCirculationItemList.Skip((spec.PageIndex - 1) * spec.PageSize).Take(spec.PageSize).ToList();
+                
+                // Pagination result
+                var paginationRes = new PaginatedResultDto<GetTopCirculationItemDto>(topCirculationItemList,
+                    spec.PageIndex, spec.PageSize, totalPage, totalActualItem);
+                // Assign to response
+                response.TopBorrowItems = paginationRes;
+    
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: response);
+            }
+    
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get top borrow items for dashboard");
+        }
     }
     
     /// <summary>
@@ -985,7 +1323,7 @@ public class DashboardService : IDashboardService
                     fullTrends.Add(new TrendDataDto
                     {
                         PeriodLabel = dt.ToString("dd/MM/yyyy"),
-                        Count = count
+                        Value = count
                     });
                 }
                 break;
@@ -1006,7 +1344,7 @@ public class DashboardService : IDashboardService
                     fullTrends.Add(new TrendDataDto
                     {
                         PeriodLabel = label,
-                        Count = count
+                        Value = count
                     });
                 }
                 break;
@@ -1023,7 +1361,7 @@ public class DashboardService : IDashboardService
                     fullTrends.Add(new TrendDataDto
                     {
                         PeriodLabel = $"{currentMonth.Month:00}-{currentMonth.Year}",
-                        Count = count
+                        Value = count
                     });
                     // Increase to next month
                     currentMonth = currentMonth.AddMonths(1);
@@ -1054,9 +1392,9 @@ public class DashboardService : IDashboardService
             .Select(g => new TrendDataDto
             {
                 PeriodLabel = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(g.Key),
-                Count = g.Count()
+                Value = g.Count()
             })
-            .ToDictionary(x => x.PeriodLabel, x => x.Count) ?? new Dictionary<string, int>();
+            .ToDictionary(x => x.PeriodLabel, x => x.Value) ?? new Dictionary<string, int>();
     
         // Determine current lang
         var isEng = lang == SystemLanguage.English;
@@ -1071,7 +1409,7 @@ public class DashboardService : IDashboardService
             fullPeriods.Add(new TrendDataDto
             {
                 PeriodLabel = monthName,
-                Count = groupedData.ContainsKey(monthName) ? groupedData[monthName] : 0
+                Value = groupedData.ContainsKey(monthName) ? groupedData[monthName] : 0
             });
         }
     
@@ -1151,7 +1489,7 @@ public class DashboardService : IDashboardService
                 fullTrends.Add(new BarchartTrendDataDto
                 {
                     PeriodLabel = label,
-                    Count = revenue
+                    Value = revenue
                 });
             }
         }
@@ -1170,7 +1508,7 @@ public class DashboardService : IDashboardService
                 fullTrends.Add(new BarchartTrendDataDto
                 {
                     PeriodLabel = monthName,
-                    Count = revenue
+                    Value = revenue
                 });
             }
         }

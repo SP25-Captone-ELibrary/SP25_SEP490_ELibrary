@@ -1,4 +1,4 @@
-using FPTU_ELibrary.Application.Dtos.Dashboard;
+using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.Dashboard;
 

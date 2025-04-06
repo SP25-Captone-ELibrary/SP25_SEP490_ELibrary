@@ -74,15 +74,87 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
     {
         try
         {
+            // Build spec
             var baseSpec = new BaseSpecification<AITrainingSession>(x => x.TrainingSessionId == id);
-            baseSpec.EnableSplitQuery();
-            baseSpec.ApplyInclude(q => q
-                .Include(s => s.TrainingDetails)
-                .ThenInclude(sd => sd.TrainingImages)
-            );
-            var entity = await _unitOfWork.Repository<AITrainingSession, int>().GetWithSpecAsync(baseSpec);
-
-            if (entity == null)
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<AITrainingSession, int>()
+                .GetWithSpecAndSelectorAsync(baseSpec, selector: s => new AITrainingSession()
+                {
+                    TrainingSessionId = s.TrainingSessionId,
+                    Model = s.Model,
+                    TotalTrainedItem = s.TotalTrainedItem,
+                    TotalTrainedTime = s.TotalTrainedTime,
+                    TrainingStatus = s.TrainingStatus,
+                    ErrorMessage = s.ErrorMessage,
+                    TrainingPercentage = s.TrainingPercentage,
+                    TrainDate = s.TrainDate,
+                    TrainBy = s.TrainBy,
+                    TrainingDetails = s.TrainingDetails.Select(td => new AITrainingDetail()
+                    {
+                        TrainingDetailId = td.TrainingDetailId,
+                        TrainingSessionId = td.TrainingSessionId,
+                        LibraryItemId = td.LibraryItemId,
+                        TrainingSession = td.TrainingSession,
+                        TrainingImages = td.TrainingImages,
+                        LibraryItem = new LibraryItem()
+                        {
+                            LibraryItemId = td.LibraryItem.LibraryItemId,
+                            Title = td.LibraryItem.Title,
+                            SubTitle = td.LibraryItem.SubTitle,
+                            Responsibility = td.LibraryItem.Responsibility,
+                            Edition = td.LibraryItem.Edition,
+                            EditionNumber = td.LibraryItem.EditionNumber,
+                            Language = td.LibraryItem.Language,
+                            OriginLanguage = td.LibraryItem.OriginLanguage,
+                            Summary = td.LibraryItem.Summary,
+                            CoverImage = td.LibraryItem.CoverImage,
+                            PublicationYear = td.LibraryItem.PublicationYear,
+                            Publisher = td.LibraryItem.Publisher,
+                            PublicationPlace = td.LibraryItem.PublicationPlace,
+                            ClassificationNumber = td.LibraryItem.ClassificationNumber,
+                            CutterNumber = td.LibraryItem.CutterNumber,
+                            Isbn = td.LibraryItem.Isbn,
+                            Ean = td.LibraryItem.Ean,
+                            EstimatedPrice = td.LibraryItem.EstimatedPrice,
+                            PageCount = td.LibraryItem.PageCount,
+                            PhysicalDetails = td.LibraryItem.PhysicalDetails,
+                            Dimensions = td.LibraryItem.Dimensions,
+                            AccompanyingMaterial = td.LibraryItem.AccompanyingMaterial,
+                            Genres = td.LibraryItem.Genres,
+                            GeneralNote = td.LibraryItem.GeneralNote,
+                            BibliographicalNote = td.LibraryItem.BibliographicalNote,
+                            TopicalTerms = td.LibraryItem.TopicalTerms,
+                            AdditionalAuthors = td.LibraryItem.AdditionalAuthors,
+                            CategoryId = td.LibraryItem.CategoryId,
+                            ShelfId = td.LibraryItem.ShelfId,
+                            GroupId = td.LibraryItem.GroupId,
+                            Status = td.LibraryItem.Status,
+                            IsDeleted = td.LibraryItem.IsDeleted,
+                            IsTrained = td.LibraryItem.IsTrained,
+                            CanBorrow = td.LibraryItem.CanBorrow,
+                            TrainedAt = td.LibraryItem.TrainedAt,
+                            CreatedAt = td.LibraryItem.CreatedAt,
+                            UpdatedAt = td.LibraryItem.UpdatedAt,
+                            UpdatedBy = td.LibraryItem.UpdatedBy,
+                            CreatedBy = td.LibraryItem.CreatedBy,
+                            // References
+                            Category = td.LibraryItem.Category,
+                            Shelf = td.LibraryItem.Shelf,
+                            LibraryItemGroup = td.LibraryItem.LibraryItemGroup,
+                            LibraryItemInventory = td.LibraryItem.LibraryItemInventory,
+                            LibraryItemInstances = td.LibraryItem.LibraryItemInstances,
+                            LibraryItemReviews = td.LibraryItem.LibraryItemReviews,
+                            LibraryItemAuthors = td.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                            {
+                                LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                                LibraryItemId = ba.LibraryItemId,
+                                AuthorId = ba.AuthorId,
+                                Author = ba.Author
+                            }).ToList()
+                        }
+                    }).ToList()
+                });
+            if (existingEntity == null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
@@ -90,7 +162,7 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
 
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                _mapper.Map<AITrainingSessionDto>(entity));
+                _mapper.Map<AITrainingSessionDto>(existingEntity));
         }
         catch (Exception ex)
         {
@@ -139,6 +211,10 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
                 // Pagination result
                 var paginationResultDto = new PaginatedResultDto<AITrainingSessionDto>(sessions,
                     userSpec.PageIndex, userSpec.PageSize, totalPage, totalSessions);
+
+                return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    paginationResultDto);
             }
 
             // Not found any data

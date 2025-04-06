@@ -129,6 +129,7 @@
 			public const string GetAllOverdueBorrow = Base + "/management/dashboard/overdue-borrows";
 			public const string GetAllLatestBorrow = Base + "/management/dashboard/latest-borrows";
 			public const string GetAllAssignableReservation = Base + "/management/dashboard/assignable-reservations";
+			public const string GetAllTopCirculationItems = Base + "/management/dashboard/top-circulation-items";
 			#endregion
 		}
 		
