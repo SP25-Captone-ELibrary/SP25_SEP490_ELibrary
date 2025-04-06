@@ -15,12 +15,13 @@ public interface IDashboardService
         DateTime? startDate, DateTime? endDate,
         TrendPeriod period, TransactionType? transactionType);
     Task<IServiceResult> GetAllOverdueBorrowAsync(BorrowRecordDetailSpecification spec,
-        DateTime? startDate, DateTime? endDate);
+        DateTime? startDate, DateTime? endDate, TrendPeriod period);
     Task<IServiceResult> GetLatestBorrowAsync(BorrowRecordDetailSpecification spec,
-        DateTime? startDate, DateTime? endDate);
+        DateTime? startDate, DateTime? endDate, TrendPeriod period);
     Task<IServiceResult> GetAssignableReservationAsync(ReservationQueueSpecification spec,
-        DateTime? startDate, DateTime? endDate);
-    // Task<IServiceResult> GetTopBorrowItemAsync(); // Recommend for potential items to buy
+        DateTime? startDate, DateTime? endDate, TrendPeriod period);
+    Task<IServiceResult> GetTopCirculationItemsAsync(TopCirculationItemSpecification spec,
+        DateTime? startDate, DateTime? endDate, TrendPeriod period); // Recommend for potential items to buy
     // Task<IServiceResult> GetTopReservationItemAsync(); // Recommend for potential items to buy
     // Task<IServiceResult> GetTopFailedToBorrowItemAsync(); // Add Additional items based on failed to borrow rates
 }

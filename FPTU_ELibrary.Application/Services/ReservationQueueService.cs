@@ -375,7 +375,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         }
     }
 
-    public async Task<IServiceResult> GetAllAssignableForDashboardAsync(DateTime? startDate, DateTime? endDate,
+    public async Task<IServiceResult> GetAllAssignableForDashboardAsync(DateTime? startDate, DateTime? endDate, TrendPeriod period,
         int pageIndex, int pageSize)
     {
         try
@@ -397,8 +397,19 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             // Add filter date range (if any)
             if (startDate != null && endDate != null)
             {
-                baseSpec.AddFilter(r => r.ReservationDate >= startDate && r.ReservationDate <= endDate);
+                baseSpec.AddFilter(r => 
+                    r.ReservationDate.Date >= startDate.Value.Date &&
+                    r.ReservationDate.Date <= endDate.Value.Date);
             }
+            else if (startDate != null && endDate == null)
+            {
+                baseSpec.AddFilter(r => r.ReservationDate.Date >= startDate.Value.Date);
+            }
+            else if (startDate == null && endDate != null)
+            {
+                baseSpec.AddFilter(r => r.ReservationDate.Date <= endDate.Value.Date);
+            }
+            
             // Add ascending order 
             baseSpec.AddOrderBy(r => r.ReservationDate);
             
@@ -472,7 +483,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             }
             
             // Convert to dto
-            var dtoList = _mapper.Map<List<ReservationQueueDto>>(entities);
+            var dtoList = _mapper.Map<List<ReservationQueueDto>>(assignableReservations);
             
             // Pagination result 
             var paginationRes = new PaginatedResultDto<ReservationQueueDto>(
@@ -2468,5 +2479,29 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         </body>
         </html>
         """;
+    }
+    
+    /// <summary>
+    /// Determine valid start and end dates based on specific trend period
+    /// </summary>
+    private (DateTime start, DateTime end) GetValidDateRange(DateTime? startDate, DateTime? endDate, TrendPeriod period, DateTime currentLocal)
+    {
+        DateTime defaultStart = period switch
+        {
+            TrendPeriod.Daily => currentLocal.AddDays(-30),
+            TrendPeriod.Weekly => currentLocal.AddDays(-90),
+            TrendPeriod.Monthly => currentLocal.AddMonths(-12),
+            _ => currentLocal.AddDays(-30)
+        };
+
+        DateTime validStart = startDate ?? defaultStart;
+        DateTime validEnd = endDate ?? currentLocal;
+
+        // If start date is after end date, swap them
+        if (validStart > validEnd)
+        {
+            (validStart, validEnd) = (validEnd, validStart);
+        }
+        return (validStart, validEnd);
     }
 }

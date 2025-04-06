@@ -7,7 +7,7 @@ public class PaginatedResultDto<T>
     public int PageSize { get; set; }
     public int TotalPage { get; set; }
     public int TotalActualItem { get; set; }
-    
+
     public PaginatedResultDto(IEnumerable<T> sources, int pageIndex, int pageSize, int totalPage, int totalActualItem)
     {
         Sources = sources;

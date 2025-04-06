@@ -1308,6 +1308,7 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             
             // Validate units after update
             // Count total pending reserve
+            // TODO: Retrieve all pending units
             var pendingReservedUnits = currentInventory.ReservedUnits;
             // Count total out-of-shelf units
             var countOutSpec = new BaseSpecification<LibraryItemInstance>(li =>

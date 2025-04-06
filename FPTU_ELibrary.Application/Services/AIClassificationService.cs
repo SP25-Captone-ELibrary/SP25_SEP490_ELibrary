@@ -900,7 +900,7 @@ public class AIClassificationService : IAIClassificationService
                         {
                             case nameof(LibraryItemCategory.SingleBook):
                                 // Required at least 5 images
-                                if (item.ImageFiles.Count < 5)
+                                if (item.ImageFiles.Count < 4)
                                 {
                                     customErrs = DictionaryUtils.AddOrUpdate(customErrs,
                                         key: $"trainingData[{i}].itemsInGroup[{j}]",
