@@ -1006,7 +1006,7 @@ namespace FPTU_ELibrary.Application.Services
 				if (customErrors.Any()) throw new UnprocessableEntityException("Invalid Data", customErrors);
 
 				// Try to retrieve general member role
-				var result = await _roleService.GetByNameAsync(RoleEnum.GeneralMember);
+				var result = await _roleService.GetByNameAsync(RoleEnum.LibraryPatron);
 				if (result.ResultCode == ResultCodeConst.SYS_Success0002)
 				{
 					// Assign role
@@ -1450,7 +1450,7 @@ namespace FPTU_ELibrary.Application.Services
 
 				try
 				{
-					var result = await roleService.GetByNameAsync(RoleEnum.GeneralMember);
+					var result = await roleService.GetByNameAsync(RoleEnum.LibraryPatron);
 					if (result.ResultCode != ResultCodeConst.SYS_Success0002)
 					{
 						logger.Error("Not found any role with nameof General user");
@@ -1840,7 +1840,7 @@ namespace FPTU_ELibrary.Application.Services
                 }
 				
 				// Assign default role 
-				var roleDto = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
+				var roleDto = (await _roleService.GetByNameAsync(Role.LibraryPatron)).Data as SystemRoleDto;
 				if (roleDto == null)
 				{
 					_logger.Error("Fail to create library card due to user role not found");
@@ -2684,7 +2684,7 @@ namespace FPTU_ELibrary.Application.Services
 				}
 
 				// Retrieve default role 
-                var roleDto = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
+                var roleDto = (await _roleService.GetByNameAsync(Role.LibraryPatron)).Data as SystemRoleDto;
                 if (roleDto == null)
                 {
                 	// Not found {0}

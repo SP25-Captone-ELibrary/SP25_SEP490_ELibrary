@@ -92,6 +92,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
             services.AddScoped<IReservationQueueService<ReservationQueueDto>, ReservationQueueService>();
             services.AddScoped<ISupplierService<SupplierDto>, SupplierService>();
+            services.AddScoped<ISupplementRequestDetailService<SupplementRequestDetailDto>, SupplementRequestDetailService>();
             services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();

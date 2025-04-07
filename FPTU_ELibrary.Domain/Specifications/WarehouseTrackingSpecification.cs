@@ -22,14 +22,17 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
                 (specParams.ParsedSearchDate.HasValue && w.EntryDate.Date == specParams.ParsedSearchDate.Value.Date) ||
                 // Supplier 
                 (
-                    (!string.IsNullOrEmpty(w.Supplier.SupplierName) && w.Supplier.SupplierName.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.ContactPerson) && w.Supplier.ContactPerson.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.ContactEmail) && w.Supplier.ContactEmail.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.ContactPhone) && w.Supplier.ContactPhone.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.Address) && w.Supplier.Address.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.Country) && w.Supplier.Country.Contains(specParams.Search)) ||
-                    (!string.IsNullOrEmpty(w.Supplier.City) && w.Supplier.City.Contains(specParams.Search))
-                ) 
+                    w.Supplier != null &&
+                    (
+                        (!string.IsNullOrEmpty(w.Supplier.SupplierName) && w.Supplier.SupplierName.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.ContactPerson) && w.Supplier.ContactPerson.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.ContactEmail) && w.Supplier.ContactEmail.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.ContactPhone) && w.Supplier.ContactPhone.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.Address) && w.Supplier.Address.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.Country) && w.Supplier.Country.Contains(specParams.Search)) ||
+                        (!string.IsNullOrEmpty(w.Supplier.City) && w.Supplier.City.Contains(specParams.Search))
+                    )
+                )
             )
         )
     {
@@ -158,6 +161,27 @@ public class WarehouseTrackingSpecification : BaseSpecification<WarehouseTrackin
             {
                 AddFilter(x => x.ActualReturnDate.HasValue && 
                                x.ActualReturnDate.Value.Date >= specParams.ActualReturnDateRange[0]!.Value.Date);
+            }
+        }
+        // Data finalization date range
+        if (specParams.DataFinalizationDateRange != null
+            && specParams.DataFinalizationDateRange.Length > 1) 
+        {
+            if (specParams.DataFinalizationDateRange[0].HasValue && specParams.DataFinalizationDateRange[1].HasValue)
+            {
+                AddFilter(x => x.DataFinalizationDate.HasValue && 
+                               x.DataFinalizationDate.Value.Date >= specParams.DataFinalizationDateRange[0]!.Value.Date
+                               && x.DataFinalizationDate.Value.Date <= specParams.DataFinalizationDateRange[1]!.Value.Date);
+            }
+            else if (specParams.DataFinalizationDateRange[0] is null && specParams.DataFinalizationDateRange[1].HasValue)
+            {
+                AddFilter(x => x.DataFinalizationDate.HasValue && 
+                               x.DataFinalizationDate.Value.Date <= specParams.DataFinalizationDateRange[1]!.Value.Date);
+            }
+            else if (specParams.DataFinalizationDateRange[0].HasValue && specParams.DataFinalizationDateRange[1] is null)
+            {
+                AddFilter(x => x.DataFinalizationDate.HasValue && 
+                               x.DataFinalizationDate.Value.Date >= specParams.DataFinalizationDateRange[0]!.Value.Date);
             }
         }
         // Created at range

@@ -128,5 +128,17 @@ public class WarehouseTrackingDetailConfiguration :
             .HasDefaultValue(false)
             .HasColumnName("has_glue_barcode");
         #endregion
+
+        #region Updated at 07/04/2025 by Le Xuan Phuoc
+        builder.Property(e => e.SupplementRequestReason)
+            .HasColumnType("nvarchar(255)")
+            .HasColumnName("supplement_request_reason");
+        builder.Property(e => e.BorrowSuccessCount).HasColumnName("borrow_success_count");
+        builder.Property(e => e.ReserveCount).HasColumnName("reserve_count");
+        builder.Property(e => e.BorrowFailedCount).HasColumnName("borrow_failed_count");
+        builder.Property(e => e.AvailableUnits).HasColumnName("available_units");
+        builder.Property(e => e.NeedUnits).HasColumnName("need_units");
+        builder.Property(e => e.AverageNeedSatisfactionRate).HasColumnName("average_need_satisfaction_rate");
+        #endregion
     }
 }

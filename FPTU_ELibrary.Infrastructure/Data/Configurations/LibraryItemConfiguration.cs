@@ -36,7 +36,7 @@ public class LibraryItemConfiguration : IEntityTypeConfiguration<LibraryItem>
             .HasColumnType("nvarchar(50)")
             .HasColumnName("origin_language");
         builder.Property(e => e.Summary)
-            .HasColumnType("nvarchar(700)")
+            .HasColumnType("nvarchar(3000)")
             .HasColumnName("summary");
         builder.Property(e => e.CoverImage)
             .HasColumnType("varchar(2048)")

@@ -45,11 +45,21 @@ public class WarehouseTrackingDetailDto
     public string? UpdatedBy { get; set; }
     
     // Barcode range 
-    public string BarcodeRangeFrom { get; set; } = null!;
-    public string BarcodeRangeTo { get; set; } = null!;
+    public string? BarcodeRangeFrom { get; set; }
+    public string? BarcodeRangeTo { get; set; }
 
     // Mark as is glue barcode 
     public bool HasGlueBarcode { get; set; }
+    
+    // Supplement reason summary
+    public string? SupplementRequestReason { get; set; }
+    public int? BorrowSuccessCount { get; set; }
+    public int? ReserveCount { get; set; }
+    public int? BorrowFailedCount { get; set; }
+    public double? BorrowFailedRate { get; set; }
+    public int? AvailableUnits { get; set; }
+    public int? NeedUnits { get; set; }
+    public double? AverageNeedSatisfactionRate { get; set; }
     
     // Navigation properties
     public LibraryItemDto? LibraryItem { get; set; }

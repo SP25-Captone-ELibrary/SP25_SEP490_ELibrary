@@ -20,6 +20,7 @@ namespace FPTU_ELibrary.API.Controllers;
 public class WarehouseTrackingController : ControllerBase
 {
     private readonly IWarehouseTrackingService<WarehouseTrackingDto> _warehouseTrackSvc;
+    private readonly ISupplementRequestDetailService<SupplementRequestDetailDto> _supplementReqDetailSvc;
     private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _warehouseTrackDetailSvc;
         
     private readonly AppSettings _appSettings;
@@ -27,9 +28,11 @@ public class WarehouseTrackingController : ControllerBase
     public WarehouseTrackingController(
         IWarehouseTrackingService<WarehouseTrackingDto> warehouseTrackSvc,
         IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> warehouseTrackDetailSvc,
+        ISupplementRequestDetailService<SupplementRequestDetailDto> supplementReqDetailSvc,
         IOptionsMonitor<AppSettings> monitor)
     {
         _warehouseTrackSvc = warehouseTrackSvc;
+        _supplementReqDetailSvc = supplementReqDetailSvc;
         _warehouseTrackDetailSvc = warehouseTrackDetailSvc;
         _appSettings = monitor.CurrentValue;
     }
@@ -55,6 +58,13 @@ public class WarehouseTrackingController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost(APIRoute.WarehouseTracking.CreateSupplementRequest, Name = nameof(CreateSupplementRequestAsync))]
+    public async Task<IActionResult> CreateSupplementRequestAsync([FromBody] CreateSupplementRequest req) 
+    {
+        return Ok(await _warehouseTrackSvc.CreateSupplementRequestASync(dto: req.ToWarehouseTrackingDto()));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.WarehouseTracking.GetAll, Name = nameof(GetAllWarehouseTrackingAsync))]
     public async Task<IActionResult> GetAllWarehouseTrackingAsync([FromQuery] WarehouseTrackingSpecParams specParams)
     {
@@ -78,6 +88,30 @@ public class WarehouseTrackingController : ControllerBase
     public async Task<IActionResult> GetWarehouseByIdAsync([FromRoute] int id)
     {
         return Ok(await _warehouseTrackSvc.GetByIdAsync(id));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.WarehouseTracking.GetAllSupplementItemsById, Name = nameof(GetAllSupplementItemsByIdAsync))]
+    public async Task<IActionResult> GetAllSupplementItemsByIdAsync([FromRoute] int trackingId,
+        [FromQuery] WarehouseTrackingDetailSpecParams specParams)
+    {
+        return Ok(await _warehouseTrackDetailSvc.GetAllByTrackingIdAsync(trackingId: trackingId,
+            new WarehouseTrackingDetailSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.WarehouseTracking.GetAllSupplementDetailsById, Name = nameof(GetAllSupplementDetailsByIdAsync))]
+    public async Task<IActionResult> GetAllSupplementDetailsByIdAsync([FromRoute] int trackingId,
+        [FromQuery] SupplementRequestDetailSpecParams specParams)
+    {
+        return Ok(await _supplementReqDetailSvc.GetAllByTrackingIdAsync(trackingId: trackingId,
+            new SupplementRequestDetailSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize)));
     }
     
     [Authorize(Roles = nameof(Role.HeadLibrarian))]

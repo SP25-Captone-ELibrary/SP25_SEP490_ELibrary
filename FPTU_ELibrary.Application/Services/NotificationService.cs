@@ -333,7 +333,7 @@ public class NotificationService : GenericService<Notification, NotificationDto,
         NotificationDto notificationDto, List<string>? recipients, bool isPublic)
     {
         // Build spec
-        var userSpec = new BaseSpecification<User>(u => u.Role.EnglishName == nameof(Role.GeneralMember));
+        var userSpec = new BaseSpecification<User>(u => u.Role.EnglishName == nameof(Role.LibraryPatron));
         // Apply include
         userSpec.ApplyInclude(q => q.Include(u => u.Role));
         // Retrieve all users with spec

@@ -22,6 +22,4 @@ public interface IDashboardService
         DateTime? startDate, DateTime? endDate, TrendPeriod period);
     Task<IServiceResult> GetTopCirculationItemsAsync(TopCirculationItemSpecification spec,
         DateTime? startDate, DateTime? endDate, TrendPeriod period); // Recommend for potential items to buy
-    // Task<IServiceResult> GetTopReservationItemAsync(); // Recommend for potential items to buy
-    // Task<IServiceResult> GetTopFailedToBorrowItemAsync(); // Add Additional items based on failed to borrow rates
 }

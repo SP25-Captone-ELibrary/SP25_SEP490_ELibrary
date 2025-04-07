@@ -2,15 +2,14 @@ using FPTU_ELibrary.Application.Dtos.LibraryItems;
 
 namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 
-// TODO: Change total units into nullable
 public class WarehouseTrackingCategorySummaryDto
 {
     public CategoryDto Category { get; set; } = null!;
-    public int TotalItem { get; set; }
-    public int TotalInstanceItem { get; set; }
-    public int TotalCatalogedItem { get; set; }
-    public int TotalCatalogedInstanceItem { get; set; }
-    public decimal TotalPrice { get; set; }
+    public int? TotalItem { get; set; }
+    public int? TotalInstanceItem { get; set; }
+    public int? TotalCatalogedItem { get; set; }
+    public int? TotalCatalogedInstanceItem { get; set; }
+    public decimal? TotalPrice { get; set; }
 }
 
 public static class WarehouseTrackingCategorySummaryDtoExtensions
@@ -34,15 +33,25 @@ public static class WarehouseTrackingCategorySummaryDtoExtensions
         
         // Total price
         var totalPrice = groupedDetail.Select(g => g.TotalAmount).Sum();
-            
-        return new()
-        {
-            Category = category,
-            TotalItem = totalItem,
-            TotalCatalogedItem = totalInstanceItem,
-            TotalInstanceItem = totalCatalogedItem,
-            TotalCatalogedInstanceItem = totalCatalogedInstanceItem,
-            TotalPrice = totalPrice
-        };
+
+        return groupedDetail.Any()
+            ? new()
+            {
+                Category = category,
+                TotalItem = totalItem,
+                TotalCatalogedItem = totalInstanceItem,
+                TotalInstanceItem = totalCatalogedItem,
+                TotalCatalogedInstanceItem = totalCatalogedInstanceItem,
+                TotalPrice = totalPrice
+            }
+            : new()
+            {
+                Category = category,
+                TotalItem = null,
+                TotalCatalogedItem = null,
+                TotalInstanceItem = null,
+                TotalCatalogedInstanceItem = null,
+                TotalPrice = null
+            };
     }
 }
