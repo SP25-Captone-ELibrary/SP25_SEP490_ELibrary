@@ -7,7 +7,7 @@ namespace FPTU_ELibrary.Domain.Entities;
 public class WarehouseTracking : IAuditableEntity
 {
     public int TrackingId { get; set; }
-    public int SupplierId { get; set; }
+    public int? SupplierId { get; set; }
     public string ReceiptNumber { get; set; } = null!;
     public int TotalItem { get; set; }
     public decimal TotalAmount { get; set; }
@@ -22,6 +22,8 @@ public class WarehouseTracking : IAuditableEntity
     public DateTime? ActualReturnDate { get; set; }
     // Entry date    
     public DateTime EntryDate { get; set; }
+    // Data finalization date
+    public DateTime? DataFinalizationDate { get; set; }
     
     // Creation, update datetime 
     public DateTime CreatedAt { get; set; }
@@ -30,10 +32,11 @@ public class WarehouseTracking : IAuditableEntity
     public string? UpdatedBy { get; set; }
 
     // References
-    public Supplier Supplier { get; set; } = null!;
+    public Supplier? Supplier { get; set; }
     public WarehouseTrackingInventory WarehouseTrackingInventory { get; set; } = null!;
     
     [JsonIgnore]
-    public ICollection<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; } =
-        new List<WarehouseTrackingDetail>();
+    public ICollection<WarehouseTrackingDetail> WarehouseTrackingDetails { get; set; } = new List<WarehouseTrackingDetail>();
+    
+    public ICollection<SupplementRequestDetail> SupplementRequestDetails { get; set; } = new List<SupplementRequestDetail>();
 }

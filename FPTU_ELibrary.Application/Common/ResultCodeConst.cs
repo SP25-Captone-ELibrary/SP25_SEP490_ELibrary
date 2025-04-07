@@ -1038,6 +1038,10 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Success0001 = "WarehouseTracking.Success0001";
         /// <summary>
+        /// [SUCCESS] Supplement request created successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0002 = "WarehouseTracking.Success0002";
+        /// <summary>
         /// [WARNING] Do not allow to change status from {0} to {1}
         /// </summary>
         public const string WarehouseTracking_Warning0001 = "WarehouseTracking.Warning0001";
@@ -1123,9 +1127,33 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0021 = "WarehouseTracking.Warning0021";
         /// <summary>
+        /// [WARNING] Supplement request item not found
+        /// </summary>
+        public const string WarehouseTracking_Warning0022 = "WarehouseTracking.Warning0022";
+        /// <summary>
+        /// [WARNING] ISBN doesn't match with supplement request item
+        /// </summary>
+        public const string WarehouseTracking_Warning0023 = "WarehouseTracking.Warning0023";
+        /// <summary>
+        /// [WARNING] The stock transaction type {0} is invalid for creating a supplement request
+        /// </summary>
+        public const string WarehouseTracking_Warning0024 = "WarehouseTracking.Warning0024";
+        /// <summary>
+        /// [WARNING] The ISBN for the item suggested for extra acquisition is already in use
+        /// </summary>
+        public const string WarehouseTracking_Warning0025 = "WarehouseTracking.Warning0025";
+        /// <summary>
+        /// [WARNING] No related item was found for supplement request item
+        /// </summary>
+        public const string WarehouseTracking_Warning0026 = "WarehouseTracking.Warning0026";
+        /// <summary>
         /// [FAIL] Failed to register unique barcode for warehouse tracking detail
         /// </summary>
         public const string WarehouseTracking_Fail0001 = "WarehouseTracking.Fail0001";
+        /// <summary>
+        /// [FAIL] Failed to create supplement request
+        /// </summary>
+        public const string WarehouseTracking_Fail0002 = "WarehouseTracking.Fail0002";
         #endregion
 
         #region Transaction

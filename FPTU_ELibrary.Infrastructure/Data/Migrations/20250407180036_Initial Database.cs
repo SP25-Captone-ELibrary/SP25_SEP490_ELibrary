@@ -426,7 +426,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 {
                     tracking_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    supplier_id = table.Column<int>(type: "int", nullable: false),
+                    supplier_id = table.Column<int>(type: "int", nullable: true),
                     receipt_number = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     total_item = table.Column<int>(type: "int", nullable: false),
                     total_amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false, defaultValue: 0.0m),
@@ -437,6 +437,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     expected_return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     actual_return_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     entry_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    data_finalization_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -831,7 +832,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     edition_number = table.Column<int>(type: "int", nullable: true),
                     language = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     origin_language = table.Column<string>(type: "nvarchar(50)", nullable: true),
-                    summary = table.Column<string>(type: "nvarchar(700)", nullable: true),
+                    summary = table.Column<string>(type: "nvarchar(3000)", nullable: true),
                     cover_image = table.Column<string>(type: "varchar(2048)", nullable: true),
                     publication_year = table.Column<int>(type: "int", nullable: false),
                     publisher = table.Column<string>(type: "nvarchar(255)", nullable: true),
@@ -1044,6 +1045,46 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Supplement_Request_Detail",
+                columns: table => new
+                {
+                    supplement_request_detail_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    title = table.Column<string>(type: "nvarchar(255)", nullable: false),
+                    author = table.Column<string>(type: "nvarchar(255)", nullable: false),
+                    publisher = table.Column<string>(type: "nvarchar(155)", nullable: false),
+                    published_date = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    description = table.Column<string>(type: "nvarchar(3000)", nullable: true),
+                    isbn = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: true),
+                    page_count = table.Column<int>(type: "int", nullable: false),
+                    dimensions = table.Column<string>(type: "nvarchar(155)", nullable: true),
+                    estimated_price = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    categories = table.Column<string>(type: "nvarchar(255)", nullable: true),
+                    average_rating = table.Column<int>(type: "int", nullable: true),
+                    ratings_count = table.Column<int>(type: "int", nullable: true),
+                    language = table.Column<string>(type: "nvarchar(50)", nullable: true),
+                    cover_image = table.Column<string>(type: "varchar(2048)", nullable: true),
+                    preview_link = table.Column<string>(type: "varchar(2048)", nullable: true),
+                    info_link = table.Column<string>(type: "varchar(2048)", nullable: true),
+                    related_library_item_id = table.Column<int>(type: "int", nullable: false),
+                    tracking_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SupplementRequestDetail_SupplementRequestDetailId", x => x.supplement_request_detail_id);
+                    table.ForeignKey(
+                        name: "FK_SupplementRequestDetail_RelatedLibraryItemId",
+                        column: x => x.related_library_item_id,
+                        principalTable: "Library_Item",
+                        principalColumn: "library_item_id");
+                    table.ForeignKey(
+                        name: "FK_SupplementRequestDetail_TrackingId",
+                        column: x => x.tracking_id,
+                        principalTable: "Warehouse_Tracking",
+                        principalColumn: "tracking_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "User_Favorite",
                 columns: table => new
                 {
@@ -1090,7 +1131,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     barcode_range_from = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     barcode_range_to = table.Column<string>(type: "nvarchar(50)", nullable: true),
-                    has_glue_barcode = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
+                    has_glue_barcode = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    supplement_request_reason = table.Column<string>(type: "nvarchar(255)", nullable: true),
+                    borrow_success_count = table.Column<int>(type: "int", nullable: true),
+                    reserve_count = table.Column<int>(type: "int", nullable: true),
+                    borrow_failed_count = table.Column<int>(type: "int", nullable: true),
+                    BorrowFailedRate = table.Column<double>(type: "float", nullable: true),
+                    available_units = table.Column<int>(type: "int", nullable: true),
+                    need_units = table.Column<int>(type: "int", nullable: true),
+                    average_need_satisfaction_rate = table.Column<double>(type: "float", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1724,6 +1773,16 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Supplement_Request_Detail_related_library_item_id",
+                table: "Supplement_Request_Detail",
+                column: "related_library_item_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Supplement_Request_Detail_tracking_id",
+                table: "Supplement_Request_Detail",
+                column: "tracking_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Transaction_fine_id",
                 table: "Transaction",
                 column: "fine_id");
@@ -1845,6 +1904,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Role_Permission");
+
+            migrationBuilder.DropTable(
+                name: "Supplement_Request_Detail");
 
             migrationBuilder.DropTable(
                 name: "System_Message");

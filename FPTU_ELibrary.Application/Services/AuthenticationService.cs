@@ -1833,7 +1833,7 @@ namespace FPTU_ELibrary.Application.Services
 				return null;
 					
 			// General member role
-			var role = (await _roleService.GetByNameAsync(Role.GeneralMember)).Data as SystemRoleDto;
+			var role = (await _roleService.GetByNameAsync(Role.LibraryPatron)).Data as SystemRoleDto;
 			if (role == null)
 			{
 				throw new NotFoundException("GeneralMember role is not found to create new user");

@@ -132,9 +132,7 @@ public class DashboardService : IDashboardService
             var inventoryAndStockDto = new DashboardInventoryAndStockDto();
             
             // Retrieve all categories
-            var categorySpec = new BaseSpecification<Category>(c => 
-                c.EnglishName != nameof(LibraryItemCategory.DigitalBook)
-            );
+            var categorySpec = new BaseSpecification<Category>();
             var categories = (await _cateSvc.GetAllWithSpecAsync(categorySpec)).Data as List<CategoryDto>;
             if (categories != null && categories.Any())
             {
@@ -148,7 +146,9 @@ public class DashboardService : IDashboardService
                     var summary = new InventoryCategorySummaryDto();
                     
                     // Retrieve all warehouse tracking details based on category
-                    var whDetailSpec = new BaseSpecification<WarehouseTrackingDetail>(w => w.CategoryId == category.CategoryId);
+                    var whDetailSpec = new BaseSpecification<WarehouseTrackingDetail>(w => 
+                        w.CategoryId == category.CategoryId &&
+                        w.WarehouseTracking.TrackingType == TrackingType.StockIn);
                     // Add date range filter (if any)
                     if (startDate != null || endDate != null)
                     {
@@ -214,9 +214,7 @@ public class DashboardService : IDashboardService
             // Retrieve all library item inventories
             var inventories = (await _inventorySvc.GetAllAsync()).Data as List<LibraryItemInventoryDto>;
             // Retrieve all categories
-            var categorySpec = new BaseSpecification<Category>(c => 
-                c.EnglishName != nameof(LibraryItemCategory.DigitalBook)
-            );
+            var categorySpec = new BaseSpecification<Category>();
             var categories = (await _cateSvc.GetAllWithSpecAsync(categorySpec)).Data as List<CategoryDto>;
             
             // Initialize dashboard circulation
@@ -244,7 +242,7 @@ public class DashboardService : IDashboardService
                 }
                 else
                 {
-                    dashboardCirculation.BorrowFailedRates = (double)totalFailedRes / totalBorrowedUnits * 100;
+                    dashboardCirculation.BorrowFailedRates = (double)totalFailedRes / (totalFailedRes + totalBorrowedUnits) * 100;
                 }
                 // Format double value
                 dashboardCirculation.BorrowFailedRates = Math.Truncate(dashboardCirculation.BorrowFailedRates * 100) / 100;
@@ -270,7 +268,7 @@ public class DashboardService : IDashboardService
                         }
                         else
                         {
-                            borrowFailedSummary.BorrowFailedRates = (double)totalFailedRes / totalBorrowedUnits * 100;
+                            borrowFailedSummary.BorrowFailedRates = (double)totalFailedRes / (totalFailedRes + totalBorrowedUnits) * 100;
                         }
                         // Format double value
                         borrowFailedSummary.BorrowFailedRates = Math.Truncate(borrowFailedSummary.BorrowFailedRates * 100) / 100;
@@ -288,10 +286,18 @@ public class DashboardService : IDashboardService
             if((await _borrowRecDetailSvc.CountAsync(countOverdueSpec)).Data is int totalOverdueRes)
             {
                 dashboardCirculation.TotalOverdue = totalOverdueRes;
-                // Calculate overdue rate
-                dashboardCirculation.OverdueRates = (double)totalOverdueRes / totalBorrowedUnits * 100;
-                // Format double value
-                dashboardCirculation.OverdueRates = Math.Truncate(dashboardCirculation.OverdueRates * 100) / 100;
+
+                if (totalBorrowedUnits == 0)
+                {
+                    dashboardCirculation.OverdueRates = totalOverdueRes > 0 ? 100 : 0; // 100% failure if failures exist
+                }
+                else
+                {
+                    // Calculate overdue rate
+                    dashboardCirculation.OverdueRates = (double)totalOverdueRes / (totalOverdueRes + totalBorrowedUnits) * 100;
+                    // Format double value
+                    dashboardCirculation.OverdueRates = Math.Truncate(dashboardCirculation.OverdueRates * 100) / 100;
+                }
                 
                 // Calculate borrow failed summary for each category
                 if (categories != null && categories.Any())
@@ -305,12 +311,22 @@ public class DashboardService : IDashboardService
                         countOverdueSpec.AddFilter(brd => brd.LibraryItemInstance.LibraryItem.CategoryId == category.CategoryId);
                         // Recount total overdue
                         int.TryParse((await _borrowRecDetailSvc.CountAsync(countOverdueSpec)).Data?.ToString() ?? "0", out totalOverdueRes);
+                        
                         // Assign count val
                         overdueCateSummary.TotalOverdue = totalOverdueRes;
-                        // Calculate overdue rate
-                        overdueCateSummary.OverdueRates = (double)totalOverdueRes / totalBorrowedUnits * 100;
-                        // Format double value
-                        overdueCateSummary.OverdueRates = Math.Truncate(overdueCateSummary.OverdueRates * 100) / 100;
+                        
+                        if (totalBorrowedUnits == 0)
+                        {
+                            dashboardCirculation.OverdueRates = totalOverdueRes > 0 ? 100 : 0; // 100% failure if failures exist
+                        }
+                        else
+                        {
+                            // Calculate overdue rate
+                            overdueCateSummary.OverdueRates = (double)totalOverdueRes / (totalOverdueRes + totalBorrowedUnits) * 100;
+                            // Format double value
+                            overdueCateSummary.OverdueRates = Math.Truncate(overdueCateSummary.OverdueRates * 100) / 100;
+                        }
+                        
                         // Assign category
                         overdueCateSummary.Category = category;
                         
@@ -325,10 +341,19 @@ public class DashboardService : IDashboardService
             if ((await _borrowRecDetailSvc.CountAsync(countLostSpec)).Data is int totalLostRes)
             {
                 dashboardCirculation.TotalLost = totalLostRes;
-                // Calculate lost rate
-                dashboardCirculation.LostRates = (double)totalLostRes / totalBorrowedUnits * 100;
-                // Format double value
-                dashboardCirculation.LostRates = Math.Truncate(dashboardCirculation.LostRates * 100) / 100;
+                
+                if (totalBorrowedUnits == 0)
+                {
+                    dashboardCirculation.LostRates = totalLostRes > 0 ? 100 : 0; // 100% failure if failures exist
+                }
+                else
+                {
+                    // Calculate lost rate
+                    dashboardCirculation.LostRates = (double)totalLostRes / (totalLostRes + totalBorrowedUnits) * 100;
+                    // Format double value
+                    dashboardCirculation.LostRates = Math.Truncate(dashboardCirculation.LostRates * 100) / 100;
+                }
+                
                 
                 // Calculate borrow failed summary for each category
                 if (categories != null && categories.Any())
@@ -344,10 +369,19 @@ public class DashboardService : IDashboardService
                         int.TryParse((await _borrowRecDetailSvc.CountAsync(countLostSpec)).Data?.ToString() ?? "0", out totalLostRes);
                         // Assign count val
                         lostCateSummary.TotalLost = totalLostRes;
-                        // Calculate lost rate
-                        lostCateSummary.LostRates = (double)totalLostRes / totalBorrowedUnits * 100;
-                        // Format double value
-                        lostCateSummary.LostRates = Math.Truncate(lostCateSummary.LostRates * 100) / 100;
+                        
+                        if (totalBorrowedUnits == 0)
+                        {
+                            dashboardCirculation.LostRates = totalLostRes > 0 ? 100 : 0; // 100% failure if failures exist
+                        }
+                        else
+                        {
+                            // Calculate lost rate
+                            lostCateSummary.LostRates = (double)totalLostRes / (totalLostRes + totalBorrowedUnits) * 100;
+                            // Format double value
+                            lostCateSummary.LostRates = Math.Truncate(lostCateSummary.LostRates * 100) / 100;
+                        }
+                        
                         // Assign category
                         lostCateSummary.Category = category;
                         
@@ -497,14 +531,22 @@ public class DashboardService : IDashboardService
             }
             
             // Calculate extensions rate
-            if (borrowsWithExtension > 0)
+            if (totalBorrows > 0)
             {
                 dashboardDigitalResource.ExtensionRatePercentage = (double)borrowsWithExtension / totalBorrows * 100;
             }
-
-            if (totalExtensions > 0)
+            else
             {
-                dashboardDigitalResource.AverageExtensionsPerBorrow = (double)totalExtensions / totalBorrows * 100;
+                dashboardDigitalResource.ExtensionRatePercentage = 0;
+            }
+
+            if (totalBorrows > 0)
+            {
+                dashboardDigitalResource.AverageExtensionsPerBorrow = (double)totalExtensions / totalBorrows;
+            }
+            else
+            {
+                dashboardDigitalResource.AverageExtensionsPerBorrow = 0;
             }
 
             // Retrieve top borrowing resources
@@ -556,11 +598,16 @@ public class DashboardService : IDashboardService
                             ? digitalBorrows.OrderByDescending(db => db.RegisterDate).First().RegisterDate
                             : null;
 
-                        // Round average borrow duration
-                        dto.AverageBorrowDuration = Math.Ceiling(dto.AverageBorrowDuration);
-                        // Format double value 
-                        dto.AverageBorrowDuration = Math.Truncate(dto.AverageBorrowDuration * 100) / 100;
-                        dto.ExtensionRate = Math.Truncate(dto.ExtensionRate * 100) / 100;
+                        // // Round average borrow duration
+                        // dto.AverageBorrowDuration = Math.Ceiling(dto.AverageBorrowDuration);
+                        // // Format double value 
+                        // dto.AverageBorrowDuration = Math.Truncate(dto.AverageBorrowDuration * 100) / 100;
+                        // dto.ExtensionRate = Math.Truncate(dto.ExtensionRate * 100) / 100;
+
+                        // Round the average borrow duration to 2 decimals using a consistent method
+                        dto.AverageBorrowDuration = Math.Round(dto.AverageBorrowDuration * 100, 2);
+                        // Round the extension rate to 2 decimals
+                        dto.ExtensionRate = Math.Round(dto.ExtensionRate * 100, 2);
                     }
                     
                     // Assign library resource
@@ -1240,7 +1287,8 @@ public class DashboardService : IDashboardService
             // Data not found or empty
             return new ServiceResult(
                 resultCode: ResultCodeConst.SYS_Warning0004,
-                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<GetTopCirculationItemDto>());
         }
         catch (Exception ex)
         {

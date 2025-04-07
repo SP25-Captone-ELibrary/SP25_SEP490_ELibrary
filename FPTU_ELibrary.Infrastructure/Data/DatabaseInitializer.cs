@@ -175,20 +175,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				},
 				new()
 				{
-					EnglishName = nameof(Role.Teacher),
-					VietnameseName = Role.Teacher.GetDescription(),
-					RoleType = nameof(RoleType.User)
-				},
-				new()
-				{
-					EnglishName = nameof(Role.Student),
-					VietnameseName = Role.Student.GetDescription(),
-					RoleType = nameof(RoleType.User)
-				},
-				new()
-				{
-					EnglishName = nameof(Role.GeneralMember),
-					VietnameseName = Role.GeneralMember.GetDescription(),
+					EnglishName = nameof(Role.LibraryPatron),
+					VietnameseName = Role.LibraryPatron.GetDescription(),
 					RoleType = nameof(RoleType.User)
 				}
 			};
@@ -204,20 +192,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				},
 				new()
 				{
-					EnglishName = nameof(Role.LibraryManager),
-					VietnameseName = Role.LibraryManager.GetDescription(),
-					RoleType = nameof(RoleType.Employee)
-				},
-				new()
-				{
 					EnglishName = nameof(Role.Librarian),
 					VietnameseName = Role.Librarian.GetDescription(),
-					RoleType = nameof(RoleType.Employee)
-				},
-				new()
-				{
-					EnglishName = nameof(Role.LibraryAssistant),
-					VietnameseName = Role.LibraryAssistant.GetDescription(),
 					RoleType = nameof(RoleType.Employee)
 				}
 			};
@@ -636,14 +612,6 @@ namespace FPTU_ELibrary.Infrastructure.Data
 					IsAllowAITraining = true,
 					TotalBorrowDays = 30
                 },
-                // new()
-                // {
-	               //  Prefix = "SS",
-	               //  EnglishName = nameof(LibraryItemCategory.DigitalBook),
-	               //  VietnameseName = LibraryItemCategory.DigitalBook.GetDescription(),
-	               //  IsAllowAITraining = false,
-	               //  TotalBorrowDays = 30
-                // },
                 new()
                 {
 	                Prefix = "STK",
@@ -667,6 +635,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
 	                VietnameseName = LibraryItemCategory.Newspaper.GetDescription(),
 					IsAllowAITraining = false,
 					TotalBorrowDays = 20
+                },
+                new()
+                {
+	                Prefix = "SK",
+	                EnglishName = nameof(LibraryItemCategory.Other),
+	                VietnameseName = LibraryItemCategory.Other.GetDescription(),
+	                IsAllowAITraining = false,
+	                TotalBorrowDays = 30
                 }
 			};
         

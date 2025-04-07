@@ -560,13 +560,8 @@ public class AIClassificationService : IAIClassificationService
                     !li.IsTrained || // Is not in train status
                     (isTrainingLibraryItems.Any() && !isTrainingLibraryItems.Contains(li.LibraryItemId)) // Filter out all training items
                 ) &&
-                // Filter out category (Magazine, Newspaper, Book reference, Digital book)
-                (
-                    li.Category.EnglishName != nameof(LibraryItemCategory.Magazine) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.Newspaper) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.ReferenceBook) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.DigitalBook)
-                )
+                // Filter out category that not allows to train AI
+                li.Category.IsAllowAITraining == false
             );
             // Apply split query
             ungroupedItemSpec.EnableSplitQuery();

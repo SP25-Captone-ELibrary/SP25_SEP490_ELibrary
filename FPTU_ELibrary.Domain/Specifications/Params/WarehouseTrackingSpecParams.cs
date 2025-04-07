@@ -12,6 +12,7 @@ public class WarehouseTrackingSpecParams : BaseSpecParams
     public int?[]? TotalItemRange { get; set; }
     public decimal?[]? TotalAmountRange { get; set; }
     public DateTime?[]? EntryDateRange { get; set; } 
+    public DateTime?[]? DataFinalizationDateRange { get; set; } 
     public DateTime?[]? ExpectedReturnDateRange { get; set; } 
     public DateTime?[]? ActualReturnDateRange { get; set; } 
     public DateTime?[]? CreatedAtRange { get; set; } 

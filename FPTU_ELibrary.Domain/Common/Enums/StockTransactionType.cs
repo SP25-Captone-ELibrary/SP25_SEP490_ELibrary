@@ -35,10 +35,11 @@ public enum StockTransactionType
     Outdated,
 
     /// <summary>
-    /// Items transferred between locations
+    /// Request to reorder additional copies for a specific item already in the stock list.
+    /// This is used when the item is in high demand, prompting a formal request to order more copies.
     /// </summary>
-    [Description("Điều chuyển")]
-    Transferred,
+    [Description("Yêu cầu nhập bổ sung")]
+    Reorder,
     
     /// <summary>
     /// Other cases

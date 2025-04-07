@@ -42,6 +42,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(UserDto) => (IValidator<T>)new UserDtoValidator(language),
 				{ } when typeof(T) == typeof(EmployeeDto) => (IValidator<T>)new EmployeeDtoValidator(language),
 				{ } when typeof(T) == typeof(SupplierDto) => (IValidator<T>)new SupplierDtoValidator(language),
+				{ } when typeof(T) == typeof(SupplementRequestDetailDto) => (IValidator<T>)new SupplementRequestDetailDtoValidator(language),
 				{ } when typeof(T) == typeof(SystemRoleDto) => (IValidator<T>)new SystemRoleDtoValidator(),
 				{ } when typeof(T) == typeof(RefreshTokenDto) => (IValidator<T>)new RefreshTokenDtoValidator(),
 				{ } when typeof(T) == typeof(AuthenticateUserDto) => (IValidator<T>)new AuthenticatedUserDtoValidator(language),

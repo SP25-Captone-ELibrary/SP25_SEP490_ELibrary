@@ -82,4 +82,7 @@ public class LibraryItemDto
     
     [JsonIgnore]
     public ICollection<AITrainingDetailDto> TrainingDetails { get; set; } = new List<AITrainingDetailDto>();
+    
+    [JsonIgnore] 
+    public ICollection<SupplementRequestDetailDto> SupplementRequestDetails { get; set; } = new List<SupplementRequestDetailDto>();
 }

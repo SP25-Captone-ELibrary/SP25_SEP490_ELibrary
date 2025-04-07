@@ -263,11 +263,11 @@ public class LibraryItemConditionService : GenericService<LibraryItemCondition, 
             // Determine tracking type
             switch (trackingType)
             {
-                case TrackingType.StockIn or TrackingType.Transfer:
+                case TrackingType.StockIn or TrackingType.SupplementRequest or TrackingType.StockOut:
                     // Add filter lost condition
                     baseSpec.AddFilter(l => l.EnglishName != nameof(LibraryItemConditionStatus.Lost));
                     break;
-                case TrackingType.StockOut:
+                case TrackingType.StockChecking:
                     break;
             }
             

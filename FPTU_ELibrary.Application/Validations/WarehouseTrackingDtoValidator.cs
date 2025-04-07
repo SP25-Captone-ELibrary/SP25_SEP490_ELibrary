@@ -75,6 +75,12 @@ public class WarehouseTrackingDtoValidator : AbstractValidator<WarehouseTracking
             .WithMessage(isEng
                 ? "Entry date is required"
                 : "Ngày thực hiện không được phép rỗng");
+        // Data finalization date
+        RuleFor(e => e.DataFinalizationDate)
+            .Must((w, d) => !d.HasValue  || d.Value.Date >= w.EntryDate.Date)
+            .WithMessage(isEng
+                ? "Data finalization date must exceed than entry date"
+                : "Ngày chốt số liệu không được nhỏ hơn ngày lập biên bản");
         // Expected return date
         RuleFor(e => e.ExpectedReturnDate)
             .Must((w, d) => !d.HasValue  || d.Value.Date > w.EntryDate.Date)

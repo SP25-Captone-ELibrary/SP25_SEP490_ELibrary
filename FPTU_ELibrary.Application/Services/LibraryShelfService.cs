@@ -377,10 +377,6 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                               !ls.Section.IsReferenceSection && // Is not reference section
                               ls.Section.IsChildrenSection == (isChildrenSection ?? false));// Include children section if request
                     break;
-                case nameof(LibraryItemCategory.DigitalBook):
-                    // The number of instance item exceed than default config threshold. Please modify system configuration to continue
-                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0016,
-                        await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0016));
                 case nameof(LibraryItemCategory.Newspaper) or nameof(LibraryItemCategory.Magazine):
                     if (isReferenceSection.HasValue)
                     {

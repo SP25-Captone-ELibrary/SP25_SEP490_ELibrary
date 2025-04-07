@@ -745,9 +745,12 @@
             public const string GetAll = Base + "/management/warehouse-trackings";
             public const string GetAllStockTransactionTypeByTrackingType = Base + "/management/warehouse-trackings/stock-transasction-types";
             public const string GetById = Base + "/management/warehouse-trackings/{id}";
+            public const string GetAllSupplementItemsById = Base + "/management/warehouse-trackings/{trackingId}/supplement-items";
+            public const string GetAllSupplementDetailsById = Base + "/management/warehouse-trackings/{trackingId}/supplement-details";
             // [POST]
             public const string Create = Base + "/management/warehouse-trackings";
             public const string StockIn = Base + "/management/warehouse-trackings/stock-in";
+            public const string CreateSupplementRequest = Base + "/management/warehouse-trackings/supplement-request";
             // [PUT]
             public const string Update = Base + "/management/warehouse-trackings/{id}";
             public const string UpdateRangeUniqueBarcodeRegistration = Base + "/management/warehouse-trackings/{id}/unique-barcode-registration";

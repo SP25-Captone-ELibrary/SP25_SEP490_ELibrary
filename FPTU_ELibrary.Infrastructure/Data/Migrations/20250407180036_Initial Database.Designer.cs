@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250331175510_Initial Database")]
+    [Migration("20250407180036_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1263,7 +1263,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("sub_title");
 
                     b.Property<string>("Summary")
-                        .HasColumnType("nvarchar(700)")
+                        .HasColumnType("nvarchar(3000)")
                         .HasColumnName("summary");
 
                     b.Property<string>("Title")
@@ -2326,6 +2326,101 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.ToTable("Role_Permission", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SupplementRequestDetail", b =>
+                {
+                    b.Property<int>("SupplementRequestDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("supplement_request_detail_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SupplementRequestDetailId"));
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("author");
+
+                    b.Property<int?>("AverageRating")
+                        .HasColumnType("int")
+                        .HasColumnName("average_rating");
+
+                    b.Property<string>("Categories")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("categories");
+
+                    b.Property<string>("CoverImageLink")
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("cover_image");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(3000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Dimensions")
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("dimensions");
+
+                    b.Property<decimal?>("EstimatedPrice")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("estimated_price");
+
+                    b.Property<string>("InfoLink")
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("info_link");
+
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)")
+                        .HasColumnName("isbn");
+
+                    b.Property<string>("Language")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("language");
+
+                    b.Property<int>("PageCount")
+                        .HasColumnType("int")
+                        .HasColumnName("page_count");
+
+                    b.Property<string>("PreviewLink")
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("preview_link");
+
+                    b.Property<string>("PublishedDate")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("published_date");
+
+                    b.Property<string>("Publisher")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(155)")
+                        .HasColumnName("publisher");
+
+                    b.Property<int?>("RatingsCount")
+                        .HasColumnType("int")
+                        .HasColumnName("ratings_count");
+
+                    b.Property<int>("RelatedLibraryItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("related_library_item_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TrackingId")
+                        .HasColumnType("int")
+                        .HasColumnName("tracking_id");
+
+                    b.HasKey("SupplementRequestDetailId")
+                        .HasName("PK_SupplementRequestDetail_SupplementRequestDetailId");
+
+                    b.HasIndex("RelatedLibraryItemId");
+
+                    b.HasIndex("TrackingId");
+
+                    b.ToTable("Supplement_Request_Detail", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Supplier", b =>
                 {
                     b.Property<int>("SupplierId")
@@ -2867,6 +2962,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime?>("DataFinalizationDate")
+                        .HasColumnType("datetime")
+                        .HasColumnName("data_finalization_date");
+
                     b.Property<string>("Description")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
@@ -2891,7 +2990,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("status");
 
-                    b.Property<int>("SupplierId")
+                    b.Property<int?>("SupplierId")
                         .HasColumnType("int")
                         .HasColumnName("supplier_id");
 
@@ -2941,6 +3040,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TrackingDetailId"));
 
+                    b.Property<int?>("AvailableUnits")
+                        .HasColumnType("int")
+                        .HasColumnName("available_units");
+
+                    b.Property<double?>("AverageNeedSatisfactionRate")
+                        .HasColumnType("float")
+                        .HasColumnName("average_need_satisfaction_rate");
+
                     b.Property<string>("BarcodeRangeFrom")
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("barcode_range_from");
@@ -2948,6 +3055,17 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<string>("BarcodeRangeTo")
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("barcode_range_to");
+
+                    b.Property<int?>("BorrowFailedCount")
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_failed_count");
+
+                    b.Property<double?>("BorrowFailedRate")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("BorrowSuccessCount")
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_success_count");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
@@ -2994,10 +3112,22 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_item_id");
 
+                    b.Property<int?>("NeedUnits")
+                        .HasColumnType("int")
+                        .HasColumnName("need_units");
+
+                    b.Property<int?>("ReserveCount")
+                        .HasColumnType("int")
+                        .HasColumnName("reserve_count");
+
                     b.Property<string>("StockTransactionType")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("stock_transaction_type");
+
+                    b.Property<string>("SupplementRequestReason")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("supplement_request_reason");
 
                     b.Property<decimal>("TotalAmount")
                         .ValueGeneratedOnAdd()
@@ -3589,6 +3719,25 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.SupplementRequestDetail", b =>
+                {
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryItem", "RelatedLibraryItem")
+                        .WithMany("SupplementRequestDetails")
+                        .HasForeignKey("RelatedLibraryItemId")
+                        .IsRequired()
+                        .HasConstraintName("FK_SupplementRequestDetail_RelatedLibraryItemId");
+
+                    b.HasOne("FPTU_ELibrary.Domain.Entities.WarehouseTracking", "WarehouseTracking")
+                        .WithMany("SupplementRequestDetails")
+                        .HasForeignKey("TrackingId")
+                        .IsRequired()
+                        .HasConstraintName("FK_SupplementRequestDetail_TrackingId");
+
+                    b.Navigation("RelatedLibraryItem");
+
+                    b.Navigation("WarehouseTracking");
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.Transaction", b =>
                 {
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Fine", "Fine")
@@ -3671,7 +3820,6 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.Supplier", "Supplier")
                         .WithMany("WarehouseTrackings")
                         .HasForeignKey("SupplierId")
-                        .IsRequired()
                         .HasConstraintName("FK_WarehouseTracking_SupplierId");
 
                     b.Navigation("Supplier");
@@ -3832,6 +3980,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     b.Navigation("ReservationQueues");
 
+                    b.Navigation("SupplementRequestDetails");
+
                     b.Navigation("TrainingDetails");
 
                     b.Navigation("UserFavorites");
@@ -3950,6 +4100,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.WarehouseTracking", b =>
                 {
+                    b.Navigation("SupplementRequestDetails");
+
                     b.Navigation("WarehouseTrackingDetails");
 
                     b.Navigation("WarehouseTrackingInventory")

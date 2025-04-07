@@ -77,4 +77,7 @@ public class LibraryItem : IAuditableEntity
     
     [JsonIgnore]
     public ICollection<AITrainingDetail> TrainingDetails { get; set; } = new List<AITrainingDetail>();
+    
+    [JsonIgnore] 
+    public ICollection<SupplementRequestDetail> SupplementRequestDetails { get; set; } = new List<SupplementRequestDetail>();
 }

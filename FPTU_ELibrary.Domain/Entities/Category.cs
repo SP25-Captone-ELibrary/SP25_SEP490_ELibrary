@@ -11,7 +11,7 @@ public class Category
     
     // Prefix: SGK, STK, SK
     public string Prefix { get; set; } = null!;
-
+    
     // Category detail
     public string EnglishName { get; set; } = null!;
     public string VietnameseName { get; set; } = null!;
