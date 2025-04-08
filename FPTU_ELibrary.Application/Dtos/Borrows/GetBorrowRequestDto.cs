@@ -69,12 +69,12 @@ public static class GetBorrowRequestDtoExtensions
                 ? dto.BorrowRequestResources.ToList()
                 : new (),
             IsExistPendingResources = dto.BorrowRequestResources.Any() && dto.BorrowRequestResources.Any(brd => 
-                brd.TransactionId == null || 
+                (brd.TransactionId == null || 
                 brd.Transaction != null && 
                 (
                     brd.Transaction.TransactionStatus != TransactionStatus.Pending &&
                     brd.Transaction.TransactionStatus != TransactionStatus.Paid
-                ))
+                )) && dto.Status == BorrowRequestStatus.Created)
         };
     }
 }
