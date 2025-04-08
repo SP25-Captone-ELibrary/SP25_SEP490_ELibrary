@@ -1,3 +1,4 @@
+using System.Globalization;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
@@ -20,6 +21,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Options;
@@ -910,7 +912,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     : new List<BorrowRequestResourceDto>(),
                 TotalRequestItem = borrowDetails.Count,
                 RequestDate = currentLocalDateTime,
-                ExpirationDate = currentLocalDateTime.AddDays(_borrowSettings.PickUpExpirationInDays),
+                ExpirationDate = borrowDetails.Any() ? currentLocalDateTime.AddDays(_borrowSettings.PickUpExpirationInDays) : null,
                 Status = BorrowRequestStatus.Created,
                 IsReminderSent = false,
             };
@@ -927,13 +929,21 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
             if (isSaved)
             {
-                // TODO: Adjust email sending when not exist borrow request details
                 if (reservationQueues != null && reservationQueues.Any())
                 {
                     // Try to include library item for mapped reservation    
                     foreach (var reservation in reservationQueues)
                     {
                         reservation.LibraryItem = (await _libItemSvc.GetByIdAsync(reservation.LibraryItemId)).Data as LibraryItemDto ?? null!;
+                    }
+                }
+
+                if (requestResources.Any())
+                {
+                    // Try to include library resource for mapped resource
+                    foreach (var resource in requestResources)
+                    {
+                        resource.LibraryResource = (await _itemSrcSvc.Value.GetByIdAsync(resource.ResourceId)).Data as LibraryResourceDto ?? null!;
                     }
                 }
                 
@@ -952,9 +962,10 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact,
                     borrowReq: borrowReqDto,
-                    reservationQueues: reservationQueues);
+                    reservationQueues: reservationQueues,
+                    requestResources: requestResources);
                 
-                // Custom message
+                // Build custom messages based on the types of requests processed
                 var customMsg = borrowReqDto.BorrowRequestDetails.Any()
                     ? isEng 
                         ? $"Total {detailList.Count.ToString()} items request to borrow"
@@ -965,26 +976,32 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                         ? $"{reservationQueues.Count.ToString()} items reserved" 
                         : $"{reservationQueues.Count.ToString()} tài liệu được đặt mượn"
                     : string.Empty;
-                
-                // Check for different cases
-                if (!string.IsNullOrEmpty(customMsg) && !string.IsNullOrEmpty(customMsgA))
-                {
-                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, 
-                        isEng 
-                            ? $"{customMsg} and {customMsgA}" 
-                            : $"{customMsg} và {customMsgA}");
-                }
+                var customMsgR = requestResources.Any()
+                    ? isEng
+                        ? $"{requestResources.Count.ToString()} digital resource request processed" 
+                        : $"{requestResources.Count.ToString()} yêu cầu tài liệu điện tử đã được xử lý"
+                    : string.Empty;
+
+                // Combine custom messages appropriately
+                var combinedMsg = string.Empty;
                 if (!string.IsNullOrEmpty(customMsg))
+                    combinedMsg = customMsg;
+                if (!string.IsNullOrEmpty(customMsgA))
+                    combinedMsg = string.IsNullOrEmpty(combinedMsg) ? customMsgA : $"{combinedMsg} và {customMsgA}";
+                if (!string.IsNullOrEmpty(customMsgR))
+                    combinedMsg = string.IsNullOrEmpty(combinedMsg) ? customMsgR : $"{combinedMsg} và {customMsgR}";
+
+                if (!string.IsNullOrEmpty(combinedMsg))
                 {
-                    // Total {0} item(s) have been borrowed successfully
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, combinedMsg);
+                }
+                else
+                {
+                    // Fallback message if no details exist in the custom messages
                     return new ServiceResult(ResultCodeConst.Borrow_Success0001,
                         StringUtils.Format(
                             await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0001),
                             detailList.Count.ToString()));
-                }
-                if (!string.IsNullOrEmpty(customMsgA))
-                {
-                    return new ServiceResult(ResultCodeConst.Borrow_Success0001, customMsgA);
                 }
             }
 
@@ -1247,6 +1264,8 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             baseSpec.ApplyInclude(q => q
                 // Include reservations (if any)
                 .Include(br => br.ReservationQueues)
+                // Include resources (if any)
+                .Include(br => br.BorrowRequestResources)
                 // Include request details
                 .Include(br => br.BorrowRequestDetails)
                     .ThenInclude(brd => brd.LibraryItem)
@@ -1302,7 +1321,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     : "Vui lòng xác nhận số lượng trong yêu cầu mượn để tiến hành hủy";
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     message: customMsg,
-                    data: existingEntity.BorrowRequestDetails.Select(brd => brd.LibraryItem).ToList());
+                    data: _mapper.Map<BorrowRequestDto>(existingEntity));
             }
             
             // Iterate each of detail to update for quantity availability
@@ -1330,33 +1349,71 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                 await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
             }
             
+            // Iterate each of reservation to update reserve units
+            foreach (var reservation in existingEntity.ReservationQueues)
+            {
+                // Retrieving item inventory 
+                var itemIven =
+                    (await _inventorySvc.GetByIdAsync(id: reservation.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (itemIven == null)
+                {
+                    // Unknown error
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                }
+                
+                // Updated inventory units
+                if (itemIven.ReservedUnits > 0)
+                {
+                    // Request units
+                    itemIven.ReservedUnits--;
+                }
+                // Process update without save change
+                await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
+            }
+            
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
             // Add cancellation props 
-            existingEntity.Status = BorrowRequestStatus.Cancelled;
-            existingEntity.CancelledAt = currentLocalDateTime;
-            existingEntity.CancellationReason = cancellationReason;
+            // existingEntity.Status = BorrowRequestStatus.Cancelled;
+            // existingEntity.CancelledAt = currentLocalDateTime;
+            // existingEntity.CancellationReason = cancellationReason;
             
             // Process update
-            await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+            // await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+            
+            // Process delete
+            await _unitOfWork.Repository<BorrowRequest, int>().DeleteAsync(existingEntity.BorrowRequestId);
             // Save DB
             var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
             if (isSaved)
             {
-                // Total units effected
-                var totalUnitsEffected = existingEntity.BorrowRequestDetails.Count + existingEntity.BorrowRequestResources.Count;
-                // Cancel borrowing {0} item(s) successfully
-                var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0002);
-                return new ServiceResult(ResultCodeConst.Borrow_Success0002,
-                    StringUtils.Format(msg, totalUnitsEffected.ToString()), true);
+                // Cancel borrow request successfully
+                return new ServiceResult(ResultCodeConst.Borrow_Success0011,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0011), true);
             }
             
             // Msg: Failed to cancel borrow request
             return new ServiceResult(ResultCodeConst.Borrow_Fail0009,
                 await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0009), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
         }
         catch (ForbiddenException)
         {
@@ -1398,9 +1455,12 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Build specification
             var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
             // Apply include 
+            // Apply include 
             baseSpec.ApplyInclude(q => q
                 // Include reservations (if any)
                 .Include(br => br.ReservationQueues)
+                // Include resources (if any)
+                .Include(br => br.BorrowRequestResources)
                 // Include request details
                 .Include(br => br.BorrowRequestDetails)
                     .ThenInclude(brd => brd.LibraryItem)
@@ -1448,7 +1508,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     : "Vui lòng xác nhận số lượng trong yêu cầu mượn để tiến hành hủy";
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     message: customMsg,
-                    data: existingEntity.BorrowRequestDetails.Select(brd => brd.LibraryItem).ToList());
+                    data: _mapper.Map<BorrowRequestDto>(existingEntity));
             }
             
             // Iterate each of detail to update for quantity availability
@@ -1472,35 +1532,75 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     // Available units
                     itemIven.AvailableUnits++;
                 }
-                 // Process update without save change
+                // Process update without save change
                 await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
             }
-
+            
+            // Iterate each of reservation to update reserve units
+            foreach (var reservation in existingEntity.ReservationQueues)
+            {
+                // Retrieving item inventory 
+                var itemIven =
+                    (await _inventorySvc.GetByIdAsync(id: reservation.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (itemIven == null)
+                {
+                    // Unknown error
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                }
+                
+                // Updated inventory units
+                if (itemIven.ReservedUnits > 0)
+                {
+                    // Request units
+                    itemIven.ReservedUnits--;
+                }
+                // Process update without save change
+                await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
+            }
+            
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             
             // Add cancellation props 
-            existingEntity.Status = BorrowRequestStatus.Cancelled;
-            existingEntity.CancelledAt = currentLocalDateTime;
-            existingEntity.CancellationReason = cancellationReason;
+            // existingEntity.Status = BorrowRequestStatus.Cancelled;
+            // existingEntity.CancelledAt = currentLocalDateTime;
+            // existingEntity.CancellationReason = cancellationReason;
             
             // Process update
-            await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+            // await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+            
+            // Process delete
+            await _unitOfWork.Repository<BorrowRequest, int>().DeleteAsync(existingEntity.BorrowRequestId);
             // Save DB
             var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
             if (isSaved)
             {
-                // Cancel borrowing {0} item(s) successfully
-                var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0002);
-                return new ServiceResult(ResultCodeConst.Borrow_Success0002,
-                    StringUtils.Format(msg, existingEntity.BorrowRequestDetails.Count.ToString()), true);
+                // Cancel borrow request successfully
+                return new ServiceResult(ResultCodeConst.Borrow_Success0011,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0011), true);
             }
             
             // Msg: Failed to cancel borrow request
             return new ServiceResult(ResultCodeConst.Borrow_Fail0009,
                 await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0009), false);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                switch (sqlEx.Number)
+                {
+                    case 547: // Foreign key constraint violation
+                        return new ServiceResult(ResultCodeConst.SYS_Fail0007,
+                            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0007));
+                }
+            }
+
+            // Throw if other issues
+            throw;
         }
         catch (Exception ex)
         {
@@ -1598,7 +1698,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
 
             // Check whether borrow request exist only one item
-            if (existingEntity.BorrowRequestDetails.Count == 1)
+            if (existingEntity.BorrowRequestDetails.Count == 1 &&
+                !existingEntity.BorrowRequestResources.Any() &&
+                !existingEntity.ReservationQueues.Any())
             {
                 // Is the last item and not exist any borrow resource
                 if (existingEntity.BorrowRequestDetails.Any(brd => brd.LibraryItemId == libraryItemId))
@@ -1626,6 +1728,13 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
             else
             {
+                if (existingEntity.BorrowRequestDetails.Count == 1)
+                {
+                    // Update expired status
+                    existingEntity.Status = BorrowRequestStatus.Created;
+                    existingEntity.ExpirationDate = null;
+                }
+                
                 // Process cancel specific item in borrow request
                 existingEntity.BorrowRequestDetails.Remove(requestDetail);
                 // Reduce total borrow units
@@ -1771,17 +1880,18 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
 
             // Check whether borrow request exist only one item
-            if (existingEntity.BorrowRequestResources.Count == 1)
+            if (existingEntity.BorrowRequestResources.Count == 1 &&
+                !existingEntity.BorrowRequestDetails.Any() &&
+                !existingEntity.ReservationQueues.Any())
             {
                 // Check whether existing borrow details
                 var isExistBorrowDetails = existingEntity.BorrowRequestDetails.Any();
-
+                
                 // Is the last item and not exist any borrow resource
-                if (existingEntity.BorrowRequestResources.Any(brd => brd.ResourceId == resourceId) &&
-                    !isExistBorrowDetails)
+                if (existingEntity.BorrowRequestResources.Any(brd => brd.ResourceId == resourceId) && !isExistBorrowDetails)
                 {
                     // Try to cancel borrow request
-                    return await CancelAsync(email: email, id: id, cancellationReason: string.Empty, isConfirmed: true);
+                    return await CancelAsync(email: userDto.Email, id: id, cancellationReason: string.Empty, isConfirmed: true);
                 }
             }
 
@@ -1827,6 +1937,173 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process cancel specific digital in borrow request");
+        }
+    }
+    
+    public async Task<IServiceResult> CancelSpecificReservationAsync(string email, int id, int queueId)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Retrieve user information
+            // Build spec
+            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
+            // Apply include
+            userBaseSpec.ApplyInclude(q => q
+                .Include(u => u.LibraryCard)!
+            );
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            if (userDto == null) throw new ForbiddenException("Not allow to access"); // Not found user 
+
+            // Try parse card id to Guid type 
+            Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId);
+            // Check exist library card
+            if (validCardId == Guid.Empty)
+            {
+                // You need a library card to access this service
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0004));
+            }
+
+            // Validate library card 
+            var validateCardRes = await _cardSvc.CheckCardValidityAsync(validCardId);
+            // Return invalid card
+            if (validateCardRes.ResultCode != ResultCodeConst.LibraryCard_Success0001) return validateCardRes;
+
+            // Build specification
+            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
+            // Apply include 
+            baseSpec.ApplyInclude(q => q
+                // Include reservations (if any)
+                .Include(br => br.ReservationQueues)
+                // Include request details
+                .Include(br => br.BorrowRequestDetails)
+                // Include request resources
+                .Include(br => br.BorrowRequestResources)
+            );
+            // Retrieve entity by id 
+            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "borrow request" : "yêu cầu mượn"));
+            }
+
+            // Check whether request library card is correct
+            if (!Equals(existingEntity.LibraryCardId, validCardId))
+            {
+                // Cannot process as library card is incorrect
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0008));
+            }
+
+            // Check for current request status
+            if (existingEntity.Status != BorrowRequestStatus.Created) // Different from Created status
+            {
+                // Is Expired
+                if (existingEntity.Status == BorrowRequestStatus.Expired)
+                {
+                    // Cannot process as borrow request has been expired
+                    return new ServiceResult(ResultCodeConst.Borrow_Warning0007,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0007));
+                }
+
+                // Cannot cancel because item has been proceeded
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0006,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0006));
+            }
+
+            // Check whether request already cancelled
+            if (existingEntity.Status == BorrowRequestStatus.Cancelled)
+            {
+                // Mark as fail to cancel
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    isEng
+                        ? "Cannot process as borrow request has been already cancelled"
+                        : "Không thể hủy vì yêu cầu mượn đang ở trạng thái hủy");
+            }
+            
+            // Check whether borrow request exist only one item
+            if (existingEntity.ReservationQueues.Count == 1 &&
+                !existingEntity.BorrowRequestResources.Any() &&
+                !existingEntity.BorrowRequestDetails.Any())
+            {
+                // Is the last item and not exist any borrow resource
+                if (existingEntity.ReservationQueues.Any(brd => brd.QueueId == queueId))
+                {
+                    // Try to cancel borrow request
+                    return await CancelAsync(email: email, id: id, cancellationReason: string.Empty, isConfirmed: true);
+                }
+
+                // Msg: Failed to cancel borrow request
+                return new ServiceResult(ResultCodeConst.Borrow_Fail0009,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0009), false);
+            }
+            
+            // Try to retrieve specific reservation based on by
+            var reservationQueue = 
+                existingEntity.ReservationQueues.FirstOrDefault(brd => brd.QueueId == queueId);
+            if (reservationQueue == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "item reservation in borrow request"
+                        : "tài liệu đặt mượn trong yêu cầu mượn"));
+            }
+            else
+            {
+                // Process cancel specific reservation in borrow request
+                existingEntity.ReservationQueues.Remove(reservationQueue);
+                // Process update entity
+                await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+                
+                // Update inventory
+                // Retrieving item inventory 
+                var itemIven =
+                    (await _inventorySvc.GetByIdAsync(id: reservationQueue.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (itemIven == null)
+                {
+                    // Unknown error
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                }
+                
+                // Updated inventory units
+                if (itemIven.ReservedUnits > 0)
+                {
+                    // Request units
+                    itemIven.ReservedUnits--;
+                }
+                
+                // Process update without save change
+                await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
+                
+                // Save DB
+                var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+                if (isSaved)
+                {
+                    // Cancel {0} item reservations successfully
+                    var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0010);
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0010,
+                        StringUtils.Format(msg, "1"), true);
+                }
+                
+                // Msg: Failed to cancel digital borrow request
+                return new ServiceResult(ResultCodeConst.Borrow_Fail0013,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0013));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process cancel specific reservation");
         }
     }
     
@@ -1902,7 +2179,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
             
             // Check whether borrow request exist only one item
-            if (existingEntity.BorrowRequestDetails.Count == 1)
+            if (existingEntity.BorrowRequestDetails.Count == 1 &&
+                !existingEntity.BorrowRequestResources.Any() &&
+                !existingEntity.ReservationQueues.Any())
             {
                 // Is the last item and not exist any borrow resource
                 if (existingEntity.BorrowRequestDetails.Any(brd => brd.LibraryItemId == libraryItemId))
@@ -1910,7 +2189,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     // Try to cancel borrow request
                     return await CancelAsync(email: userDto.Email, id: id, cancellationReason: string.Empty, isConfirmed: true);
                 }
-                
+
                 // Msg: Failed to cancel borrow request
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0009,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0009), false);
@@ -1929,6 +2208,13 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
             else
             {
+                if (existingEntity.BorrowRequestDetails.Count == 1)
+                {
+                    // Update expired status
+                    existingEntity.Status = BorrowRequestStatus.Created;
+                    existingEntity.ExpirationDate = null;
+                }
+                
                 // Process cancel specific item in borrow request
                 existingEntity.BorrowRequestDetails.Remove(requestDetail);
                 // Reduce total borrow units
@@ -2069,7 +2355,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             }
             
             // Check whether borrow request exist only one item
-            if (existingEntity.BorrowRequestResources.Count == 1)
+            if (existingEntity.BorrowRequestResources.Count == 1 &&
+                !existingEntity.BorrowRequestDetails.Any() &&
+                !existingEntity.ReservationQueues.Any())
             {
                 // Check whether existing borrow details
                 var isExistBorrowDetails = existingEntity.BorrowRequestDetails.Any();
@@ -2119,6 +2407,173 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process cancel specific digital in borrow request");
+        }
+    }
+    
+    public async Task<IServiceResult> CancelSpecificReservationManagementAsync(Guid libraryCardId, int id, int queueId)
+    {
+        try
+        {
+            // Determine current lang context
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Retrieve user information
+            // Build spec
+            var userBaseSpec = new BaseSpecification<User>(u => Equals(u.LibraryCardId, libraryCardId));
+            // Apply include
+            userBaseSpec.ApplyInclude(q => q
+                .Include(u => u.LibraryCard)!
+            );
+            var userDto = (await _userSvc.Value.GetWithSpecAsync(userBaseSpec)).Data as UserDto;
+            if (userDto == null) throw new ForbiddenException("Not allow to access"); // Not found user 
+
+            // Try parse card id to Guid type 
+            Guid.TryParse(userDto.LibraryCardId.ToString(), out var validCardId);
+            // Check exist library card
+            if (validCardId == Guid.Empty)
+            {
+                // You need a library card to access this service
+                return new ServiceResult(ResultCodeConst.LibraryCard_Warning0004,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryCard_Warning0004));
+            }
+
+            // Validate library card 
+            var validateCardRes = await _cardSvc.CheckCardValidityAsync(validCardId);
+            // Return invalid card
+            if (validateCardRes.ResultCode != ResultCodeConst.LibraryCard_Success0001) return validateCardRes;
+
+            // Build specification
+            var baseSpec = new BaseSpecification<BorrowRequest>(br => br.BorrowRequestId == id);
+            // Apply include 
+            baseSpec.ApplyInclude(q => q
+                // Include reservations (if any)
+                .Include(br => br.ReservationQueues)
+                // Include request details
+                .Include(br => br.BorrowRequestDetails)
+                // Include request resources
+                .Include(br => br.BorrowRequestResources)
+            );
+            // Retrieve entity by id 
+            var existingEntity = await _unitOfWork.Repository<BorrowRequest, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "borrow request" : "yêu cầu mượn"));
+            }
+
+            // Check whether request library card is correct
+            if (!Equals(existingEntity.LibraryCardId, validCardId))
+            {
+                // Cannot process as library card is incorrect
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0008));
+            }
+
+            // Check for current request status
+            if (existingEntity.Status != BorrowRequestStatus.Created) // Different from Created status
+            {
+                // Is Expired
+                if (existingEntity.Status == BorrowRequestStatus.Expired)
+                {
+                    // Cannot process as borrow request has been expired
+                    return new ServiceResult(ResultCodeConst.Borrow_Warning0007,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0007));
+                }
+
+                // Cannot cancel because item has been proceeded
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0006,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0006));
+            }
+
+            // Check whether request already cancelled
+            if (existingEntity.Status == BorrowRequestStatus.Cancelled)
+            {
+                // Mark as fail to cancel
+                return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                    isEng
+                        ? "Cannot process as borrow request has been already cancelled"
+                        : "Không thể hủy vì yêu cầu mượn đang ở trạng thái hủy");
+            }
+            
+            // Check whether borrow request exist only one item
+            if (existingEntity.ReservationQueues.Count == 1 &&
+                !existingEntity.BorrowRequestResources.Any() &&
+                !existingEntity.BorrowRequestDetails.Any())
+            {
+                // Is the last item and not exist any borrow resource
+                if (existingEntity.ReservationQueues.Any(brd => brd.QueueId == queueId))
+                {
+                    // Try to cancel borrow request
+                    return await CancelAsync(email: userDto.Email, id: id, cancellationReason: string.Empty, isConfirmed: true);
+                }
+
+                // Msg: Failed to cancel borrow request
+                return new ServiceResult(ResultCodeConst.Borrow_Fail0009,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0009), false);
+            }
+            
+            // Try to retrieve specific reservation based on by
+            var reservationQueue = 
+                existingEntity.ReservationQueues.FirstOrDefault(brd => brd.QueueId == queueId);
+            if (reservationQueue == null)
+            {
+                // Msg: Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng
+                        ? "item reservation in borrow request"
+                        : "tài liệu đặt mượn trong yêu cầu mượn"));
+            }
+            else
+            {
+                // Process cancel specific reservation in borrow request
+                existingEntity.ReservationQueues.Remove(reservationQueue);
+                // Process update entity
+                await _unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(existingEntity);
+                
+                // Update inventory
+                // Retrieving item inventory 
+                var itemIven =
+                    (await _inventorySvc.GetByIdAsync(id: reservationQueue.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (itemIven == null)
+                {
+                    // Unknown error
+                    return new ServiceResult(ResultCodeConst.SYS_Warning0006,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0006));
+                }
+                
+                // Updated inventory units
+                if (itemIven.ReservedUnits > 0)
+                {
+                    // Request units
+                    itemIven.ReservedUnits--;
+                }
+                
+                // Process update without save change
+                await _inventorySvc.UpdateWithoutSaveChangesAsync(itemIven);
+                
+                // Save DB
+                var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+                if (isSaved)
+                {
+                    // Cancel {0} item reservations successfully
+                    var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0010);
+                    return new ServiceResult(ResultCodeConst.Borrow_Success0010,
+                        StringUtils.Format(msg, "1"), true);
+                }
+                
+                // Msg: Failed to cancel digital borrow request
+                return new ServiceResult(ResultCodeConst.Borrow_Fail0013,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0013));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process cancel specific reservation");
         }
     }
     
@@ -2241,7 +2696,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     private async Task<bool> SendBorrowRequestSuccessEmailAsync(
         UserDto user,
         string libName, string libContact,
-        BorrowRequestDto borrowReq, List<ReservationQueueDto>? reservationQueues = null)
+        BorrowRequestDto borrowReq, 
+        List<ReservationQueueDto>? reservationQueues = null,
+        List<BorrowRequestResourceDto>? requestResources = null)
     {
         try
         {
@@ -2259,6 +2716,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     user: user,
                     borrowReq: borrowReq,
                     reservationQueues: reservationQueues,
+                    requestResources: requestResources,
                     libName: libName,
                     libContact:libContact)
             );
@@ -2276,20 +2734,26 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
     private string GetBorrowRequestSuccessEmailBody(
         UserDto user,
         string libName, string libContact,
-        BorrowRequestDto borrowReq, List<ReservationQueueDto>? reservationQueues = null)
+        BorrowRequestDto borrowReq, 
+        List<ReservationQueueDto>? reservationQueues = null,
+        List<BorrowRequestResourceDto>? requestResources = null)
     {
         // Initialize all main content of email
         string headerMessage = string.Empty;
         string mainMessage = string.Empty;
         string borrowSection = string.Empty;
         string reservationSection = string.Empty;
+        string resourceSection = string.Empty;
+
+        var culture = new CultureInfo("vi-VN");
         
+        // Process borrow details if available
         if (borrowReq.BorrowRequestDetails.Any()) // Only process borrow when exist
         {
             headerMessage = "Yêu Cầu Mượn Sách Thành Công";
             mainMessage = "Yêu cầu mượn sách của bạn đã được xử lý thành công. Dưới đây là chi tiết yêu cầu mượn:";
-            
-            var borrowItemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail => 
+
+            var borrowItemList = string.Join("", borrowReq.BorrowRequestDetails.Select(detail =>
                 $"""
                  <li>
                      <p><strong>Tiêu đề:</strong> <span class="title">{detail.LibraryItem.Title}</span></p>
@@ -2299,38 +2763,39 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                  </li>
                  """));
 
-            borrowSection = $$"""
+            borrowSection = $$$"""
                   <p><strong>Thông Tin Yêu Cầu Mượn:</strong></p>
                   <div class="details">
                       <ul>
-                          <li><strong>Ngày Yêu Cầu:</strong> {{borrowReq.RequestDate:dd/MM/yyyy HH:mm}}</li>
-                          <li><strong>Ngày Hết Hạn:</strong> {{borrowReq.ExpirationDate:dd/MM/yyyy HH:mm}}</li>
-                          <li><strong>Tổng Số Tài Liệu:</strong> {{borrowReq.TotalRequestItem}}</li>
+                          <li><strong>Ngày Yêu Cầu:</strong> {{{borrowReq.RequestDate:dd/MM/yyyy HH:mm}}}</li>
+                          <li><strong>Ngày Hết Hạn:</strong> {{{(borrowReq.ExpirationDate != null ? borrowReq.ExpirationDate.Value.ToString("dd/MM/yyyy HH:mm") : "Không có")}}}</li>
+                          <li><strong>Tổng Số Tài Liệu:</strong> {{{borrowReq.TotalRequestItem}}}</li>
                       </ul>
                       <p><strong>Các Tài Liệu Đã Yêu Cầu:</strong></p>
                       <ul>
-                          {{borrowItemList}}
+                          {{{borrowItemList}}}
                       </ul>
                   </div>
                   """;
         }
 
+        // Process reservation details if available
         if (reservationQueues != null && reservationQueues.Any()) // Only process reservation when exist
         {
-            // Check whether header message is null or not. If not -> Combined request with reservation
+            // Update header message based on previous content
             if (string.IsNullOrEmpty(headerMessage))
                 headerMessage = "Yêu Cầu Đặt Trước Sách Thành Công";
             else
                 headerMessage += " và Đặt Trước Thành Công";
-    
-            // Check whether main message is null or not. If not -> Combined request with reservation
+
+            // Update main message based on previous content
             if (string.IsNullOrEmpty(mainMessage))
                 mainMessage = "Yêu cầu đặt trước sách của bạn đã được xử lý thành công. Vì một số tài liệu hiện không khả dụng để mượn ngay, bạn đã được thêm vào danh sách đặt trước:"; 
             else
                 mainMessage += " Ngoài ra, vì một số tài liệu không khả dụng để mượn ngay, bạn đã được thêm vào danh sách đặt trước:";
-            
-            // Details of reservation (reserve items after request failed)
-            var reservationList = string.Join("", reservationQueues.Select(reservation => 
+
+            // Build details of each reservation
+            var reservationList = string.Join("", reservationQueues.Select(reservation =>
                 $"""
                  <li>
                      <p><strong>Tiêu đề:</strong> <span class="title">{reservation.LibraryItem.Title}</span></p>
@@ -2352,9 +2817,9 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                      <p><strong>Tình Trạng Hàng Đợi:</strong> {reservation.QueueStatus.GetDescription()}</p>
                  </li>
                  """));
-            
-           // Build-up reservation section with unordered list
-           reservationSection = $$"""
+
+            // Build the reservation section with unordered list
+            reservationSection = $$"""
                   <p><strong>Thông Tin Tài Liệu Đặt Trước:</strong></p>
                   <div class="details">
                       <ul>
@@ -2364,6 +2829,55 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                   """;
         }
 
+        // Process request resource details (digital resources) if available
+        if (requestResources != null && requestResources.Any()) // Only process resource request when exist
+        {
+            // Update header message based on previous content
+            if (string.IsNullOrEmpty(headerMessage))
+                headerMessage = "Yêu Cầu Tài Liệu Điện Tử Thành Công";
+            else
+                headerMessage += " và Yêu Cầu Tài Liệu Điện Tử Thành Công";
+
+            // Update main message based on previous content
+            if (string.IsNullOrEmpty(mainMessage))
+                mainMessage = "Yêu cầu tài liệu điện tử của bạn đã được xử lý thành công. Dưới đây là chi tiết yêu cầu:";
+            else
+                mainMessage += " Ngoài ra, yêu cầu tài liệu điện tử của bạn đã được xử lý thành công như sau:";
+
+            // Build details of each digital resource request using LibraryResource details
+            var resourceList = string.Join("", requestResources.Select(resource =>
+            {
+                // Try parse resource type
+                LibraryResourceType? validType = null;
+                if (Enum.TryParse(resource.LibraryResource.ResourceType, out LibraryResourceType res)) validType = res;  
+                
+                // Try parse file format
+                FileType? fileType = null;
+                if (Enum.TryParse(resource.LibraryResource.FileFormat, out FileType res1)) fileType = res1;
+                
+                return $"""
+                        <li>
+                            <p><strong>Tiêu đề Tài Nguyên:</strong> <span class="title">{resource.LibraryResource.ResourceTitle}</span></p>
+                            <p><strong>Loại Tài Nguyên:</strong> {(validType != null ? validType.GetDescription() : "Không xác định")}</p>
+                            <p><strong>Định Dạng File:</strong> {(fileType != null ? fileType == FileType.Image ? "PDF" : "Audio" : "Không xác định")}</p>
+                            <p><strong>Giá Mượn:</strong> {resource.LibraryResource.BorrowPrice.ToString("C0", culture)}</p>
+                            <p><strong>Thời Hạn Mượn Mặc Định (Ngày):</strong> {resource.LibraryResource.DefaultBorrowDurationDays}</p>
+                        </li>
+                        """;
+            }));
+
+            // Build the resource section with unordered list
+            resourceSection = $$"""
+                  <p><strong>Thông Tin Yêu Cầu Tài Liệu Điện Tử:</strong></p>
+                  <div class="details">
+                      <ul>
+                          {{resourceList}}
+                      </ul>
+                  </div>
+                  """;
+        }
+
+        // Return the final composed HTML email body
         return $$"""
              <!DOCTYPE html>
              <html>
@@ -2416,6 +2930,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                  
                  {{borrowSection}}
                  {{reservationSection}}
+                 {{resourceSection}}
                  
                  <p>Nếu có bất kỳ thắc mắc hoặc cần hỗ trợ, vui lòng liên hệ qua email: <strong>{{libContact}}</strong>.</p>
                  <p>Cảm ơn bạn đã sử dụng dịch vụ của thư viện.</p>
@@ -2426,4 +2941,5 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
              </html>
              """;
     }
+
 }

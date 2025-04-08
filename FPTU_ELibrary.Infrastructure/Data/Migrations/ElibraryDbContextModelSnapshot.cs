@@ -439,7 +439,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("description");
 
-                    b.Property<DateTime>("ExpirationDate")
+                    b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("datetime")
                         .HasColumnName("expiration_date");
 
@@ -3658,6 +3658,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.HasOne("FPTU_ELibrary.Domain.Entities.BorrowRequest", "BorrowRequest")
                         .WithMany("ReservationQueues")
                         .HasForeignKey("BorrowRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("FK_ReservationQueue_BorrowRequestId");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.LibraryCard", "LibraryCard")

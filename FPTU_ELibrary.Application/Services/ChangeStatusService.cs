@@ -177,7 +177,7 @@ public class ChangeStatusService : BackgroundService
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
         
         // Build specification
-        var baseSpec = new BaseSpecification<BorrowRequest>(br => br.ExpirationDate <= currentLocalDateTime // Exp date exceed than current date 
+        var baseSpec = new BaseSpecification<BorrowRequest>(br => br.ExpirationDate != null && br.ExpirationDate <= currentLocalDateTime // Exp date exceed than current date 
                                                                   && br.Status == BorrowRequestStatus.Created); // In created status
         // Apply include
         baseSpec.ApplyInclude(q => q
@@ -806,7 +806,7 @@ public class ChangeStatusService : BackgroundService
             <div class="details">
                 <ul>
                     <li><strong>Ngày Yêu Cầu:</strong> <span class="request-date">{{request.RequestDate:dd/MM/yyyy HH:mm}}</span></li>
-                    <li><strong>Ngày Hết Hạn:</strong> <span class="expiry-date">{{request.ExpirationDate:dd/MM/yyyy HH:mm}}</span></li>
+                    <li><strong>Ngày Hết Hạn:</strong> <span class="expiry-date">{{(request.ExpirationDate != null ? request.ExpirationDate.Value.ToString("dd/MM/yyyy HH:mm") : "Không có")}}</span></li>
                     <li><strong>Trạng Thái:</strong> <span class="status-text">{{request.Status.GetDescription()}}</span></li>
                     <li><strong>Tổng Số Tài Liệu:</strong> {{request.TotalRequestItem}}</li>
                     {{ (string.IsNullOrEmpty(request.Description) ? "" : $"<li><strong>Mô Tả:</strong> {request.Description}</li>") }}

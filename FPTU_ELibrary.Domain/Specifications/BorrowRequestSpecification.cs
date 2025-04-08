@@ -102,16 +102,16 @@ public class BorrowRequestSpecification : BaseSpecification<BorrowRequest>
         {
             if (specParams.ExpirationDateRange[0].HasValue && specParams.ExpirationDateRange[1].HasValue)
             {
-                AddFilter(x => x.ExpirationDate.Date >= specParams.ExpirationDateRange[0]!.Value.Date
-                               && x.ExpirationDate.Date <= specParams.ExpirationDateRange[1]!.Value.Date);
+                AddFilter(x => x.ExpirationDate.HasValue && x.ExpirationDate.Value.Date >= specParams.ExpirationDateRange[0]!.Value.Date
+                               && x.ExpirationDate.Value.Date <= specParams.ExpirationDateRange[1]!.Value.Date);
             }
             else if ((specParams.ExpirationDateRange[0] is null && specParams.ExpirationDateRange[1].HasValue))
             {
-                AddFilter(x => x.ExpirationDate.Date <= specParams.ExpirationDateRange[1]!.Value.Date);
+                AddFilter(x => x.ExpirationDate.HasValue && x.ExpirationDate.Value.Date <= specParams.ExpirationDateRange[1]!.Value.Date);
             }
             else if (specParams.ExpirationDateRange[0].HasValue && specParams.ExpirationDateRange[1] is null)
             {
-                AddFilter(x => x.ExpirationDate.Date >= specParams.ExpirationDateRange[0]!.Value.Date);
+                AddFilter(x => x.ExpirationDate.HasValue && x.ExpirationDate.Value.Date >= specParams.ExpirationDateRange[0]!.Value.Date);
             }
         }
         

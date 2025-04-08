@@ -484,16 +484,25 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             
             // Convert to dto
             var dtoList = _mapper.Map<List<ReservationQueueDto>>(assignableReservations);
+
+            if (dtoList.Any())
+            {
+                // Pagination result 
+                var paginationRes = new PaginatedResultDto<ReservationQueueDto>(
+                    dtoList, pageIndex, pageSize, totalPage, totalWithSpec);
             
-            // Pagination result 
-            var paginationRes = new PaginatedResultDto<ReservationQueueDto>(
-                dtoList, pageIndex, pageSize, totalPage, totalWithSpec);
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: paginationRes);
+            }
             
-            // Get data successfully
+            // Data not found or empty
             return new ServiceResult(
-                resultCode: ResultCodeConst.SYS_Success0002,
-                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                data: paginationRes);
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<ReservationQueueDto>());
         }
         catch (Exception ex)
         {

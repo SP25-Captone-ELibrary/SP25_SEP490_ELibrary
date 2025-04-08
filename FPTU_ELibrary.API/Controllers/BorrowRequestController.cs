@@ -84,6 +84,18 @@ public class BorrowRequestController : ControllerBase
     }
     
     [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificReservationManagement, Name = nameof(CancelSpecificReservationManagementAsync))]
+    public async Task<IActionResult> CancelSpecificReservationManagementAsync([FromRoute] int id,
+        [FromRoute] int queueId,
+        [FromQuery] Guid libraryCardId)
+    {
+        return Ok(await _borrowReqSvc.CancelSpecificReservationManagementAsync(
+            libraryCardId: libraryCardId,
+            id: id,
+            queueId: queueId));
+    }
+    
+    [Authorize]
     [HttpPatch(APIRoute.BorrowRequest.CancelManagement, Name = nameof(CancelBorrowRequestManagementAsync))]
     public async Task<IActionResult> CancelBorrowRequestManagementAsync([FromRoute] int id,
         [FromQuery] Guid libraryCardId,
@@ -159,6 +171,18 @@ public class BorrowRequestController : ControllerBase
             email: email ?? string.Empty,
             id: id,
             resourceId: resourceId));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.BorrowRequest.CancelSpecificReservation, Name = nameof(CancelSpecificReservationAsync))]
+    public async Task<IActionResult> CancelSpecificReservationAsync([FromRoute] int id,
+        [FromRoute] int queueId)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _borrowReqSvc.CancelSpecificReservationAsync(
+            email: email ?? string.Empty,
+            id: id,
+            queueId: queueId));
     }
 
     [Authorize]

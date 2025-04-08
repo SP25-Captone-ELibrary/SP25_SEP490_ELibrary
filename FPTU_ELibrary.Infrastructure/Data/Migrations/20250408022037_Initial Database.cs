@@ -355,7 +355,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     library_card_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     request_date = table.Column<DateTime>(type: "datetime", nullable: false),
-                    expiration_date = table.Column<DateTime>(type: "datetime", nullable: false),
+                    expiration_date = table.Column<DateTime>(type: "datetime", nullable: true),
                     status = table.Column<string>(type: "nvarchar(20)", nullable: false),
                     description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     cancelled_at = table.Column<DateTime>(type: "datetime", nullable: true),
@@ -1327,7 +1327,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         name: "FK_ReservationQueue_BorrowRequestId",
                         column: x => x.borrow_request_id,
                         principalTable: "Borrow_Request",
-                        principalColumn: "borrow_request_id");
+                        principalColumn: "borrow_request_id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_ReservationQueue_ItemId",
                         column: x => x.library_item_id,
