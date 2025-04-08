@@ -516,7 +516,10 @@ public class DashboardService : IDashboardService
             // Count borrows with extension
             var totalWithExtensionSpec = new BaseSpecification<DigitalBorrow>(db => db.ExtensionCount > 0);
             // Add filter date range
-            totalWithExtensionSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            if (startDate != null || endDate != null)
+            {
+                totalWithExtensionSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            }
             // Count with spec
             if ((await _digitalBorrowSvc.CountAsync(totalWithExtensionSpec)).Data is int borrowsWithExtensionRes)
             {
@@ -1079,8 +1082,11 @@ public class DashboardService : IDashboardService
                     var countBorrowFailedSpec = new BaseSpecification<ReservationQueue>(r => 
                         r.LibraryItemId == item.LibraryItemId && r.IsReservedAfterRequestFailed == true);
                     // Filter reservation date
-                    countBorrowFailedSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
-                                                         r.ReservationDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        countBorrowFailedSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
+                                                             r.ReservationDate.Date <= validEndDate.Date);
+                    }
                     // Count with spec
                     svcResponse = await _reservationQueueSvc.CountAsync(countBorrowFailedSpec);
                     // Convert data of response to integer

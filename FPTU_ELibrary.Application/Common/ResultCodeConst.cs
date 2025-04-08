@@ -266,6 +266,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0009 = "Borrow.Success0009";
 		/// <summary>
+        /// [SUCCESS] Cancel {0} item reservations successfully
+        /// </summary>
+        public const string Borrow_Success0010 = "Borrow.Success0010";
+		/// <summary>
+        /// [SUCCESS] Cancel borrow request successfully
+        /// </summary>
+        public const string Borrow_Success0011 = "Borrow.Success0011";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -483,6 +491,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to cancel digital borrow request
         /// </summary>
         public const string Borrow_Fail0012 = "Borrow.Fail0012";
+        /// <summary>
+        /// [FAIL] Failed to cancel item reservation 
+        /// </summary>
+        public const string Borrow_Fail0013 = "Borrow.Fail0013";
 		#endregion
 
 		#region Reservatation

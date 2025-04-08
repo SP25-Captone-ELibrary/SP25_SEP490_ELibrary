@@ -69,6 +69,7 @@
 			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			public const string CancelSpecificDigitalManagement = Base + "/management/borrows/requests/{id}/digitals/{resourceId}/cancel";
+			public const string CancelSpecificReservationManagement = Base + "/management/borrows/requests/{id}/reservations/{queueId}/cancel";
 			#endregion
 			
 			// [GET]
@@ -80,6 +81,7 @@
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			public const string CancelSpecificDigital = Base + "/borrows/requests/{id}/digitals/{resourceId}/cancel";
+			public const string CancelSpecificReservation = Base + "/borrows/requests/{id}/reservations/{queueId}/cancel";
 		}
 
 		/// <summary>

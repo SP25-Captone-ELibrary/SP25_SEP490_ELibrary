@@ -316,7 +316,7 @@ public class ReminderService : BackgroundService
         
         // Build specification 
         var baseSpec = new BaseSpecification<BorrowRequest>(
-            br => br.ExpirationDate <= reminderThreshold && // Expiration time before 24 hours compared to now
+            br => br.ExpirationDate != null && br.ExpirationDate <= reminderThreshold && // Expiration time before 24 hours compared to now
                   br.Status == BorrowRequestStatus.Created && // In created status
                   br.IsReminderSent == false); // Not send reminder yet
         // Apply include
@@ -459,7 +459,7 @@ public class ReminderService : BackgroundService
                 <p><strong>Chi Tiết Yêu Cầu Mượn:</strong></p>
                 <div class="details">
                     <ul>
-                        <li><strong>Ngày Hết Hạn Nhận Sách:</strong> {{borrowReq.ExpirationDate:dd/MM/yyyy HH:mm}}</li>
+                        <li><strong>Ngày Hết Hạn Nhận Sách:</strong> {{(borrowReq.ExpirationDate != null ? borrowReq.ExpirationDate.Value.ToString("dd/MM/yyyy HH:mm") : "Không có")}}</li>
                         <li><strong>Địa Điểm Nhận Sách:</strong> {{libLocation}}</li>
                     </ul>
                 </div>
