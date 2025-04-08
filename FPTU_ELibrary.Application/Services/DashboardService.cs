@@ -503,7 +503,10 @@ public class DashboardService : IDashboardService
             // Count total existing digital borrow
             var totalSpec = new BaseSpecification<DigitalBorrow>();
             // Add filter date range
-            totalSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            if (startDate != null || endDate != null)
+            {
+                totalSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            }
             // Count with spec
             if ((await _digitalBorrowSvc.CountAsync(totalSpec)).Data is int totalBorrowRes)
             {
@@ -523,7 +526,10 @@ public class DashboardService : IDashboardService
             // Count total extensions
             var sumSpec = new BaseSpecification<DigitalBorrow>();
             // Add filter date range
-            sumSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            if (startDate != null || endDate != null)
+            {
+                sumSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+            }
             // Sum with spec
             if ((await _digitalBorrowSvc.SumWithSpecAsync(sumSpec, db => db.ExtensionCount)).Data is int totalExtensionRes)
             {
@@ -585,7 +591,10 @@ public class DashboardService : IDashboardService
                     // Retrieve all digital borrows by resource id
                     var digitalBrSpec = new BaseSpecification<DigitalBorrow>(db => db.ResourceId == resource.ResourceId);
                     // Add filter date rang
-                    digitalBrSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        digitalBrSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+                    }
                     // Retrieve all with spec
                     var digitalBorrows = (await _digitalBorrowSvc.GetAllWithSpecFromDashboardAsync(digitalBrSpec)).Data as List<DigitalBorrowDto>;
                     if (digitalBorrows != null && digitalBorrows.Any())
@@ -725,9 +734,12 @@ public class DashboardService : IDashboardService
             var totalRevenueLast = trendLast?.Sum(t => (decimal)t.Value) ?? 0;
             
             // Add filter date range
-            spec.AddFilter(db => db.TransactionDate.HasValue &&
-                                 db.TransactionDate.Value.Date >= validStartDate.Date &&
-                                 db.TransactionDate.Value.Date <= validEndDate.Date);
+            if (startDate != null || endDate != null)
+            {
+                spec.AddFilter(db => db.TransactionDate.HasValue &&
+                                     db.TransactionDate.Value.Date >= validStartDate.Date &&
+                                     db.TransactionDate.Value.Date <= validEndDate.Date);
+            }
             // Retrieve current transactions
             spec.AddOrderByDescending(t => t.TransactionDate ?? t.CreatedAt);
             // Add filter 
@@ -800,8 +812,11 @@ public class DashboardService : IDashboardService
             // Add spec filter
             spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Overdue && !brd.Fines.Any());
             // Add date range filter
-            spec.AddFilter(brd => brd.DueDate.Date >= validStartDate.Date && 
-                                  brd.DueDate.Date <= validEndDate.Date);
+            if (startDate != null || endDate != null)
+            {
+                spec.AddFilter(brd => brd.DueDate.Date >= validStartDate.Date && 
+                                      brd.DueDate.Date <= validEndDate.Date);
+            }
             // Add order
             spec.AddOrderByDescending(d => d.DueDate);
             // Apply include
@@ -878,8 +893,11 @@ public class DashboardService : IDashboardService
         // Add spec filter
         spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Borrowing);
         // Add date range filter
-        spec.AddFilter(brd => brd.DueDate.Date >= validStartDate.Date && 
-                              brd.DueDate.Date <= validEndDate.Date);
+        if(startDate != null || endDate != null)
+        {
+            spec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date && 
+                                          brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+        }
         // Add order
         spec.AddOrderByDescending(d => d.DueDate);
         // Apply include
@@ -948,8 +966,8 @@ public class DashboardService : IDashboardService
         (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
         
         return await _reservationQueueSvc.GetAllAssignableForDashboardAsync(
-            startDate: validStartDate,
-            endDate: validEndDate,
+            startDate: startDate ?? validStartDate,
+            endDate: endDate ?? validEndDate,
             period: period,
             pageIndex: spec.PageIndex,
             pageSize: spec.PageSize);
@@ -1047,8 +1065,11 @@ public class DashboardService : IDashboardService
                     // Calculate borrow count
                     var countBorrowSpec = new BaseSpecification<BorrowRecordDetail>(brd => brd.LibraryItemInstance.LibraryItemId == item.LibraryItemId);
                     // Add filter date range
-                    countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
-                                                     brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                                                         brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    }
                     // Count with spec
                     svcResponse = await _borrowRecDetailSvc.CountAsync(countBorrowSpec);
                     // Convert data of response to integer
@@ -1070,8 +1091,11 @@ public class DashboardService : IDashboardService
                         r.LibraryItemId == item.LibraryItemId && 
                         r.QueueStatus == ReservationQueueStatus.Pending);
                     // Filter reservation date
-                    countReserveSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
-                                                    r.ReservationDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        countReserveSpec.AddFilter(r => r.ReservationDate.Date >= validStartDate.Date && 
+                                                        r.ReservationDate.Date <= validEndDate.Date);
+                    }
                     // Count with spec
                     svcResponse = await _reservationQueueSvc.CountAsync(countReserveSpec);
                     // Convert data of response to integer
@@ -1082,8 +1106,11 @@ public class DashboardService : IDashboardService
                         br.LibraryItemInstance.LibraryItemId == item.LibraryItemId &&
                         br.BorrowDetailExtensionHistories.Any());
                     // Add filter date range
-                    countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
-                                                     brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        countBorrowSpec.AddFilter(brd => brd.BorrowRecord.BorrowDate.Date >= validStartDate.Date &&
+                                                        brd.BorrowRecord.BorrowDate.Date <= validEndDate.Date);
+                    }
                     // Count with spec
                     svcResponse = await _borrowRecDetailSvc.CountAsync(countExtendedBorrowSpec);
                     // Convert data of response to integer
@@ -1092,8 +1119,11 @@ public class DashboardService : IDashboardService
                     // Calculate digital borrow count
                     var countDigitalBorrowSpec = new BaseSpecification<DigitalBorrow>(db => db.LibraryResource.LibraryItemResources.Any(li => li.LibraryItemId == item.LibraryItemId));
                     // Add filter date range
-                    countDigitalBorrowSpec.AddFilter(r => r.RegisterDate.Date >= validStartDate.Date && 
-                                                          r.RegisterDate.Date <= validEndDate.Date);
+                    if (startDate != null || endDate != null)
+                    {
+                        countDigitalBorrowSpec.AddFilter(r => r.RegisterDate.Date >= validStartDate.Date && 
+                                                              r.RegisterDate.Date <= validEndDate.Date);
+                    }
                     // Count with spec
                     svcResponse = await _digitalBorrowSvc.CountAsync(countDigitalBorrowSpec);
                     // Convert data of response to integer
