@@ -14,6 +14,7 @@ public class DigitalBorrowDto
     public bool IsExtended { get; set; }
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
+    public string? S3WatermarkedName { get; set; }
     
     // References
     [JsonIgnore]

@@ -21,7 +21,7 @@ public class LibraryResourceDto
     public bool IsDeleted { get; set; }
     public int DefaultBorrowDurationDays { get; set; }
     public decimal BorrowPrice { get; set; }
-    
+    public string? S3OriginalName { get; set; }
     // Creation, update datetime and employee who in charge of creation
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

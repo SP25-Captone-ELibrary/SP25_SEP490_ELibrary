@@ -36,6 +36,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     
     private readonly AppSettings _appSettings;
     private readonly TokenValidationParameters _tokenValidationParams;
+    private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
 
     public DigitalBorrowService(
         // Lazy services
@@ -49,6 +50,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
+        ILibraryResourceService<LibraryResourceDto> libraryResourceService,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _emailSvc = emailSvc;
@@ -57,6 +59,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         _transactionSvc = transactionSvc;
         _appSettings = monitor.CurrentValue;
         _tokenValidationParams = tokenValidationParams;
+        _libraryResourceService = libraryResourceService;
     }
 
     public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<DigitalBorrow> specification, bool tracked = true)
@@ -312,6 +315,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 IsExtended = false
             };
             
+            string? s3WatermarkedName = (await _libraryResourceService.WatermarkAudioAsyncFromAWS(transactionDto.LibraryResource.S3OriginalName,email)).Data! as string;
+            digitalBorrowDto.S3WatermarkedName = s3WatermarkedName;
             // Process add new digital borrow
             await _unitOfWork.Repository<DigitalBorrow, int>().AddAsync(_mapper.Map<DigitalBorrow>(digitalBorrowDto));
             // Save DB
@@ -331,6 +336,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     digitalBorrowDto: digitalBorrowDto,
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
+                
                 
                 // Msg: Register library digital resource success
                 return new ServiceResult(ResultCodeConst.Borrow_Success0004,

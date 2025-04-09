@@ -34,6 +34,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.ResourceType)
                 .HasMaxLength(50)
                 .HasColumnName("resource_type");
+            builder.Property(e => e.S3OriginalName)
+                .HasMaxLength(50)
+                .HasColumnName("s3_original_name    ");
             builder.Property(e => e.ResourceUrl)
                 .HasMaxLength(2048)
                 .HasColumnName("resource_url");

@@ -16,10 +16,11 @@ public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource
     Task<IServiceResult> UndoDeleteRangeAsync(int[] ids);
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
 
-    Task<IServiceResult<(Stream,string)>> GetOwnBorrowResource(string email, int resourceId);
+    Task<IServiceResult<(Stream,string)>> GetFullPdfFileWithWatermark(string email, int resourceId);
     Task<IServiceResult<Stream>> GetFullAudioFileWithWatermark(string email, int resourceId);
     Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId);
-    Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId);
+    Task<IServiceResult<Stream>> GetPdfPreview(int resourceId);
     Task<IServiceResult> GetNumberOfUploadAudioFile(string email, int resourceId);
+    Task<IServiceResult> WatermarkAudioAsyncFromAWS(string? s3OriginalAudioName, string email);
     // Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId, string resourceLang, string email, int chunkSize);
 }

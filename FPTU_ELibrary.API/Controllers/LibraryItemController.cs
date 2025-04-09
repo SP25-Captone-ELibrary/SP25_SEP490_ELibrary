@@ -353,12 +353,12 @@ public class LibraryItemController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetOwnResourceAsync))]
-    public async Task<IActionResult> GetOwnResourceAsync([FromRoute] int resourceId)
+    [HttpGet(APIRoute.LibraryItem.GetOwnResource, Name = nameof(GetFullPdfResourceAsync))]
+    public async Task<IActionResult> GetFullPdfResourceAsync([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
         
-        var result = await _libraryResourceService.GetOwnBorrowResource(email, resourceId);
+        var result = await _libraryResourceService.GetFullPdfFileWithWatermark(email, resourceId);
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is (not null, not null))
         {
             //return base on the type of the resource
@@ -376,7 +376,7 @@ public class LibraryItemController : ControllerBase
     public async Task<IActionResult> GetPdfPreview([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        var result = await _libraryResourceService.GetPdfPreview(email, resourceId);
+        var result = await _libraryResourceService.GetPdfPreview(resourceId);
 
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
@@ -387,8 +387,8 @@ public class LibraryItemController : ControllerBase
     }
     
     [Authorize]
-    [HttpGet(APIRoute.LibraryItem.GetFullAudioFileWithWatermark, Name = nameof(GetPartOfAudioResourceAsync))]
-    public async Task<IActionResult> GetPartOfAudioResourceAsync([FromRoute] int resourceId)
+    [HttpGet(APIRoute.LibraryItem.GetFullAudioFileWithWatermark, Name = nameof(GetFullAudioResourceAsync))]
+    public async Task<IActionResult> GetFullAudioResourceAsync([FromRoute] int resourceId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         var result = await _libraryResourceService.GetFullAudioFileWithWatermark(

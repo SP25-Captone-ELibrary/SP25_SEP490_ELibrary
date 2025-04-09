@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+using Amazon.S3.Model;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
@@ -38,6 +39,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     private readonly IUserService<UserDto> _userService;
     private readonly FFMPEGSettings _ffmpegSettings;
     private readonly IVoiceService _voiceService;
+    private readonly IS3Service _s3Service;
     private readonly DigitalResourceSettings _digitalSettings;
     private readonly ICloudinaryService _cloudService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
@@ -54,12 +56,14 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         IOptionsMonitor<DigitalResourceSettings> digitalSettings,
         IOptionsMonitor<FFMPEGSettings> ffmpegSettings,
         IVoiceService voiceService,
+        IS3Service s3Service,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _empService = empService;
         _userService = userService;
         _ffmpegSettings = ffmpegSettings.CurrentValue;
         _voiceService = voiceService;
+        _s3Service = s3Service;
         _digitalSettings = digitalSettings.CurrentValue;
         _cloudService = cloudService;
         _libraryItemService = libraryItemService;
@@ -780,7 +784,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult<(Stream, string)>> GetOwnBorrowResource(string email, int resourceId)
+    public async Task<IServiceResult<(Stream, string)>> GetFullPdfFileWithWatermark(string email, int resourceId)
     {
         try
         {
@@ -788,7 +792,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
             resourceSpec.EnableSplitQuery();
@@ -899,13 +903,13 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0019,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
             }
-            
+
 
             // Default part size to upload: 40MB
             var responseChunkedSize = 1 * 1024 * 1024;
 
             var memoryStream = await AddAudioWatermark(resource.ResourceId,
-                lang.ToString()??"en", email);
+                lang.ToString() ?? "en", email);
 
             // Return the part of the stream
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
@@ -953,6 +957,120 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             Math.Ceiling(times ?? 0));
     }
 
+    public async Task<IServiceResult> WatermarkAudioAsyncFromAWS(string? s3OriginalAudioName, string email)
+    {
+        // Determine current system language
+        var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+            LanguageContext.CurrentLanguage);
+        var isEng = sysLang == SystemLanguage.English;
+
+        string tempDirectory = Path.GetTempPath();
+        string tempAudioPath = Path.Combine(tempDirectory, $"original_{Path.GetRandomFileName()}.mp3");
+        string tempWavPath = Path.Combine(tempDirectory, $"processed_{Path.GetRandomFileName()}.wav");
+        string tempMp3Path = Path.Combine(tempDirectory, $"final_{Path.GetRandomFileName()}.mp3");
+        var user = await _userService.GetByEmailAsync(email) as UserDto;
+        if (user is null)
+        {
+            var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+            return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                isEng ? "user" : "người dùng");
+        }
+
+        try
+        {
+            var originAudioResponse =
+                await _s3Service.GetFileAsync(AudioResourceType.Original, s3OriginalAudioName) as GetObjectResponse;
+            if (originAudioResponse == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource in s3" : "tài nguyên trong s3"));
+            }
+
+            await using (var originalAudioStream = originAudioResponse.ResponseStream)
+            await using (var fileStream = new FileStream(tempAudioPath, FileMode.Create, FileAccess.Write))
+            {
+                await originalAudioStream.CopyToAsync(fileStream);
+            }
+
+            _logger.Information("Generating watermark from text-to-speech");
+            var watermarkResult = await _voiceService.TextToVoiceFile(email);
+            if (watermarkResult.Data is not MemoryStream watermarkStream)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            await using (var originalAudioReader = new Mp3FileReader(tempAudioPath))
+            await using (var writer = new WaveFileWriter(tempWavPath, originalAudioReader.WaveFormat))
+            await using
+                (var watermarkReader = new WaveFileReader(watermarkStream))
+            await using (var conversionStream = new WaveFormatConversionStream(writer.WaveFormat, watermarkReader))
+            {
+                int bytesPerSecond = originalAudioReader.WaveFormat.AverageBytesPerSecond;
+                int insertInterval = 15 * 60 * bytesPerSecond; 
+                const int bufferSize = 4096;
+                byte[] buffer = new byte[bufferSize];
+                long totalBytesRead = 0;
+                int count = 0;
+
+                // Chèn watermark ngay đầu file
+                InsertWatermark(writer, conversionStream);
+                _logger.Information("Inserted watermark at start (0 minutes)");
+
+                int bytesRead;
+                while ((bytesRead = originalAudioReader.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    writer.Write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+
+                    if (totalBytesRead >= insertInterval)
+                    {
+                        totalBytesRead = 0;
+                        InsertWatermark(writer, conversionStream);
+                        count++;
+                        _logger.Information("Inserted watermark at {Minutes} minutes", 15 * count);
+                    }
+                }
+
+                writer.Flush();
+            }
+            _logger.Information("Converting WAV to mp3");
+            await using (var wavReader = new WaveFileReader(tempWavPath))
+            await using (var mp3Stream = new FileStream(tempMp3Path, FileMode.Create, FileAccess.ReadWrite))
+            await using (var mp3Writer = new LameMP3FileWriter(mp3Stream, wavReader.WaveFormat, LAMEPreset.VBR_90))
+            {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                while ((bytesRead = wavReader.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    mp3Writer.Write(buffer, 0, bytesRead);
+                }
+
+                mp3Writer.Flush();
+            }
+
+            _logger.Information("Successfully converted to MP3");
+
+            // Tải file MP3 đã xử lý lên S3
+            _logger.Information("Uploading watermarked MP3 to S3");
+            await using (var mp3FileStream = new FileStream(tempMp3Path, FileMode.Open, FileAccess.Read))
+            {
+                var watermarkedFileName = $"{s3OriginalAudioName}_{user.UserId}";
+                await _s3Service.UploadFileAsync(AudioResourceType.Watermarked, mp3FileStream,
+                    watermarkedFileName);
+                return new ServiceResult(ResultCodeConst.Cloud_Success0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002), watermarkedFileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get digital resource from s3");
+        }
+    }
+
     private async Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId, string resourceLang, string email)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -966,11 +1084,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             }
 
             var ffmpegExePath = Path.Combine(ffmpegPath, "ffmpeg.exe");
-            
+
             var audioFileResult = await GetFullLargeFile(resourceId);
 
             var ttsResult = await _voiceService.TextToVoiceFile(email);
-            
+
             var tempDir = Path.Combine(Path.GetTempPath(), "AudioProcessing");
             Directory.CreateDirectory(tempDir);
 
@@ -981,12 +1099,12 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             await File.WriteAllBytesAsync(audioBookPath, ((MemoryStream)audioFileResult.Data!).ToArray());
             await File.WriteAllBytesAsync(watermarkPath, ((MemoryStream)ttsResult.Data!).ToArray());
-            
+
             double audioBookDuration = GetMp3Duration(audioBookPath);
             double watermarkDuration = GetMp3Duration(watermarkPath);
-            int chunkInterval = 20*60; // 10 phút (600 giây)
+            int chunkInterval = 20 * 60; // 10 phút (600 giây)
             int numberOfSegments = (int)Math.Ceiling(audioBookDuration / chunkInterval);
-            
+
             List<string> segmentFiles = new();
             for (int i = 0; i < numberOfSegments; i++)
             {
@@ -1016,7 +1134,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
                 segmentFiles.Add(segmentFile);
             }
-            
+
             using (var writer = new StreamWriter(concatListPath))
             {
                 await writer.WriteLineAsync($"file '{watermarkPath}'");
@@ -1029,7 +1147,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                     }
                 }
             }
-            
+
             var concatProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -1050,9 +1168,9 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             {
                 return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002, $"FFmpeg failed: {errorOutput}");
             }
-            
+
             var finalStream = new MemoryStream(await File.ReadAllBytesAsync(outputPath));
-            
+
             CleanupTempFiles(tempDir);
 
             stopwatch.Stop();
@@ -1067,6 +1185,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             return new ServiceResult<Stream>(ResultCodeConst.SYS_Fail0002, "Error processing audio");
         }
     }
+
     private void CleanupTempFiles(string tempDir)
     {
         try
@@ -1081,6 +1200,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             Console.WriteLine($"Error cleaning up temp files: {ex.Message}");
         }
     }
+
     private double GetMp3Duration(string filePath)
     {
         using var reader = new MediaFoundationReader(filePath);
@@ -1178,7 +1298,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    public async Task<IServiceResult<Stream>> GetPdfPreview(string email, int resourceId)
+    public async Task<IServiceResult<Stream>> GetPdfPreview(int resourceId)
     {
         try
         {
@@ -1394,5 +1514,37 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
         return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), outputStream);
+    }
+
+    private void SafeDeleteFile(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Information(ex, "Failed to delete temporary file: {FilePath}", filePath);
+        }
+    }
+
+    private static void InsertWatermark(WaveFileWriter writer, WaveFormatConversionStream conversionStream)
+    {
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+
+        // Reset watermark về đầu
+        conversionStream.Position = 0;
+
+        while ((bytesRead = conversionStream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            writer.Write(buffer, 0, bytesRead);
+        }
+
+        // Đảm bảo dữ liệu được ghi
+        writer.Flush();
     }
 }
