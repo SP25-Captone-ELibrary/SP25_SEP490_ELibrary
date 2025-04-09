@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
     partial class ElibraryDbContextModelSnapshot : ModelSnapshot
@@ -629,6 +629,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("ResourceId")
                         .HasColumnType("int")
                         .HasColumnName("resource_id");
+
+                    b.Property<string>("S3WatermarkedName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("s3_watermarked_name");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1772,6 +1777,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)")
                         .HasColumnName("resource_url");
+
+                    b.Property<string>("S3OriginalName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("s3_original_name    ");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")

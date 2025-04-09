@@ -136,6 +136,7 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<FFMPEGSettings>(updatedConfiguration.GetSection("FFMPEGSettings"));
         	//Configure AWSS3
             services.Configure<AWSStorageSettings>(updatedConfiguration.GetSection("AWSStorageSettings"));
+            
             #region Development stage
         
         	if (env.IsDevelopment()) // Is Development env

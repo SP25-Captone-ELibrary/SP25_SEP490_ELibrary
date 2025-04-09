@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Data.Migrations
+namespace FPTU_ELibrary.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -231,6 +231,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     default_borrow_duration_days = table.Column<int>(type: "int", nullable: false),
                     borrow_price = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    s3_original_name = table.Column<string>(name: "s3_original_name    ", type: "nvarchar(50)", maxLength: 50, nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -697,6 +698,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     expiry_date = table.Column<DateTime>(type: "datetime", nullable: false),
                     is_extended = table.Column<bool>(type: "bit", nullable: false),
                     extension_count = table.Column<int>(type: "int", nullable: false),
+                    s3_watermarked_name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", nullable: false)
                 },
                 constraints: table =>
