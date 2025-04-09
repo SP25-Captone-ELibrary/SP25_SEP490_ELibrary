@@ -91,7 +91,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
             builder.Property(e => e.BorrowRequestId).HasColumnName("borrow_request_id");
             builder.HasOne(e => e.BorrowRequest).WithMany(p => p.ReservationQueues)
                 .HasForeignKey(e => e.BorrowRequestId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade) // Cascade
                 .HasConstraintName("FK_ReservationQueue_BorrowRequestId");
             #endregion
 

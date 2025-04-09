@@ -955,6 +955,88 @@ namespace FPTU_ELibrary.API.Extensions
 					: new List<LibraryItemAuthorDto>()
 			};
 		}
+		
+		// Mapping from typeof(CreateSupplementRequest) to typeof(WarehouseTrackingDto)
+		public static WarehouseTrackingDto ToWarehouseTrackingDto(this CreateSupplementRequest req)
+		{
+			return new()
+			{
+				TotalItem = req.TotalItem,
+				TotalAmount = req.TotalAmount,
+				EntryDate = req.EntryDate,
+				DataFinalizationDate = req.DataFinalizationDate,
+				Description = req.Description,
+				TrackingType = TrackingType.SupplementRequest, // Set default tracking type
+				Status = WarehouseTrackingStatus.Draft, // Set default status
+				WarehouseTrackingDetails = req.WarehouseTrackingDetails.Any() 
+					? req.WarehouseTrackingDetails.Select(wh => wh.ToWarehouseTrackingDetailDto()).ToList() 
+					: new(),
+				SupplementRequestDetails = req.SupplementRequestDetails.Any()
+					? req.SupplementRequestDetails.Select(sr => sr.ToSupplementRequestDetailDto()).ToList()
+					: new(),
+				// Default inventory
+				WarehouseTrackingInventory = new WarehouseTrackingInventoryDto()
+				{
+					TotalItem = 0,
+					TotalInstanceItem = 0,
+					TotalCatalogedItem = 0,
+					TotalCatalogedInstanceItem = 0
+				}
+			};
+		}
+		
+		// Mapping from typeof(CreateSupplementItemDetailRequest) to typeof(WarehouseTrackingDetailDto)
+		private static WarehouseTrackingDetailDto ToWarehouseTrackingDetailDto(this CreateSupplementItemDetailRequest req)
+		{
+			return new()
+			{
+				LibraryItemId = req.LibraryItemId,
+				CategoryId = req.CategoryId,
+				ConditionId = req.ConditionId,
+				ItemName = req.ItemName,
+				ItemTotal = req.ItemTotal,
+				Isbn = req.Isbn,
+				UnitPrice = req.UnitPrice,
+				TotalAmount = req.TotalAmount,
+				SupplementRequestReason = req.SupplementRequestReason,
+				BorrowSuccessCount = req.BorrowSuccessCount,
+				ReserveCount = req.ReserveCount,
+				BorrowFailedCount = req.BorrowFailedCount,
+				BorrowFailedRate = req.BorrowFailedRate,
+				AvailableUnits = req.AvailableUnits,
+				NeedUnits = req.NeedUnits,
+				AverageNeedSatisfactionRate = req.AverageNeedSatisfactionRate,
+				StockTransactionType = StockTransactionType.Reorder, // Set default stock transaction type
+				HasGlueBarcode = false // Set default has glue barcode
+			};
+		}
+		
+		// Mapping from typeof(CreateSupplementDetailRequest) to typeof(SupplementRequestDetailDto)
+		private static SupplementRequestDetailDto ToSupplementRequestDetailDto(
+			this CreateSupplementDetailRequest req)
+		{
+			return new()
+			{
+				Title = req.Title,
+				Author = req.Author,	
+				Publisher = req.Publisher,	
+				PublishedDate = req.PublishedDate,	
+				Description = req.Description,	
+				Isbn = req.Isbn,	
+				PageCount = req.PageCount,	
+				EstimatedPrice = req.EstimatedPrice,	
+				Dimensions = req.Dimensions,	
+				Language = req.Language,	
+				Categories = req.Categories,	
+				AverageRating = req.AverageRating,	
+				RatingsCount = req.RatingsCount,	
+				CoverImageLink = req.CoverImageLink,	
+				PreviewLink = req.PreviewLink,	
+				InfoLink = req.InfoLink,	
+				RelatedLibraryItemId = req.RelatedLibraryItemId,	
+				SupplementRequestReason = req.SupplementRequestReason
+			};
+		}
 		#endregion
 
 		#region Warehouse Traking Detail

@@ -1,5 +1,6 @@
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using Microsoft.AspNetCore.Http;
 
 namespace FPTU_ELibrary.Domain.Interfaces.Services;
@@ -7,6 +8,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource, TDto, int> 
     where TDto : class
 {
+    Task<IServiceResult> GetAllWithSpecFromDashboardAsync(ISpecification<LibraryResource> spec);
     Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, TDto dto);
     Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, TDto dto,
         Dictionary<int, string> chunkDetails);

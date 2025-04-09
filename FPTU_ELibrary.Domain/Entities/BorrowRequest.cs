@@ -13,7 +13,7 @@ public class BorrowRequest
 
     // Create and expiration datetime
     public DateTime RequestDate { get; set; }
-    public DateTime ExpirationDate { get; set; }
+    public DateTime? ExpirationDate { get; set; }
 
     // Request detail and status
     public BorrowRequestStatus Status { get; set; } 

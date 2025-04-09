@@ -218,6 +218,38 @@ namespace FPTU_ELibrary.Application.Services
 			}
 		}
 
+		public virtual async Task<IServiceResult> SumAsync(Expression<Func<TEntity, int>> predicate)
+		{
+			try
+			{
+				var countRes = await _unitOfWork.Repository<TEntity, TKey>().SumAsync(predicate);
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), countRes);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+                throw new Exception("Error invoke when progress sum data");
+			}
+		}
+
+		public virtual async Task<IServiceResult> SumWithSpecAsync(
+			ISpecification<TEntity> specification,
+			Expression<Func<TEntity, int>> predicate)
+		{
+			try
+			{
+				var countRes = await _unitOfWork.Repository<TEntity, TKey>().SumWithSpecAsync(specification, predicate);
+				return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+					await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), countRes);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex.Message);
+				throw new Exception("Error invoke when progress sum data");
+			}
+		}
+		
 		public virtual async Task<IServiceResult> CountAsync(ISpecification<TEntity> specification)
 		{
 			try

@@ -47,6 +47,7 @@ public class AIClassificationService : IAIClassificationService
     
     private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAITrainingSessionService<AITrainingSessionDto> _aiTrainingSessionService;
+    private readonly IHubContext<AiHub> _hubContext;
     private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
 
@@ -61,6 +62,7 @@ public class AIClassificationService : IAIClassificationService
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService,
         IAITrainingSessionService<AITrainingSessionDto> aiTrainingSessionService,
+        IHubContext<AiHub> hubContext,
         IOptionsMonitor<CustomVisionSettings> monitor)
     {
         _logger = logger;
@@ -72,6 +74,7 @@ public class AIClassificationService : IAIClassificationService
         _aiDetectionService = aiDetectionService;
         _libraryItemService = libraryItemService;
         _aiTrainingSessionService = aiTrainingSessionService;
+        _hubContext = hubContext;
         _libraryItemGroupService = libraryItemGroupService;
         
         _monitor = monitor.CurrentValue;
@@ -560,13 +563,8 @@ public class AIClassificationService : IAIClassificationService
                     !li.IsTrained || // Is not in train status
                     (isTrainingLibraryItems.Any() && !isTrainingLibraryItems.Contains(li.LibraryItemId)) // Filter out all training items
                 ) &&
-                // Filter out category (Magazine, Newspaper, Book reference, Digital book)
-                (
-                    li.Category.EnglishName != nameof(LibraryItemCategory.Magazine) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.Newspaper) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.ReferenceBook) &&
-                    li.Category.EnglishName != nameof(LibraryItemCategory.DigitalBook)
-                )
+                // Filter out category that not allows to train AI
+                li.Category.IsAllowAITraining == true
             );
             // Apply split query
             ungroupedItemSpec.EnableSplitQuery();
@@ -749,6 +747,12 @@ public class AIClassificationService : IAIClassificationService
                     response.Add(responseData);
                 }
             }
+            // If there is group of BookSeries and have <5 items, remove it from response
+            response = response.Where(group => 
+                !(group.ListCheckedGroupDetail.Any(detail => 
+                    detail.Item.Category.EnglishName == nameof(LibraryItemCategory.BookSeries) &&
+                    group.ListCheckedGroupDetail.Count < 5))
+            ).ToList();
             
             return new ServiceResult(
                 resultCode: ResultCodeConst.AIService_Success0005,
@@ -776,8 +780,8 @@ public class AIClassificationService : IAIClassificationService
         if ((await _aiTrainingSessionService.GetWithSpecAsync(baseSession)).Data is AITrainingSessionDto sessionValue)
         {
             // Msg: There is existing AI training session
-            return new ServiceResult(ResultCodeConst.AIService_Warning0009,
-                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0009), sessionValue);
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), sessionValue);
         }
 
         // Msg: Is able to train
@@ -832,7 +836,7 @@ public class AIClassificationService : IAIClassificationService
             }
 
             var backgroundTask = Task.Run(() => ExtendProcessTrainingTask(trainingDataDic, listItemIds, email));
-
+            
             // Trả về kết quả ngay lập tức
             var successMessage = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003);
             var result = new ServiceResult(ResultCodeConst.AIService_Success0003, successMessage);
@@ -900,7 +904,7 @@ public class AIClassificationService : IAIClassificationService
                         {
                             case nameof(LibraryItemCategory.SingleBook):
                                 // Required at least 5 images
-                                if (item.ImageFiles.Count < 5)
+                                if (item.ImageFiles.Count < 4)
                                 {
                                     customErrs = DictionaryUtils.AddOrUpdate(customErrs,
                                         key: $"trainingData[{i}].itemsInGroup[{j}]",
@@ -996,7 +1000,18 @@ public class AIClassificationService : IAIClassificationService
             // Trả về kết quả ngay lập tức
             var successMessage = await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0003);
             var result = new ServiceResult(ResultCodeConst.AIService_Success0003, successMessage);
-
+            
+            await _hubContext.Clients.User(email).SendAsync(
+                "AIProcessMessage", new
+                {
+                    message = 0,
+                    session = string.Empty,
+                    NumberOfTrainingGroup = trainingDataDic.Keys.Count,
+                    NumberOfTrainingItems = itemWithImages.Keys.Count,
+                    NumberOfTrainingImages = trainingDataDic.Values.SelectMany(x => x).Count()
+                }
+            );
+            
             _ = backgroundTask; // Bảo đảm task chạy tiếp trong background
 
             return result;

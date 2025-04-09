@@ -37,10 +37,10 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
             .WithMessage(isEng
                 ? "EnglishName cannot be null"
                 : "Tên tiếng Anh không được phép rỗng")
-            .Matches(@"^([A-Z][a-zA-Z]*)(\s[A-Z][a-zA-Z]*)*$")
+            .Matches(@"^([A-Z][a-zA-Z]*)(\s[a-zA-Z]+)*$")
             .WithMessage(isEng
-                ? "English name should start with an uppercase letter for each word, not include number"
-                : "Tên tiếng Anh bắt đầu bằng chữ cái viết hoa cho mỗi từ và không chứa số");
+                ? "English name should start with an uppercase letter for the first word and not include numbers"
+                : "Tên tiếng Anh bắt đầu bằng chữ cái viết hoa cho từ đầu tiên và không chứa số");
         // Vietnamese name
         RuleFor(c => c.VietnameseName)
             .NotEmpty()
@@ -51,9 +51,9 @@ public class CategoryDtoValidator : AbstractValidator<CategoryDto>
             .WithMessage(isEng
                 ? "VietnameseName cannot be null"
                 : "Tên tiếng Việt không được phép rỗng")
-            .Matches(@"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[A-ZÀ-Ỵ][a-zà-ỵ]*)*$")
+            .Matches(@"^([A-ZÀ-Ỵ][a-zà-ỵ]*)(\s[a-zA-ZÀ-Ỵa-zà-ỵ]+)*$")
             .WithMessage(isEng
-                ? "Vietnamese Name should start with an uppercase letter for each word, not include number"
-                : "Tên Tiếng Việt bắt đầu bằng chữ cái viết hoa cho mỗi từ và không chứa số");
+                ? "Vietnamese Name should start with an uppercase letter for the first word and not include numbers"
+                : "Tên tiếng Việt bắt đầu bằng chữ cái viết hoa cho từ đầu tiên và không chứa số");
     }
 }

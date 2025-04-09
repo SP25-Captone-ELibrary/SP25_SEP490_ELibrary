@@ -8,6 +8,7 @@ public static class WarehouseTrackingUtils
     {
         { TrackingType.StockIn , new() { StockTransactionType.New, StockTransactionType.Additional, StockTransactionType.Other} },
         { TrackingType.StockOut , new() { StockTransactionType.Damaged, StockTransactionType.Lost, StockTransactionType.Outdated, StockTransactionType.Other } },
-        { TrackingType.Transfer , new() { StockTransactionType.Transferred , StockTransactionType.Other}}
+        { TrackingType.StockChecking, new (){ StockTransactionType.New, StockTransactionType.Damaged, StockTransactionType.Lost, StockTransactionType.Outdated, StockTransactionType.Other }},
+        { TrackingType.SupplementRequest , new() { StockTransactionType.Reorder}}
     };
 }

@@ -6,8 +6,10 @@ public enum TrackingType
 {
     [Description("Nhập kho")]
     StockIn,
+    [Description("Yêu cầu bổ sung")]
+    SupplementRequest,
+    [Description("Kiểm kê")]
+    StockChecking,
     [Description("Xuất kho")]
-    StockOut,
-    [Description("Trao đổi")]
-    Transfer
+    StockOut
 }

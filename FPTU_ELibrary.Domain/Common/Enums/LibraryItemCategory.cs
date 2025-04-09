@@ -8,14 +8,16 @@ public enum LibraryItemCategory
     SingleBook,
     [Description("Sách bộ")]
     BookSeries,
-    [Description("Sách số")]
-    DigitalBook,
     [Description("Sách tham khảo")]
     ReferenceBook,
     [Description("Báo chí")]
     Newspaper,
     [Description("Tạp chí")]
-    Magazine
+    Magazine,
+    [Description("Sách thiếu nhi")]
+    ChildrenBook,
+    [Description("Sách khác")]
+    Other
     
     #region Archived
     // [Description("Sách nghiệp vụ")]

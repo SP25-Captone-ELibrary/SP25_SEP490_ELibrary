@@ -24,6 +24,12 @@ public class WarehouseTrackingDetailDtoValidator : AbstractValidator<WarehouseTr
             .WithMessage(isEng
                 ? "Item name must be between 5 and 225 characters"
                 : "Tên tài liệu phải nằm trong khoảng 5 đến 255 ký tự");
+        // Supplement request reason
+        RuleFor(e => e.SupplementRequestReason)
+            .Length(5, 255)
+            .WithMessage(isEng
+                ? "Supplement request reason must be between 5 and 225 characters"
+                : "Lý do yêu cầu bổ sung phải nằm trong khoảng 5 đến 255 ký tự");
         // Isbn
         RuleFor(e => e.Isbn)
             .Must(str => str == null || (ISBN.IsValid(str, out _) && ISBN.CleanIsbn(str).Length <= 13))

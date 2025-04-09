@@ -17,6 +17,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasMaxLength(500)
                 .HasColumnName("description");
             builder.Property(e => e.ExpirationDate)
+                .IsRequired(false)
                 .HasColumnType("datetime")
                 .HasColumnName("expiration_date");
             builder.Property(e => e.RequestDate)

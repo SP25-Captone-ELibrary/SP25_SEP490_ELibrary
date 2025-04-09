@@ -7,7 +7,7 @@ namespace FPTU_ELibrary.Application.Dtos.WarehouseTrackings;
 public class WarehouseTrackingDto
 {
     public int TrackingId { get; set; }
-    public int SupplierId { get; set; }
+    public int? SupplierId { get; set; }
     public string ReceiptNumber { get; set; } = null!;
     public int TotalItem { get; set; }
     public decimal TotalAmount { get; set; }
@@ -22,6 +22,8 @@ public class WarehouseTrackingDto
     public DateTime? ActualReturnDate { get; set; }
     // Entry date    
     public DateTime EntryDate { get; set; }
+    // Data finalization date
+    public DateTime? DataFinalizationDate { get; set; }
     
     // Creation, update datetime and employee is charge of 
     public DateTime CreatedAt { get; set; }
@@ -30,10 +32,11 @@ public class WarehouseTrackingDto
     public string? UpdatedBy { get; set; }
 
     // References
-    public SupplierDto Supplier { get; set; } = null!;
+    public SupplierDto? Supplier { get; set; }
     public WarehouseTrackingInventoryDto WarehouseTrackingInventory { get; set; } = null!;
     
     [JsonIgnore]
-    public ICollection<WarehouseTrackingDetailDto> WarehouseTrackingDetails { get; set; } =
-        new List<WarehouseTrackingDetailDto>();
+    public ICollection<WarehouseTrackingDetailDto> WarehouseTrackingDetails { get; set; } = new List<WarehouseTrackingDetailDto>();
+    
+    public ICollection<SupplementRequestDetailDto> SupplementRequestDetails { get; set; } = new List<SupplementRequestDetailDto>();
 }

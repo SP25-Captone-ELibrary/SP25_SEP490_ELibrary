@@ -322,9 +322,13 @@ public class WarehouseTrackingDetailService :
 					    // Try to retrieve all detail transaction type within stock-in tracking type
 					    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
 					    break;
-				    case TrackingType.Transfer:
-					    // Try to retrieve all detail transaction type within stock-in tracking type
-					    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+				    case TrackingType.StockChecking:
+					    // Try to retrieve all detail transaction type within stock checking tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.StockChecking, out transactionTypes);
+					    break;
+				    case TrackingType.SupplementRequest:
+					    // Try to retrieve all detail transaction type within supplement request tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.SupplementRequest, out transactionTypes);
 					    break;
 			    }
 			    
@@ -1288,14 +1292,14 @@ public class WarehouseTrackingDetailService :
 			    }
 		    }
 		    // Required exist ISBN when tracking type is stock-out or transfer
-		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || trackingDto.TrackingType == TrackingType.Transfer)) 
+		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || trackingDto.TrackingType == TrackingType.StockChecking)) 
 		    {
 			    // Add error
 			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
 				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
 				    msg: isEng
-					    ? $"ISBN '{dto.Isbn}' must exist when tracking type is stock out or transfer"
-					    : $"Mã ISBN '{dto.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
+					    ? $"ISBN '{dto.Isbn}' must exist when tracking type is stock out or stock checking"
+					    : $"Mã ISBN '{dto.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc kiểm kê");
 		    }
 		    
 			// Initialize field to check already announcement of stock transaction type
@@ -1648,12 +1652,16 @@ public class WarehouseTrackingDetailService :
 					    transactionTypeRelations.TryGetValue(TrackingType.StockIn, out transactionTypes);
 					    break;
 				    case TrackingType.StockOut:
-					    // Try to retrieve all detail transaction type within stock-in tracking type
+					    // Try to retrieve all detail transaction type within stock-out tracking type
 					    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
 					    break;
-				    case TrackingType.Transfer:
-					    // Try to retrieve all detail transaction type within stock-in tracking type
-					    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+					case TrackingType.StockChecking:
+                        // Try to retrieve all detail transaction type within stock checking tracking type
+                        transactionTypeRelations.TryGetValue(TrackingType.StockChecking, out transactionTypes);
+                        break;
+				    case TrackingType.SupplementRequest:
+					    // Try to retrieve all detail transaction type within supplement request tracking type
+					    transactionTypeRelations.TryGetValue(TrackingType.SupplementRequest, out transactionTypes);
 					    break;
 			    }
 			    
@@ -1856,6 +1864,10 @@ public class WarehouseTrackingDetailService :
 			    .Include(w => w.LibraryItem)
 					.ThenInclude(li => li!.LibraryItemInventory)
 			    .Include(w => w.Category)
+			    .Include(w => w.LibraryItem).ThenInclude(li => li!.Shelf)
+			    .Include(w => w.LibraryItem)
+					.ThenInclude(li => li!.LibraryItemAuthors)
+						.ThenInclude(lia => lia.Author)
 		    );
 		    
 		    // Add tracking filtering 
@@ -1927,7 +1939,7 @@ public class WarehouseTrackingDetailService :
 		    throw new Exception("Error invoke when process get all warehouse details");
 	    }
     }
-
+    
     public async Task<IServiceResult> GetAllNotExistItemByTrackingIdAsync(int trackingId, ISpecification<WarehouseTrackingDetail> spec)
     {
 	    try
@@ -2274,9 +2286,13 @@ public class WarehouseTrackingDetailService :
 				    // Try to retrieve all detail transaction type within stock-in tracking type
 				    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
 				    break;
-			    case TrackingType.Transfer:
-				    // Try to retrieve all detail transaction type within stock-in tracking type
-				    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+			    case TrackingType.StockChecking:
+				    // Try to retrieve all detail transaction type within stock checking tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.StockChecking, out transactionTypes);
+				    break;
+			    case TrackingType.SupplementRequest:
+				    // Try to retrieve all detail transaction type within supplement request tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.SupplementRequest, out transactionTypes);
 				    break;
 		    }
 		    
@@ -2341,11 +2357,11 @@ public class WarehouseTrackingDetailService :
 		        // Required exist ISBN when tracking type is stock-out or transfer
 		        else if(!isIsbnExist && 
 		                (trackingType == TrackingType.StockOut || 
-		                 trackingType == TrackingType.Transfer)) 
+		                 trackingType == TrackingType.StockChecking)) 
 		        {
 			        rowErrors.Add(isEng 
 				        ? $"ISBN '{record.Isbn}' must exist when tracking type is stock out or transfer" 
-				        : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
+				        : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc kiểm kê");
 		        }
 		        // Check uniqueness
 		        if (!isbnHashSet.Add(cleanedIsbn))

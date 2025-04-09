@@ -219,17 +219,9 @@ namespace FPTU_ELibrary.Application.Services
 					case Role.Administration:
 						roleName = nameof(Role.Administration);
 						break;
-					// Is Student
-					case Role.Student:
-						roleName = nameof(Role.Student);
-						break;
-					// Is Teacher
-					case Role.Teacher:
-						roleName = nameof(Role.Teacher);
-						break;
-					// Is General Member
-					case Role.GeneralMember:
-						roleName = nameof(Role.GeneralMember);
+					// Is Library patron
+					case Role.LibraryPatron:
+						roleName = nameof(Role.LibraryPatron);
 						break;
 				}
 

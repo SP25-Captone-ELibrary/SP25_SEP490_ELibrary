@@ -69,6 +69,7 @@
 			public const string CancelManagement = Base + "/management/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItemManagement = Base + "/management/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			public const string CancelSpecificDigitalManagement = Base + "/management/borrows/requests/{id}/digitals/{resourceId}/cancel";
+			public const string CancelSpecificReservationManagement = Base + "/management/borrows/requests/{id}/reservations/{queueId}/cancel";
 			#endregion
 			
 			// [GET]
@@ -80,6 +81,7 @@
 			public const string Cancel = Base + "/borrows/requests/{id}/cancel";
 			public const string CancelSpecificItem = Base + "/borrows/requests/{id}/details/{libraryItemId}/cancel";
 			public const string CancelSpecificDigital = Base + "/borrows/requests/{id}/digitals/{resourceId}/cancel";
+			public const string CancelSpecificReservation = Base + "/borrows/requests/{id}/reservations/{queueId}/cancel";
 		}
 
 		/// <summary>
@@ -112,6 +114,24 @@
 			#region Management
 			public const string GetAll = Base + "/management/borrows/digital";
 			public const string GetById = Base + "/management/borrows/digital/{id}";
+			#endregion
+		}
+
+		/// <summary>
+		/// Dashboard endpoints
+		/// </summary>
+		public static class Dashboard
+		{
+			#region Management
+			public const string GetDashboardOverview = Base + "/management/dashboard/overview";
+			public const string GetDashboardCirculationAnalyst = Base + "/management/dashboard/circulation-analyst";
+			public const string GetDashboardDigitalResourceAnalyst = Base + "/management/dashboard/digital-resource-analyst";
+			public const string GetDashboardFinancialAndTransactionAnalyst = Base + "/management/dashboard/financial-and-transaction-analyst";
+			
+			public const string GetAllOverdueBorrow = Base + "/management/dashboard/overdue-borrows";
+			public const string GetAllLatestBorrow = Base + "/management/dashboard/latest-borrows";
+			public const string GetAllAssignableReservation = Base + "/management/dashboard/assignable-reservations";
+			public const string GetAllTopCirculationItems = Base + "/management/dashboard/top-circulation-items";
 			#endregion
 		}
 		
@@ -730,9 +750,12 @@
             public const string GetAll = Base + "/management/warehouse-trackings";
             public const string GetAllStockTransactionTypeByTrackingType = Base + "/management/warehouse-trackings/stock-transasction-types";
             public const string GetById = Base + "/management/warehouse-trackings/{id}";
+            public const string GetAllSupplementItemsById = Base + "/management/warehouse-trackings/{trackingId}/supplement-items";
+            public const string GetAllSupplementDetailsById = Base + "/management/warehouse-trackings/{trackingId}/supplement-details";
             // [POST]
             public const string Create = Base + "/management/warehouse-trackings";
             public const string StockIn = Base + "/management/warehouse-trackings/stock-in";
+            public const string CreateSupplementRequest = Base + "/management/warehouse-trackings/supplement-request";
             // [PUT]
             public const string Update = Base + "/management/warehouse-trackings/{id}";
             public const string UpdateRangeUniqueBarcodeRegistration = Base + "/management/warehouse-trackings/{id}/unique-barcode-registration";

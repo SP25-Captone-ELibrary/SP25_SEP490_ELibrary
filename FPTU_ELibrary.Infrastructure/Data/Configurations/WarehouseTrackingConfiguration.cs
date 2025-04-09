@@ -52,8 +52,7 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
               .HasColumnType("datetime")
               .HasColumnName("actual_return_date");
        builder.Property(e => e.SupplierId)
-              .HasColumnName("supplier_id")
-              .IsRequired();
+              .HasColumnName("supplier_id");
        builder.HasOne(e => e.Supplier).WithMany(p => p.WarehouseTrackings)
               .HasForeignKey(e => e.SupplierId)
               .OnDelete(DeleteBehavior.ClientSetNull)
@@ -72,6 +71,12 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
        builder.Property(e => e.UpdatedBy)
               .HasColumnName("updated_by")
               .HasMaxLength(255);
+       #endregion
+
+       #region Updated at 07/04/2025 by Le Xuan Phuoc
+       builder.Property(e => e.DataFinalizationDate)
+              .HasColumnType("datetime")
+              .HasColumnName("data_finalization_date");
        #endregion
     }
 }

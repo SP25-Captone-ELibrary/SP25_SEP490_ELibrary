@@ -45,6 +45,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<ISearchService, SearchService>(); 
 			services.AddScoped<ICacheService, CacheService>();
 			services.AddScoped<ICloudinaryService, CloudinaryService>();
+			services.AddScoped<IDashboardService, DashboardService>();
 			services.AddScoped<ISystemMessageService, SystemMessageService>();	
 			services.AddScoped<IAuthorizationService, AuthorizationService>();
 			services.AddScoped<IElasticService, ElasticService>();
@@ -64,6 +65,8 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IBorrowRequestService<BorrowRequestDto>, BorrowRequestService>();
             services.AddScoped<IBorrowRequestResourceService<BorrowRequestResourceDto>, BorrowRequestResourceService>();
             services.AddScoped<IBorrowRecordService<BorrowRecordDto>, BorrowRecordService>();
+            services.AddScoped<IBorrowRecordDetailService<BorrowRecordDetailDto>, BorrowRecordDetailService>();
+            services.AddScoped<IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto>, BorrowDetailExtensionHistoryService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
             services.AddScoped<IDigitalBorrowService<DigitalBorrowDto>, DigitalBorrowService>();
             services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
@@ -89,6 +92,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IRolePermissionService<RolePermissionDto>, RolePermissionService>();
             services.AddScoped<IReservationQueueService<ReservationQueueDto>, ReservationQueueService>();
             services.AddScoped<ISupplierService<SupplierDto>, SupplierService>();
+            services.AddScoped<ISupplementRequestDetailService<SupplementRequestDetailDto>, SupplementRequestDetailService>();
             services.AddScoped<ISystemRoleService<SystemRoleDto>, SystemRoleService>();
             services.AddScoped<ISystemFeatureService<SystemFeatureDto>, SystemFeatureService>();
             services.AddScoped<ISystemPermissionService<SystemPermissionDto>, SystemPermissionService>();

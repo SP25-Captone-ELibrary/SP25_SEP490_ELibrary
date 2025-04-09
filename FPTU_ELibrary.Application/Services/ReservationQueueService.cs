@@ -118,7 +118,83 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
 
             // Retrieve data with spec
             var entities = await _unitOfWork.Repository<ReservationQueue, int>()
-                .GetAllWithSpecAsync(reservationSpec, tracked);
+                .GetAllWithSpecAndSelectorAsync(reservationSpec, selector: r => new ReservationQueue()
+                {
+                    QueueId = r.QueueId,
+                    LibraryItemId = r.LibraryItemId,
+                    LibraryItemInstanceId = r.LibraryItemInstanceId,
+                    LibraryCardId = r.LibraryCardId,
+                    QueueStatus = r.QueueStatus,
+                    BorrowRequestId = r.BorrowRequestId,
+                    IsReservedAfterRequestFailed = r.IsReservedAfterRequestFailed,
+                    ExpectedAvailableDateMin = r.ExpectedAvailableDateMin,
+                    ExpectedAvailableDateMax = r.ExpectedAvailableDateMax,
+                    ReservationDate = r.ReservationDate,
+                    ExpiryDate = r.ExpiryDate,
+                    ReservationCode = r.ReservationCode,
+                    IsAppliedLabel = r.IsAppliedLabel,
+                    CollectedDate = r.CollectedDate,
+                    AssignedDate = r.AssignedDate,
+                    TotalExtendPickup = r.TotalExtendPickup,
+                    IsNotified = r.IsNotified,
+                    CancelledBy = r.CancelledBy,
+                    CancellationReason = r.CancellationReason,
+                    LibraryCard = r.LibraryCard,
+                    LibraryItem = new LibraryItem()
+                    {
+                        LibraryItemId = r.LibraryItemId,
+                        Title = r.LibraryItem.Title,
+                        SubTitle = r.LibraryItem.SubTitle,
+                        Responsibility = r.LibraryItem.Responsibility,
+                        Edition = r.LibraryItem.Edition,
+                        EditionNumber = r.LibraryItem.EditionNumber,
+                        Language = r.LibraryItem.Language,
+                        OriginLanguage = r.LibraryItem.OriginLanguage,
+                        Summary = r.LibraryItem.Summary,
+                        CoverImage = r.LibraryItem.CoverImage,
+                        PublicationYear = r.LibraryItem.PublicationYear,
+                        Publisher = r.LibraryItem.Publisher,
+                        PublicationPlace = r.LibraryItem.PublicationPlace,
+                        ClassificationNumber = r.LibraryItem.ClassificationNumber,
+                        CutterNumber = r.LibraryItem.CutterNumber,
+                        Isbn = r.LibraryItem.Isbn,
+                        Ean = r.LibraryItem.Ean,
+                        EstimatedPrice = r.LibraryItem.EstimatedPrice,
+                        PageCount = r.LibraryItem.PageCount,
+                        PhysicalDetails = r.LibraryItem.PhysicalDetails,
+                        Dimensions = r.LibraryItem.Dimensions,
+                        AccompanyingMaterial = r.LibraryItem.AccompanyingMaterial,
+                        Genres = r.LibraryItem.Genres,
+                        GeneralNote = r.LibraryItem.GeneralNote,
+                        BibliographicalNote = r.LibraryItem.BibliographicalNote,
+                        TopicalTerms = r.LibraryItem.TopicalTerms,
+                        AdditionalAuthors = r.LibraryItem.AdditionalAuthors,
+                        CategoryId = r.LibraryItem.CategoryId,
+                        ShelfId = r.LibraryItem.ShelfId,
+                        GroupId = r.LibraryItem.GroupId,
+                        Status = r.LibraryItem.Status,
+                        IsDeleted = r.LibraryItem.IsDeleted,
+                        IsTrained = r.LibraryItem.IsTrained,
+                        CanBorrow = r.LibraryItem.CanBorrow,
+                        TrainedAt = r.LibraryItem.TrainedAt,
+                        CreatedAt = r.LibraryItem.CreatedAt,
+                        UpdatedAt = r.LibraryItem.UpdatedAt,
+                        UpdatedBy = r.LibraryItem.UpdatedBy,
+                        CreatedBy = r.LibraryItem.CreatedBy,
+                        // References
+                        Category = r.LibraryItem.Category,
+                        Shelf = r.LibraryItem.Shelf,
+                        LibraryItemGroup = r.LibraryItem.LibraryItemGroup,
+                        LibraryItemInventory = r.LibraryItem.LibraryItemInventory,
+                        LibraryItemAuthors = r.LibraryItem.LibraryItemAuthors.Select(ba => new LibraryItemAuthor()
+                        {
+                            LibraryItemAuthorId = ba.LibraryItemAuthorId,
+                            LibraryItemId = ba.LibraryItemId,
+                            AuthorId = ba.AuthorId,
+                            Author = ba.Author
+                        }).ToList(),
+                    }
+                }, tracked: tracked);
             if (entities.Any())
             {
                 // Convert to dto collection
@@ -299,6 +375,142 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         }
     }
 
+    public async Task<IServiceResult> GetAllAssignableForDashboardAsync(DateTime? startDate, DateTime? endDate, TrendPeriod period,
+        int pageIndex, int pageSize)
+    {
+        try
+        {
+            // Initialize assignable collection
+            var assignableReservations = new List<ReservationQueueDto>();
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<ReservationQueue>(r => 
+                r.QueueStatus == ReservationQueueStatus.Pending && 
+                r.LibraryItemInstanceId == null &&
+                r.ReservationCode == null && 
+                r.IsAppliedLabel == false);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(r => r.LibraryItem)
+                .Include(r => r.LibraryCard)
+            );
+            // Add filter date range (if any)
+            if (startDate != null && endDate != null)
+            {
+                baseSpec.AddFilter(r => 
+                    r.ReservationDate.Date >= startDate.Value.Date &&
+                    r.ReservationDate.Date <= endDate.Value.Date);
+            }
+            else if (startDate != null && endDate == null)
+            {
+                baseSpec.AddFilter(r => r.ReservationDate.Date >= startDate.Value.Date);
+            }
+            else if (startDate == null && endDate != null)
+            {
+                baseSpec.AddFilter(r => r.ReservationDate.Date <= endDate.Value.Date);
+            }
+            
+            // Add ascending order 
+            baseSpec.AddOrderBy(r => r.ReservationDate);
+            
+            // Count total with spec
+            var totalWithSpec = await _unitOfWork.Repository<ReservationQueue, int>().CountAsync(baseSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalWithSpec / pageSize);
+        
+            // Set pagination to specification after count total resource 
+            if (pageIndex > totalPage
+                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+        
+            // Apply pagination
+            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
+            
+            // Retrieve all with spec
+            var entities = (await _unitOfWork.Repository<ReservationQueue, int>()
+                .GetAllWithSpecAsync(baseSpec)).ToList();
+            if (!entities.Any())
+            {
+                // Msg: Data not found or empty
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0004,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    data: new List<GetBorrowRequestDto>());
+            }
+            
+            // Iterate each reservation to check for assignable
+            foreach (var queue in entities)
+            {
+                // Check current user library activity
+                if ((await _userSvc.GetPendingLibraryActivitySummaryAsync(
+                        libraryCardId: queue.LibraryCardId)
+                    ).Data is UserPendingActivitySummaryDto userActivitySummary)
+                {
+                    // Check whether user's active/pending activity borrow/reserve reaching threshold
+                    var isReachedThreshold = userActivitySummary.RemainTotal == 0;
+                    if (isReachedThreshold)
+                    {
+                        // Skip to next reservation
+                        continue;
+                    }
+                }
+    
+                // Retrieve inventory
+                var inventory = (await _inventorySvc.Value.GetByIdAsync(queue.LibraryItemId)).Data as LibraryItemInventoryDto;
+                if (inventory == null)
+                {
+                    // Skip to next reservation
+                    continue;
+                }
+                    
+                // Build spec
+                var itemInstanceSpec = new BaseSpecification<LibraryItemInstance>(li =>
+                    li.LibraryItemId == queue.LibraryItemId &&
+                    (
+                        // Out-of-shelf status
+                        li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) ||
+                        // In-shelf status and still available
+                        (li.Status == nameof(LibraryItemInstanceStatus.InShelf) && inventory.AvailableUnits > 0)
+                    ));
+                // Check if exist any
+                var isAssignable = (await _itemInstanceSvc.Value.AnyAsync(itemInstanceSpec)).Data is true;
+                if (isAssignable)
+                {
+                    assignableReservations.Add(_mapper.Map<ReservationQueueDto>(queue));
+                }
+            }
+            
+            // Convert to dto
+            var dtoList = _mapper.Map<List<ReservationQueueDto>>(assignableReservations);
+
+            if (dtoList.Any())
+            {
+                // Pagination result 
+                var paginationRes = new PaginatedResultDto<ReservationQueueDto>(
+                    dtoList, pageIndex, pageSize, totalPage, totalWithSpec);
+            
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: paginationRes);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<ReservationQueueDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all assignable reservations");
+        }
+    }
+    
     public async Task<IServiceResult> GetByIdAsync(int id, string? email = null, Guid? userId = null)
     {
         try
@@ -344,6 +556,8 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     IsNotified = r.IsNotified,
                     CancelledBy = r.CancelledBy,
                     CancellationReason = r.CancellationReason,
+                    BorrowRequest = r.BorrowRequest,
+                    LibraryCard = r.LibraryCard,
                     LibraryItem = new LibraryItem()
                     {
                         LibraryItemId = r.LibraryItemId,
@@ -412,8 +626,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                             IsDeleted = r.LibraryItemInstance.IsDeleted,
                             IsCirculated = r.LibraryItemInstance.IsCirculated,
                         }
-                        : null!,
-                    BorrowRequest = r.BorrowRequest
+                        : null!
                 });
             if (existingEntity != null)
             {
@@ -714,6 +927,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             itemInstanceSpec.ApplyInclude(q => q
                 .Include(l => l.LibraryItem)
                 .Include(l => l.LibraryItemConditionHistories)
+                    .ThenInclude(c => c.Condition)
             );
             // Retrieve all assignable item instances id
             var itemInstanceList = (await _itemInstanceSvc.Value
@@ -2274,5 +2488,29 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         </body>
         </html>
         """;
+    }
+    
+    /// <summary>
+    /// Determine valid start and end dates based on specific trend period
+    /// </summary>
+    private (DateTime start, DateTime end) GetValidDateRange(DateTime? startDate, DateTime? endDate, TrendPeriod period, DateTime currentLocal)
+    {
+        DateTime defaultStart = period switch
+        {
+            TrendPeriod.Daily => currentLocal.AddDays(-30),
+            TrendPeriod.Weekly => currentLocal.AddDays(-90),
+            TrendPeriod.Monthly => currentLocal.AddMonths(-12),
+            _ => currentLocal.AddDays(-30)
+        };
+
+        DateTime validStart = startDate ?? defaultStart;
+        DateTime validEnd = endDate ?? currentLocal;
+
+        // If start date is after end date, swap them
+        if (validStart > validEnd)
+        {
+            (validStart, validEnd) = (validEnd, validStart);
+        }
+        return (validStart, validEnd);
     }
 }

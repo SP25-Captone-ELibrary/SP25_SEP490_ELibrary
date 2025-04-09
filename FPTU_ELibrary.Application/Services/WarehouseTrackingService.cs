@@ -38,6 +38,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
     
     // Lazy services
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _trackingDetailService;
+    private readonly Lazy<ISupplementRequestDetailService<SupplementRequestDetailDto>> _supplementDetailService;
     
     // Normal services
     private readonly IAuthorService<AuthorDto> _authorService;
@@ -52,6 +53,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
     public WarehouseTrackingService(
 	    // Lazy services
 	    Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> trackingDetailService,
+	    Lazy<ISupplementRequestDetailService<SupplementRequestDetailDto>> supplementDetailService,
 	    
 	    // Normal services
 	    IAuthorService<AuthorDto> authorService,
@@ -78,6 +80,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
         _conditionService = conditionService;
         _itemInstanceService = itemInstanceService;
         _trackingDetailService = trackingDetailService;
+        _supplementDetailService = supplementDetailService;
     }
 
     public override async Task<IServiceResult> GetByIdAsync(int id)
@@ -168,7 +171,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		    throw new Exception("Error invoke when process get all warehouse tracking");
 	    }
     }
-
+	
     public override async Task<IServiceResult> UpdateAsync(int id, WarehouseTrackingDto dto)
     {
 	    try
@@ -198,32 +201,6 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 
 		    // Initialize custom errors
 		    var customErrors = new Dictionary<string, string[]>();
-
-		    // Warehouse tracking detail is not Transfer
-		    if (dto.TrackingType != TrackingType.Transfer)
-		    {
-			    // Check whether exist transfer location
-			    if (!string.IsNullOrEmpty(dto.TransferLocation))
-			    {
-				    // Add error
-				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-					    key: StringUtils.ToCamelCase(nameof(WarehouseTracking.TransferLocation)),
-					    msg: isEng
-						    ? $"Not include transfer location when tracking type is not '{nameof(TrackingType.Transfer)}'"
-						    : $"Vui lòng để rỗng nơi chung chuyển khi trạng thái quản lí nhập/xuất kho là '{TrackingType.Transfer.GetDescription()}'");
-			    }
-
-			    // Check whether exist expected return date
-			    if (dto.ExpectedReturnDate != null)
-			    {
-				    // Add error
-				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-					    key: StringUtils.ToCamelCase(nameof(WarehouseTracking.ExpectedReturnDate)),
-					    msg: isEng
-						    ? $"Not include expected return date when tracking type is not '{nameof(TrackingType.Transfer)}'"
-						    : $"Vui lòng để rỗng ngày trả dự kiến khi trạng thái quản lí nhập/xuất kho là '{TrackingType.Transfer.GetDescription()}'");
-			    }
-		    }
 
 		    // Check exist supplier
 		    var isSupplierExist = (await _supplierService.AnyAsync(s => s.SupplierId == dto.SupplierId)).Data is true;
@@ -319,11 +296,20 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 						StockTransactionType.Other
 					};
 					break;
-				case TrackingType.Transfer:
+				case TrackingType.StockChecking:
 					transactionTypes = new ()
 					{
-						StockTransactionType.Transferred,
-						StockTransactionType.Other
+						StockTransactionType.New,
+						StockTransactionType.Damaged,
+						StockTransactionType.Lost,
+						StockTransactionType.Outdated,
+						StockTransactionType.Other,
+					};
+					break;
+				case TrackingType.SupplementRequest:
+					transactionTypes = new ()
+					{
+						StockTransactionType.Reorder
 					};
 					break;
 			}
@@ -338,7 +324,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		    throw new Exception("Error invoke when process get all stock transaction type by name");
 	    }
     }
-    
+
     public async Task<IServiceResult> GetByIdAndIncludeInventoryAsync(int trackingId)
     {
 	    try
@@ -613,6 +599,448 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 	    }
     }
 
+    public async Task<IServiceResult> CreateSupplementRequestASync(WarehouseTrackingDto dto)
+    {
+	    try
+	    {
+		    // Determine current lang context
+		    var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+
+		    // Validate inputs using the generic validator
+		    var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+		    // Check for valid validations
+		    if (validationResult != null && !validationResult.IsValid)
+		    {
+			    // Convert ValidationResult to ValidationProblemsDetails.Errors
+			    var errors = validationResult.ToProblemDetails().Errors;
+			    throw new UnprocessableEntityException("Invalid Validations", errors);
+		    }
+			
+		    // Initialize custom errors
+            var customErrors = new Dictionary<string, string[]>();
+            // Initialize unique isbn check
+            var uniqueIsbnSet = new HashSet<string>();
+            // Iterate each warehouse tracking detail (if any) to validate data
+		    var wTrackingDetailList = dto.WarehouseTrackingDetails.ToList();
+		    for (int i = 0; i < wTrackingDetailList.Count; ++i)
+		    {
+			    var wDetail = wTrackingDetailList[i];
+			    
+			    // Check exist supplement request reason
+			    if (string.IsNullOrEmpty(wDetail.SupplementRequestReason))
+			    {
+				    // Add error
+				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					    key: $"warehouseTrackingDetails[{i}].supplementRequestReason",
+					    msg: isEng ? "Supplement request reason is required" : "Lý do yêu cầu bổ sung không được rỗng");
+			    }
+			    
+			    // Check exist library item
+			    if (!int.TryParse(wDetail.LibraryItemId.ToString(), out var validItemId))
+			    {
+				    // Add error
+				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					    key: $"warehouseTrackingDetails[{i}].libraryItemId",
+						// Msg: Supplement request item not found
+					    msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0022));
+			    }
+			    // Retrieve item by id
+			    else if((await _itemService.GetByIdAsync(validItemId)).Data is LibraryItemDto libItem)
+			    {
+				    // Validate warehouse tracking details
+				    validationResult = await ValidatorExtensions.ValidateAsync(wDetail);
+				    // Check for valid validations
+				    if (validationResult != null && !validationResult.IsValid)
+				    {
+					    // Convert ValidationResult to ValidationProblemsDetails.Errors
+					    var errors = validationResult.ToProblemDetails().Errors;
+					    
+					    // Initialize err properties
+					    var itemNameErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ItemName));
+					    var isbnErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn));
+					    var unitPriceErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.UnitPrice));
+					    var totalAmountErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TotalAmount));
+					    var itemTotalErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ItemTotal));
+					    
+					    // Map error
+					    if (errors.TryGetValue(itemNameErrKey, out var itemNameErrs)) // Item name
+					    {
+						    // Add error
+						    foreach (var errMsg in itemNameErrs)
+						    {
+							    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+								    key: $"warehouseTrackingDetail[{i}].{itemNameErrKey}",
+								    msg: errMsg);
+						    }
+					    }
+						if (errors.TryGetValue(isbnErrKey, out var isbnErrs)) // Isbn
+                        {
+                            // Add error
+                            foreach (var errMsg in isbnErrs)
+                            {
+                        	    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                        		    key: $"warehouseTrackingDetail[{i}].{isbnErrKey}",
+                        		    msg: errMsg);
+                            }
+                        }
+                        if (errors.TryGetValue(unitPriceErrKey, out var unitPriceErrs)) // Unit price
+                        {
+	                        // Add error
+	                        foreach (var errMsg in unitPriceErrs)
+	                        {
+		                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+			                        key: $"warehouseTrackingDetail[{i}].{unitPriceErrKey}",
+			                        msg: errMsg);
+	                        }
+                        }
+                        if (errors.TryGetValue(totalAmountErrKey, out var totalAmountErrs)) // Total amount
+                        {
+	                        // Add error
+	                        foreach (var errMsg in totalAmountErrs)
+	                        {
+		                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+			                        key: $"warehouseTrackingDetail[{i}].{totalAmountErrKey}",
+			                        msg: errMsg);
+	                        }
+                        }
+                        if (errors.TryGetValue(itemTotalErrKey, out var itemTotalErrs)) // Item total
+                        {
+	                        // Add error
+	                        foreach (var errMsg in itemTotalErrs)
+	                        {
+		                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+			                        key: $"warehouseTrackingDetail[{i}].{itemTotalErrKey}",
+			                        msg: errMsg);
+	                        }
+                        }
+				    }
+				    
+				    // Check isbn uniqueness
+				    if (string.IsNullOrEmpty(wDetail.Isbn) || !uniqueIsbnSet.Add(wDetail.Isbn))
+				    {
+					    // Add error
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"warehouseTrackingDetails[{i}].isbn",
+						    msg: isEng ? $"ISBN '{wDetail.Isbn}' is duplicated" : $"Mã ISBN '{wDetail.Isbn}' đã bị trùng");
+				    }
+				    
+				    // Compare ISBN match
+					if (!Equals(libItem.Isbn, wDetail.Isbn))
+					{
+						// Add error 
+						customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							key: $"warehouseTrackingDetails[{i}].isbn",
+							// Msg: ISBN doesn't match with supplement request item
+							msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0023));
+					}
+					
+				    // Check exist category
+				    if ((await _cateService.GetByIdAsync(wDetail.CategoryId)).Data is null)
+				    {
+					    // msg: Not found {0}
+					    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					    // Add error
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"warehouseTrackingDetails[{i}].categoryId",
+						    msg: StringUtils.Format(errMsg, isEng ? "item category" : "phân loại tài liệu"));
+				    }
+				    
+				    // Compare category match
+				    if (!Equals(libItem.CategoryId, wDetail.CategoryId))
+				    {
+					    // Add error 
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"warehouseTrackingDetails[{i}].categoryId",
+						    msg: isEng 
+							    ? "Category doesn't match with supplement request item"
+							    : "Phân loại của tài liệu không trùng với tài liệu yêu cầu bổ sung");
+				    }
+				    
+				    // Check exist condition
+				    if ((await _conditionService.GetByIdAsync(wDetail.ConditionId)).Data is null)
+				    {
+					    // Msg: Not found {0}
+					    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+					    // Add error
+					    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+						    key: $"warehouseTrackingDetails[{i}].conditionId",
+						    msg: StringUtils.Format(errMsg, isEng ? "item condition" : "tình trạng tài liệu hiện tại"));
+				    }
+				    
+				    // Validate stock transaction type
+				    if (wDetail.StockTransactionType != StockTransactionType.Reorder)
+				    {
+					    // Msg: The stock transaction type {0} is invalid for creating a supplement request
+					    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0024);
+					    // Add error
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                            key: $"warehouseTrackingDetails[{i}].stockTransactionType",
+                            msg: StringUtils.Format(errMsg, isEng ? wDetail.StockTransactionType.ToString() : wDetail.StockTransactionType.GetDescription()));
+				    }
+			    }
+		    }
+
+		    // Iterate each supplement requests (if any) to validate data
+		    var supplementDetailList = dto.SupplementRequestDetails.ToList();
+		    for (int i = 0; i < supplementDetailList.Count; ++i)
+		    {
+			    var supplementReqDetail = supplementDetailList[i];
+			    
+			    // Validate supplement request detail
+			    validationResult = await ValidatorExtensions.ValidateAsync(supplementReqDetail);
+			    // Check for valid validations
+			    if (validationResult != null && !validationResult.IsValid)
+			    {
+				    // Convert ValidationResult to ValidationProblemsDetails.Errors
+				    var errors = validationResult.ToProblemDetails().Errors;
+				    
+				    // Initialize err properties
+				    var titleErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Title));
+				    var authorErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Author));
+				    var publisherErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Publisher));
+				    var publishedDateErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.PublishedDate));
+				    var descErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Description));
+				    var isbnErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Isbn));
+				    var pageCountErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.PageCount));
+				    var dimensionErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Dimensions));
+				    var categoryErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Categories));
+				    var avgRatingErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.AverageRating));
+				    var ratingCountErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.RatingsCount));
+				    var langErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.Language));
+				    var coverImageLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.CoverImageLink));
+				    var infoLinkLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.InfoLink));
+				    var previewLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.PreviewLink));
+				    var reasonErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.SupplementRequestReason));
+				    
+				    // Initialize err msg
+				    string[]? errMessages;
+				    // Map error
+				    if (errors.TryGetValue(titleErrKey, out errMessages)) // Title
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{titleErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(authorErrKey, out errMessages)) // Author
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{authorErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(publisherErrKey, out errMessages)) // Publisher
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{publisherErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(publishedDateErrKey, out errMessages)) // Published date
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{publishedDateErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(descErrKey, out errMessages)) // Description
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{descErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(reasonErrKey, out errMessages)) // Supplement request reason
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{reasonErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(isbnErrKey, out errMessages)) // ISBN
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{isbnErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(pageCountErrKey, out errMessages)) // Page count
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{pageCountErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(dimensionErrKey, out errMessages)) // Dimensions
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{dimensionErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(categoryErrKey, out errMessages)) // Categories
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{categoryErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(avgRatingErrKey, out errMessages)) // Average rating
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{avgRatingErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(ratingCountErrKey, out errMessages)) // Rating count
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{ratingCountErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(langErrKey, out errMessages)) // Language
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{langErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(coverImageLinkErrKey, out errMessages)) // Cover image
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{coverImageLinkErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(infoLinkLinkErrKey, out errMessages)) // Info link
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{infoLinkLinkErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(previewLinkErrKey, out errMessages)) // Preview link
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{previewLinkErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+			    }
+			    
+			    // Check exist related item
+			    if ((await _itemService.GetByIdAsync(supplementReqDetail.RelatedLibraryItemId)).Data is null)
+			    {
+				    // Add error 
+				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					    key: $"supplementRequestDetails[{i}].relatedLibraryItemId",
+					    // Msg: No related item was found for supplement request item
+					    msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0026));
+			    }
+			    
+			    // Check exist ISBN	
+			    if ((await _itemService.AnyAsync(li => 
+				        li.Isbn != null &&
+						li.Isbn.Equals(supplementReqDetail.Isbn))).Data is true)
+			    {
+				    // Add error 
+				    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+					    key: $"supplementRequestDetails[{i}].isbn",
+					    // Msg: The ISBN for the item suggested for extra acquisition is already in use
+					    msg: await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0025));
+			    }
+		    }
+			
+		    // Check whether invoke any errors
+		    if(customErrors.Any()) throw new UnprocessableEntityException("Invalid data", customErrors);
+		    
+		    // Generate receipt number
+            var receiptNum = $"PN{StringUtils.GenerateRandomCodeDigits(8)}";
+            // Add necessary fields
+            dto.ReceiptNumber = receiptNum;
+            dto.TotalItem = (dto.WarehouseTrackingDetails?.Count ?? 0) + (dto.SupplementRequestDetails?.Count ?? 0);
+            dto.TotalAmount = (dto.WarehouseTrackingDetails != null && dto.WarehouseTrackingDetails.Any() ? dto.WarehouseTrackingDetails.Sum(wtd => wtd.TotalAmount) : 0)
+                              + (dto.SupplementRequestDetails != null && dto.SupplementRequestDetails.Any() ? dto.SupplementRequestDetails.Sum(srd => srd.EstimatedPrice ?? 0) : 0);
+            dto.TrackingType = TrackingType.SupplementRequest;
+            dto.Status = WarehouseTrackingStatus.Draft;
+		    
+            // Process add new warehouse tracking with details
+            await _unitOfWork.Repository<WarehouseTracking, int>().AddAsync(_mapper.Map<WarehouseTracking>(dto));
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+	            // Msg: Supplement request created successfully
+	            return new ServiceResult(ResultCodeConst.WarehouseTracking_Success0002,
+		            await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Success0002));
+            }
+
+            // Msg: Failed to create supplement request
+            return new ServiceResult(ResultCodeConst.WarehouseTracking_Fail0002,
+	            await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Fail0002));
+	    }
+	    catch (UnprocessableEntityException)
+	    {
+		    throw;
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process create supplement request");
+	    }
+    }
+    
     public async Task<IServiceResult> CreateStockInWithDetailsAsync(WarehouseTrackingDto dto)
     {
 	    try
@@ -657,6 +1085,74 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		    {
 			    var wDetail = wTrackingDetailList[i];
 				
+			    // Validate warehouse tracking details
+			    validationResult = await ValidatorExtensions.ValidateAsync(wDetail);
+			    // Check for valid validations
+			    if (validationResult != null && !validationResult.IsValid)
+			    {
+				    // Convert ValidationResult to ValidationProblemsDetails.Errors
+				    var errors = validationResult.ToProblemDetails().Errors;
+				    
+				    // Initialize err properties
+				    var itemNameErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ItemName));
+				    var isbnErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn));
+				    var unitPriceErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.UnitPrice));
+				    var totalAmountErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.TotalAmount));
+				    var itemTotalErrKey = StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.ItemTotal));
+				    
+				    // Map error
+				    if (errors.TryGetValue(itemNameErrKey, out var itemNameErrs)) // Item name
+				    {
+					    // Add error
+					    foreach (var errMsg in itemNameErrs)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"warehouseTrackingDetail[{i}].{itemNameErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+					if (errors.TryGetValue(isbnErrKey, out var isbnErrs)) // Isbn
+                    {
+                        // Add error
+                        foreach (var errMsg in isbnErrs)
+                        {
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+                        	    key: $"warehouseTrackingDetail[{i}].{isbnErrKey}",
+                        	    msg: errMsg);
+                        }
+                    }
+                    if (errors.TryGetValue(unitPriceErrKey, out var unitPriceErrs)) // Unit price
+                    {
+                        // Add error
+                        foreach (var errMsg in unitPriceErrs)
+                        {
+	                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+		                        key: $"warehouseTrackingDetail[{i}].{unitPriceErrKey}",
+		                        msg: errMsg);
+                        }
+                    }
+                    if (errors.TryGetValue(totalAmountErrKey, out var totalAmountErrs)) // Total amount
+                    {
+                        // Add error
+                        foreach (var errMsg in totalAmountErrs)
+                        {
+	                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+		                        key: $"warehouseTrackingDetail[{i}].{totalAmountErrKey}",
+		                        msg: errMsg);
+                        }
+                    }
+                    if (errors.TryGetValue(itemTotalErrKey, out var itemTotalErrs)) // Item total
+                    {
+                        // Add error
+                        foreach (var errMsg in itemTotalErrs)
+                        {
+	                        customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+		                        key: $"warehouseTrackingDetail[{i}].{itemTotalErrKey}",
+		                        msg: errMsg);
+                        }
+                    }
+			    }
+			    
 			    // Set default library item (if null or equals 0)
 			    wDetail.LibraryItemId ??= 0;
 			    // Check whether create warehouse tracking detail with item
@@ -683,11 +1179,12 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                 
                 var skipVal = skipItemDic[wDetail.CategoryId];
                 // Generate barcode range based on registered warehouse tracking detail
-                var barcodeRangeRes = (await _itemInstanceService.GenerateBarcodeRangeAsync(
+                var generateRes = await _itemInstanceService.GenerateBarcodeRangeAsync(
 	                categoryId: wDetail.CategoryId,
 	                totalItem: wDetail.ItemTotal,
-	                skipItem: skipVal)).Data as GenerateBarcodeRangeResultDto;
-
+	                skipItem: skipVal);
+                var barcodeRangeRes = generateRes.Data as GenerateBarcodeRangeResultDto;
+                
                 if (barcodeRangeRes != null && barcodeRangeRes.Barcodes.Any())
                 {
 	                if (wDetail.LibraryItemId > 0 && wDetail.LibraryItem == null)
@@ -1025,9 +1522,13 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 						    // Try to retrieve all detail transaction type within stock-in tracking type
 						    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
 						    break;
-					    case TrackingType.Transfer:
-						    // Try to retrieve all detail transaction type within stock-in tracking type
-						    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+					    case TrackingType.StockChecking:
+						    // Try to retrieve all detail transaction type within stock checking tracking type
+						    transactionTypeRelations.TryGetValue(TrackingType.StockChecking, out transactionTypes);
+						    break;
+					    case TrackingType.SupplementRequest:
+						    // Try to retrieve all detail transaction type within supplement request tracking type
+						    transactionTypeRelations.TryGetValue(TrackingType.SupplementRequest, out transactionTypes);
 						    break;
 				    }
 				    
@@ -1064,11 +1565,12 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                 else
                 {
 	                // Mark as fail to create
-	                var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
-	                var customMsg = isEng
-		                ? "Cannot generate barcode range for one or many warehouse tracking detail"
-		                : "Lỗi xảy ra khi tạo số ĐKCB cho 1 hoặc nhiều tài liệu đăng ký nhập kho";
-	                return new ServiceResult(ResultCodeConst.SYS_Fail0001, $"{msg}.{customMsg}");
+	                // var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001);
+	                // var customMsg = isEng
+		               //  ? "Cannot generate barcode range for one or many warehouse tracking detail"
+		               //  : "Lỗi xảy ra khi tạo số ĐKCB cho 1 hoặc nhiều tài liệu đăng ký nhập kho";
+	                // return new ServiceResult(ResultCodeConst.SYS_Fail0001, $"{msg}. {customMsg}");
+	                return generateRes;
                 }
                 
                 // Add accumulate skip
@@ -1147,32 +1649,6 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 
             // Custom errors
             var customErrors = new Dictionary<string, string[]>();
-            
-            // Warehouse tracking detail is not Transfer
-            if (dto.TrackingType != TrackingType.Transfer) 
-            {
-				// Check whether exist transfer location
-				if (!string.IsNullOrEmpty(dto.TransferLocation))
-				{
-					// Add error
-					customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-						key: StringUtils.ToCamelCase(nameof(WarehouseTracking.TransferLocation)),
-						msg: isEng 
-							? $"Not include transfer location when tracking type is not '{nameof(TrackingType.Transfer)}'" 
-							: $"Vui lòng để rỗng nơi chung chuyển khi trạng thái quản lí nhập/xuất kho là '{TrackingType.Transfer.GetDescription()}'");
-				}
-				
-				// Check whether exist expected return date
-				if (dto.ExpectedReturnDate != null)
-				{
-					// Add error
-					customErrors = DictionaryUtils.AddOrUpdate(customErrors,
-						key: StringUtils.ToCamelCase(nameof(WarehouseTracking.ExpectedReturnDate)),
-						msg: isEng 
-							? $"Not include expected return date when tracking type is not '{nameof(TrackingType.Transfer)}'" 
-							: $"Vui lòng để rỗng ngày trả dự kiến khi trạng thái quản lí nhập/xuất kho là '{TrackingType.Transfer.GetDescription()}'");
-				}
-            }
             
             // Check exist supplier
             var isSupplierExist = (await _supplierService.AnyAsync(s => s.SupplierId == dto.SupplierId)).Data is true;
@@ -1585,7 +2061,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 								break;
 							case StockTransactionType.Damaged or StockTransactionType.Outdated or StockTransactionType.Lost:
 								break;
-							case StockTransactionType.Transferred:
+							case StockTransactionType.Reorder:
 								break;
 							case StockTransactionType.Other:
 								break;
@@ -1734,9 +2210,9 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
                 {
 				    stockTransactionType = StockTransactionType.Outdated;
                 }
-			    else if (Equals(record.StockTransactionType, StockTransactionType.Transferred.GetDescription()))
+			    else if (Equals(record.StockTransactionType, StockTransactionType.Reorder.GetDescription()))
 			    {
-				    stockTransactionType = StockTransactionType.Transferred;
+				    stockTransactionType = StockTransactionType.Reorder;
 			    }
 			    else if (Equals(record.StockTransactionType, StockTransactionType.Other.GetDescription()))
 			    {
@@ -1768,9 +2244,13 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 				    // Try to retrieve all detail transaction type within stock-in tracking type
 				    transactionTypeRelations.TryGetValue(TrackingType.StockOut, out transactionTypes);
 				    break;
-			    case TrackingType.Transfer:
-				    // Try to retrieve all detail transaction type within stock-in tracking type
-				    transactionTypeRelations.TryGetValue(TrackingType.Transfer, out transactionTypes);
+			    case TrackingType.StockChecking:
+				    // Try to retrieve all detail transaction type within stock checking tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.StockChecking, out transactionTypes);
+				    break;
+			    case TrackingType.SupplementRequest:
+				    // Try to retrieve all detail transaction type within supplement request tracking type
+				    transactionTypeRelations.TryGetValue(TrackingType.SupplementRequest, out transactionTypes);
 				    break;
 		    }
 		    
@@ -1827,11 +2307,11 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 			    var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w =>
 				    Equals(cleanedIsbn, w.Isbn));
 			    // Required exist ISBN when tracking type is stock-out or transfer
-			    if(!isIsbnExist && (trackingType == TrackingType.StockOut || trackingType == TrackingType.Transfer)) 
+			    if(!isIsbnExist && (trackingType == TrackingType.StockOut || trackingType == TrackingType.StockChecking)) 
 			    {
 				    rowErrors.Add(isEng 
 					    ? $"ISBN '{record.Isbn}' must exist when tracking type is stock out or transfer" 
-					    : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc trao đổi");
+					    : $"Mã ISBN '{record.Isbn}' không tồn tại. Yêu cầu mã ISBN của tài liệu đã được biên mục khi xuất kho hoặc kiểm kê");
 			    }
 			    // Already exist ISBN
 			    if (isIsbnExist)

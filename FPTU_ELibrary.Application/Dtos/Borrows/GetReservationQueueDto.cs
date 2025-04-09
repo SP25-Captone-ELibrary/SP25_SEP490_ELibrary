@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -64,10 +65,9 @@ public class GetReservationQueueDto
     
     // Mapping entities
     public LibraryItemDetailDto LibraryItem { get; set; } = null!;
-    
     public LibraryItemInstanceDto? LibraryItemInstance { get; set; }
 
-    [JsonIgnore] 
+    public LibraryCardDto LibraryCard { get; set; } = null!;
     public GetBorrowRequestDto? BorrowRequest { get; set; }
 }
 
@@ -97,6 +97,7 @@ public static class GetReservationQueueDtoExtensions
             IsNotified = dto.IsNotified,
             CancelledBy = dto.CancelledBy,
             CancellationReason = dto.CancellationReason,
+            LibraryCard = dto.LibraryCard,
             BorrowRequest = dto.BorrowRequest?.ToGetBorrowRequestDto(),
             LibraryItem = dto.LibraryItem != null! ? dto.LibraryItem.ToLibraryItemDetailDto() : null!,
             LibraryItemInstance = dto.LibraryItemInstance,

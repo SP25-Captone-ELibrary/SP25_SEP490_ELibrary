@@ -10,6 +10,7 @@ public class NotificationSpecification : BaseSpecification<Notification>
 {
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
+    public string? Email { get; set; }
     public bool IsCallFromManagement { get; set; }
 
     public NotificationSpecification(NotificationSpecParams specParams, int pageIndex, int pageSize,
@@ -28,6 +29,9 @@ public class NotificationSpecification : BaseSpecification<Notification>
             )
         ))
     {
+        // Assign email
+        Email = specParams.Email;
+        
         // Assign bool
         IsCallFromManagement = isCallFromManagement;
         
@@ -51,6 +55,9 @@ public class NotificationSpecification : BaseSpecification<Notification>
                         s.IsPublic == false && s.NotificationRecipients.Any(r => r.Recipient.Email == specParams.Email)
                     )
                 );
+                
+                // Check whether filtering private field
+                if(specParams.isPublic !=  null) AddFilter(s => s.IsPublic == specParams.isPublic);
             }
             else if (isCallFromManagement) // Called by employee
             {
@@ -63,10 +70,10 @@ public class NotificationSpecification : BaseSpecification<Notification>
             // Filter default as public only
             AddFilter(s => s.IsPublic == true);
         }
-        
+
         if (specParams.CreatedBy != null) // Created by
         {
-            AddFilter(x => x.CreatedBy == specParams.CreatedBy);
+            AddFilter(x => x.CreatedByNavigation.Email == specParams.CreatedBy);
         }
         if (specParams.NotificationType != null) // Notification type
         {

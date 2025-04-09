@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Domain.Common.Enums;
 
@@ -13,7 +14,7 @@ public class GetBorrowRequestDto
 
     // Create and expiration datetime
     public DateTime RequestDate { get; set; }
-    public DateTime ExpirationDate { get; set; }
+    public DateTime? ExpirationDate { get; set; }
 
     // Request detail and status
     public BorrowRequestStatus Status { get; set; } 
@@ -31,6 +32,8 @@ public class GetBorrowRequestDto
     
     // Mark as allow to pay for pending resources
     public bool IsExistPendingResources { get; set; }
+
+    public LibraryCardDto LibraryCard { get; set; } = null!;
     
     public List<LibraryItemDetailDto> LibraryItems { get; set; } = new();
 
@@ -55,6 +58,7 @@ public static class GetBorrowRequestDtoExtensions
             CancellationReason = dto.CancellationReason,
             IsReminderSent = dto.IsReminderSent,
             TotalRequestItem = dto.TotalRequestItem,
+            LibraryCard = dto.LibraryCard,
             LibraryItems = dto.BorrowRequestDetails
                 .Select(brd => brd.LibraryItem)
                 .Select(li => li.ToLibraryItemDetailDto()).ToList(),
@@ -65,12 +69,12 @@ public static class GetBorrowRequestDtoExtensions
                 ? dto.BorrowRequestResources.ToList()
                 : new (),
             IsExistPendingResources = dto.BorrowRequestResources.Any() && dto.BorrowRequestResources.Any(brd => 
-                brd.TransactionId == null || 
+                (brd.TransactionId == null || 
                 brd.Transaction != null && 
                 (
                     brd.Transaction.TransactionStatus != TransactionStatus.Pending &&
                     brd.Transaction.TransactionStatus != TransactionStatus.Paid
-                ))
+                )) && dto.Status == BorrowRequestStatus.Created)
         };
     }
 }

@@ -266,6 +266,14 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string Borrow_Success0009 = "Borrow.Success0009";
 		/// <summary>
+        /// [SUCCESS] Cancel {0} item reservations successfully
+        /// </summary>
+        public const string Borrow_Success0010 = "Borrow.Success0010";
+		/// <summary>
+        /// [SUCCESS] Cancel borrow request successfully
+        /// </summary>
+        public const string Borrow_Success0011 = "Borrow.Success0011";
+		/// <summary>
 		/// [WARNING] Required at least {0} item(s) to process
 		/// </summary>
 		public const string Borrow_Warning0001 = "Borrow.Warning0001";
@@ -483,6 +491,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to cancel digital borrow request
         /// </summary>
         public const string Borrow_Fail0012 = "Borrow.Fail0012";
+        /// <summary>
+        /// [FAIL] Failed to cancel item reservation 
+        /// </summary>
+        public const string Borrow_Fail0013 = "Borrow.Fail0013";
 		#endregion
 
 		#region Reservatation
@@ -817,7 +829,19 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Resource does not belong to this item
         /// </summary>
         public const string LibraryItem_Warning0023 = "LibraryItem.Warning0023";
+        /// <summary>
+	    /// [WARNING] There are currently {0} pending reservations.Please assign appropriate items for pending reservations
+	    /// </summary>
+	    public const string LibraryItem_Warning0024 = "LibraryItem.Warning0024";
+        /// <summary>
+        /// [WARNING] Unable to put the items out of shelf because the available quantity cannot be less than the total number of borrowing requests
+        /// </summary>
+        public const string LibraryItem_Warning0025 = "LibraryItem.Warning0025";
 		/// <summary>
+        /// [WARNING] Unable to put out of shelf for item {0} as the number of items on shelf cannot be less than the number of borrowing requests
+        /// </summary>
+        public const string LibraryItem_Warning0026 = "LibraryItem.Warning0026";
+        /// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
 		public const string LibraryItem_Fail0001 = "LibraryItem.Fail0001";
@@ -1026,6 +1050,10 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Success0001 = "WarehouseTracking.Success0001";
         /// <summary>
+        /// [SUCCESS] Supplement request created successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0002 = "WarehouseTracking.Success0002";
+        /// <summary>
         /// [WARNING] Do not allow to change status from {0} to {1}
         /// </summary>
         public const string WarehouseTracking_Warning0001 = "WarehouseTracking.Warning0001";
@@ -1111,9 +1139,33 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0021 = "WarehouseTracking.Warning0021";
         /// <summary>
+        /// [WARNING] Supplement request item not found
+        /// </summary>
+        public const string WarehouseTracking_Warning0022 = "WarehouseTracking.Warning0022";
+        /// <summary>
+        /// [WARNING] ISBN doesn't match with supplement request item
+        /// </summary>
+        public const string WarehouseTracking_Warning0023 = "WarehouseTracking.Warning0023";
+        /// <summary>
+        /// [WARNING] The stock transaction type {0} is invalid for creating a supplement request
+        /// </summary>
+        public const string WarehouseTracking_Warning0024 = "WarehouseTracking.Warning0024";
+        /// <summary>
+        /// [WARNING] The ISBN for the item suggested for extra acquisition is already in use
+        /// </summary>
+        public const string WarehouseTracking_Warning0025 = "WarehouseTracking.Warning0025";
+        /// <summary>
+        /// [WARNING] No related item was found for supplement request item
+        /// </summary>
+        public const string WarehouseTracking_Warning0026 = "WarehouseTracking.Warning0026";
+        /// <summary>
         /// [FAIL] Failed to register unique barcode for warehouse tracking detail
         /// </summary>
         public const string WarehouseTracking_Fail0001 = "WarehouseTracking.Fail0001";
+        /// <summary>
+        /// [FAIL] Failed to create supplement request
+        /// </summary>
+        public const string WarehouseTracking_Fail0002 = "WarehouseTracking.Fail0002";
         #endregion
 
         #region Transaction

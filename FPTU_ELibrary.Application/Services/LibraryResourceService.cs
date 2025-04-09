@@ -123,7 +123,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             // Mapping entities to dto 
             _mapper.Map<IEnumerable<LibraryResourceDto>>(entities));
     }
-
+    
     public override async Task<IServiceResult> GetByIdAsync(int id)
     {
         try
@@ -223,6 +223,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
+    public async Task<IServiceResult> GetAllWithSpecFromDashboardAsync(ISpecification<LibraryResource> spec)
+    {
+        return await base.GetAllWithSpecAsync(spec);
+    }
+    
     public async Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, LibraryResourceDto dto)
     {
         try
