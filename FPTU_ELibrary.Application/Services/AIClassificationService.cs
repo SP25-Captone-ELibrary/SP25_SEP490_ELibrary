@@ -574,6 +574,8 @@ public class AIClassificationService : IAIClassificationService
                 .ThenInclude(lia => lia.Author)
                 .Include(li => li.Category)
             );
+            // Apply order
+            ungroupedItemSpec.AddOrderByDescending(q => q.CreatedAt);
             // Retrieve with spec
             var ungroupedItemsValue = (await _libraryItemService.GetAllWithoutAdvancedSpecAsync(ungroupedItemSpec)).Data as List<LibraryItemDto>;
             if (ungroupedItemsValue == null)
@@ -672,7 +674,9 @@ public class AIClassificationService : IAIClassificationService
                         // Compare subtitle
                         int subTitleStatus;
                         // Only process check subtitle for category is not book series
-                        if (libraryItem.Category.EnglishName != nameof(LibraryItemCategory.BookSeries)) 
+                        if (libraryItem.Category.EnglishName != nameof(LibraryItemCategory.BookSeries) &&
+                            libraryItem.Category.EnglishName != nameof(LibraryItemCategory.ChildrenBook) &&
+                            libraryItem.Category.EnglishName != nameof(LibraryItemCategory.ReferenceBook)) 
                         {
                             if (libraryItem.SubTitle is null && libraryItemDto.SubTitle is null)
                             {
