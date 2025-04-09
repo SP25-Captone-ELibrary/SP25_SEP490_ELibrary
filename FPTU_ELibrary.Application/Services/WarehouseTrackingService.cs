@@ -812,6 +812,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 				    var coverImageLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.CoverImageLink));
 				    var infoLinkLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.InfoLink));
 				    var previewLinkErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.PreviewLink));
+				    var reasonErrKey = StringUtils.ToCamelCase(nameof(SupplementRequestDetail.SupplementRequestReason));
 				    
 				    // Initialize err msg
 				    string[]? errMessages;
@@ -863,6 +864,16 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 					    {
 						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
 							    key: $"supplementRequestDetails[{i}].{descErrKey}",
+							    msg: errMsg);
+					    }
+				    }
+				    if (errors.TryGetValue(reasonErrKey, out errMessages)) // Supplement request reason
+				    {
+					    // Add error
+					    foreach (var errMsg in errMessages)
+					    {
+						    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+							    key: $"supplementRequestDetails[{i}].{reasonErrKey}",
 							    msg: errMsg);
 					    }
 				    }

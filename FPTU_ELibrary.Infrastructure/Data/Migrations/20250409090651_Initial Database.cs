@@ -1066,6 +1066,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     cover_image = table.Column<string>(type: "varchar(2048)", nullable: true),
                     preview_link = table.Column<string>(type: "varchar(2048)", nullable: true),
                     info_link = table.Column<string>(type: "varchar(2048)", nullable: true),
+                    supplement_request_reason = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     related_library_item_id = table.Column<int>(type: "int", nullable: false),
                     tracking_id = table.Column<int>(type: "int", nullable: false)
                 },

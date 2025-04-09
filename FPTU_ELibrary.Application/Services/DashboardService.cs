@@ -558,6 +558,9 @@ public class DashboardService : IDashboardService
                 dashboardDigitalResource.AverageExtensionsPerBorrow = 0;
             }
 
+            // Add filter
+            spec.AddFilter(r => r.DigitalBorrows.Any());
+            
             // Retrieve top borrowing resources
             // Add order by total of digital borrow history
             spec.AddOrderByDescending(r => r.DigitalBorrows.Count);

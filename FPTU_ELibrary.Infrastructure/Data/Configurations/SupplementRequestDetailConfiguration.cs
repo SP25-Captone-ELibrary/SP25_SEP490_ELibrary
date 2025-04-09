@@ -69,5 +69,12 @@ public class SupplementRequestDetailConfiguration : IEntityTypeConfiguration<Sup
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_SupplementRequestDetail_TrackingId");
         #endregion
+
+        #region Updated at 09/04/2025
+        builder.Property(e => e.SupplementRequestReason)
+            .IsRequired(false)
+            .HasColumnType("nvarchar(255)")
+            .HasColumnName("supplement_request_reason");
+        #endregion
     }
 }

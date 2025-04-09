@@ -1034,6 +1034,7 @@ namespace FPTU_ELibrary.API.Extensions
 				PreviewLink = req.PreviewLink,	
 				InfoLink = req.InfoLink,	
 				RelatedLibraryItemId = req.RelatedLibraryItemId,	
+				SupplementRequestReason = req.SupplementRequestReason
 			};
 		}
 		#endregion

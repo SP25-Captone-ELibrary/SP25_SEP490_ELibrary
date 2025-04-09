@@ -564,7 +564,7 @@ public class AIClassificationService : IAIClassificationService
                     (isTrainingLibraryItems.Any() && !isTrainingLibraryItems.Contains(li.LibraryItemId)) // Filter out all training items
                 ) &&
                 // Filter out category that not allows to train AI
-                li.Category.IsAllowAITraining == false
+                li.Category.IsAllowAITraining == true
             );
             // Apply split query
             ungroupedItemSpec.EnableSplitQuery();

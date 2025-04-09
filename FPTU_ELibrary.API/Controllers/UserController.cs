@@ -20,7 +20,7 @@ using Nest;
 namespace FPTU_ELibrary.API.Controllers;
 
 [ApiController]
-public class UserController:ControllerBase
+public class UserController : ControllerBase
 {
     private readonly IUserService<UserDto> _userService;
     private readonly IBorrowRequestService<BorrowRequestDto> _borrowReqSvc;

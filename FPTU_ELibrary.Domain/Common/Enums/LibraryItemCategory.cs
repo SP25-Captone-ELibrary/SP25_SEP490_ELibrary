@@ -14,6 +14,8 @@ public enum LibraryItemCategory
     Newspaper,
     [Description("Tạp chí")]
     Magazine,
+    [Description("Sách thiếu nhi")]
+    ChildrenBook,
     [Description("Sách khác")]
     Other
     
