@@ -19,6 +19,9 @@ public class CreateSupplementDetailRequest
     public string? PreviewLink { get; set; }
     public string? InfoLink { get; set; }
     
+    // Description
+    public string? SupplementRequestReason { get; set; }
+    
     // Related with which item
     public int RelatedLibraryItemId { get; set; }
 }

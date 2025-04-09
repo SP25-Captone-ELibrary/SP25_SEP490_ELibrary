@@ -123,8 +123,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				else _logger.Information("Already seed data for table {0}", "LibraryItemCondition");
 				
 				// [LibraryItems]
-				if (!await _context.LibraryItems.AnyAsync()) await SeedLibraryItemAsync();
-				else _logger.Information("Already seed data for table {0}", "LibraryItem");
+				// if (!await _context.LibraryItems.AnyAsync()) await SeedLibraryItemAsync();
+				// else _logger.Information("Already seed data for table {0}", "LibraryItem");
 				
 				// [LibraryItemReviews]
 				// if (!await _context.LibraryItemReviews.AnyAsync()) await SeedLibraryItemReviewsAsync();
@@ -638,6 +638,14 @@ namespace FPTU_ELibrary.Infrastructure.Data
                 },
                 new()
                 {
+	                Prefix = "STN",
+	                EnglishName = nameof(LibraryItemCategory.ChildrenBook),
+	                VietnameseName = LibraryItemCategory.ChildrenBook.GetDescription(),
+	                IsAllowAITraining = true,
+	                TotalBorrowDays = 60
+                },
+                new()
+                {
 	                Prefix = "SK",
 	                EnglishName = nameof(LibraryItemCategory.Other),
 	                VietnameseName = LibraryItemCategory.Other.GetDescription(),
@@ -739,7 +747,7 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				    AuthorCode = "AUTH00008",
                     AuthorImage = "https://www.jkrowling.com/wp-content/uploads/2022/05/J.K.-Rowling-2021-Photography-Debra-Hurford-Brown-scaled.jpg",
                     FullName = "Rowling, J. K.",
-                    Biography = "Joanne Rowling CH OBE FRSL, known by her pen name J. K. Rowling, is a British author and philanthropist. She wrote Harry Potter, a seven-volume fantasy series published from 1997 to 2007.",
+                    Biography = "Joanne Rowling CH OBE FRSL, được biết đến với bút danh J. K. Rowling, là một tác giả và nhà từ thiện người Anh. Bà đã viết Harry Potter, một bộ truyện giả tưởng gồm bảy tập được xuất bản từ năm 1997 đến năm 2007.",
                     Dob = new DateTime(1965, 7, 31),
                     Nationality = "Gloucestershire, Anh",
                     CreateDate = DateTime.UtcNow,
@@ -1016,7 +1024,147 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		            CreateDate = DateTime.Now,
 		            UpdateDate = null,
 		            IsDeleted = false
-	            }
+	            },
+				new()
+				{
+				    AuthorCode = "AUTH00029",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/2/2d/Paulo_Coelho_2014.jpg",
+				    FullName = "Paulo Coelho",
+				    Biography = "Paulo Coelho là một nhà văn Brazil nổi tiếng nhất với tiểu thuyết 'The Alchemist' và được biết đến nhờ những tác phẩm truyền cảm hứng.",
+				    Dob = new DateTime(1947, 8, 24),
+				    Nationality = "Brazil",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00030",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Mario_Puzo_%28photo%29.jpg/220px-Mario_Puzo_%28photo%29.jpg",
+				    FullName = "Mario Puzo",
+				    Biography = "Mario Puzo là một tác giả người Mỹ, nổi tiếng với tiểu thuyết 'The Godfather', tác phẩm đã tạo cảm hứng cho một trong những loạt phim kinh điển.",
+				    Dob = new DateTime(1920, 10, 15),
+				    Nationality = "Mỹ",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00031",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Ernest_Hemingway_in_1950.jpg/220px-Ernest_Hemingway_in_1950.jpg",
+				    FullName = "Ernest Hemingway",
+				    Biography = "Ernest Hemingway là một tác giả người Mỹ, nổi tiếng với phong cách viết ngắn gọn và cuộc sống phiêu lưu.",
+				    Dob = new DateTime(1899, 7, 21),
+				    Nationality = "Mỹ",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00032",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/VuTrongPhuong.jpg/220px-VuTrongPhuong.jpg",
+				    FullName = "Vũ Trọng Phụng",
+				    Biography = "Vũ Trọng Phụng là một nhà văn lỗi lạc của Việt Nam, nổi tiếng với tác phẩm châm biếm xã hội 'Số đỏ'.",
+				    Dob = new DateTime(1912, 1, 1),
+				    Nationality = "Việt Nam",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00033",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Hector_Malot.jpeg/220px-Hector_Malot.jpeg",
+				    FullName = "Hector Malot",
+				    Biography = "Hector Malot là một tác giả người Pháp, được biết đến với tác phẩm 'Sans Famille' kể về hành trình của một đứa trẻ mồ côi.",
+				    Dob = new DateTime(1830, 4, 20),
+				    Nationality = "Pháp",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00034",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Victor_Hugo_by%2C_1851.jpg/220px-Victor_Hugo_by%2C_1851.jpg",
+				    FullName = "Victor Hugo",
+				    Biography = "Victor Hugo là một trong những nhà văn, nhà thơ và nhà viết kịch lớn của phong trào Lãng mạn của Pháp, nổi tiếng với 'Les Misérables' và 'The Hunchback of Notre-Dame'.",
+				    Dob = new DateTime(1802, 2, 26),
+				    Nationality = "Pháp",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00035",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/en/thumb/9/92/Margaret_Mitchell_1949.jpeg/220px-Margaret_Mitchell_1949.jpeg",
+				    FullName = "Margaret Mitchell",
+				    Biography = "Margaret Mitchell là một tác giả người Mỹ, được biết đến nhiều nhất qua tác phẩm 'Gone with the Wind' đoạt giải Pulitzer năm 1936.",
+				    Dob = new DateTime(1900, 11, 8),
+				    Nationality = "Mỹ",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00036",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Ernest_Hemingway_in_1950.jpg/220px-Ernest_Hemingway_in_1950.jpg",
+				    FullName = "Ernest Hemingway",
+				    Biography = "Ernest Hemingway là một tác giả người Mỹ, nổi tiếng với phong cách viết ngắn gọn, các tác phẩm có sức ảnh hưởng lớn cũng như lối sống phiêu lưu.",
+				    Dob = new DateTime(1899, 7, 21),
+				    Nationality = "Mỹ",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00037",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Emily_Bront%C3%AB_by_Portrait_of_a_Young_Lady%2C_in_a_Carved_Headframe.jpg/220px-Emily_Bront%C3%AB_by_Portrait_of_a_Young_Lady%2C_in_a_Carved_Headframe.jpg",
+				    FullName = "Emily Brontë",
+				    Biography = "Emily Brontë là một tác giả và nhà thơ người Anh, nổi tiếng với tiểu thuyết duy nhất 'Wuthering Heights' đã trở thành một tác phẩm kinh điển.",
+				    Dob = new DateTime(1818, 7, 30),
+				    Nationality = "Anh",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00038",
+				    FullName = "Nguyễn Thị Hồng",
+				    Nationality = "Việt Nam",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00039",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Gabriel_Garc%C3%ADa_M%C3%A1rquez_2014.jpg/220px-Gabriel_Garc%C3%ADa_M%C3%A1rquez_2014.jpg",
+				    FullName = "Gabriel García Márquez",
+				    Biography = "Gabriel García Márquez là một tác giả và nhà báo người Colombia, với những tác phẩm nổi bật như 'One Hundred Years of Solitude' tiêu biểu cho thể loại hiện thực huyền ảo.",
+				    Dob = new DateTime(1927, 3, 6),
+				    Nationality = "Colombia",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+				    AuthorCode = "AUTH00040",
+				    AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Jerome_k_jerome.jpg/220px-Jerome_k_jerome.jpg",
+				    FullName = "Jerome K. Jerome",
+				    Biography = "Jerome K. Jerome là một tác giả và nhà hài hước người Anh, nổi tiếng với tác phẩm 'Three Men in a Boat' mang tính chất du lịch hài hước.",
+				    Dob = new DateTime(1859, 5, 2),
+				    Nationality = "Anh",
+				    CreateDate = DateTime.UtcNow,
+				    IsDeleted = false
+				},
+				new()
+				{
+					AuthorCode = "AUTH00041",
+					AuthorImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Harper_Lee_%28cropped%29.jpg/220px-Harper_Lee_%28cropped%29.jpg",
+					FullName = "Harper Lee",
+					Biography = "Harper Lee là một tác giả người Mỹ, nổi tiếng với tiểu thuyết 'To Kill a Mockingbird' về bất công chủng tộc và lòng nhân ái ở miền Nam nước Mỹ. Tác phẩm này đã giành giải Pulitzer năm 1961.",
+					Dob = new DateTime(1926, 4, 28),
+					Nationality = "Mỹ",
+					CreateDate = DateTime.UtcNow,
+					IsDeleted = false
+				},
 			};
 	        
 	        // Add Range

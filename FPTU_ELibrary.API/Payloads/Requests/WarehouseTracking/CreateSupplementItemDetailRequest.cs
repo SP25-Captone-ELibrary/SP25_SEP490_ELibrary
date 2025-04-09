@@ -20,11 +20,11 @@ public class CreateSupplementItemDetailRequest
     
     // Supplement reason summary
     public string SupplementRequestReason { get; set; } = null!;
-    public int BorrowSuccessCount { get; set; }
-    public int ReserveCount { get; set; }
-    public int BorrowFailedCount { get; set; }
-    public double BorrowFailedRate { get; set; }
-    public int AvailableUnits { get; set; }
-    public int NeedUnits { get; set; }
-    public double AverageNeedSatisfactionRate { get; set; }
+    public int? BorrowSuccessCount { get; set; }
+    public int? ReserveCount { get; set; }
+    public int? BorrowFailedCount { get; set; }
+    public double? BorrowFailedRate { get; set; }
+    public int? AvailableUnits { get; set; }
+    public int? NeedUnits { get; set; }
+    public double? AverageNeedSatisfactionRate { get; set; }
 }

@@ -19,11 +19,14 @@ public class DeweyDecimalUtils
     // Validate Cutter number
     public static bool IsValidCutterNumber(string cutterNumber)
     {
+        // Remove hyphens from the cutter number
+        string cleanedCutterNumber = cutterNumber.Replace("-", "").Trim();
+        
         // Regex for Cutter Numbers
         // Accepts one or two Unicode letters, 1-4 digits,
         // and an optional Unicode letter at the end
         var regex = new Regex(@"^[\p{L}]{1,2}\d{1,4}(\.\d+)?[\p{L}]?$", RegexOptions.IgnoreCase);
-        return regex.IsMatch(cutterNumber);
+        return regex.IsMatch(cleanedCutterNumber);
     }
     
     /// <summary>

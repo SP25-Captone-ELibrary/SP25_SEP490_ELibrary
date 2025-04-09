@@ -64,6 +64,13 @@ public class SupplementRequestDetailDtoValidator : AbstractValidator<SupplementR
                 ? "Description must not exceed 3000 characters" 
                 : "Mô tả không vượt quá 3000 ký tự");
 
+        // Edition summary
+        RuleFor(e => e.SupplementRequestReason)
+            .MaximumLength(255)
+            .WithMessage(isEng
+                ? "Supplement request reason must not exceed 255 characters"
+                : "Lý do yêu cầu nhập không vượt quá 255 ký tự");
+        
         // ISBN 
         RuleFor(e => e.Isbn)
             .Must(str => string.IsNullOrEmpty(str) || (ISBN.IsValid(str, out _) && ISBN.CleanIsbn(str).Length <= 13))
@@ -117,17 +124,17 @@ public class SupplementRequestDetailDtoValidator : AbstractValidator<SupplementR
         
         // Validate cover image Url
         RuleFor(e => e.CoverImageLink)
-            .Must(str => !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
+            .Must(str => string.IsNullOrEmpty(str) || StringUtils.IsValidUrl(str))
             .WithMessage(isEng 
                 ? "Cover image is invalid" 
                 : "Hình ảnh bìa không hợp lệ");
         RuleFor(e => e.PreviewLink)
-            .Must(str => !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
+            .Must(str => string.IsNullOrEmpty(str) || StringUtils.IsValidUrl(str))
             .WithMessage(isEng 
                 ? "Preview link is invalid" 
                 : "Liên kết xem trước không hợp lệ");
         RuleFor(e => e.InfoLink)
-            .Must(str => !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
+            .Must(str => string.IsNullOrEmpty(str) || StringUtils.IsValidUrl(str))
             .WithMessage(isEng 
                 ? "Info link is invalid" 
                 : "Đường dẫn liên kêt không hợp lệ");

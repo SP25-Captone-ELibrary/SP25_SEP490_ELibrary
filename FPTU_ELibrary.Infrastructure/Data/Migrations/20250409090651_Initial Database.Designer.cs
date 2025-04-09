@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250408022037_Initial Database")]
+    [Migration("20250409090651_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -2401,6 +2401,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<int>("RelatedLibraryItemId")
                         .HasColumnType("int")
                         .HasColumnName("related_library_item_id");
+
+                    b.Property<string>("SupplementRequestReason")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("supplement_request_reason");
 
                     b.Property<string>("Title")
                         .IsRequired()

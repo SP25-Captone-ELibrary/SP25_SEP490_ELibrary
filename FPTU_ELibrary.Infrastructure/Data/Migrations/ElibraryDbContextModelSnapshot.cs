@@ -2399,6 +2399,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("related_library_item_id");
 
+                    b.Property<string>("SupplementRequestReason")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("supplement_request_reason");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(255)")
