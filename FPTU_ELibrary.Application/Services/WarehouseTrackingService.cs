@@ -522,7 +522,38 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		    throw new Exception("Error invoke when process update warehouse tracking inventory without saving");
 	    }
     }
-    
+
+    public async Task<IServiceResult> RecalculateTotalAndAmountWithoutSaveChangesAsync(
+	    int id, int totalItem, decimal totalAmount)
+    {
+	    try
+	    {
+			// Build spec
+            var baseSpec = new BaseSpecification<WarehouseTracking>(w => w.TrackingId == id);
+            // Retrieve existing
+            var existingEntity = await _unitOfWork.Repository<WarehouseTracking, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+            	// Mark as fail to update
+            	return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+            		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+            }
+            
+            // Process update
+            existingEntity.TotalItem = totalItem;
+            existingEntity.TotalAmount = totalAmount;
+            
+            // Mark as success to update
+            return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process recalculate total and amount without saving");
+	    }
+    }
+	
     public override async Task<IServiceResult> DeleteAsync(int id)
     {
 	    try
@@ -1621,7 +1652,6 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 		    throw new Exception("Error invoke when process create warehouse tracking with details");
 	    }
     }
-
     
 	public async Task<IServiceResult> CreateAndImportDetailsAsync(
         WarehouseTrackingDto dto,
@@ -2160,6 +2190,80 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
             throw new Exception("Error invoke while process create and import warehouse tracking details");
         }
     }
+
+	public async Task<IServiceResult> AddFinalizedStockInFileAsync(int trackingId, string url)
+	{
+		try
+		{
+			// Determine current lang context
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+			
+			// Check exist URL in cloudinary
+			var isImageOnCloud = true;
+
+			// Extract provider public id
+			var publicId = StringUtils.GetPublicIdFromUrl(url);
+			if (publicId != null) // Found
+			{
+				// Process check exist on cloud			
+				isImageOnCloud = (await _cloudService.IsExistAsync(publicId, FileType.Image)).Data is true;
+			}
+
+			if (!isImageOnCloud || publicId == null)
+			{
+				// Msg: No file found for warehouse stock-in file to proceed with storage
+				return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0027,
+					await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0027));
+			}
+			
+			// Check exist warehouse tracking
+			var existingEntity = await _unitOfWork.Repository<WarehouseTracking, int>().GetByIdAsync(trackingId);
+			if (existingEntity == null)
+			{
+				// Not found {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMsg, isEng ? "warehouse tracking" : "phiếu nhập kho"));
+			}
+			else if (existingEntity.TrackingType != TrackingType.StockIn)
+			{
+				// Msg: Tracking type is invalid to process creating file
+				return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0030,
+					await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0030));
+			}
+			else if (existingEntity.Status != WarehouseTrackingStatus.Completed)
+			{
+				// Msg: Unable to create a file for the warehouse receipt as it is not in a completed status.
+				// Please verify the receipt status and complete the process before creating the file
+				return new ServiceResult(ResultCodeConst.WarehouseTracking_Warning0028,
+					await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Warning0028));
+			}
+			
+			// Add file to existing entity
+			existingEntity.FinalizedFile = url;
+			// Process update
+			await _unitOfWork.Repository<WarehouseTracking, int>().UpdateAsync(existingEntity);
+			// Save DB
+			var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+			if (isSaved)
+			{
+				// Msg: Warehouse stock-in file archived successfully
+				return new ServiceResult(ResultCodeConst.WarehouseTracking_Success0003,
+					await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Success0003));
+			}
+			
+			// Msg: Failed to archive the warehouse receipt file. Please check and try again later
+			return new ServiceResult(ResultCodeConst.WarehouseTracking_Fail0003,
+				await _msgService.GetMessageAsync(ResultCodeConst.WarehouseTracking_Fail0003));
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process add finalized stock in file for warehouse tracking");
+		}
+	}
 	
     private async Task<Dictionary<int, List<string>>> DetectWrongDataAsync(
 	    TrackingType trackingType,

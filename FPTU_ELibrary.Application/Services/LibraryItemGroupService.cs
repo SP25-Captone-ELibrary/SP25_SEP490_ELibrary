@@ -1,9 +1,12 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.AIServices.Classification;
+using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
+using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -21,20 +24,22 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
     ILibraryItemGroupService<LibraryItemGroupDto>
 {
     private readonly Lazy<ILibraryItemService<LibraryItemDto>> _libItemSvc;
+    private readonly Lazy<IEmployeeService<EmployeeDto>> _employeeSvc;
 
     public LibraryItemGroupService(
         // Lazy services
         Lazy<ILibraryItemService<LibraryItemDto>> libItemSvc,
+        Lazy<IEmployeeService<EmployeeDto>> employeeSvc,
         ISystemMessageService msgService, 
         IUnitOfWork unitOfWork, 
         IMapper mapper, 
-        ILogger logger) 
-    : base(msgService, unitOfWork, mapper, logger)
+        ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _libItemSvc = libItemSvc;
+        _employeeSvc = employeeSvc;
     }
 
-    public async Task<IServiceResult> CreateForItemAsync(int libraryItemId, string createdByEmail)
+    public async Task<IServiceResult> CreateAsync(LibraryItemGroupDto dto, string createdByEmail)
     {
         try
         {
@@ -42,79 +47,26 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-            
-            // Determine current lang 
-            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
-                LanguageContext.CurrentLanguage);
-            var isEng = lang == SystemLanguage.English;
-            
-            // Check exist library item
-            // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == libraryItemId);
-            // Apply include
-            baseSpec.ApplyInclude(q => q
-                .Include(li => li.LibraryItemAuthors)
-                .ThenInclude(lia => lia.Author)
-                .Include(q => q.Category)
+
+            // Check exist created by 
+            var isEmailExist = (await _employeeSvc.Value.AnyAsync(e => e.Email == createdByEmail)).Data is true;
+            if (!isEmailExist) throw new ForbiddenException("Not allow to access");
+
+            // Check whether group information has existed
+            var groupSpec = new BaseSpecification<LibraryItemGroup>(g =>
+                Equals(g.ClassificationNumber, dto.ClassificationNumber) && 
+                Equals(g.CutterNumber, dto.CutterNumber) &&
+                Equals(g.Author, dto.Author)
             );
-            // Retrieve with spec
-            var libItem = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
-            if (libItem == null)
+            // Retrieve group with spec
+            var entities = (await _unitOfWork.Repository<LibraryItemGroup, int>().GetAllWithSpecAsync(groupSpec)).ToList();
+            if (entities.Any())
             {
-                // Not found {0}
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(
-                    resultCode: ResultCodeConst.SYS_Warning0002, 
-                    message: StringUtils.Format(errMsg, isEng ? "library item to add group" : "tài liệu cần thêm nhóm"));
-            }
-            else if (!libItem.LibraryItemAuthors.Any())
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    isEng 
-                        ? "Unable to create library item group as author has not been added" 
-                        : "Không thể tạo nhóm vì tác giả của tài liệu chưa được xác định");
-            }
-            else if (string.IsNullOrEmpty(libItem.CutterNumber))
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    isEng 
-                        ? "Unable to create library item group as cutter number has not been determined" 
-                        : "Không thể tạo nhóm vì ký hiệu xếp giá của tài liệu chưa được xác định");
-            }
-            else if (string.IsNullOrEmpty(libItem.ClassificationNumber))
-            {
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    isEng 
-                        ? "Unable to create library item group as DDC has not been determined" 
-                        : "Không thể tạo nhóm vì DDC của tài liệu chưa được xác định");
-            }
-            else if (libItem.Category.EnglishName != nameof(LibraryItemCategory.BookSeries))
-            {
-                // Msg: Item category is not belong to book series to process add to group items
-                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0029,
-                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0029));
-            }
-            
-            // Check exist group
-            var groupSpec = new BaseSpecification<LibraryItemGroup>(g => 
-                libItem.LibraryItemAuthors.Any(lia => Equals(lia.Author.FullName, g.Author)) &&
-                libItem.CutterNumber != null && Equals(libItem.CutterNumber, g.CutterNumber) &&
-                libItem.ClassificationNumber != null && Equals(libItem.ClassificationNumber, g.ClassificationNumber) &&
-                libItem.Category.EnglishName.Equals(nameof(LibraryItemCategory.BookSeries))
-            );
-            // Retrieve all groupable
-            var groupableList = (await _unitOfWork.Repository<LibraryItemGroup, int>().GetAllWithSpecAsync(groupSpec)).ToList();
-            if (groupableList.Any())
-            {
-                // Try to check whether exist any title that groupable
-                foreach (var group in groupableList)
+                foreach (var group in entities)
                 {
                     // Compare title
-                    var titleStatus = CompareFieldStatus(
-                        StringUtils.RemoveSpecialCharacter(libItem.Title),
-                        StringUtils.RemoveSpecialCharacter(group.Title));
-
-                    if (titleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
+                    var compareTitleRes = CompareFieldStatus(group.Title, dto.Title);
+                    if (compareTitleRes != (int)FieldGroupCheckedStatus.GroupFailed)
                     {
                         // Msg: Unable to create a new group because the document may be grouped with existing groups. Please check again
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0031,
@@ -123,23 +75,22 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
                 }
             }
             
-            // Initialize group details
-            var mainAuthor = libItem.LibraryItemAuthors.First().Author.FullName;
-            var newGroupDto = new LibraryItemGroupDto()
+            // Validate inputs using the generic validator
+            var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+            // Check for valid validations
+            if (validationResult != null && !validationResult.IsValid)
             {
-                Author = mainAuthor,
-                Title = libItem.Title,
-                SubTitle = libItem.SubTitle,
-                CutterNumber = libItem.CutterNumber,
-                ClassificationNumber = libItem.ClassificationNumber,
-                CreatedAt = currentLocalDateTime,
-                CreatedBy = createdByEmail,
-                TopicalTerms = libItem.TopicalTerms,
-                AiTrainingCode = Guid.NewGuid().ToString()
-            };
+                // Convert ValidationResult to ValidationProblemsDetails.Errors
+                var errors = validationResult.ToProblemDetails().Errors;
+                throw new UnprocessableEntityException("Invalid Validations", errors);
+            }
             
-            // Process create new group
-            await _unitOfWork.Repository<LibraryItemGroup, int>().AddAsync(_mapper.Map<LibraryItemGroup>(newGroupDto));
+            // Add necessary fields
+            dto.CreatedAt = currentLocalDateTime;
+            dto.CreatedBy = createdByEmail;
+            dto.AiTrainingCode = Guid.NewGuid().ToString();
+            // Process add entity
+            await _unitOfWork.Repository<LibraryItemGroup, int>().AddAsync(_mapper.Map<LibraryItemGroup>(dto));
             // Save DB
             var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
             if (isSaved)
@@ -153,15 +104,22 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
             return new ServiceResult(ResultCodeConst.SYS_Fail0001,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0001));
         }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.Error(ex.Message);
-            throw new Exception("Error invoke when process create group for item");
+            _logger.Error(ex.Message);  
+            throw new Exception("Error invoke when process create new group");
         }
     }
     
-    // TODO: Fix return groupable id not return all groupable items
-    public async Task<IServiceResult> GetAllItemPotentialGroupAsync(
+    public async Task<IServiceResult> GetAllPotentialGroupAsync(
         ISpecification<LibraryItemGroup> spec,
         string title, string cutterNumber, 
         string classificationNumber, string authorName)
@@ -177,198 +135,131 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
             
-            // Initialize responses
-            var groupedItemsList = new List<CheckedGroupResponseDto<string>>();
-            var processedItemIds = new HashSet<int>();
-            
+            // Initialize response
+            var potentialItemGroups = new List<GetItemPotentialGroup>();
+
             // Build spec to retrieve for appropriate group
-            var unGroupItemSpec = new BaseSpecification<LibraryItem>(li => 
-                li.LibraryItemAuthors.Any(lia => Equals(lia.Author.FullName, authorName)) &&
-                li.CutterNumber != null && Equals(li.CutterNumber, cutterNumber) &&
-                li.ClassificationNumber != null && Equals(li.ClassificationNumber, classificationNumber) &&
-                li.Category.EnglishName.Equals(nameof(LibraryItemCategory.BookSeries)) &&
-                li.GroupId != null // Has been grouped
+            var groupSpec = new BaseSpecification<LibraryItemGroup>(g => 
+                // Match author property
+                Equals(g.Author, authorName) &&
+                // Match cutter number
+                Equals(g.CutterNumber, cutterNumber) &&
+                // Match classification
+                Equals(g.ClassificationNumber, classificationNumber) &&
+                // Is belongs to book series
+                (!g.LibraryItems.Any() || g.LibraryItems.All(li => li.Category.EnglishName.Equals(nameof(LibraryItemCategory.BookSeries))))
             );
             // Enable split query
-            unGroupItemSpec.EnableSplitQuery();
+            groupSpec.EnableSplitQuery();
             // Apply include
-            unGroupItemSpec.ApplyInclude(q => q
-                .Include(li => li.LibraryItemAuthors)
-                    .ThenInclude(lia => lia.Author)
-                .Include(li => li.Category)
+            groupSpec.ApplyInclude(q => q
+                .Include(g => g.LibraryItems)
+                    .ThenInclude(li => li.LibraryItemAuthors)
+                        .ThenInclude(lia => lia.Author)
+                .Include(g => g.LibraryItems)
+                    .ThenInclude(li => li.Category)
             );
             // Apply order
-            unGroupItemSpec.AddOrderByDescending(q => q.CreatedAt);
-            // Initialize valid ungroup items
-            var validUngroupItems = new List<LibraryItemDto>();
+            groupSpec.AddOrderByDescending(q => q.CreatedAt);
+            
             // Retrieve with spec
-            var ungroupedItemsValue = (await _libItemSvc.Value.GetAllWithoutAdvancedSpecAsync(unGroupItemSpec)).Data as List<LibraryItemDto>;
-            if (ungroupedItemsValue == null)
+            var groupableList = (await _unitOfWork.Repository<LibraryItemGroup, int>()
+                .GetAllWithSpecAsync(groupSpec)).ToList();
+            if (!groupableList.Any())
             {
                 // Data not found or empty
                 return new ServiceResult(
                     resultCode: ResultCodeConst.SYS_Warning0004,
                     message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
-                    data: groupedItemsList);
-            }
-            else
-            {
-                // Try to check whether exist any title that groupable
-                foreach (var groupItem in ungroupedItemsValue)
-                {
-                    // Compare title
-                    var titleStatus = CompareFieldStatus(
-                        StringUtils.RemoveSpecialCharacter(title),
-                        StringUtils.RemoveSpecialCharacter(groupItem.Title));
-
-                    if (titleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
-                    {
-                        // Add to valid item group
-                        validUngroupItems.Add(groupItem);
-                    }
-                }
+                    data: potentialItemGroups);
             }
             
+            // Map to dto collection
+            var groupableDtoList = _mapper.Map<List<LibraryItemGroupDto>>(groupableList);
             // Iterate each item to group item sharing the unique features (Title, Subtitle, DDC, Cutter number)
-            foreach (var libraryItem in validUngroupItems)
+            foreach (var group in groupableDtoList)
             {
-                // Skip processed items
-                if (processedItemIds.Contains(libraryItem.LibraryItemId))
-                {
-                    continue;
-                }
-                
-                // Mark item as processed
-                processedItemIds.Add(libraryItem.LibraryItemId);
-                
-                // Try to extract author's fullname
-                var mainAuthor = libraryItem.LibraryItemAuthors
-                    .First(x => x.LibraryItemId == libraryItem.LibraryItemId).Author.FullName;
-                                
+                // Extract list of items
+                var groupItems = group.LibraryItems.ToList();
                 // Create list of checked properties compare to root item
                 var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
                 
-                // Build up unique features to seek out for other groupable items (mark current item as root)
-                var listPropertiesChecked = new List<CheckedGroupDetailDto<string>>
+                foreach (var item in groupItems)
                 {
-                    new CheckedGroupDetailDto<string>()
+                    // Try to extract author's fullname
+                    var mainAuthor = item.LibraryItemAuthors
+                        .First(x => x.LibraryItemId == item.LibraryItemId).Author.FullName;
+                    
+                    // Initialize check group detail
+                    var itemCheckedResult = new CheckedGroupDetailDto<string>()
                     {
                         PropertiesChecked = new Dictionary<string, int>()
-                        {
-                            { nameof(libraryItem.CutterNumber), (int)FieldGroupCheckedStatus.GroupSuccess },
-                            {
-                                nameof(libraryItem.ClassificationNumber), (int)FieldGroupCheckedStatus.GroupSuccess
-                            },
-                            { nameof(Author), (int)FieldGroupCheckedStatus.GroupSuccess },
-                            { nameof(libraryItem.Title), (int)FieldGroupCheckedStatus.GroupSuccess },
-                            { nameof(libraryItem.SubTitle), (int)FieldGroupCheckedStatus.GroupSuccess }
-                        },
-                        Item = libraryItem,
-                        IsRoot = true
-                    }
-                };
-                
-                // Find out for other items sharing same unique feature
-                var candidateItems = ungroupedItemsValue.Where(
-                    li => li.CutterNumber != null && li.CutterNumber.Equals(libraryItem.CutterNumber) &&
-                          li.ClassificationNumber != null && li.ClassificationNumber.Equals(libraryItem.ClassificationNumber) &&
-                          li.LibraryItemAuthors.Any(lia => lia.Author.FullName.Equals(mainAuthor)) &&
-                          li.LibraryItemId != libraryItem.LibraryItemId
-                ).ToList();
-                
-                // Check whether exist any candidate items
-                if (!candidateItems.Any()) // Not found
-                {
-                    // Initialize groupedItemsList data (only exist 1 item in group)
-                    var responseData = new CheckedGroupResponseDto<string>()
-                    {
-                        IsAbleToCreateGroup = (int)FieldGroupCheckedStatus.GroupSuccess,
-                        ListCheckedGroupDetail = listPropertiesChecked,
-                        GroupStatus = 0
                     };
-                    // Add to groupedItemsList
-                    groupedItemsList.Add(responseData);
-                    // Skip to next item
-                    continue;
-                }
-                else // Found candidate items
-                {
-                    // Filter out all processed item in candidate items
-                    candidateItems.RemoveAll(item => processedItemIds.Contains(item.LibraryItemId));
+            
+                    // Compare title
+                    var titleStatus = CompareFieldStatus(
+                        StringUtils.RemoveSpecialCharacter(title),
+                        StringUtils.RemoveSpecialCharacter(item.Title));
                     
-                    // Iterate each candidate items to add for property match level
-                    foreach (var libraryItemDto in candidateItems)
+                    // Check whether subtitle is null
+                    var isSubTitleNull = string.IsNullOrEmpty(item.SubTitle);
+                    // Set default subTitle status
+                    var subTitleStatus = (int)FieldGroupCheckedStatus.AbleToForceGrouped;
+                    
+                    // Compare subtitle status
+                    var titleSubTitleStatus =
+                        CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
+                    if (titleSubTitleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
                     {
-                        // Initialize check group detail
-                        var itemCheckedResult = new CheckedGroupDetailDto<string>()
+                        // Cutter number
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.CutterNumber),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+                        // Classification number
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.ClassificationNumber),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+                        // Author
+                        itemCheckedResult.PropertiesChecked.Add(nameof(Author),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+                        
+                        // Title, subtitle status
+                        itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
+                        // Title
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.Title), titleStatus);
+                        // Subtitle
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.SubTitle), subTitleStatus);
+                        // Assign item dto to groupedItemsList
+                        itemCheckedResult.Item = item;
+                        itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
+                        // Add item checked result to overall status
+                        determineOverallStatus.Add(itemCheckedResult);
+                        
+                    }
+                }
+                
+                // Determine overall status
+                var overallStatus = DetermineOverallStatus(determineOverallStatus);
+                
+                // Clear all items in group
+                group.LibraryItems.Clear();
+                // Add to groupedItemsList
+                potentialItemGroups.Add(new()
+                {
+                    GroupDetail = group,
+                    CheckResponse = determineOverallStatus.Count > 0
+                        ? new CheckedGroupResponseDto<string>()
                         {
-                            PropertiesChecked = new Dictionary<string, int>()
-                        };
-
-                        // Compare title
-                        var titleStatus = CompareFieldStatus(
-                            StringUtils.RemoveSpecialCharacter(libraryItemDto.Title),
-                            StringUtils.RemoveSpecialCharacter(libraryItem.Title));
-
-                        // Check whether subtitle is null
-                        var isSubTitleNull = string.IsNullOrEmpty(libraryItem.SubTitle);
-                        // Set default subTitle status
-                        var subTitleStatus = (int)FieldGroupCheckedStatus.AbleToForceGrouped;
-                            
-                        // Compare subtitle status
-                        var titleSubTitleStatus =
-                            CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
-                        if (titleSubTitleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
-                        {
-                            // Cutter number
-                            itemCheckedResult.PropertiesChecked.Add(nameof(libraryItem.CutterNumber),
-                                (int)FieldGroupCheckedStatus.GroupSuccess);
-                            // Classification number
-                            itemCheckedResult.PropertiesChecked.Add(nameof(libraryItem.ClassificationNumber),
-                                (int)FieldGroupCheckedStatus.GroupSuccess);
-                            // Author
-                            itemCheckedResult.PropertiesChecked.Add(nameof(Author),
-                                (int)FieldGroupCheckedStatus.GroupSuccess);
-                            // Title, subtitle status
-                            itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
-                            // Add item checked result to overall status
-                            determineOverallStatus.Add(itemCheckedResult);
-                            
-                            // Title
-                            itemCheckedResult.PropertiesChecked.Add(nameof(libraryItem.Title), titleStatus);
-                            // Subtitle
-                            itemCheckedResult.PropertiesChecked.Add(nameof(libraryItem.SubTitle), subTitleStatus);
-                            // Assign item dto to groupedItemsList
-                            itemCheckedResult.Item = libraryItemDto;
-                            itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
-                            
-                            // Add item checked result
-                            listPropertiesChecked.Add(itemCheckedResult);
-                            // Add processed item
-                            processedItemIds.Add(libraryItemDto.LibraryItemId);
+                            IsAbleToCreateGroup = overallStatus,
+                            ListCheckedGroupDetail = determineOverallStatus,
+                            GroupStatus = 0
                         }
-                    }
-                    
-                    // Determine overall status
-                    var overallStatus = DetermineOverallStatus(determineOverallStatus);
-                    
-                    // Initialize groupedItemsList data
-                    var responseData = new CheckedGroupResponseDto<string>()
-                    {
-                        IsAbleToCreateGroup = overallStatus,
-                        ListCheckedGroupDetail = listPropertiesChecked,
-                        GroupStatus = 0
-                    };
-                    
-                    // Add to groupedItemsList
-                    groupedItemsList.Add(responseData);
-                }
+                        : null!
+                });
             }
 
-            if (groupedItemsList.Any())
+            if (potentialItemGroups.Any())
             {
                 // Count total actual item
-                var totalActualItem = groupedItemsList.Count;
+                var totalActualItem = potentialItemGroups.Count;
                 // Count total page
                 var totalPage = (int)Math.Ceiling((double)totalActualItem / groupSpecification.PageSize);
                 
@@ -382,21 +273,21 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
                 // Process search
                 if (!string.IsNullOrEmpty(groupSpecification.Search))
                 {
-                    groupedItemsList = groupedItemsList.Where(g => 
-                        g.ListCheckedGroupDetail.Any(li => 
-                            li.Item.Title.Contains(groupSpecification.Search))
-                    ).ToList();
+                    potentialItemGroups = potentialItemGroups
+                        .Where(g => 
+                            g.GroupDetail.Title.Contains(groupSpecification.Search))
+                        .ToList();
                 }
                 
                 // Apply pagination
-                groupedItemsList = groupedItemsList
+                potentialItemGroups = potentialItemGroups
                     .Skip(groupSpecification.PageSize * (groupSpecification.PageIndex - 1))
                     .Take(groupSpecification.PageSize)
                     .ToList();
                 
                 // Pagination result 
-                var paginationResultDto = new PaginatedResultDto<CheckedGroupResponseDto<string>>(
-                    groupedItemsList,
+                var paginationResultDto = new PaginatedResultDto<GetItemPotentialGroup>(
+                    potentialItemGroups,
                     groupSpecification.PageIndex, groupSpecification.PageSize, totalPage, totalActualItem);
                 
                 // Get data successfully
@@ -418,7 +309,255 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
             throw new Exception("Error invoke when process get all item potential group");
         }
     }
-    
+
+    public async Task<IServiceResult> GetAllPotentialGroupByLibraryItemIdAsync(
+        ISpecification<LibraryItemGroup> spec, int libraryItemId)
+    {
+        try
+        {
+            // Determine current lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Try to parse specification to LibraryItemSpecification
+            var groupSpecification = spec as LibraryItemGroupSpecification;
+            // Check if specification is null
+            if (groupSpecification == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+
+            // Check exist library item
+            var itemSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == libraryItemId);
+            // Apply include
+            itemSpec.ApplyInclude(q => q
+                .Include(li => li.Category)
+                .Include(li => li.LibraryItemAuthors)
+                .ThenInclude(li => li.Author)
+            );
+            var libItemDto = (await _libItemSvc.Value.GetWithSpecAsync(itemSpec)).Data as LibraryItemDto;
+            if (libItemDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+            }
+            else if (!libItemDto.LibraryItemAuthors.Any())
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    isEng
+                        ? "Unable to create library item group as author has not been added"
+                        : "Không thể tạo nhóm vì tác giả của tài liệu chưa được xác định");
+            }
+            else if (string.IsNullOrEmpty(libItemDto.CutterNumber))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    isEng
+                        ? "Unable to create library item group as cutter number has not been determined"
+                        : "Không thể tạo nhóm vì ký hiệu xếp giá của tài liệu chưa được xác định");
+            }
+            else if (string.IsNullOrEmpty(libItemDto.ClassificationNumber))
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    isEng
+                        ? "Unable to create library item group as DDC has not been determined"
+                        : "Không thể tạo nhóm vì DDC của tài liệu chưa được xác định");
+            }
+            else if (libItemDto.Category.EnglishName != nameof(LibraryItemCategory.BookSeries))
+            {
+                // Msg: Item category is not belong to book series to process add to group items
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0029,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0029));
+            }
+            else if (libItemDto.GroupId != null)
+            {
+                // Msg: Unable to progress {0} as {1} already exist
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0003);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0003,
+                    message: StringUtils.Format(errMsg, args:
+                    [
+                        isEng ? "create new group" : "tạo nhóm tài liệu mới",
+                        isEng ? "group item" : "nhóm tài liệu"
+                    ]));
+            }
+
+            // Initialize response
+            var potentialItemGroups = new List<GetItemPotentialGroup>();
+
+            // Retrieve main author
+            // Build spec to retrieve for appropriate group
+            var groupSpec = new BaseSpecification<LibraryItemGroup>(g =>
+                // Match author property
+                Equals(g.Author, libItemDto.LibraryItemAuthors.First().Author.FullName) &&
+                // Match cutter number
+                Equals(g.CutterNumber, libItemDto.CutterNumber) &&
+                // Match classification
+                Equals(g.ClassificationNumber, libItemDto.ClassificationNumber) &&
+                // Is belongs to book series
+                (!g.LibraryItems.Any() || g.LibraryItems.All(li =>
+                    li.Category.EnglishName.Equals(nameof(LibraryItemCategory.BookSeries))))
+            );
+            // Enable split query
+            groupSpec.EnableSplitQuery();
+            // Apply include
+            groupSpec.ApplyInclude(q => q
+                .Include(g => g.LibraryItems)
+                .ThenInclude(li => li.LibraryItemAuthors)
+                .ThenInclude(lia => lia.Author)
+                .Include(g => g.LibraryItems)
+                .ThenInclude(li => li.Category)
+            );
+            // Apply order
+            groupSpec.AddOrderByDescending(q => q.CreatedAt);
+
+            // Retrieve with spec
+            var groupableList = (await _unitOfWork.Repository<LibraryItemGroup, int>()
+                .GetAllWithSpecAsync(groupSpec)).ToList();
+            if (!groupableList.Any())
+            {
+                // Data not found or empty
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0004,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    data: potentialItemGroups);
+            }
+
+            // Map to dto collection
+            var groupableDtoList = _mapper.Map<List<LibraryItemGroupDto>>(groupableList);
+            // Iterate each item to group item sharing the unique features (Title, Subtitle, DDC, Cutter number)
+            foreach (var group in groupableDtoList)
+            {
+                // Extract list of items
+                var groupItems = group.LibraryItems.ToList();
+                // Create list of checked properties compare to root item
+                var determineOverallStatus = new List<CheckedGroupDetailDto<string>>();
+
+                foreach (var item in groupItems)
+                {
+                    // Initialize check group detail
+                    var itemCheckedResult = new CheckedGroupDetailDto<string>()
+                    {
+                        PropertiesChecked = new Dictionary<string, int>()
+                    };
+
+                    // Compare title
+                    var titleStatus = CompareFieldStatus(
+                        StringUtils.RemoveSpecialCharacter(libItemDto.Title),
+                        StringUtils.RemoveSpecialCharacter(item.Title));
+
+                    // Check whether subtitle is null
+                    var isSubTitleNull = string.IsNullOrEmpty(item.SubTitle);
+                    // Set default subTitle status
+                    var subTitleStatus = (int)FieldGroupCheckedStatus.AbleToForceGrouped;
+
+                    // Compare subtitle status
+                    var titleSubTitleStatus =
+                        CombineTitleSubTitleStatus(titleStatus, subTitleStatus, isSubTitleNull);
+                    if (titleSubTitleStatus != (int)FieldGroupCheckedStatus.GroupFailed)
+                    {
+                        // Cutter number
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.CutterNumber),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+                        // Classification number
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.ClassificationNumber),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+                        // Author
+                        itemCheckedResult.PropertiesChecked.Add(nameof(Author),
+                            (int)FieldGroupCheckedStatus.GroupSuccess);
+
+                        // Title, subtitle status
+                        itemCheckedResult.PropertiesChecked.Add("TitleSubTitleStatus", titleSubTitleStatus);
+                        // Title
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.Title), titleStatus);
+                        // Subtitle
+                        itemCheckedResult.PropertiesChecked.Add(nameof(item.SubTitle), subTitleStatus);
+                        // Assign item dto to groupedItemsList
+                        itemCheckedResult.Item = item;
+                        itemCheckedResult.PropertiesChecked.Remove("TitleSubTitleStatus");
+                        // Add item checked result to overall status
+                        determineOverallStatus.Add(itemCheckedResult);
+
+                    }
+                }
+
+                // Determine overall status
+                var overallStatus = DetermineOverallStatus(determineOverallStatus);
+
+                // Clear all items in group
+                group.LibraryItems.Clear();
+                // Add to groupedItemsList
+                potentialItemGroups.Add(new()
+                {
+                    GroupDetail = group,
+                    CheckResponse = determineOverallStatus.Count > 0
+                        ? new CheckedGroupResponseDto<string>()
+                        {
+                            IsAbleToCreateGroup = overallStatus,
+                            ListCheckedGroupDetail = determineOverallStatus,
+                            GroupStatus = 0
+                        }
+                        : null!
+                });
+            }
+
+            if (potentialItemGroups.Any())
+            {
+                // Count total actual item
+                var totalActualItem = potentialItemGroups.Count;
+                // Count total page
+                var totalPage = (int)Math.Ceiling((double)totalActualItem / groupSpecification.PageSize);
+
+                // Set pagination to specification after count total library item
+                if (groupSpecification.PageIndex > totalPage
+                    || groupSpecification.PageIndex < 1) // Exceed total page or page index smaller than 1
+                {
+                    groupSpecification.PageIndex = 1; // Set default to first page
+                }
+
+                // Process search
+                if (!string.IsNullOrEmpty(groupSpecification.Search))
+                {
+                    potentialItemGroups = potentialItemGroups
+                        .Where(g =>
+                            g.GroupDetail.Title.Contains(groupSpecification.Search))
+                        .ToList();
+                }
+
+                // Apply pagination
+                potentialItemGroups = potentialItemGroups
+                    .Skip(groupSpecification.PageSize * (groupSpecification.PageIndex - 1))
+                    .Take(groupSpecification.PageSize)
+                    .ToList();
+
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<GetItemPotentialGroup>(
+                    potentialItemGroups,
+                    groupSpecification.PageIndex, groupSpecification.PageSize, totalPage, totalActualItem);
+
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: paginationResultDto);
+            }
+
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<CheckedGroupResponseDto<string>>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all item potential group");
+        }
+    }
+
     private int CombineTitleSubTitleStatus(int titleStatus, int subTitleStatus, bool isSubTitleNull)
     {
         return (titleStatus, subTitleStatus) switch

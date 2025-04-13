@@ -556,7 +556,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             baseSpec.ApplyInclude(q => q
                 .Include(li => li.LibraryItemAuthors)
                     .ThenInclude(lia => lia.Author)
-                .Include(q => q.Category)
+                .Include(li => li.Category)
             );
             var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
             if (existingEntity == null)
@@ -599,6 +599,21 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0030);
                 return new ServiceResult(ResultCodeConst.LibraryItem_Warning0030,
                     StringUtils.Format(errMsg, isEng ? $"'{existingEntity.Title}'" : $"'{groupDto.Title}'"));
+            }
+            else
+            {
+                // Compare title
+                var titleStatus = StringUtils.CompareFieldStatus(
+                    StringUtils.RemoveSpecialCharacter(existingEntity.Title),
+                    StringUtils.RemoveSpecialCharacter(groupDto.Title));
+                
+                if(titleStatus == (int)FieldGroupCheckedStatus.GroupFailed)
+                {
+                    // Msg: Item {0} cannot group with group {1} as it does not match cutter number, classification number and author with group detail
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0030);
+                    return new ServiceResult(ResultCodeConst.LibraryItem_Warning0030,
+                        StringUtils.Format(errMsg, isEng ? $"'{existingEntity.Title}'" : $"'{groupDto.Title}'"));
+                }
             }
             
             // Assign group id

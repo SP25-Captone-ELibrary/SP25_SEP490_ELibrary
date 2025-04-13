@@ -31,6 +31,9 @@ public class WarehouseTracking : IAuditableEntity
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
 
+    // Finalized stock-in file 
+    public string? FinalizedFile { get; set; }
+    
     // References
     public Supplier? Supplier { get; set; }
     public WarehouseTrackingInventory WarehouseTrackingInventory { get; set; } = null!;

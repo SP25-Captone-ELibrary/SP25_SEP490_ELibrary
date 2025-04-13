@@ -147,12 +147,15 @@
 			public const string GetById = Base + "/management/library-items/{id}";
 			public const string GetGroupById = Base + "/management/library-items/{id}/group";
 			public const string GetGroupableItems = Base + "/management/library-items/groupable-items";
+			public const string GetGroupableItemsById = Base + "/management/library-items/{id}/groupable-items";
 			public const string GetShelf = Base + "/management/library-items/{id}/get-shelf";
 			public const string CountTotalInstance = Base + "/management/library-items/{id}/total-copy";
 			public const string CountRangeTotalInstance = Base + "/management/library-items/total-copy";
 			public const string Export = Base + "/management/library-items/export";
 			// [POST]
 			public const string Create = Base + "/management/library-items";
+			public const string CreateGroup = Base + "/management/library-items/group";
+			public const string AssignToGroup = Base + "/management/library-items/{id}/group/{groupId}";
 			public const string AddAuthor = Base + "/management/library-items/add-author";
 			public const string AddRangeAuthor = Base + "/management/library-items/add-range-author";
 			public const string DeleteAuthor = Base + "/management/library-items/delete-author";
@@ -771,6 +774,8 @@
 			#region HeadLibrian only
 			// [PATCH]
 			public const string UpdateStatus = Base + "/management/warehouse-trackings/{id}/status";
+			public const string AddStockInFile = Base + "/management/warehouse-trackings/{id}/add-stock-in-file";
+			public const string AddSupplementRequestFile = Base + "/management/warehouse-trackings/{id}/add-supplement-request-file";
 			#endregion
 		}
 
@@ -820,7 +825,8 @@
 		public static class Payment
 		{
 			#region Management
-			public const string GetAllTransaction = Base + "/management/payment/transactions";
+			public const string GetAllTransaction = Base + "/management/transactions";
+			public const string GetTransactionById = Base + "/management/transactions/{id}";
 			#endregion
 			
 			// [GET]

@@ -51,10 +51,17 @@ public class PaymentController : ControllerBase
     [HttpGet(APIRoute.Payment.GetAllTransaction, Name = nameof(GetAllTransaction))]
     public async Task<IActionResult> GetAllTransaction([FromQuery] TransactionSpecParams specParams)
     {
-        return Ok(await _transactionService.GetAllWithSpecAsync(new TransactionSpecification(
+        return Ok(await _transactionService.GetAllCardHolderTransactionAsync(new TransactionSpecification(
             specParams,
             pageIndex: specParams.PageIndex ?? 1,
             pageSize: specParams.PageSize ?? _appSettings.PageSize), tracked: false));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.Payment.GetTransactionById, Name = nameof(GetTransactionByIdAsync))]
+    public async Task<IActionResult> GetTransactionByIdAsync([FromRoute] int id)
+    {
+        return Ok(await _transactionService.GetByIdAsync(id: id, email: null, userId: null));
     }
     #endregion
     

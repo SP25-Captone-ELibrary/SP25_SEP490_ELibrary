@@ -78,5 +78,11 @@ public class WarehouseTrackingConfiguration : IEntityTypeConfiguration<Warehouse
               .HasColumnType("datetime")
               .HasColumnName("data_finalization_date");
        #endregion
+
+       #region Updated at 14/04/2025 by Le Xuan Phuoc
+       builder.Property(e => e.FinalizedFile)
+              .HasColumnType("varchar(2048)")
+              .HasColumnName("finalized_file");
+       #endregion
     }
 }
