@@ -461,75 +461,89 @@ public class AIDetectionService : IAIDetectionService
         }
     }
 
-    public async Task<IServiceResult> DetectWithEmgu(IFormFile image, string groupCode)
+    public async Task<IServiceResult> DetectWithEmguAsync(IFormFile image, Guid groupCode)
     {
         try
         {
-            // Dictionary to save score
-            Dictionary<int, double> matchScores = new Dictionary<int, double>();
             // Determine current system language
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            var groupBaseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemGroup!.AiTrainingCode
-                .Equals(groupCode));
-            groupBaseSpec.EnableSplitQuery();
-            groupBaseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemGroup!));
-            var itemsInGroup = await _libraryItemService.GetAllWithoutAdvancedSpecAsync(groupBaseSpec);
-            if (itemsInGroup.Data is null)
-            {
-                var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002),"Items");
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    isEng
-                        ? errMsg
-                        : "Không tìm thấy bất kỳ tài liệu nào trong nhóm");
-            }
-
-            // Create Mat fot user input
-            using var memoryStream = new MemoryStream();
-            await image.CopyToAsync(memoryStream);
-            var imageBytes = memoryStream.ToArray();
-            Mat userInputMat = new Mat();
-            CvInvoke.Imdecode(imageBytes,ImreadModes.Grayscale,userInputMat);
-            // Create Mat for each cover image
-            var itemsInGroupData = (List<LibraryItemDto>)itemsInGroup.Data!;
             
-            foreach (var item in itemsInGroupData)
+            // Dictionary to save score
+            Dictionary<int, double> matchScores = new();
+            
+            // Convert to string 
+            var stringGroupCode = groupCode.ToString().ToLower();
+            // Build group spec
+            var groupBaseSpec = new BaseSpecification<LibraryItem>(li => 
+                li.CoverImage != null && // Must include cover image
+                li.LibraryItemGroup != null &&
+                // Belongs to specific group
+                li.LibraryItemGroup.AiTrainingCode.ToLower().Equals(stringGroupCode));
+            // Enable split query
+            groupBaseSpec.EnableSplitQuery();
+            // Apply include
+            groupBaseSpec.ApplyInclude(q => q.Include(li => li.LibraryItemGroup!));
+            // Retrieve all items in group
+            var itemsInGroup = (await _libraryItemService.GetAllWithoutAdvancedSpecAsync(groupBaseSpec)).Data as List<LibraryItemDto>;
+            if (itemsInGroup == null || !itemsInGroup.Any())
             {
-                var response = await _httpClient.GetByteArrayAsync(item.CoverImage);
-                // if (!response.IsSuccessStatusCode)
-                // {
-                //     var errMsg = StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002)
-                //         ,"cover image");
-                //     return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                //         isEng
-                //             ? errMsg
-                //             : "Không tìm thấy bất kỳ tài liệu nào trong nhóm");
-                // }
-                using MemoryStream ms = new MemoryStream(response);
-                Mat output = new Mat(); 
-                CvInvoke.Imdecode(response, ImreadModes.Grayscale,output);
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library items in trained group" : "tài liệu trong nhóm đã train"));
+            }
+            
+            // Create Mat for user input
+            byte[] userInputBytes;
+            using(var memoryStream = new MemoryStream())
+            {
+                await image.CopyToAsync(memoryStream);
+                userInputBytes = memoryStream.ToArray();
+            }
+            
+            // Initialize Mat
+            Mat userInputMat = new();
+            // Decode image stored in the buffer
+            CvInvoke.Imdecode(buf: userInputBytes,loadType: ImreadModes.Grayscale, dst: userInputMat);
+            
+            // Iterate each item in group
+            foreach (var item in itemsInGroup)
+            {
+                // Retrieve bytes from item's cover image
+                var coverImage = _httpClient.GetAsync(item.CoverImage).Result;
+                var coverBytes = await coverImage.Content.ReadAsByteArrayAsync();
+                
+                // Decode the cover image directly from the byte array
+                Mat output = new(); 
+                CvInvoke.Imdecode(buf: coverBytes, loadType: ImreadModes.Grayscale, dst: output);
+                
+                // Compute the matching score between the cover image and the user input
                 double score = MatchBookCovers(output, userInputMat);
                 matchScores[item.LibraryItemId] = score;
             }
             
             // Normalize scores to a percentage based on the best match
-            var responseValue = matchScores.Select(x =>
+            if (matchScores.Any())
             {
                 var maxScore = matchScores.Values.Max();
-                Dictionary<int,double> returnValue = new Dictionary<int,double>();
-                foreach (var i in matchScores.Keys)
-                {
-                    returnValue.Add(i,matchScores[i]/maxScore *100);
-                }
-
-                return returnValue;
-            }).FirstOrDefault();
-
-
-            return new ServiceResult(ResultCodeConst.SYS_Success0002,
-                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                responseValue);
+                
+                var normalizedScores = matchScores.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => (kvp.Value / maxScore) * 100
+                );
+                
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: normalizedScores);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004));
         }
         catch (Exception ex)
         {

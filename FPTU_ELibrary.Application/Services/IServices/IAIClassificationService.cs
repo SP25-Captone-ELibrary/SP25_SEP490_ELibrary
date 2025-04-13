@@ -15,7 +15,7 @@ public interface IAIClassificationService
     Task<IServiceResult> IsAbleToCreateGroup(int rootItemId, List<int>? otherItemIds);
     Task<IServiceResult> TrainModel(Guid trainingCode, List<IFormFile> images, string email);
     Task<IServiceResult> PredictAsync(IFormFile image);
-    Task<IServiceResult> PredictWithEmgu(IFormFile image);
+    Task<IServiceResult> PredictWithEmguAsync(IFormFile image);
     Task<IServiceResult> RecommendBook(IFormFile image);
     Task<IServiceResult> RecommendBook(int currentItemId);
     Task<IServiceResult> GetAndGradeAllSuitableItemsForGrouping(int rootItemId);

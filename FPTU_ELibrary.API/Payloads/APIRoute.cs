@@ -145,6 +145,8 @@
 			public const string GetEnums = Base + "/management/library-items/enums";
 			public const string GetAll = Base + "/management/library-items";
 			public const string GetById = Base + "/management/library-items/{id}";
+			public const string GetGroupById = Base + "/management/library-items/{id}/group";
+			public const string GetGroupableItems = Base + "/management/library-items/groupable-items";
 			public const string GetShelf = Base + "/management/library-items/{id}/get-shelf";
 			public const string CountTotalInstance = Base + "/management/library-items/{id}/total-copy";
 			public const string CountRangeTotalInstance = Base + "/management/library-items/total-copy";
@@ -244,6 +246,8 @@
 			public const string SoftDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/soft-delete-range";
 			public const string UndoDelete = Base + "/management/library-items/instances/{id}/undo-delete";
 			public const string UndoDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/undo-delete-range";
+			public const string MarkAsLost = Base + "/management/library-items/instances/{id}/mark-as-lost";
+			public const string MarkLostAsFound = Base + "/management/library-items/instances/{id}/mark-as-found";
 			// [DELETE]
 			public const string Delete = Base + "/management/library-items/instances/{id}";
 			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
@@ -611,17 +615,21 @@
 		public static class LibraryLocation
 		{
 			#region Management
-			//	[GET]
-			public const string GetFloors = Base + "/management/location/floors";
-			public const string GetMapByFloorId = Base + "/management/location/map/floors/{floorId}";
-			public const string GetMapShelfDetailById = Base + "/management/location/map/shelves/{shelfId}";
-
-			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
-			public const string GetZonesByFloorId = Base + "/management/location/zones";
-			public const string GetSectionsByZoneId = Base + "/management/location/sections";
-			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
+			// [GET]
+			public const string GetAllShelves = Base + "/management/location/shelves";
+			public const string GetMapShelfDetailById = Base + "/management/location/shelves/{shelfId}";
 			#endregion
 			
+			#region Map
+			public const string GetMapByFloorId = Base + "/location/map/floors/{floorId}";
+			#endregion
+			
+			// [GET]
+			public const string GetFloors = Base + "/location/floors";
+			public const string GetShelvesForFilter = Base + "/location/shelves/filter";
+			public const string GetZonesByFloorId = Base + "/location/zones";
+			public const string GetSectionsByZoneId = Base + "/location/sections";
+			public const string GetShelvesBySectionId = Base + "/location/shelves";
 			public const string GetShelfWithFloorZoneSectionById = Base + "/location/shelves/{shelfId}";
 		}
 		

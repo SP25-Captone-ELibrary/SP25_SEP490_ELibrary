@@ -90,7 +90,6 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return new AuthorDto()
 			{
-				AuthorCode = req.AuthorCode,
 				AuthorImage = req.AuthorImage,
 				FullName = req.FullName,
 				Biography = req.Biography,
@@ -112,7 +111,6 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return new AuthorDto()
 			{
-				AuthorCode = req.AuthorCode,
 				AuthorImage = req.AuthorImage,
 				FullName = req.FullName,
 				Biography = req.Biography,

@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Locations;
@@ -65,6 +66,8 @@ public class LibraryItemDetailDto
     public LibraryItemGroupDto? LibraryItemGroup { get; set; }
     // Inventory
     public LibraryItemInventoryDto? LibraryItemInventory { get; set; }
+    // AI Session
+    public AITrainingSessionDto? AITrainingSession { get; set; } = null!;
     // Resources
     public List<LibraryResourceDto> Resources { get; set; } = new();
     // Authors
@@ -81,6 +84,7 @@ public static class LibraryItemDetailDtoExtensions
 {
     public static LibraryItemDetailDto ToLibraryItemDetailDto(this LibraryItemDto dto,
         List<DigitalBorrowDto>? digitalBorrows = null, 
+        AITrainingSessionDto? aiTrainingSession = null,
         int totalInstancesInShelf = 0, int totalInstanceOutOfShelf = 0)
     {
         return new LibraryItemDetailDto()
@@ -158,7 +162,9 @@ public static class LibraryItemDetailDtoExtensions
             // Library item reviews
             LibraryItemReviews = dto.LibraryItemReviews.Any() ? dto.LibraryItemReviews.ToList() : new(),
             // Digital borrows
-            DigitalBorrows = digitalBorrows ?? new()
+            DigitalBorrows = digitalBorrows ?? new(),
+            // AI Training session
+            AITrainingSession = aiTrainingSession,
         };
     }
 

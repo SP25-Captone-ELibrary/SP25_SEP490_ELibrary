@@ -9,6 +9,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface ILibraryItemService<TDto> : IGenericService<LibraryItem, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> AssignItemToGroupAsync(int libraryItemId, int groupId);
     Task<IServiceResult> CreateAsync(TDto dto, int trackingDetailId);
     Task<IServiceResult> AddRangeInstancesWithoutSaveChangesAsync(List<TDto> itemListIncludeInstances);
     Task<IServiceResult> GetEnumValueAsync();

@@ -1,6 +1,7 @@
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
+using FPTU_ELibrary.Application.Dtos.AIServices;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Dtos.Employees;
@@ -39,6 +40,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     // Configure lazy service
     private readonly Lazy<IElasticService> _elasticService;
     private readonly Lazy<IUserService<UserDto>> _userService;
+    private readonly Lazy<IAITrainingSessionService<AITrainingSessionDto>> _aiTrainingSessionSvc;
     private readonly Lazy<IEmployeeService<EmployeeDto>> _employeeService;
     private readonly Lazy<ILibraryCardService<LibraryCardDto>> _cardService;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordService;
@@ -63,6 +65,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         Lazy<IElasticService> elasticService,
         Lazy<IUserService<UserDto>> userService,
         Lazy<IEmployeeService<EmployeeDto>> employeeService,
+        Lazy<IAITrainingSessionService<AITrainingSessionDto>> aiTrainingSessionSvc,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordService,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowRequestService,
         Lazy<ILibraryCardService<LibraryCardDto>> cardService,
@@ -89,6 +92,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         _userService = userService;
         _cardService = cardService;
         _employeeService = employeeService;
+        _aiTrainingSessionSvc = aiTrainingSessionSvc;
         _borrowRecordService = borrowRecordService;
         _borrowRequestService = borrowRequestService;
         _cloudService = cloudService;
@@ -171,18 +175,6 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
                         key: StringUtils.ToCamelCase(nameof(LibraryItem.GroupId)),
                         msg: isEng ? "Group is not exist" : "Không tìm thấy nhóm");
-                }
-                else // found 
-                {
-                    // Check whether same edition number within the same group
-                    var isEditionNumberExist = groupDto.LibraryItems.Any(gi => gi.EditionNumber == dto.EditionNumber);
-                    if (isEditionNumberExist)
-                    {
-                        // Add error 
-                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
-                            key: StringUtils.ToCamelCase(nameof(LibraryItem.EditionNumber)),
-                            msg: await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0002));
-                    }
                 }
             }
 
@@ -545,6 +537,91 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process add range item instances without save changes");
+        }
+    }
+
+    public async Task<IServiceResult> AssignItemToGroupAsync(int libraryItemId, int groupId)
+    {
+        try
+        {
+            // Determine current lang 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Check exist library item
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.LibraryItemId == libraryItemId);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(li => li.LibraryItemAuthors)
+                    .ThenInclude(lia => lia.Author)
+                .Include(q => q.Category)
+            );
+            var existingEntity = await _unitOfWork.Repository<LibraryItem, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Fail0002, 
+                    message: StringUtils.Format(errMsg, isEng ? "library item to add group" : "tài liệu cần thêm nhóm"));
+            }
+            else if (existingEntity.Category.EnglishName != nameof(LibraryItemCategory.BookSeries))
+            {
+                // Msg: Item category is not belong to book series to process add to group items
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0029,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0029));
+            }
+            
+            // Check exist group 
+            var groupDto = (await _itemGroupService.Value.GetByIdAsync(groupId)).Data as LibraryItemGroupDto;
+            if (groupDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0002, 
+                    message: StringUtils.Format(errMsg, isEng ? "group to add" : "nhóm cho tài liệu"));
+            }
+        
+            // Check whether item properties enabling to group
+            var isGroupable = 
+            (
+                existingEntity.LibraryItemAuthors.Any(lia => Equals(lia.Author.FullName, groupDto.Author)) &&
+                existingEntity.CutterNumber != null && Equals(existingEntity.CutterNumber, groupDto.CutterNumber) &&
+                existingEntity.ClassificationNumber != null && Equals(existingEntity.ClassificationNumber, groupDto.ClassificationNumber) &&
+                existingEntity.Category.EnglishName.Equals(nameof(LibraryItemCategory.BookSeries))
+            );
+            if (!isGroupable)
+            {
+                // Msg: Item {0} cannot group with group {1} as it does not match cutter number, classification number and author with group detail
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0030);
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0030,
+                    StringUtils.Format(errMsg, isEng ? $"'{existingEntity.Title}'" : $"'{groupDto.Title}'"));
+            }
+            
+            // Assign group id
+            existingEntity.GroupId = groupDto.GroupId;
+            // Process update
+            await _unitOfWork.Repository<LibraryItem, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Msg: Update group items successfully
+                return new ServiceResult(ResultCodeConst.LibraryItem_Success0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Success0008));
+            }
+            
+            // Msg: Failed to update group items
+            return new ServiceResult(ResultCodeConst.LibraryItem_Fail0006,
+                await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Fail0006));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process assign item to group");
         }
     }
     
@@ -1161,9 +1238,14 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                     totalOutOfShelfUnits = countOutRes; 
                 }
                 
+                // Retrieve AI training session
+                var trainingSession = (await _aiTrainingSessionSvc.Value.GetByLibraryItemIdAsync(itemEntity.LibraryItemId)
+                    ).Data as AITrainingSessionDto;
+                
                 // Convert to library item detail dto
                 var itemDetailDto = dto.ToLibraryItemDetailDto(
                     digitalBorrows: digitalBorrows,
+                    aiTrainingSession: trainingSession,
                     totalInstancesInShelf: totalInShelfUnits,
                     totalInstanceOutOfShelf: totalOutOfShelfUnits);
                 
@@ -1907,6 +1989,10 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(g => g.Trim())
                 .ToList();
+            var rootTopicalTerms = rootItemEntity.TopicalTerms?
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(g => g.Trim())
+                .First();
             if (rootGenres == null || !rootGenres.Any())
             {
                 // Response empty
@@ -1919,8 +2005,16 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             // Build specification to find all items has at least one genre
             var baseSpec = new BaseSpecification<LibraryItem>(li =>
                 li.LibraryItemId != id && // Exclude root item
-                !string.IsNullOrWhiteSpace(li.Genres) &&
-                rootGenres.Any(rootGenre => li.Genres.Contains(rootGenre))); // Exist at least genre with root item
+                (
+                    (
+                        !string.IsNullOrEmpty(li.TopicalTerms) && !string.IsNullOrEmpty(rootTopicalTerms) &&
+                        li.TopicalTerms.Contains(rootTopicalTerms)
+                    ) ||
+                    ( 
+                        !string.IsNullOrEmpty(li.Genres) &&
+                        rootGenres.Any(rootGenre => li.Genres.Contains(rootGenre))
+                    )
+                )); // Exist at least genre with root item
             // Enable split query for optimization
             baseSpec.EnableSplitQuery();
             // Apply includes if necessary

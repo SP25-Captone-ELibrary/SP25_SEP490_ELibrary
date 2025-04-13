@@ -111,6 +111,20 @@ public class LibraryItemInstanceController : ControllerBase
     {
         return Ok(await _itemInstanceService.UpdateOutOfShelfAsync(barcode: barcode));
     }
+
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.MarkAsLost, Name = nameof(MarkLibraryItemInstanceAsLostAsync))]
+    public async Task<IActionResult> MarkLibraryItemInstanceAsLostAsync([FromRoute] int id)
+    {
+        return Ok(await _itemInstanceService.MarkAsLostAsync(id: id));
+    }
+    
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItemInstance.MarkLostAsFound, Name = nameof(MarkLibraryItemInstanceLostAsFoundAsync))]
+    public async Task<IActionResult> MarkLibraryItemInstanceLostAsFoundAsync([FromRoute] int id)
+    {
+        return Ok(await _itemInstanceService.MarkLostAsFoundAsync(id: id));
+    }
     
     [Authorize]
     [HttpPatch(APIRoute.LibraryItemInstance.SoftDelete, Name = nameof(SoftDeleteItemInstanceAsync))]
