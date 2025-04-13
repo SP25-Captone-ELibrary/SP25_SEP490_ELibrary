@@ -3,6 +3,7 @@ using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
 using FPTU_ELibrary.API.Payloads.Filters;
 using FPTU_ELibrary.API.Payloads.Requests;
+using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.OCR;
 using FPTU_ELibrary.Application.Common;
@@ -104,6 +105,23 @@ public class LibraryItemController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost(APIRoute.LibraryItem.CreateGroup, Name = nameof(CreateLibraryItemGroupAsync))]
+    public async Task<IActionResult> CreateLibraryItemGroupAsync([FromBody] CreateLibraryItemGroupRequest req)
+    {
+        var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _libraryItemGroupService.CreateAsync(
+            dto: req.ToLibraryItemGroupDto(),
+            createdByEmail: email ?? string.Empty));
+    }
+
+    [Authorize]
+    [HttpPatch(APIRoute.LibraryItem.AssignToGroup, Name = nameof(AssignLibraryItemToGroupAsync))]
+    public async Task<IActionResult> AssignLibraryItemToGroupAsync([FromRoute] int id, [FromRoute] int groupId)
+    {
+        return Ok(await _libraryItemService.AssignItemToGroupAsync(libraryItemId: id, groupId: groupId));
+    }
+    
+    [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetEnums, Name = nameof(GetLibraryItemEnumsAsync))]
     public async Task<IActionResult> GetLibraryItemEnumsAsync()
     {
@@ -144,7 +162,7 @@ public class LibraryItemController : ControllerBase
         [FromQuery] LibraryItemGroupSpecParams specParams,
         [FromQuery] GetGroupableLibraryItemRequest req)
     {
-        return Ok(await _libraryItemGroupService.GetAllItemPotentialGroupAsync(
+        return Ok(await _libraryItemGroupService.GetAllPotentialGroupAsync(
             spec: new LibraryItemGroupSpecification(
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
@@ -153,6 +171,20 @@ public class LibraryItemController : ControllerBase
             cutterNumber: req.CutterNumber,
             classificationNumber: req.ClassificationNumber,
             authorName: req.AuthorName));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetGroupableItemsById, Name = nameof(GetGroupableItemsByLibraryItemIdAsync))]
+    public async Task<IActionResult> GetGroupableItemsByLibraryItemIdAsync(
+        [FromQuery] LibraryItemGroupSpecParams specParams,
+        [FromRoute] int id)
+    {
+        return Ok(await _libraryItemGroupService.GetAllPotentialGroupByLibraryItemIdAsync(
+            spec: new LibraryItemGroupSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize),
+            libraryItemId: id));
     }
     
     [Authorize]

@@ -42,7 +42,10 @@ public class DigitalBorrowSpecification : BaseSpecification<DigitalBorrow>
         EnableSplitQuery();
         
         // Apply include
-        ApplyInclude(q => q.Include(d => d.LibraryResource));
+        ApplyInclude(q => q
+            .Include(d => d.User)
+            .Include(d => d.LibraryResource)
+        );
         
         // Add filter 
         if (!string.IsNullOrEmpty(email)) // by Email

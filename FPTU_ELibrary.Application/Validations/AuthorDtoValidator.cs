@@ -38,10 +38,6 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
             .WithMessage(isEng 
                 ? "Fullname is required" 
                 : "Họ và tên tác giả không được rỗng")
-            // .Matches(@"^[\p{L}\s'.-]+$")
-            // .WithMessage(isEng 
-            //     ? "Fullname should start with an uppercase letter for each word" 
-            //     : "Họ và tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ")
             .Length(1, 200)
             .WithMessage(isEng 
                 ? "Fullname must be between 1 and 200 characters long" 

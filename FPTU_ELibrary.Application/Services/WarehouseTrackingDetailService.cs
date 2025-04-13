@@ -1274,9 +1274,22 @@ public class WarehouseTrackingDetailService :
 					msg: StringUtils.Format(msg, isEng ? "item condition" : "tình trạng tài liệu"));
 		    }
 			
+		    // Check exist ISBN in tracking
+		    var isIsbnExistInTracking = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w =>
+			    Equals(dto.Isbn, w.Isbn) && w.TrackingId == trackingId);
+		    if (isIsbnExistInTracking)
+		    {
+			    // Add error
+			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
+				    key: StringUtils.ToCamelCase(nameof(WarehouseTrackingDetail.Isbn)),
+				    msg: isEng
+					    ? $"ISBN '{dto.Isbn}' already exist in warehouse tracking"
+					    : $"Mã ISBN '{dto.Isbn}' đã tồn tại trong dữ liệu nhập kho");
+		    }
+		    
 		    // Check exist ISBN
 		    var isIsbnExist = await _unitOfWork.Repository<WarehouseTrackingDetail, int>().AnyAsync(w =>
-			    Equals(dto.Isbn, w.Isbn) && w.TrackingId == trackingDto.TrackingId);
+			    Equals(dto.Isbn, w.Isbn));
 		    // Not allow duplicate ISBN in the same warehouse tracking
 		    if(isIsbnExist && trackingDto.TrackingType == TrackingType.StockIn) 
 		    {
@@ -1292,7 +1305,8 @@ public class WarehouseTrackingDetailService :
 			    }
 		    }
 		    // Required exist ISBN when tracking type is stock-out or transfer
-		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || trackingDto.TrackingType == TrackingType.StockChecking)) 
+		    if(!isIsbnExist && (trackingDto.TrackingType == TrackingType.StockOut || 
+		                        trackingDto.TrackingType == TrackingType.StockChecking)) 
 		    {
 			    // Add error
 			    customErrors = DictionaryUtils.AddOrUpdate(customErrors,
@@ -1723,7 +1737,17 @@ public class WarehouseTrackingDetailService :
 		    dto.TrackingId = trackingId;
 		    // Set null if libraryItemId is zero
 		    if (dto.LibraryItemId == 0) dto.LibraryItemId = null;
+
+		    // Recalculate total item
+		    if (trackingDto.TrackingType == TrackingType.StockIn)
+		    {
+			    trackingDto.TotalItem++;
+		    }
+		    // Recalculate total amount
+		    trackingDto.TotalAmount += dto.TotalAmount;
 		    
+		    // Process recalculating total item and total amount
+		    await _trackingSvc.RecalculateTotalAndAmountWithoutSaveChangesAsync(trackingId, trackingDto.TotalItem, trackingDto.TotalAmount);
 		    // Process update inventory without save change
 		    await _trackingSvc.UpdateInventoryWithoutSaveChanges(trackingId, trackingDto);
 		    // Progress add tracking detail to tracking 

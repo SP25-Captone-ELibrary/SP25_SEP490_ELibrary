@@ -1086,6 +1086,14 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Success0002 = "WarehouseTracking.Success0002";
         /// <summary>
+        /// [SUCCESS] Warehouse stock-in file archived successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0003 = "WarehouseTracking.Success0003";
+        /// <summary>
+        /// [SUCCESS] Warehouse supplement request file archived successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0004 = "WarehouseTracking.Success0004";
+        /// <summary>
         /// [WARNING] Do not allow to change status from {0} to {1}
         /// </summary>
         public const string WarehouseTracking_Warning0001 = "WarehouseTracking.Warning0001";
@@ -1191,6 +1199,24 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0026 = "WarehouseTracking.Warning0026";
         /// <summary>
+        /// [WARNING] No file found for warehouse stock-in file to proceed with storage
+        /// </summary>
+        public const string WarehouseTracking_Warning0027 = "WarehouseTracking.Warning0027";
+        /// <summary>
+        /// [WARNING] Unable to create a file for the warehouse receipt as it is not in a completed status.
+        /// Please verify the receipt status and complete the process before creating the file
+        /// </summary>
+        public const string WarehouseTracking_Warning0028 = "WarehouseTracking.Warning0028";
+        /// <summary>
+        /// [WARNING] Unable to create a file for the supplement warehouse request receipt as it is not in a completed status.
+        /// Please verify the receipt status and complete the process before creating the file
+        /// </summary>
+        public const string WarehouseTracking_Warning0029 = "WarehouseTracking.Warning0029";
+        /// <summary>
+        /// [WARNING] Tracking type is invalid to process creating file
+        /// </summary>
+        public const string WarehouseTracking_Warning0030 = "WarehouseTracking.Warning0030";
+		/// <summary>
         /// [FAIL] Failed to register unique barcode for warehouse tracking detail
         /// </summary>
         public const string WarehouseTracking_Fail0001 = "WarehouseTracking.Fail0001";
@@ -1198,6 +1224,14 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to create supplement request
         /// </summary>
         public const string WarehouseTracking_Fail0002 = "WarehouseTracking.Fail0002";
+        /// <summary>
+        /// [FAIL] Failed to archive the warehouse receipt file. Please check and try again later
+        /// </summary>
+        public const string WarehouseTracking_Fail0003 = "WarehouseTracking.Fail0003";
+        /// <summary>
+        /// [FAIL] Failed to archive the supplement warehouse request receipt file. Please check and try again later
+        /// </summary>
+        public const string WarehouseTracking_Fail0004 = "WarehouseTracking.Fail0004";
         #endregion
 
         #region Transaction

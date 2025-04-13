@@ -8,4 +8,5 @@ public interface ISupplementRequestDetailService<TDto> : IGenericService<Supplem
     where TDto : class
 {
     Task<IServiceResult> GetAllByTrackingIdAsync(int trackingId, ISpecification<SupplementRequestDetail> spec);
+    Task<IServiceResult> AddFinalizedSupplementRequestFileAsync(int trackingId, string url);
 }
