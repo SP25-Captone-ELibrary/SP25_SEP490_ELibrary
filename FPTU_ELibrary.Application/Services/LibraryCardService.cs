@@ -467,13 +467,6 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
             baseSpec.AddOrderByDescending(c => c.IssueDate);
             // Retrieve with spec
             var libCard = await _unitOfWork.Repository<LibraryCard, Guid>().GetWithSpecAsync(baseSpec);
-            if (libCard == null)
-            {
-                // Not found {0}
-                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, isEng ? "library card" : "thẻ thư viện"));
-            }
 
             // Retrieve user information
             var userSpec = new BaseSpecification<User>(u => u.UserId == userId);
@@ -511,26 +504,29 @@ public class LibraryCardService : GenericService<LibraryCard, LibraryCardDto, Gu
                 var itemReview = userDto.LibraryItemReviews.FirstOrDefault(li => li.LibraryItemId == itemId);
                 // Add item rating val
                 userProfileActivity.Rating = itemReview?.RatingValue ?? 0;
-                
-                // Check whether consuming item or not
-                var borrowedCount = libCard.BorrowRecords
-                    .SelectMany(br => br.BorrowRecordDetails)
-                    .Select(brd => brd.LibraryItemInstance.LibraryItemId)
-                    .Where(libItemId => libItemId == itemId).ToList();
-                if (borrowedCount.Any())
+
+                if (libCard != null)
                 {
-                    userProfileActivity.Borrowed = true;
-                    userProfileActivity.BorrowCount = borrowedCount.Count;
-                }
-                
-                // Check whether reserving item or not 
-                var reserveCount = libCard.ReservationQueues
-                    .Select(r => r.LibraryItemId)
-                    .Where(libItemId => libItemId == itemId).ToList();
-                if (reserveCount.Any())
-                {
-                    userProfileActivity.Reserved = true;
-                    userProfileActivity.ReserveCount = reserveCount.Count;
+                    // Check whether consuming item or not
+                    var borrowedCount = libCard.BorrowRecords
+                        .SelectMany(br => br.BorrowRecordDetails)
+                        .Select(brd => brd.LibraryItemInstance.LibraryItemId)
+                        .Where(libItemId => libItemId == itemId).ToList();
+                    if (borrowedCount.Any())
+                    {
+                        userProfileActivity.Borrowed = true;
+                        userProfileActivity.BorrowCount = borrowedCount.Count;
+                    }
+                    
+                    // Check whether reserving item or not 
+                    var reserveCount = libCard.ReservationQueues
+                        .Select(r => r.LibraryItemId)
+                        .Where(libItemId => libItemId == itemId).ToList();
+                    if (reserveCount.Any())
+                    {
+                        userProfileActivity.Reserved = true;
+                        userProfileActivity.ReserveCount = reserveCount.Count;
+                    }
                 }
                 
                 // Check whether adding item to favorite list or not
