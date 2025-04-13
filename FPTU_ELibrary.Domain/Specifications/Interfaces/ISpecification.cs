@@ -20,5 +20,6 @@ namespace FPTU_ELibrary.Domain.Specifications.Interfaces
         int Skip { get; }
         bool IsPagingEnabled { get; }
         bool AsSplitQuery { get; } 
+        bool IsDistinct { get; }
     }
 }

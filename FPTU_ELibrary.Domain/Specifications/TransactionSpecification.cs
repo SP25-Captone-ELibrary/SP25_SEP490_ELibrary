@@ -26,6 +26,8 @@ public class TransactionSpecification : BaseSpecification<Transaction>
         // Enable split query
         EnableSplitQuery();
 
+        ApplyInclude(q => q.Include(t => t.User));
+        
         // Filter
         if (!string.IsNullOrEmpty(email))
         {

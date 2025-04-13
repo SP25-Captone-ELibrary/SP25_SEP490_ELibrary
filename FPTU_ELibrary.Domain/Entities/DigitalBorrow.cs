@@ -16,7 +16,6 @@ public class DigitalBorrow
     public BorrowDigitalStatus Status { get; set; }
     
     // References
-    [JsonIgnore]
     public User User { get; set; } = null!;
     public LibraryResource LibraryResource { get; set; } = null!;
     

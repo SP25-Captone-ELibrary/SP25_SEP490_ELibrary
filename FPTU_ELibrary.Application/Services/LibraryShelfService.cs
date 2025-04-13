@@ -1,4 +1,5 @@
 using FPTU_ELibrary.Application.Common;
+using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Extensions;
@@ -32,7 +33,73 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
     {
         _libItemSvc = libItemSvc;
     }
-    
+
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<LibraryShelf> specification, bool tracked = true)
+    {
+        try
+        {
+            // Try to parse specification to LibraryShelfSpecification
+            var shelfSpecification = specification as LibraryShelfSpecification;
+            // Check if specification is null
+            if (shelfSpecification == null)
+            {
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Fail0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }
+            
+            // Count total library shelves
+            var totalLibShelveWithSpec = await _unitOfWork.Repository<LibraryShelf, int>().CountAsync(shelfSpecification);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalLibShelveWithSpec / shelfSpecification.PageSize);
+
+            // Set pagination to specification after count total library shelf
+            if (shelfSpecification.PageIndex > totalPage
+                || shelfSpecification.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                shelfSpecification.PageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            shelfSpecification.ApplyPaging(
+                skip: shelfSpecification.PageSize * (shelfSpecification.PageIndex - 1),
+                take: shelfSpecification.PageSize);
+            
+            // Retrieve all with spec
+            var entities = await _unitOfWork.Repository<LibraryShelf, int>()
+                .GetAllWithSpecAsync(shelfSpecification, tracked);
+            if (entities.Any())
+            {
+                // Map to dto
+                var dtoList = _mapper.Map<List<LibraryShelfDto>>(entities);
+                
+                // Map to get shelf detail
+                var shelfDetailList = dtoList.Select(s => s.ToGetLibraryShelfDetailDto());
+                
+                // Pagination
+                var paginationResult = new PaginatedResultDto<GetLibraryShelfDetailDto>(shelfDetailList,
+                    shelfSpecification.PageIndex, shelfSpecification.PageSize, totalPage, totalLibShelveWithSpec);
+                
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: paginationResult);
+            }
+
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                data: new List<LibraryShelfDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all library shelf");
+        }
+    }
+
     public async Task<IServiceResult> GetAllBySectionIdAsync(int sectionId)
     {
         try
@@ -343,7 +410,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
             {
                 case nameof(LibraryItemCategory.SingleBook) or nameof(LibraryItemCategory.BookSeries):
                     // Check for improper request
-                    if (isJournalSection.HasValue)
+                    if (isJournalSection is true)
                     {
                         // Unable to place item {0} on shelf {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,
@@ -355,7 +422,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                                     ? $"'{nameof(LibraryLocation.Sections.MagazinesAndNews)}'" 
                                     : $"'{LibraryItemCategory.Magazine.GetDescription()} và {LibraryItemCategory.Newspaper.GetDescription()}'"));
                     }
-                    else if (isReferenceSection.HasValue)
+                    else if (isReferenceSection is true)
                     {
                         // Unable to place item {0} on a shelf in section {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,
@@ -378,7 +445,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                               ls.Section.IsChildrenSection == (isChildrenSection ?? false));// Include children section if request
                     break;
                 case nameof(LibraryItemCategory.Newspaper) or nameof(LibraryItemCategory.Magazine):
-                    if (isReferenceSection.HasValue)
+                    if (isReferenceSection is true)
                     {
                         // Unable to place item {0} on a shelf in section {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,
@@ -390,7 +457,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                                     ? $"'{nameof(LibraryLocation.Sections.Reference)}'" 
                                     : $"'{LibraryItemCategory.ReferenceBook.GetDescription()}'"));
                     }
-                    else if (isChildrenSection.HasValue)
+                    else if (isChildrenSection is true)
                     {
                         // Unable to place item {0} on a shelf in section {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,
@@ -413,7 +480,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                               !ls.Section.IsChildrenSection); // Is not children section
                     break;
                 case nameof(LibraryItemCategory.ReferenceBook):
-                    if (isJournalSection.HasValue)
+                    if (isJournalSection is true)
                     {
                         // Unable to place item {0} on shelf {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,
@@ -425,7 +492,7 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
                                     ? $"'{nameof(LibraryLocation.Sections.MagazinesAndNews)}'" 
                                     : $"'{LibraryItemCategory.Magazine.GetDescription()} và {LibraryItemCategory.Newspaper.GetDescription()}'"));
                     }
-                    else if (isChildrenSection.HasValue)
+                    else if (isChildrenSection is true)
                     {
                         // Unable to place item {0} on a shelf in section {1}
                         return new ServiceResult(ResultCodeConst.LibraryItem_Warning0017,

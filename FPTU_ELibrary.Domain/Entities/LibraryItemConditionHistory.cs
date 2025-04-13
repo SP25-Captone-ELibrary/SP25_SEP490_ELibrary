@@ -12,7 +12,7 @@ public class LibraryItemConditionHistory : IAuditableEntity
 
     // Record management properties
     public int ConditionId { get; set; }
-
+    
     // Creation and update datetime
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

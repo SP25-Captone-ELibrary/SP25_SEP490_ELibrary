@@ -15,11 +15,11 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
         var isEng = langEnum == SystemLanguage.English;
 
         // Author Code
-        RuleFor(u => u.AuthorCode)
-            .Matches(@"^[A-Z]{2,4}\d{0,8}$")
-            .WithMessage(isEng 
-                ? "Author code must start with two to four uppercase letters, contain only digits after that, and be less than 10 characters" 
-                : "Mã tác giả phải bắt đầu bằng hai đến bốn chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
+        // RuleFor(u => u.AuthorCode)
+        //     .Matches(@"^[A-Z]{2,4}\d{0,8}$")
+        //     .WithMessage(isEng 
+        //         ? "Author code must start with two to four uppercase letters, contain only digits after that, and be less than 10 characters" 
+        //         : "Mã tác giả phải bắt đầu bằng hai đến bốn chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
         // Author image
         RuleFor(e => e.AuthorImage)
             .Must(str => string.IsNullOrEmpty(str) || StringUtils.IsValidUrl(str))
@@ -38,10 +38,6 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
             .WithMessage(isEng 
                 ? "Fullname is required" 
                 : "Họ và tên tác giả không được rỗng")
-            // .Matches(@"^[\p{L}\s'.-]+$")
-            // .WithMessage(isEng 
-            //     ? "Fullname should start with an uppercase letter for each word" 
-            //     : "Họ và tên phải bắt đầu bằng chữ cái viết hoa cho mỗi từ")
             .Length(1, 200)
             .WithMessage(isEng 
                 ? "Fullname must be between 1 and 200 characters long" 

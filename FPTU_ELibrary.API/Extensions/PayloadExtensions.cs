@@ -5,6 +5,7 @@ using FPTU_ELibrary.API.Payloads.Requests.Borrow;
 using FPTU_ELibrary.API.Payloads.Requests.Category;
 using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
+using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
@@ -90,7 +91,6 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return new AuthorDto()
 			{
-				AuthorCode = req.AuthorCode,
 				AuthorImage = req.AuthorImage,
 				FullName = req.FullName,
 				Biography = req.Biography,
@@ -112,7 +112,6 @@ namespace FPTU_ELibrary.API.Extensions
 
 			return new AuthorDto()
 			{
-				AuthorCode = req.AuthorCode,
 				AuthorImage = req.AuthorImage,
 				FullName = req.FullName,
 				Biography = req.Biography,
@@ -353,6 +352,17 @@ namespace FPTU_ELibrary.API.Extensions
 				ShelfId = req.ShelfId
 			};
 
+		// Mapping from typeof(CreateLibraryItemGroupRequest) to typeof(LibraryItemGroupDto)
+		public static LibraryItemGroupDto ToLibraryItemGroupDto(this CreateLibraryItemGroupRequest req)
+			=> new()
+			{
+				ClassificationNumber = req.ClassificationNumber,
+				CutterNumber = req.CutterNumber,
+				Title = req.Title,
+				SubTitle = req.SubTitle,
+				Author = req.Author,
+				TopicalTerms = req.TopicalTerms
+			};
 		#endregion
 
 		#region Library Item Resource

@@ -31,6 +31,9 @@ public class WarehouseTrackingDto
     public string CreatedBy { get; set; } = null!;
     public string? UpdatedBy { get; set; }
 
+    // Finalized stock-in file 
+    public string? FinalizedFile { get; set; }
+    
     // References
     public SupplierDto? Supplier { get; set; }
     public WarehouseTrackingInventoryDto WarehouseTrackingInventory { get; set; } = null!;

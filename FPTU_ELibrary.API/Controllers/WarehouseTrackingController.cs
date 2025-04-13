@@ -123,6 +123,24 @@ public class WarehouseTrackingController : ControllerBase
         return Ok(await _warehouseTrackSvc.UpdateStatusAsync(id, status));
     }
 
+    [Authorize(Roles = nameof(Role.HeadLibrarian))]
+    [HttpPatch(APIRoute.WarehouseTracking.AddStockInFile, Name = nameof(AddWarehouseStockInFileAsync))]
+    public async Task<IActionResult> AddWarehouseStockInFileAsync(
+        [FromRoute] int id, 
+        [FromQuery] string url)
+    {
+        return Ok(await _warehouseTrackSvc.AddFinalizedStockInFileAsync(id, url));
+    }
+    
+    [Authorize(Roles = nameof(Role.HeadLibrarian))]
+    [HttpPatch(APIRoute.WarehouseTracking.AddSupplementRequestFile, Name = nameof(AddWarehouseSupplementRequestFileAsync))]
+    public async Task<IActionResult> AddWarehouseSupplementRequestFileAsync(
+        [FromRoute] int id, 
+        [FromQuery] string url)
+    {
+        return Ok(await _supplementReqDetailSvc.AddFinalizedSupplementRequestFileAsync(id, url));
+    }
+    
     [Authorize]
     [HttpPut(APIRoute.WarehouseTracking.UpdateRangeUniqueBarcodeRegistration,
         Name = nameof(UpdateRangeUniqueBarcodeRegistrationAsync))]

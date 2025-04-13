@@ -18,6 +18,7 @@ using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Nest;
 using Serilog;
 using Exception = System.Exception;
 
@@ -1929,6 +1930,158 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
             throw new Exception("Error invoke when process update range item instance status");
         }
     }
+
+    public async Task<IServiceResult> MarkAsLostAsync(int id)
+    {
+        try
+        {
+            // Determine current lang context 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+                        
+            // Retrieve item instance by id 
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0002,
+                    message: StringUtils.Format(errMsg, isEng ? "item instance" : "bản sao"));
+            }
+            
+            // Check current status
+            if (existingEntity.Status == nameof(LibraryItemInstanceStatus.Lost))
+            {
+                // Msg: Item instance has been in lost status
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0027,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0027));
+            }
+            
+            // Process update instance status
+            var updateRes = await UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+                libraryItemInstanceIds: [existingEntity.LibraryItemInstanceId],
+                status: LibraryItemInstanceStatus.Lost,
+                isProcessBorrowRequest: false);
+            if (updateRes.ResultCode != ResultCodeConst.SYS_Success0003) return updateRes;
+            
+            // Retrieve lost condition
+            var lostSpec = new BaseSpecification<LibraryItemCondition>(l =>
+                l.EnglishName == nameof(LibraryItemConditionStatus.Lost));
+            var lostConditionDto = (await _conditionService.GetWithSpecAsync(lostSpec)).Data as LibraryItemConditionDto;
+            if (lostConditionDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0002,
+                    message: StringUtils.Format(errMsg, isEng ? "lost condition status to process update" : "trạng thái mất tài liệu để cập nhật"));
+            }
+            
+            // Add lost condition history
+            existingEntity.LibraryItemConditionHistories.Add(new ()
+            {
+                ConditionId = lostConditionDto.ConditionId
+            });
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+            if (isSaved)
+            {
+                // Update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            
+            // Failed to update
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process mark item instance as lost");
+        }
+    }
+
+    public async Task<IServiceResult> MarkLostAsFoundAsync(int id)
+    {
+        try
+        {
+            // Determine current lang context 
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+                        
+            // Retrieve item instance by id 
+            var existingEntity = await _unitOfWork.Repository<LibraryItemInstance, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0002,
+                    message: StringUtils.Format(errMsg, isEng ? "item instance" : "bản sao"));
+            }
+            
+            // Check current status
+            if (existingEntity.Status != nameof(LibraryItemInstanceStatus.Lost))
+            {
+                // Msg: Item instance is not in lost status
+                return new ServiceResult(ResultCodeConst.LibraryItem_Warning0028,
+                    await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0028));
+            }
+            
+            // Process update instance status
+            var updateRes = await UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(
+                libraryItemInstanceIds: [existingEntity.LibraryItemInstanceId],
+                status: LibraryItemInstanceStatus.OutOfShelf,
+                isProcessBorrowRequest: false);
+            if (updateRes.ResultCode != ResultCodeConst.SYS_Success0003) return updateRes;
+            
+            // Retrieve good condition
+            var goodSpec = new BaseSpecification<LibraryItemCondition>(l =>
+                l.EnglishName == nameof(LibraryItemConditionStatus.Good));
+            var goodConditionDto = (await _conditionService.GetWithSpecAsync(goodSpec)).Data as LibraryItemConditionDto;
+            if (goodConditionDto == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0002,
+                    message: StringUtils.Format(errMsg, isEng ? "good condition status to process update" : "trạng thái tài liệu để cập nhật"));
+            }
+            
+            // Add lost condition history
+            existingEntity.LibraryItemConditionHistories.Add(new ()
+            {
+                ConditionId = goodConditionDto.ConditionId
+            });
+            
+            // Process update
+            await _unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(existingEntity);
+            // Save DB
+            var isSaved = await _unitOfWork.SaveChangesWithTransactionAsync() > 0;
+            if (isSaved)
+            {
+                // Update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+            }
+            
+            // Failed to update
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process mark lost item instance as found");
+        }
+    }
     
     public async Task<IServiceResult> SoftDeleteAsync(int libraryItemInstanceId)
     {
@@ -2463,7 +2616,23 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                         }
                         // Case 3: InShelf -> InShelf (no effect)
                         // Case 4: InShelf -> Reserved (not allow)
-                        // Case 5: InShelf -> Lost (not allow)
+                        // Case 5: InShelf -> Lost
+                        if (status == LibraryItemInstanceStatus.Lost)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Lost);
+
+                            if (inventory != null && inventory.AvailableUnits > 0 
+                                                  && inventory.TotalUnits > 0)
+                            {
+                                // Reduce available units
+                                inventory.AvailableUnits--;
+                                // Reduce total units
+                                inventory.TotalUnits--;
+                                // Increase lost units
+                                inventory.LostUnits++;
+                            }
+                        }
                         break;
                     case nameof(LibraryItemInstanceStatus.OutOfShelf):
                         // Case 1: OutOfShelf -> InShelf
@@ -2497,7 +2666,20 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                             // Update status
                             instance.Status = nameof(LibraryItemInstanceStatus.Reserved);
                         }
-                        // Case 5: OutOfShelf -> Lost (not allow)
+                        // Case 5: OutOfShelf -> Lost
+                        if (status == LibraryItemInstanceStatus.Lost)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Lost);
+
+                            if (inventory != null && inventory.TotalUnits > 0)
+                            {
+                                // Increase lost units
+                                inventory.LostUnits++;
+                                // Reduce total units 
+                                inventory.TotalUnits--;
+                            }
+                        }
                         break;
                     case nameof(LibraryItemInstanceStatus.Borrowed):
                         // Case 1: Borrowed -> InShelf (Not allow)
@@ -2571,14 +2753,45 @@ public class LibraryItemInstanceService : GenericService<LibraryItemInstance, Li
                             {
                                 // Reduce reserved units
                                 inventory.ReservedUnits--;
-                                // Increase borrowed unties
+                                // Increase borrowed units
                                 inventory.BorrowedUnits++;
                             }
                         }
-                        // Case 5: Reserved -> Lost (not allow)
+                        // Case 5: Reserved -> Lost
+                        if (status == LibraryItemInstanceStatus.Lost)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.Lost);
+
+                            if (inventory != null && inventory.ReservedUnits > 0
+                                                  && inventory.TotalUnits > 0)
+                            {
+                                // Reduce reserved units
+                                inventory.ReservedUnits--;
+                                // Increase lost units
+                                inventory.LostUnits++;
+                            }
+                        }
                         break;
                     case nameof(LibraryItemInstanceStatus.Lost):
-                        // Not allow to update from lost status to other statuses
+                        // Case 1: Lost -> OutOfShelf (found instance marked as lost somewhere)
+                        if (status == LibraryItemInstanceStatus.OutOfShelf)
+                        {
+                            // Update status
+                            instance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
+
+                            if (inventory != null && inventory.LostUnits > 0)
+                            {
+                                // Reduce lost units
+                                inventory.LostUnits--;
+                                // Increase total units
+                                inventory.TotalUnits++;
+                            }
+                        }
+                        // Case 2: Lost -> InShelf (not allow)
+                        // Case 3: Lost -> Borrowed (not allow)
+                        // Case 4: Lost -> Reserved (not allow)
+                        // Case 5: Lost -> Lost (not allow)
                         break;
                 }
                 

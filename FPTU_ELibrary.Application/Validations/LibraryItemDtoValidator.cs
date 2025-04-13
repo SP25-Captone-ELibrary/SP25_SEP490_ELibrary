@@ -40,7 +40,7 @@ public class LibraryItemDtoValidator : AbstractValidator<LibraryItemDto>
             .WithMessage(isEng
                 ? "Statement of responsibility must not exceed than 155 characters"
                 : "Thông tin trách nhiệm của tài liệu phải nhỏ hơn 155 ký tự");
-        // Subtitle 
+        // Edition 
         RuleFor(e => e.Edition)
             .MaximumLength(100)
             .WithMessage(isEng

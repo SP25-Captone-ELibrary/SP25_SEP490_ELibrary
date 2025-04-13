@@ -358,6 +358,20 @@ namespace FPTU_ELibrary.Application.Utils
         }
 
         /// <summary>
+        /// Compare to string fields using Fuzziness
+        /// </summary>
+        public static int CompareFieldStatus(string field1, string field2)
+        {
+            var fuzzyScore = CombinedFuzzinessScore(field1, field2);
+            return fuzzyScore switch
+            {
+                >= 90 => (int)FieldGroupCheckedStatus.GroupSuccess,
+                >= 50 => (int)FieldGroupCheckedStatus.AbleToForceGrouped,
+                _ => (int)FieldGroupCheckedStatus.GroupFailed
+            };
+        }
+        
+        /// <summary>
         /// Combine FuzzySharp and Damerau-Levenshtein 
         /// </summary>
         public static int CombinedFuzzinessScore(string data, string phrase)

@@ -15,7 +15,7 @@ public class GetDigitalBorrowDto
     public int ExtensionCount { get; set; }
     public BorrowDigitalStatus Status { get; set; }
     public LibraryResourceDto LibraryResource { get; set; } = null!;
-    
+    public UserDto User { get; set; } = null!;
     public List<DigitalBorrowExtensionHistoryDto> DigitalBorrowExtensionHistories { get; set; } = new();
     public List<TransactionDto> Transactions { get; set; } = new();
 }
@@ -35,6 +35,7 @@ public static class GetDigitalBorrowDtoExtensions
             IsExtended = dto.IsExtended,
             ExtensionCount = dto.ExtensionCount,
             Status = dto.Status,
+            User = dto.User,
             LibraryResource = dto.LibraryResource,
             DigitalBorrowExtensionHistories = dto.DigitalBorrowExtensionHistories.Any()
                 ? dto.DigitalBorrowExtensionHistories.ToList()

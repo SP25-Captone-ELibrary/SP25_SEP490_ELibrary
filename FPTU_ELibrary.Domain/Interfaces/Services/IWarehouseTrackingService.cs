@@ -9,6 +9,7 @@ namespace FPTU_ELibrary.Domain.Interfaces.Services;
 public interface IWarehouseTrackingService<TDto> : IGenericService<WarehouseTracking, TDto, int>
     where TDto : class
 {
+    Task<IServiceResult> AddFinalizedStockInFileAsync(int trackingId, string url);
     Task<IServiceResult> GetAllStockTransactionTypeByTrackingTypeAsync(TrackingType trackingType);
     Task<IServiceResult> GetByIdAndIncludeInventoryAsync(int trackingId);
     Task<IServiceResult> CreateAndImportDetailsAsync(
@@ -18,4 +19,5 @@ public interface IWarehouseTrackingService<TDto> : IGenericService<WarehouseTrac
     Task<IServiceResult> CreateStockInWithDetailsAsync(TDto dto);
     Task<IServiceResult> UpdateStatusAsync(int id, WarehouseTrackingStatus status);
     Task<IServiceResult> UpdateInventoryWithoutSaveChanges(int id, TDto dto);
+    Task<IServiceResult> RecalculateTotalAndAmountWithoutSaveChangesAsync(int id, int totalItem, decimal totalAmount);
 }

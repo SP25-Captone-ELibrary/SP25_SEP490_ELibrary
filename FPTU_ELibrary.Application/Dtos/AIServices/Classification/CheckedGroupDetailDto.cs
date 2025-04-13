@@ -12,7 +12,7 @@ public class CheckedGroupDetailDto<T> where T : notnull
 
 public class CheckedGroupResponseDto<T> where T : notnull
 {
-    public List<CheckedGroupDetailDto<T>> ListCheckedGroupDetail { get; set; } = new List<CheckedGroupDetailDto<T>>();
+    public List<CheckedGroupDetailDto<T>> ListCheckedGroupDetail { get; set; } = new();
     public int IsAbleToCreateGroup { get; set; }
     public int GroupStatus { get; set; }
 }

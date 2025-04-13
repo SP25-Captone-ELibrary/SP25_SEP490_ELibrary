@@ -145,12 +145,17 @@
 			public const string GetEnums = Base + "/management/library-items/enums";
 			public const string GetAll = Base + "/management/library-items";
 			public const string GetById = Base + "/management/library-items/{id}";
+			public const string GetGroupById = Base + "/management/library-items/{id}/group";
+			public const string GetGroupableItems = Base + "/management/library-items/groupable-items";
+			public const string GetGroupableItemsById = Base + "/management/library-items/{id}/groupable-items";
 			public const string GetShelf = Base + "/management/library-items/{id}/get-shelf";
 			public const string CountTotalInstance = Base + "/management/library-items/{id}/total-copy";
 			public const string CountRangeTotalInstance = Base + "/management/library-items/total-copy";
 			public const string Export = Base + "/management/library-items/export";
 			// [POST]
 			public const string Create = Base + "/management/library-items";
+			public const string CreateGroup = Base + "/management/library-items/group";
+			public const string AssignToGroup = Base + "/management/library-items/{id}/group/{groupId}";
 			public const string AddAuthor = Base + "/management/library-items/add-author";
 			public const string AddRangeAuthor = Base + "/management/library-items/add-range-author";
 			public const string DeleteAuthor = Base + "/management/library-items/delete-author";
@@ -244,6 +249,8 @@
 			public const string SoftDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/soft-delete-range";
 			public const string UndoDelete = Base + "/management/library-items/instances/{id}/undo-delete";
 			public const string UndoDeleteRange = Base + "/management/library-items/{libraryItemId}/instances/undo-delete-range";
+			public const string MarkAsLost = Base + "/management/library-items/instances/{id}/mark-as-lost";
+			public const string MarkLostAsFound = Base + "/management/library-items/instances/{id}/mark-as-found";
 			// [DELETE]
 			public const string Delete = Base + "/management/library-items/instances/{id}";
 			public const string DeleteRange = Base + "/management/library-items/{libraryItemId}/instances";
@@ -614,17 +621,21 @@
 		public static class LibraryLocation
 		{
 			#region Management
-			//	[GET]
-			public const string GetFloors = Base + "/management/location/floors";
-			public const string GetMapByFloorId = Base + "/management/location/map/floors/{floorId}";
-			public const string GetMapShelfDetailById = Base + "/management/location/map/shelves/{shelfId}";
-
-			public const string GetShelvesForFilter = Base + "/management/location/shelves/filter";
-			public const string GetZonesByFloorId = Base + "/management/location/zones";
-			public const string GetSectionsByZoneId = Base + "/management/location/sections";
-			public const string GetShelvesBySectionId = Base + "/management/location/shelves";
+			// [GET]
+			public const string GetAllShelves = Base + "/management/location/shelves";
+			public const string GetMapShelfDetailById = Base + "/management/location/shelves/{shelfId}";
 			#endregion
 			
+			#region Map
+			public const string GetMapByFloorId = Base + "/location/map/floors/{floorId}";
+			#endregion
+			
+			// [GET]
+			public const string GetFloors = Base + "/location/floors";
+			public const string GetShelvesForFilter = Base + "/location/shelves/filter";
+			public const string GetZonesByFloorId = Base + "/location/zones";
+			public const string GetSectionsByZoneId = Base + "/location/sections";
+			public const string GetShelvesBySectionId = Base + "/location/shelves";
 			public const string GetShelfWithFloorZoneSectionById = Base + "/location/shelves/{shelfId}";
 		}
 		
@@ -766,6 +777,8 @@
 			#region HeadLibrian only
 			// [PATCH]
 			public const string UpdateStatus = Base + "/management/warehouse-trackings/{id}/status";
+			public const string AddStockInFile = Base + "/management/warehouse-trackings/{id}/add-stock-in-file";
+			public const string AddSupplementRequestFile = Base + "/management/warehouse-trackings/{id}/add-supplement-request-file";
 			#endregion
 		}
 
@@ -815,7 +828,8 @@
 		public static class Payment
 		{
 			#region Management
-			public const string GetAllTransaction = Base + "/management/payment/transactions";
+			public const string GetAllTransaction = Base + "/management/transactions";
+			public const string GetTransactionById = Base + "/management/transactions/{id}";
 			#endregion
 			
 			// [GET]

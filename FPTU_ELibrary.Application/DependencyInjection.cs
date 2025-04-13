@@ -69,6 +69,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto>, BorrowDetailExtensionHistoryService>();
             services.AddScoped<ICategoryService<CategoryDto>, CategoryService>();
             services.AddScoped<IDigitalBorrowService<DigitalBorrowDto>, DigitalBorrowService>();
+            services.AddScoped<IDigitalBorrowExtensionHistoryService<DigitalBorrowExtensionHistoryDto>, DigitalBorrowExtensionHistoryService>();
             services.AddScoped<IEmployeeService<EmployeeDto>, EmployeeService>();
             services.AddScoped<IFinePolicyService<FinePolicyDto>, FinePolicyService>();
 			services.AddScoped<ILibraryItemService<LibraryItemDto>, LibraryItemService>(); 

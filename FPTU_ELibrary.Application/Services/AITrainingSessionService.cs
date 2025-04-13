@@ -14,6 +14,7 @@ using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
+using Nest;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -230,6 +231,40 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
         }
     }
 
+    public async Task<IServiceResult> GetByLibraryItemIdAsync(int libraryItemId)
+    {
+        try
+        {   
+            // Build spec
+            var spec = new BaseSpecification<AITrainingSession>(s => s.TrainingDetails.Any(t => t.LibraryItemId == libraryItemId));
+            // Apply include
+            spec.ApplyInclude(q => q
+                .Include(t => t.TrainingDetails)
+                    .ThenInclude(td => td.TrainingImages)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<AITrainingSession, int>().GetWithSpecAsync(spec);
+            if (existingEntity != null)
+            {
+                // Get data successfully
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Warning0004,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+                    data: _mapper.Map<AITrainingSessionDto>(existingEntity)); 
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get by library item id");
+        }
+    }
+    
     public async Task<IServiceResult> UpdateSuccessSessionStatus(int sessionId, bool isSuccess, string? errorMessage = null)
     {
         try

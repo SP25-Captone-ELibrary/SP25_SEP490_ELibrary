@@ -737,7 +737,11 @@ namespace FPTU_ELibrary.Application.Common
         /// [SUCCESS] Item removed from favorites successfully
         /// </summary>
         public const string LibraryItem_Success0007 = "LibraryItem.Success0007";
-		/// <summary>
+        /// <summary>
+        /// [SUCCESS] Update group items successfully
+        /// </summary>
+        public const string LibraryItem_Success0008 = "LibraryItem.Success0008";
+        /// <summary>
 		/// [WARNING] Some authors are unavailable or do not exist
 		/// </summary>
 		public const string LibraryItem_Warning0001 = "LibraryItem.Warning0001";
@@ -842,6 +846,26 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string LibraryItem_Warning0026 = "LibraryItem.Warning0026";
         /// <summary>
+        /// [WARNING] Item instance has been in lost status
+        /// </summary>
+        public const string LibraryItem_Warning0027 = "LibraryItem.Warning0027";
+        /// <summary>
+        /// [WARNING] Item instance is not in lost status
+        /// </summary>
+        public const string LibraryItem_Warning0028 = "LibraryItem.Warning0028";
+        /// <summary>
+        /// [WARNING] Item category is not belong to book series to process add to group items
+        /// </summary>
+        public const string LibraryItem_Warning0029 = "LibraryItem.Warning0029";
+        /// <summary>
+        /// [WARNING] Item {0} cannot group with group {1} as it does not match cutter number, classification number and author with group detail
+        /// </summary>
+        public const string LibraryItem_Warning0030 = "LibraryItem.Warning0030";
+        /// <summary>
+        /// [WARNING] Unable to create a new group because the document may be grouped with existing groups. Please check again
+        /// </summary>
+        public const string LibraryItem_Warning0031 = "LibraryItem.Warning0031";
+        /// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
 		public const string LibraryItem_Fail0001 = "LibraryItem.Fail0001";
@@ -861,6 +885,10 @@ namespace FPTU_ELibrary.Application.Common
 		/// [FAIL] Failed to rating for the item
 		/// </summary>
 		public const string LibraryItem_Fail0005 = "LibraryItem.Fail0005";
+		/// <summary>
+        /// [FAIL] Failed to update group items
+        /// </summary>
+        public const string LibraryItem_Fail0006 = "LibraryItem.Fail0006";
 		#endregion
 
 		#region Library Card
@@ -1042,6 +1070,10 @@ namespace FPTU_ELibrary.Application.Common
         /// [WARNING] Required at least 5 items for book series
         /// </summary>
         public static string AIService_Warning0010 = "AIService.Warning0010";
+        /// <summary>
+        /// [WARNING] Required at least 5 items for book series
+        /// </summary>
+        public static string AIService_Warning0011 = "AIService.Warning0011";
         #endregion
 
         #region Warehouse Tracking
@@ -1053,6 +1085,14 @@ namespace FPTU_ELibrary.Application.Common
         /// [SUCCESS] Supplement request created successfully
         /// </summary>
         public const string WarehouseTracking_Success0002 = "WarehouseTracking.Success0002";
+        /// <summary>
+        /// [SUCCESS] Warehouse stock-in file archived successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0003 = "WarehouseTracking.Success0003";
+        /// <summary>
+        /// [SUCCESS] Warehouse supplement request file archived successfully
+        /// </summary>
+        public const string WarehouseTracking_Success0004 = "WarehouseTracking.Success0004";
         /// <summary>
         /// [WARNING] Do not allow to change status from {0} to {1}
         /// </summary>
@@ -1159,6 +1199,24 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string WarehouseTracking_Warning0026 = "WarehouseTracking.Warning0026";
         /// <summary>
+        /// [WARNING] No file found for warehouse stock-in file to proceed with storage
+        /// </summary>
+        public const string WarehouseTracking_Warning0027 = "WarehouseTracking.Warning0027";
+        /// <summary>
+        /// [WARNING] Unable to create a file for the warehouse receipt as it is not in a completed status.
+        /// Please verify the receipt status and complete the process before creating the file
+        /// </summary>
+        public const string WarehouseTracking_Warning0028 = "WarehouseTracking.Warning0028";
+        /// <summary>
+        /// [WARNING] Unable to create a file for the supplement warehouse request receipt as it is not in a completed status.
+        /// Please verify the receipt status and complete the process before creating the file
+        /// </summary>
+        public const string WarehouseTracking_Warning0029 = "WarehouseTracking.Warning0029";
+        /// <summary>
+        /// [WARNING] Tracking type is invalid to process creating file
+        /// </summary>
+        public const string WarehouseTracking_Warning0030 = "WarehouseTracking.Warning0030";
+		/// <summary>
         /// [FAIL] Failed to register unique barcode for warehouse tracking detail
         /// </summary>
         public const string WarehouseTracking_Fail0001 = "WarehouseTracking.Fail0001";
@@ -1166,6 +1224,14 @@ namespace FPTU_ELibrary.Application.Common
         /// [FAIL] Failed to create supplement request
         /// </summary>
         public const string WarehouseTracking_Fail0002 = "WarehouseTracking.Fail0002";
+        /// <summary>
+        /// [FAIL] Failed to archive the warehouse receipt file. Please check and try again later
+        /// </summary>
+        public const string WarehouseTracking_Fail0003 = "WarehouseTracking.Fail0003";
+        /// <summary>
+        /// [FAIL] Failed to archive the supplement warehouse request receipt file. Please check and try again later
+        /// </summary>
+        public const string WarehouseTracking_Fail0004 = "WarehouseTracking.Fail0004";
         #endregion
 
         #region Transaction
