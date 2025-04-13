@@ -108,8 +108,7 @@ public class LibraryResourceController : ControllerBase
     [HttpPost(APIRoute.LibraryItemResource.AddAudioBook, Name = nameof(AddAudioBook))]
     public async Task<IActionResult> AddAudioBook([FromRoute] int libraryItemId,[FromBody] CreateLibraryResourceWithLargeFileRequest req)
     {
-        return Ok(await _libraryResourceService.AddResourceToLibraryItemAsync(libraryItemId,req.ToLibraryResourceDto(),
-            req.ToChunkDetail()));
+        return Ok(await _libraryResourceService.AddResourceToLibraryItemAsync(libraryItemId,req.ToLibraryResourceDto()));
     }
     #endregion
     

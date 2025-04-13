@@ -178,7 +178,8 @@ public class VoiceService : IVoiceService
         using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
         var script = sysLang.ToString()!.ToLower().Equals("english")
-             ? _adsMonitor.En : _adsMonitor.Vi;
+            ? _adsMonitor.En
+            : _adsMonitor.Vi;
         var editedScript = StringUtils.Format(script, email);
         var result = await synthesizer.SpeakTextAsync(editedScript);
 
@@ -189,12 +190,15 @@ public class VoiceService : IVoiceService
 
         // Convert WAV to MP3 in memory
         var wavMemoryStream = new MemoryStream(result.AudioData);
-        byte[] mp3Data = ConvertWavToMp3(wavMemoryStream.ToArray());
+        // byte[] mp3Data = ConvertWavToMp3(wavMemoryStream.ToArray());
 
-        var mp3Stream = new MemoryStream(mp3Data);
+        // var mp3Stream = new MemoryStream(mp3Data);
+        //     return new ServiceResult(ResultCodeConst.SYS_Success0002,
+        //         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+        //         mp3Stream);
         return new ServiceResult(ResultCodeConst.SYS_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-            mp3Stream);
+            wavMemoryStream);
     }
 
 // Convert WAV to MP3
@@ -235,6 +239,4 @@ public class VoiceService : IVoiceService
         wtr.Flush();
         return retMs.ToArray();
     }
-
-
 }

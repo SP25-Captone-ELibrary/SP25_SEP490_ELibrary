@@ -108,6 +108,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<IAITraningImageService<AITrainingImageDto>,AITrainingImageService>();
             services.AddScoped<IAITrainingDetailService<AITrainingDetailDto>,AITrainingDetailService>();
             services.AddScoped<IAITrainingSessionService<AITrainingSessionDto>,AITrainingSessionService>();
+            services.AddScoped<IS3Service,S3Service>();
             
             services
                 .ConfigureMapster() // Add mapster

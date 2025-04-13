@@ -290,6 +290,7 @@ public class AITrainingSessionService : GenericService<AITrainingSession, AITrai
             // Progress update to DB
             await _unitOfWork.Repository<AITrainingSession, int>().UpdateAsync(existingEntity);
             // Save DB
+            
             var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
             if (isSaved)
             {

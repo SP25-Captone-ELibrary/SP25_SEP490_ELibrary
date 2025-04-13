@@ -143,7 +143,8 @@ namespace FPTU_ELibrary.API.Extensions
             services.Configure<RedisSettings>(builder.Configuration.GetSection("RedisSettings"));
         	//Configure FFMPEGSettings
             services.Configure<FFMPEGSettings>(builder.Configuration.GetSection("FFMPEGSettings"));
-            
+            //Configure AWSS3
+            services.Configure<AWSStorageSettings>(builder.Configuration.GetSection("AWSStorageSettings"));
         	return services;
         }
 

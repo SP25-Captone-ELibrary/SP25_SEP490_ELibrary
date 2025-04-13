@@ -10,6 +10,7 @@ public static class HubMappingExtensions
         endpoints.MapHub<AccountHub>("/accountHub");
         endpoints.MapHub<AiHub>("/ai-hub");
         endpoints.MapHub<PaymentHub>("/payment-hub");
+        endpoints.MapHub<DigitalBorrowHub>("/digital-borrow-hub");
         // Add hub endpoint if needed
     }
 }
