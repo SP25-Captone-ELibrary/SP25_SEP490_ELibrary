@@ -357,7 +357,7 @@ public class LibraryItemController : ControllerBase
     public async Task<IActionResult> GetFullPdfResourceAsync([FromRoute] int resourceId)
     {
         var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
-        
+
         var result = await _libraryResourceService.GetFullPdfFileWithWatermark(email, resourceId);
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is (not null, not null))
         {
@@ -366,7 +366,8 @@ public class LibraryItemController : ControllerBase
             {
                 return File(result.Data.Item1, "application/pdf", $"Watermarked_{resourceId}.pdf");
             }
-            return File(result.Data.Item1, "audio/mpeg", "merged_audio.mp3"); 
+
+            return File(result.Data.Item1, "audio/mpeg", "merged_audio.mp3");
         }
 
         return Ok(result);
@@ -385,21 +386,15 @@ public class LibraryItemController : ControllerBase
 
         return Ok(result);
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetFullAudioFileWithWatermark, Name = nameof(GetFullAudioResourceAsync))]
     public async Task<IActionResult> GetFullAudioResourceAsync([FromRoute] int resourceId)
     {
         var email = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-        var result = await _libraryResourceService.GetFullAudioFileWithWatermark(
+        return Ok(await _libraryResourceService.GetFullAudioFileWithWatermark(
             email: email ?? string.Empty,
-            resourceId: resourceId);
-        if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
-        {
-            return File(result.Data, "audio/mpeg", $"audio.mp3");
-        }
-
-        return Ok(result);
+            resourceId: resourceId));
     }
 
     [HttpGet(APIRoute.LibraryItem.GetAudioPreview, Name = nameof(GetAudioPreview))]

@@ -25,6 +25,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using NAudio.Lame;
 using NAudio.Wave;
 using Serilog;
@@ -237,6 +238,16 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
+            if (dto.FileFormat.Equals("Video") && dto.S3OriginalName.IsNullOrEmpty())
+            {
+                return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+            }
+            if (dto.FileFormat.Equals("Video"))
+            {
+                dto.ResourceUrl = ((await _s3Service.GetFileUrlAsync(AudioResourceType.Original, dto.S3OriginalName!)).Data as string)!;
+            }
+
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(dto);
             // Check for valid validations
@@ -282,14 +293,14 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
                 if (checkExistResult.Data is false) return checkExistResult; // Return when not found resource on cloud
             }
-
+            
             // Generate new library item resource
             var libResource = new LibraryItemResource()
             {
                 LibraryItemId = libraryItemId,
                 LibraryResource = _mapper.Map<LibraryResource>(dto)
             };
-
+            
             // Process add new entity
             await _unitOfWork.Repository<LibraryItemResource, int>().AddAsync(libResource);
             // Save to DB
@@ -861,7 +872,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
     #region mp3 v1
 
-    public async Task<IServiceResult<Stream>> GetFullAudioFileWithWatermark(string email, int resourceId)
+    public async Task<IServiceResult> GetFullAudioFileWithWatermark(string email, int resourceId)
     {
         try
         {
@@ -878,7 +889,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             if (resource is null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
             }
 
@@ -893,39 +904,37 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             if (user.Data is null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0018);
-                return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0018,
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0018,
                     StringUtils.Format(errMsg, isEng
                         ? "user has not borrowed this resource"
                         : "người dùng chưa mượn tài nguyên này"));
             }
-
+            
             var userValue = (user.Data as UserDto)!;
             var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
                                                                             && db.Status == BorrowDigitalStatus.Active
+            
                                                                             && db.ExpiryDate.Date > DateTime.Now.Date);
-            if (userBorrows is null)
+            if (userBorrows is null || userBorrows.S3WatermarkedName.IsNullOrEmpty())
             {
-                return new ServiceResult<Stream>(ResultCodeConst.Borrow_Warning0019,
+                return new ServiceResult(ResultCodeConst.Borrow_Warning0019,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0019));
             }
 
-
-            // Default part size to upload: 40MB
-            var responseChunkedSize = 1 * 1024 * 1024;
-
-            var memoryStream = await AddAudioWatermark(resource.ResourceId,
-                lang.ToString() ?? "en", email);
-
+            var returnUrl =
+                await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!);
+            
             // Return the part of the stream
-            return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                memoryStream.Data);
+                returnUrl);
         }
         catch (Exception ex)
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get digital resource");
         }
+        
     }
 
     #endregion
@@ -973,7 +982,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         string tempAudioPath = Path.Combine(tempDirectory, $"original_{Path.GetRandomFileName()}.mp3");
         string tempWavPath = Path.Combine(tempDirectory, $"processed_{Path.GetRandomFileName()}.wav");
         string tempMp3Path = Path.Combine(tempDirectory, $"final_{Path.GetRandomFileName()}.mp3");
-        var user = await _userService.GetByEmailAsync(email) as UserDto;
+        var user = (await _userService.GetByEmailAsync(email)).Data as UserDto;
         if (user is null)
         {
             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -984,7 +993,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         try
         {
             var originAudioResponse =
-                await _s3Service.GetFileAsync(AudioResourceType.Original, s3OriginalAudioName) as GetObjectResponse;
+                (await _s3Service.GetFileAsync(AudioResourceType.Original, s3OriginalAudioName)).Data as GetObjectResponse;
             if (originAudioResponse == null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -1073,6 +1082,24 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get digital resource from s3");
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempAudioPath))
+                    File.Delete(tempAudioPath);
+
+                if (File.Exists(tempWavPath))
+                    File.Delete(tempWavPath);
+
+                if (File.Exists(tempMp3Path))
+                    File.Delete(tempMp3Path);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.Warning("Failed to clean up temp files: {Message}", cleanupEx.Message);
+            }
         }
     }
 

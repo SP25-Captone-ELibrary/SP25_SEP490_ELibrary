@@ -19,7 +19,7 @@ public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource
     Task<IServiceResult> DeleteRangeAsync(int[] ids);
 
     Task<IServiceResult<(Stream,string)>> GetFullPdfFileWithWatermark(string email, int resourceId);
-    Task<IServiceResult<Stream>> GetFullAudioFileWithWatermark(string email, int resourceId);
+    Task<IServiceResult>GetFullAudioFileWithWatermark(string email, int resourceId);
     Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId);
     Task<IServiceResult<Stream>> GetPdfPreview(int resourceId);
     Task<IServiceResult> GetNumberOfUploadAudioFile(string email, int resourceId);

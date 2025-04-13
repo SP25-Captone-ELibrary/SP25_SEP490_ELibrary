@@ -7,6 +7,7 @@ using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Extensions;
+using FPTU_ELibrary.Application.Hubs;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -17,7 +18,9 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -31,25 +34,26 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<ITransactionService<TransactionDto>> _transactionSvc;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceSvc;
-    
+
     private readonly IEmailService _emailSvc;
-    
+
     private readonly AppSettings _appSettings;
     private readonly TokenValidationParameters _tokenValidationParams;
     private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
+    private readonly IServiceProvider _service;
 
     public DigitalBorrowService(
         // Lazy services
         Lazy<IUserService<UserDto>> userSvc,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceSvc,
-        
+        IServiceProvider service,
         IEmailService emailSvc,
         IOptionsMonitor<AppSettings> monitor,
         TokenValidationParameters tokenValidationParams,
-        ISystemMessageService msgService, 
-        IUnitOfWork unitOfWork, 
-        IMapper mapper, 
+        ISystemMessageService msgService,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
         ILibraryResourceService<LibraryResourceDto> libraryResourceService,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
@@ -60,9 +64,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         _appSettings = monitor.CurrentValue;
         _tokenValidationParams = tokenValidationParams;
         _libraryResourceService = libraryResourceService;
+        _service = service;
     }
 
-    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<DigitalBorrow> specification, bool tracked = true)
+    public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<DigitalBorrow> specification,
+        bool tracked = true)
     {
         try
         {
@@ -76,7 +82,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             }
 
             // Count total library items
-            var totalDigitalWithSpec = await _unitOfWork.Repository<DigitalBorrow, int>().CountAsync(digitalSpecification);
+            var totalDigitalWithSpec =
+                await _unitOfWork.Repository<DigitalBorrow, int>().CountAsync(digitalSpecification);
             // Count total page
             var totalPage = (int)Math.Ceiling((double)totalDigitalWithSpec / digitalSpecification.PageSize);
 
@@ -91,7 +98,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             digitalSpecification.ApplyPaging(
                 skip: digitalSpecification.PageSize * (digitalSpecification.PageIndex - 1),
                 take: digitalSpecification.PageSize);
-            
+
             var entities = await _unitOfWork.Repository<DigitalBorrow, int>()
                 .GetAllWithSpecAsync(digitalSpecification, tracked);
             if (entities.Any())
@@ -101,16 +108,16 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
 
                 // Convert to get digital borrow dto
                 var getDigitalBorrowList = dtoList.Select(d => d.ToGetDigitalBorrowDto());
-                
+
                 // Pagination result 
                 var paginationResultDto = new PaginatedResultDto<GetDigitalBorrowDto>(getDigitalBorrowList,
                     digitalSpecification.PageIndex, digitalSpecification.PageSize, totalPage, totalDigitalWithSpec);
-                
+
                 // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
             }
-            
+
             // Data not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
@@ -127,8 +134,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     {
         return await base.GetAllWithSpecAsync(spec);
     }
-    
-    public async Task<IServiceResult> GetByIdAsync(int id, 
+
+    public async Task<IServiceResult> GetByIdAsync(int id,
         string? email = null, Guid? userId = null, bool isCallFromManagement = false)
     {
         try
@@ -137,7 +144,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Build spec
             var baseSpec = new BaseSpecification<DigitalBorrow>(br => br.DigitalBorrowId == id);
             // Add filter (if any)
@@ -145,10 +152,12 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             {
                 baseSpec.AddFilter(db => db.User.Email == email);
             }
+
             if (userId.HasValue && userId != Guid.Empty)
             {
                 baseSpec.AddFilter(db => db.UserId == userId);
             }
+
             // Apply include
             baseSpec.ApplyInclude(q => q
                 .Include(db => db.LibraryResource)
@@ -160,9 +169,9 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             {
                 // Map to dto
                 var digitalBorrowDto = _mapper.Map<DigitalBorrowDto>(existingEntity);
-                
+
                 // Try to retrieve all transaction
-                var tranSpec = new BaseSpecification<Transaction>(t => 
+                var tranSpec = new BaseSpecification<Transaction>(t =>
                     t.ResourceId == existingEntity.ResourceId); // Must equals to specific resource ids
                 // Add filter
                 if (isCallFromManagement) // Management
@@ -175,19 +184,21 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                         (!string.IsNullOrEmpty(email) && t.User.Email == email) || // Exist any email match
                         (userId.HasValue && userId != Guid.Empty && t.UserId == userId)); // Exist any userId match
                 }
+
                 // Apply include 
                 tranSpec.ApplyInclude(q => q.Include(t => t.User));
                 // Retrieve all transaction dto with spec
-                var transactionDtos = (await _transactionSvc.Value.GetAllWithSpecAsync(tranSpec)).Data as List<TransactionDto>;
-                
+                var transactionDtos =
+                    (await _transactionSvc.Value.GetAllWithSpecAsync(tranSpec)).Data as List<TransactionDto>;
+
                 // Covert to get digital borrow dto
                 var getDigitalBorrowDto = digitalBorrowDto.ToGetDigitalBorrowDto(transactions: transactionDtos);
-                
+
                 // Get data successfully
                 return new ServiceResult(ResultCodeConst.SYS_Success0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), getDigitalBorrowDto);
             }
-            
+
             // Not found or empty
             return new ServiceResult(ResultCodeConst.SYS_Warning0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004));
@@ -207,10 +218,10 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Msg: Failed to register library digital resource as {0}
             var registerFailedMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0003);
-            
+
             // Retrieve user information
             // Build spec
             var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
@@ -224,24 +235,24 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0003,
                     StringUtils.Format(registerFailedMsg, isEng ? "not found user" : "không tìm thấy bạn đọc"), false);
             }
-            
+
             // Initialize payment utils
             var paymentUtils = new PaymentUtils(logger: _logger);
             // Validate transaction token
             var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
                 token: transactionToken,
                 tokenValidationParameters: _tokenValidationParams);
-            if (validatedToken == null) 
+            if (validatedToken == null)
             {
                 // Logging
                 _logger.Information("Token is invalid, cannot process confirm digital borrow");
                 // Mark as failed to update
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0003,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "payment transaction information is not found" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "payment transaction information is not found"
                         : "thông tin thanh toán không tồn tại"), false);
-            }	
-            
+            }
+
             // Extract transaction data from token
             var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
 
@@ -251,11 +262,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Logging
                 _logger.Information("User's email is not match with token claims to process confirm digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0003,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found user's email" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found user's email"
                         : "không tìm thấy bạn đọc"), false);
             }
-            
+
             var transCode = tokenExtractedData.TransactionCode;
             var transDate = tokenExtractedData.TransactionDate;
             // Retrieve transaction
@@ -279,35 +290,38 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Logging 
                 _logger.Information("Not found transaction information to process confirm digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0003,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found payment transaction" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found payment transaction"
                         : "không tìm thấy phiên thanh toán"), false);
             }
-            else if(!Equals(transactionDto.TransactionDate?.Date, transDate.Date))
+            else if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date))
             {
                 // Logging 
-                _logger.Information("Transaction date is not match with token claims while process confirm digital borrow");
+                _logger.Information(
+                    "Transaction date is not match with token claims while process confirm digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0003,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "transaction date is invalid" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "transaction date is invalid"
                         : "ngày thanh toán không hợp lệ"), false);
             }
-            
+
             if (transactionDto.LibraryResource == null)
             {
                 // Logging 
-                _logger.Information("Not found library resource in payment transaction to process confirm digital borrow");
+                _logger.Information(
+                    "Not found library resource in payment transaction to process confirm digital borrow");
                 return new ServiceResult(ResultCodeConst.LibraryCard_Fail0006,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found library resource in payment transaction information" 
-                        : "không tìm thấy thông tin tài liệu điện tử trong thông tin thanh toán để tạo đăng ký mượn"), false);
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found library resource in payment transaction information"
+                        : "không tìm thấy thông tin tài liệu điện tử trong thông tin thanh toán để tạo đăng ký mượn"),
+                    false);
             }
-            
+
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-            
+
             // Initialize digital borrow
             var digitalBorrowDto = new DigitalBorrowDto()
             {
@@ -317,11 +331,13 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 RegisterDate = currentLocalDateTime,
                 ExpiryDate = currentLocalDateTime.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays),
                 ExtensionCount = 0,
-                IsExtended = false
+                IsExtended = false,
+                S3WatermarkedName = null
             };
-            
-            string? s3WatermarkedName = (await _libraryResourceService.WatermarkAudioAsyncFromAWS(transactionDto.LibraryResource.S3OriginalName,email)).Data! as string;
-            digitalBorrowDto.S3WatermarkedName = s3WatermarkedName;
+
+            // string? s3WatermarkedName = (await _libraryResourceService.WatermarkAudioAsyncFromAWS(transactionDto.LibraryResource.S3OriginalName,email)).Data! as string;
+            // digitalBorrowDto.S3WatermarkedName = s3WatermarkedName;
+
             // Process add new digital borrow
             await _unitOfWork.Repository<DigitalBorrow, int>().AddAsync(_mapper.Map<DigitalBorrow>(digitalBorrowDto));
             // Save DB
@@ -333,7 +349,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 {
                     digitalBorrowDto.LibraryResource = transactionDto.LibraryResource;
                 }
-                
+
                 // Send digital resource has been borrowed email
                 await SendDigitalBorrowSuccessEmailAsync(
                     userDto: userDto,
@@ -341,13 +357,23 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     digitalBorrowDto: digitalBorrowDto,
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
-                
-                
+
+                if (transactionDto.LibraryResource.S3OriginalName != null)
+                {
+                    var backgroundTask = Task.Run(() => ProcessWatermarkItemTask(
+                        transactionDto.LibraryResource.S3OriginalName
+                        , email, transactionDto.LibraryResource.ResourceId));
+                    var result = new ServiceResult(ResultCodeConst.Borrow_Success0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004));
+                    _ = backgroundTask;
+                    return result;
+                }
+
                 // Msg: Register library digital resource success
                 return new ServiceResult(ResultCodeConst.Borrow_Success0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004));
             }
-            
+
             // Msg: Failed to register library digital resource
             return new ServiceResult(ResultCodeConst.Borrow_Fail0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0004));
@@ -362,15 +388,15 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     public async Task<IServiceResult> ConfirmDigitalExtensionAsync(string email, string transactionToken)
     {
         try
-        {   
+        {
             // Determine current lang context
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
-            
+
             // Msg: Failed to extend library digital resource as {0}
             var registerFailedMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0005);
-            
+
             // Retrieve user information
             // Build spec
             var userBaseSpec = new BaseSpecification<User>(u => Equals(u.Email, email));
@@ -384,24 +410,24 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0005,
                     StringUtils.Format(registerFailedMsg, isEng ? "not found user" : "không tìm thấy bạn đọc"), false);
             }
-            
+
             // Initialize payment utils
             var paymentUtils = new PaymentUtils(logger: _logger);
             // Validate transaction token
             var validatedToken = await paymentUtils.ValidateTransactionTokenAsync(
                 token: transactionToken,
                 tokenValidationParameters: _tokenValidationParams);
-            if (validatedToken == null) 
+            if (validatedToken == null)
             {
                 // Logging
                 _logger.Information("Token is invalid, cannot process extend digital borrow");
                 // Mark as failed to update
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0005,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "payment transaction information is not found" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "payment transaction information is not found"
                         : "thông tin thanh toán không tồn tại"), false);
-            }	
-            
+            }
+
             // Extract transaction data from token
             var tokenExtractedData = paymentUtils.ExtractTransactionDataFromToken(validatedToken);
 
@@ -411,11 +437,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Logging
                 _logger.Information("User's email is not match with token claims to process extend digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0005,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found user's email" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found user's email"
                         : "không tìm thấy bạn đọc"), false);
             }
-            
+
             var transCode = tokenExtractedData.TransactionCode;
             var transDate = tokenExtractedData.TransactionDate;
             // Retrieve transaction
@@ -439,30 +465,33 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Logging 
                 _logger.Information("Not found transaction information to process extend digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0005,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found payment transaction" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found payment transaction"
                         : "không tìm thấy phiên thanh toán"), false);
             }
-            else if(!Equals(transactionDto.TransactionDate?.Date, transDate.Date))
+            else if (!Equals(transactionDto.TransactionDate?.Date, transDate.Date))
             {
                 // Logging 
-                _logger.Information("Transaction date is not match with token claims while process extend digital borrow");
+                _logger.Information(
+                    "Transaction date is not match with token claims while process extend digital borrow");
                 return new ServiceResult(ResultCodeConst.Borrow_Fail0005,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "transaction date is invalid" 
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "transaction date is invalid"
                         : "ngày thanh toán không hợp lệ"), false);
             }
-            
+
             if (transactionDto.LibraryResource == null)
             {
                 // Logging 
-                _logger.Information("Not found library resource in payment transaction to process extend digital borrow");
+                _logger.Information(
+                    "Not found library resource in payment transaction to process extend digital borrow");
                 return new ServiceResult(ResultCodeConst.LibraryCard_Fail0006,
-                    StringUtils.Format(registerFailedMsg, isEng 
-                        ? "not found library resource in payment transaction information" 
-                        : "không tìm thấy thông tin tài liệu điện tử trong thông tin thanh toán để tiến hành gia hạn"), false);
+                    StringUtils.Format(registerFailedMsg, isEng
+                        ? "not found library resource in payment transaction information"
+                        : "không tìm thấy thông tin tài liệu điện tử trong thông tin thanh toán để tiến hành gia hạn"),
+                    false);
             }
-            
+
             // Check exist digital resource
             var digitalSpec = new BaseSpecification<DigitalBorrow>(db => db.UserId == userDto.UserId &&
                                                                          db.ResourceId == transactionDto.ResourceId);
@@ -474,23 +503,23 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Not found {0}
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
                 return new ServiceResult(ResultCodeConst.Borrow_Warning0017,
-                    StringUtils.Format(errMsg, isEng 
-                    ? "digital borrow history to process extend expiration date" 
-                    : "lịch sử mượn của tài liệu điện tử này để tiến hành gia hạn"));
+                    StringUtils.Format(errMsg, isEng
+                        ? "digital borrow history to process extend expiration date"
+                        : "lịch sử mượn của tài liệu điện tử này để tiến hành gia hạn"));
             }
-            
+
             // Current local datetime
             var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-            
+
             // Extend expiration date
             // Subtract expiration date to now
             var oldExpiryDate = existingEntity.ExpiryDate;
             var remainDays = oldExpiryDate.Subtract(currentLocalDateTime);
             if (remainDays.Days > 0) // If expiry date still exceed than current date
             {
-                existingEntity.ExpiryDate = 
+                existingEntity.ExpiryDate =
                     existingEntity.ExpiryDate.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays);
             }
             else
@@ -498,6 +527,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 existingEntity.ExpiryDate =
                     currentLocalDateTime.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays);
             }
+
             // Change status to active
             existingEntity.Status = BorrowDigitalStatus.Active;
             // Mark as extend
@@ -512,7 +542,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 ExtensionFee = existingEntity.LibraryResource.BorrowPrice,
                 ExtensionNumber = existingEntity.ExtensionCount
             });
-            
+
             // Process update
             await _unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(existingEntity);
             // Save DB
@@ -527,12 +557,12 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     extendDate: currentLocalDateTime,
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
-                
+
                 // Msg: Extend library digital resource success
                 return new ServiceResult(ResultCodeConst.Borrow_Success0005,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0005));
             }
-            
+
             // Msg: Failed to extend library digital resource expiration date
             return new ServiceResult(ResultCodeConst.Borrow_Fail0006,
                 await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0006));
@@ -543,8 +573,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             throw new Exception("Error invoke when process confirm digital resource borrow extension");
         }
     }
-    
-    private async Task<bool> SendDigitalBorrowSuccessEmailAsync( 
+
+    private async Task<bool> SendDigitalBorrowSuccessEmailAsync(
         UserDto userDto,
         DigitalBorrowDto digitalBorrowDto, TransactionDto transactionDto,
         string libName, string libContact)
@@ -553,7 +583,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         {
             // Email subject 
             var subject = "[ELIBRARY] Mượn tài liệu điện tử thành công";
-	                        
+
             // Progress send confirmation email
             var emailMessageDto = new EmailMessageDto( // Define email message
                 // Define Recipient
@@ -566,9 +596,9 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     digitalBorrowDto: digitalBorrowDto,
                     transactionDto: transactionDto,
                     libName: libName,
-                    libContact:libContact)
+                    libContact: libContact)
             );
-	                        
+
             // Process send email
             return await _emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
         }
@@ -578,8 +608,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             throw new Exception("Error invoke when process send library card activated email");
         }
     }
-    
-    private async Task<bool> SendDigitalExtensionSuccessEmailAsync( 
+
+    private async Task<bool> SendDigitalExtensionSuccessEmailAsync(
         UserDto userDto,
         DigitalBorrowDto digitalBorrowDto, TransactionDto transactionDto,
         DateTime extendDate, string libName, string libContact)
@@ -588,7 +618,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         {
             // Email subject 
             var subject = "[ELIBRARY] Gia hạn mượn tài liệu điện tử thành công";
-	                        
+
             // Progress send confirmation email
             var emailMessageDto = new EmailMessageDto( // Define email message
                 // Define Recipient
@@ -602,9 +632,9 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     transactionDto: transactionDto,
                     extendDate: extendDate,
                     libName: libName,
-                    libContact:libContact)
+                    libContact: libContact)
             );
-	                        
+
             // Process send email
             return await _emailSvc.SendEmailAsync(emailMessageDto, isBodyHtml: true);
         }
@@ -614,10 +644,10 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             throw new Exception("Error invoke when process send library card activated email");
         }
     }
-    
+
     private string GetDigitalBorrowSuccessEmailBody(
         UserDto userDto,
-        DigitalBorrowDto digitalBorrowDto, 
+        DigitalBorrowDto digitalBorrowDto,
         TransactionDto transactionDto, string libName, string libContact)
     {
         var culture = new CultureInfo("vi-VN");
@@ -684,7 +714,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                              <li><span class="status-label">Trạng Thái:</span> {{digitalBorrowDto.Status.GetDescription()}}</li>
                          </ul>
                      </div>
-
+                 
                      <p><strong>Chi Tiết Giao Dịch:</strong></p>
                      <div class="details">
                          <ul>
@@ -695,7 +725,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                              <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
                          </ul>
                      </div>
-
+                 
                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
@@ -707,8 +737,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
 
     private string GetExtendDigitalBorrowEmailBody(
         UserDto userDto,
-        DigitalBorrowDto digitalBorrowDto, 
-        TransactionDto transactionDto, 
+        DigitalBorrowDto digitalBorrowDto,
+        TransactionDto transactionDto,
         DateTime extendDate, string libName, string libContact)
     {
         var culture = new CultureInfo("vi-VN");
@@ -762,7 +792,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                      <p class="header">Thông Báo Gia Hạn Mượn Tài Liệu Điện Tử</p>
                      <p>Xin chào {{userDto.FirstName}} {{userDto.LastName}},</p>
                      <p>Chúng tôi xin thông báo rằng bạn đã gia hạn thành công tài liệu điện tử mà bạn đã mượn từ thư viện.</p>
-
+                 
                      <p><strong>Chi Tiết Gia Hạn Mượn Tài Liệu:</strong></p>
                      <div class="details">
                          <ul>
@@ -775,7 +805,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                              <li><span class="status-label">Trạng Thái:</span> {{digitalBorrowDto.Status.GetDescription()}}</li>
                          </ul>
                      </div>
-
+                 
                      <p><strong>Chi Tiết Giao Dịch Gia Hạn:</strong></p>
                      <div class="details">
                          <ul>
@@ -786,7 +816,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                              <li><strong>Trạng Thái Giao Dịch:</strong> {{transactionDto.TransactionStatus.GetDescription()}}</li>
                          </ul>
                      </div>
-
+                 
                      <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email: <strong>{{libContact}}</strong>.</p>
                      
                      <p><strong>Trân trọng,</strong></p>
@@ -796,14 +826,62 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                  """;
     }
 
+    private async Task ProcessWatermarkItemTask(string s3OriginName, string email, int resourceId)
+    {
+        using var scope = _service.CreateScope();
+        var libraryResourceService = scope.ServiceProvider
+            .GetRequiredService<ILibraryResourceService<LibraryResourceDto>>();
+        var unitOfWork = scope.ServiceProvider
+            .GetRequiredService<IUnitOfWork>();
+        var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<DigitalBorrowHub>>();
+        var s3WatermarkedName =
+            (await libraryResourceService.WatermarkAudioAsyncFromAWS(s3OriginName, email)).Data as string;
+        var baseSpec = new BaseSpecification<LibraryResource>
+            (l => l.S3OriginalName == s3OriginName);
+        var resource = (await libraryResourceService.GetWithSpecAsync(baseSpec)).Data as LibraryResourceDto;
+        if (resource is null)
+        {
+            await hubContext.Clients.User(email).SendAsync("WatermarkAudioResult",
+                "Error: Cannot find resource to update watermark audio");
+        }
+
+        var digitalSpec = new BaseSpecification<DigitalBorrow>(db => db.User.Email.Equals(email)
+                                                                     && db.LibraryResource.ResourceId == resourceId);
+        digitalSpec.ApplyInclude(q => q.Include(db => db.LibraryResource)
+            .Include(db => db.User));
+        var digitalBorrow = await unitOfWork.Repository<DigitalBorrow, int>().GetWithSpecAsync(digitalSpec);
+        if (digitalBorrow is null)
+        {
+            await hubContext.Clients.User(email).SendAsync("WatermarkAudioResult",
+                "Error: Cannot find digital borrow to update watermark audio");
+        }
+        else
+        {
+            digitalBorrow.S3WatermarkedName = s3WatermarkedName;
+            await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(digitalBorrow);
+            var result = await unitOfWork.SaveChangesAsync();
+            if (result > 0)
+            {
+                await hubContext.Clients.User(email).SendAsync("WatermarkAudioResult",
+                    "Success: Watermark audio successfully");
+            }
+            else
+            {
+                await hubContext.Clients.User(email).SendAsync("WatermarkAudioResult",
+                    "Error: Cannot update watermark audio");
+            }
+        }
+    }
+
     #region Archived Code
+
     // public async Task<IServiceResult> CreateTransactionForDigitalBorrow(string email, int resourceId)
     // {
     //     // Determine current system lang
     //     var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
     //         LanguageContext.CurrentLanguage);
     //     var isEng = lang == SystemLanguage.English;
-		  //
+    //
     //     // Get User By email
     //     var userBaseSpec = new BaseSpecification<User>(u => u.Email == email);
     //     var user = await _userSvc.Value.GetWithSpecAsync(userBaseSpec);
@@ -847,5 +925,6 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     //     return new ServiceResult(ResultCodeConst.SYS_Success0001,
     //         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0001));
     // }
+
     #endregion
 }
