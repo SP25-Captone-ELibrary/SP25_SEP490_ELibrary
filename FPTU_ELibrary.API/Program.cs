@@ -30,7 +30,7 @@ builder.Services
     // Configure CamelCase for validation
     .ConfigureCamelCaseForValidation()
     // Configure appSettings
-    .ConfigureAppSettings(builder.Configuration, builder.Environment)
+    .ConfigureAppSettings(builder, builder.Environment)
     // Configure Redis
     .ConfigureRedis(builder.Configuration, builder.Environment)
     // Configure Cloudinary
@@ -62,8 +62,6 @@ builder.Services
 
 var app = builder.Build();
 
-// app.UseHealthChecks($"/{APIRoute.HealthCheck.Check}");
-
 // Register database initializer
 app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
 {
@@ -71,17 +69,14 @@ app.Lifetime.ApplicationStarted.Register(() => Task.Run(async () =>
     await app.InitializeElasticAsync();
 }));
 
-// Configure swagger settings
-// if (app.Environment.IsDevelopment())
-// {
-//     app.WithSwagger();
-// }
-
 app.WithSwagger();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Only apply azure configuration for production env
+if(builder.Environment.IsProduction()) app.UseAzureAppConfiguration();
 
 // Custom Middlewares
 app.UseMiddleware<ExceptionHandlingMiddleware>(); // Exception handling middleware

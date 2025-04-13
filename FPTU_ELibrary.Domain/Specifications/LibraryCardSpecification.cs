@@ -13,9 +13,8 @@ public class LibraryCardSpecification : BaseSpecification<LibraryCard>
         : base(lc => 
             string.IsNullOrEmpty(specParams.Search) || 
             (!string.IsNullOrEmpty(lc.FullName) && lc.FullName.Contains(specParams.Search)) ||
-            (!string.IsNullOrEmpty(lc.Barcode) && lc.Barcode.Contains(specParams.Search)) || 
-            (!string.IsNullOrEmpty(lc.IssuanceMethod.ToString()) && lc.IssuanceMethod.ToString().Contains(specParams.Search)) || 
-            (!string.IsNullOrEmpty(lc.Status.ToString()) && lc.Status.ToString().Contains(specParams.Search)))
+            (!string.IsNullOrEmpty(lc.Barcode) && lc.Barcode.Contains(specParams.Search))
+            )
     {
         // Pagination
         PageIndex = pageIndex;

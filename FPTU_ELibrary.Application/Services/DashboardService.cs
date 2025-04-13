@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Linq.Expressions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -42,6 +41,7 @@ public class DashboardService : IDashboardService
     private readonly IBorrowRecordDetailService<BorrowRecordDetailDto> _borrowRecDetailSvc;
     private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _whTrackingDetailSvc;
     private readonly IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto> _extensionHistorySvc;
+    private readonly IDigitalBorrowExtensionHistoryService<DigitalBorrowExtensionHistoryDto> _digitalBorrowExtensionSvc;
 
     public DashboardService(
         ILogger logger,
@@ -55,6 +55,7 @@ public class DashboardService : IDashboardService
         IBorrowRecordService<BorrowRecordDto> borrowRecSvc,
         ILibraryResourceService<LibraryResourceDto> resourceSvc,
         IDigitalBorrowService<DigitalBorrowDto> digitalBorrowSvc,
+        IDigitalBorrowExtensionHistoryService<DigitalBorrowExtensionHistoryDto> digitalBorrowExtensionSvc,
         IWarehouseTrackingService<WarehouseTrackingDto> whTrackingSvc,
         IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
@@ -78,6 +79,7 @@ public class DashboardService : IDashboardService
         _whTrackingSvc = whTrackingSvc;
         _itemInstanceSvc = itemInstanceSvc;
         _digitalBorrowSvc = digitalBorrowSvc;
+        _digitalBorrowExtensionSvc = digitalBorrowExtensionSvc;
         _borrowRecDetailSvc = borrowRecDetailSvc;
         _whTrackingDetailSvc = whTrackingDetailSvc;
         _reservationQueueSvc = reservationQueueSvc;
@@ -527,16 +529,22 @@ public class DashboardService : IDashboardService
             }
             
             // Count total extensions
-            var sumSpec = new BaseSpecification<DigitalBorrow>();
+            var sumSpec = new BaseSpecification<DigitalBorrowExtensionHistory>();
             // Add filter date range
             if (startDate != null || endDate != null)
             {
-                sumSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
+                sumSpec.AddFilter(db => db.DigitalBorrow.RegisterDate.Date >= validStartDate.Date &&
+                                        db.DigitalBorrow.RegisterDate.Date <= validEndDate.Date);
             }
-            // Sum with spec
-            if ((await _digitalBorrowSvc.SumWithSpecAsync(sumSpec, db => db.ExtensionCount)).Data is int totalExtensionRes)
+            // Apply include
+            sumSpec.ApplyInclude(q => q.Include(d => d.DigitalBorrow));
+            // Retrieve all digital extension his
+            var digitalExtensionHistories = await _digitalBorrowExtensionSvc.GetAllWithSpecAsync(sumSpec);
+            if (digitalExtensionHistories.Data is List<DigitalBorrowExtensionHistoryDto> histories)
             {
-                totalExtensions = totalExtensionRes;
+                // Map to entity
+                var hisEntities = _mapper.Map<List<DigitalBorrowExtensionHistory>>(histories);
+                totalExtensions = hisEntities.Distinct(new DigitalBorrowExtensionHistoryComparer()).Count();
             }
             
             // Calculate extensions rate
@@ -594,6 +602,29 @@ public class DashboardService : IDashboardService
                     // Initialize top digital resource response 
                     var dto = new GetTopBorrowResourceDto();
                     
+                    // Count total extensions
+                    sumSpec = new BaseSpecification<DigitalBorrowExtensionHistory>(d => d.DigitalBorrow.ResourceId == resource.ResourceId);
+                    // Add filter date range
+                    if (startDate != null || endDate != null)
+                    {
+                        sumSpec.AddFilter(db => db.DigitalBorrow.RegisterDate.Date >= validStartDate.Date &&
+                                                db.DigitalBorrow.RegisterDate.Date <= validEndDate.Date);
+                    }
+                    // Apply include
+                    sumSpec.ApplyInclude(q => q.Include(d => d.DigitalBorrow));
+                    // Retrieve all digital extension his
+                    digitalExtensionHistories = await _digitalBorrowExtensionSvc.GetAllWithSpecAsync(sumSpec);
+                    if (digitalExtensionHistories.Data is List<DigitalBorrowExtensionHistoryDto> extendHistories)
+                    {
+                        // Map to entity
+                        var hisEntities = _mapper.Map<List<DigitalBorrowExtensionHistory>>(extendHistories);
+                        totalExtensions = hisEntities.Distinct(new DigitalBorrowExtensionHistoryComparer()).Count();
+                    }
+                    else
+                    {
+                        totalExtensions = 0;
+                    }
+                    
                     // Retrieve all digital borrows by resource id
                     var digitalBrSpec = new BaseSpecification<DigitalBorrow>(db => db.ResourceId == resource.ResourceId);
                     // Add filter date rang
@@ -601,6 +632,7 @@ public class DashboardService : IDashboardService
                     {
                         digitalBrSpec.AddFilter(db => db.RegisterDate.Date >= validStartDate.Date && db.RegisterDate.Date <= validEndDate.Date);
                     }
+                    
                     // Retrieve all with spec
                     var digitalBorrows = (await _digitalBorrowSvc.GetAllWithSpecFromDashboardAsync(digitalBrSpec)).Data as List<DigitalBorrowDto>;
                     if (digitalBorrows != null && digitalBorrows.Any())
@@ -608,21 +640,16 @@ public class DashboardService : IDashboardService
                         dto.TotalBorrowed = digitalBorrows.Count;
                         dto.TotalExtension = digitalBorrows.Sum(db => db.ExtensionCount);
                         dto.AverageBorrowDuration = digitalBorrows.Average(b => (b.ExpiryDate - b.RegisterDate).TotalDays);
-                        dto.ExtensionRate = (double)dto.TotalExtension / dto.TotalBorrowed * 100; 
+                        dto.ExtensionRate = (double)totalExtensions / dto.TotalBorrowed * 100; 
                         dto.LastBorrowDate = digitalBorrows.Any()
                             ? digitalBorrows.OrderByDescending(db => db.RegisterDate).First().RegisterDate
                             : null;
 
-                        // // Round average borrow duration
-                        // dto.AverageBorrowDuration = Math.Ceiling(dto.AverageBorrowDuration);
-                        // // Format double value 
-                        // dto.AverageBorrowDuration = Math.Truncate(dto.AverageBorrowDuration * 100) / 100;
-                        // dto.ExtensionRate = Math.Truncate(dto.ExtensionRate * 100) / 100;
-
-                        // Round the average borrow duration to 2 decimals using a consistent method
-                        dto.AverageBorrowDuration = Math.Round(dto.AverageBorrowDuration * 100, 2);
-                        // Round the extension rate to 2 decimals
-                        dto.ExtensionRate = Math.Round(dto.ExtensionRate * 100, 2);
+                        // Round average borrow duration
+                        dto.AverageBorrowDuration = Math.Ceiling(dto.AverageBorrowDuration);
+                        // Format double value 
+                        dto.AverageBorrowDuration = Math.Truncate(dto.AverageBorrowDuration * 100) / 100;
+                        dto.ExtensionRate = Math.Truncate(dto.ExtensionRate * 100) / 100;
                     }
                     
                     // Assign library resource

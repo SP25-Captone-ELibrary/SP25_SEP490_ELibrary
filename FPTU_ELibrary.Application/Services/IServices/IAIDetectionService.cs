@@ -11,5 +11,5 @@ public interface IAIDetectionService
     Dictionary<string, int> CountObjectsInImage(List<DetectResultDto> detectedResults, BoxDto? bookBox);
     Task<List<DetectResultDto>> DetectAllAsync(IFormFile image);
     Task<IServiceResult> RawDetectAsync(IFormFile image,int id);
-    Task<IServiceResult> DetectWithEmgu(IFormFile image, string groupCode);
+    Task<IServiceResult> DetectWithEmguAsync(IFormFile image, Guid groupCode);
 }

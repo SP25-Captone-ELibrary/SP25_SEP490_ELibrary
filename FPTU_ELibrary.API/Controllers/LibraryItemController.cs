@@ -36,12 +36,14 @@ public class LibraryItemController : ControllerBase
     private readonly ILibraryShelfService<LibraryShelfDto> _shelfService;
     private readonly ISearchService _searchService;
     private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
+    private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
 
     public LibraryItemController(
         IAuthorService<AuthorDto> authorService,
         ILibraryItemService<LibraryItemDto> libraryItemService,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceService,
         ILibraryItemAuthorService<LibraryItemAuthorDto> itemAuthorService,
+        ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService,
         ILibraryShelfService<LibraryShelfDto> shelfService,
         IAIDetectionService aiDetectionService,
         ISearchService searchService,
@@ -56,6 +58,8 @@ public class LibraryItemController : ControllerBase
         _shelfService = shelfService;
         _searchService = searchService;
         _libraryResourceService = libraryResourceService;
+        _libraryItemGroupService = libraryItemGroupService;
+        
         _appSettings = monitor.CurrentValue;
     }
 
@@ -123,6 +127,34 @@ public class LibraryItemController : ControllerBase
         return Ok(await _libraryItemService.GetDetailAsync(id));
     }
 
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetGroupById, Name = nameof(GetGroupByLibraryItemIdAsync))]
+    public async Task<IActionResult> GetGroupByLibraryItemIdAsync([FromRoute] int id,
+        [FromQuery] int? pageIndex, [FromQuery] int? pageSize)
+    {
+        return Ok(await _libraryItemService.GetItemsInGroupAsync(
+            id: id,
+            pageIndex: pageIndex ?? 1,
+            pageSize: pageSize ?? _appSettings.PageSize));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetGroupableItems, Name = nameof(GetGroupableItemsAsync))]
+    public async Task<IActionResult> GetGroupableItemsAsync(
+        [FromQuery] LibraryItemGroupSpecParams specParams,
+        [FromQuery] GetGroupableLibraryItemRequest req)
+    {
+        return Ok(await _libraryItemGroupService.GetAllItemPotentialGroupAsync(
+            spec: new LibraryItemGroupSpecification(
+                specParams: specParams,
+                pageIndex: specParams.PageIndex ?? 1,
+                pageSize: specParams.PageSize ?? _appSettings.PageSize),
+            title: req.Title,
+            cutterNumber: req.CutterNumber,
+            classificationNumber: req.ClassificationNumber,
+            authorName: req.AuthorName));
+    }
+    
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetShelf, Name = nameof(GetItemAppropriateShelfAsync))]
     public async Task<IActionResult> GetItemAppropriateShelfAsync([FromRoute] int id,

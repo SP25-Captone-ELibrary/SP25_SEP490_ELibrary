@@ -4,6 +4,7 @@ using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
+using iTextSharp.text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -33,14 +34,17 @@ public class LibraryLocationController : ControllerBase
         _sectionService = sectionService;
         _zoneService = zoneService;
     }
-    
-    #region Map
-    [HttpGet(APIRoute.LibraryLocation.GetMapByFloorId, Name = nameof(GetMapByFloorIdAsync))]
-    public async Task<IActionResult> GetMapByFloorIdAsync([FromRoute] int floorId)
-    {
-        return Ok(await _floorService.GetMapByFloorIdAsync(floorId: floorId));
-    }
 
+    #region Management
+    [HttpGet(APIRoute.LibraryLocation.GetAllShelves, Name = nameof(GetAllShelvesAsync))]
+    public async Task<IActionResult> GetAllShelvesAsync([FromQuery] LibraryShelfSpecParams specParams)
+    {
+        return Ok(await _shelfService.GetAllWithSpecAsync(new LibraryShelfSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    
     [HttpGet(APIRoute.LibraryLocation.GetMapShelfDetailById, Name = nameof(GetMapShelfDetailByIdAsync))]
     public async Task<IActionResult> GetMapShelfDetailByIdAsync([FromRoute] int shelfId,
         [FromQuery] LibraryItemSpecParams specParams)
@@ -51,6 +55,14 @@ public class LibraryLocationController : ControllerBase
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+    #endregion
+    
+    #region Map
+    [HttpGet(APIRoute.LibraryLocation.GetMapByFloorId, Name = nameof(GetMapByFloorIdAsync))]
+    public async Task<IActionResult> GetMapByFloorIdAsync([FromRoute] int floorId)
+    {
+        return Ok(await _floorService.GetMapByFloorIdAsync(floorId: floorId));
     }
     #endregion
     

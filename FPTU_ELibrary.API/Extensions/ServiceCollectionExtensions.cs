@@ -19,6 +19,7 @@ using Azure.Security.KeyVault.Secrets;
 using System.Text.Json;
 using System.Linq.Expressions;
 using FPTU_ELibrary.Domain.Entities;
+using Microsoft.Extensions.Azure;
 using Expression = System.Linq.Expressions.Expression;
 
 namespace FPTU_ELibrary.API.Extensions
@@ -63,104 +64,86 @@ namespace FPTU_ELibrary.API.Extensions
         }
 
         public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-        	IConfiguration configuration,
+        	WebApplicationBuilder builder,
         	IWebHostEnvironment env)
         {
-            //Get KeyVault settings
-            var keyVaultUrl = configuration["AzureSettings:KeyVaultUrl"];
-            var clientId = configuration["AzureSettings:KeyVaultClientId"];
-            var clientSecret = configuration["AzureSettings:KeyVaultClientSecret"];
-            var tenantId = configuration["AzureSettings:KeyVaultDirectoryID"];
-            
-            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-            var client = new SecretClient(new Uri(keyVaultUrl), credential);
-
-            // dictionary to store key vault secrets
-            var keyVaultSecrets = new Dictionary<string, string>();
-
-            var secretProperties =  client.GetPropertiesOfSecrets();
-            foreach (var secretProperty in secretProperties)
+            #region Development stage
+                    
+                    	if (env.IsDevelopment()) // Is Development env
+                    	{
+                    
+                    	}
+                    	#endregion
+                    
+            #region Production stage
+        
+            else if (env.IsProduction()) // Is Production env
             {
-                var secret = secretProperty.Name;
-                var secretValue = client.GetSecret(secret).Value.Value;
+                // Retrieve the App Configuration connection string from existing configuration
+                var appConfigConnectionString = builder.Configuration.GetConnectionString("AzureAppConfiguration");
                 
-                // Convert "Class-Property" to "Class:Property" for IConfiguration mapping
-                var formattedKey = secret.Replace("-", ":");
-                keyVaultSecrets[formattedKey] = secretValue;
+                // Add azure app configuration
+                builder.Configuration.AddAzureAppConfiguration(option =>
+                {
+                    // Connect to connection string 
+                    option.Connect(appConfigConnectionString)
+                        .ConfigureRefresh(refresh =>
+                        {
+                            refresh.Register("AppSettings:RefreshValue", refreshAll: true);
+                        });
+                });
+                
+                // Make sure to add Azure App Configuration middleware
+                // so that the refresh token and auto-update are effective across your app
+                builder.Services.AddAzureAppConfiguration();
             }
+            #endregion
+            #region Staging
+            else if (env.IsStaging()) // Is Staging env
+            {
+            }
+            #endregion
             
-            //  override Iconfiguration with key vault secrets
-            var configBuilder = new ConfigurationBuilder()
-                .AddConfiguration(configuration)
-                .AddInMemoryCollection(keyVaultSecrets); // Override with Key Vault values
-
-            var updatedConfiguration = configBuilder.Build();
             
         	// Configure AppSettings
-        	services.Configure<AppSettings>(updatedConfiguration.GetSection("AppSettings"));
+        	services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
         	// Configure BorrowSettings
-        	services.Configure<BorrowSettings>(updatedConfiguration.GetSection("BorrowSettings"));
+        	services.Configure<BorrowSettings>(builder.Configuration.GetSection("BorrowSettings"));
         	// Configure ElasticSettings
-        	services.Configure<ElasticSettings>(updatedConfiguration.GetSection("ElasticSettings"));
+        	services.Configure<ElasticSettings>(builder.Configuration.GetSection("ElasticSettings"));
         	// Configure WebTokenSettings
-        	services.Configure<WebTokenSettings>(updatedConfiguration.GetSection("WebTokenSettings"));
+        	services.Configure<WebTokenSettings>(builder.Configuration.GetSection("WebTokenSettings"));
         	// Configure GoogleAuthSettings
-        	services.Configure<GoogleAuthSettings>(updatedConfiguration.GetSection("GoogleAuthSettings"));
+        	services.Configure<GoogleAuthSettings>(builder.Configuration.GetSection("GoogleAuthSettings"));
         	// Configure FacebookAuthSettings
-        	services.Configure<FacebookAuthSettings>(updatedConfiguration.GetSection("FacebookAuthSettings"));
+        	services.Configure<FacebookAuthSettings>(builder.Configuration.GetSection("FacebookAuthSettings"));
         	// Configure CloudinarySettings
-        	services.Configure<CloudinarySettings>(updatedConfiguration.GetSection("CloudinarySettings"));
+        	services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
         	// Configure AzureSettings
-        	services.Configure<AzureSettings>(updatedConfiguration.GetSection("AzureSettings"));
+        	services.Configure<AzureSettings>(builder.Configuration.GetSection("AzureSettings"));
         	// Configure OCRSettings
-        	services.Configure<AISettings>(updatedConfiguration.GetSection("AISettings"));
+        	services.Configure<AISettings>(builder.Configuration.GetSection("AISettings"));
         	// Configure CustomVisionSettings
-        	services.Configure<CustomVisionSettings>(updatedConfiguration.GetSection("CustomVision"));
+        	services.Configure<CustomVisionSettings>(builder.Configuration.GetSection("CustomVision"));
         	// Configure DetectSettings
-        	services.Configure<DetectSettings>(updatedConfiguration.GetSection("DetectSettings"));
+        	services.Configure<DetectSettings>(builder.Configuration.GetSection("DetectSettings"));
         	// Configure AzureSpeechSettings
-        	services.Configure<AzureSpeechSettings>(updatedConfiguration.GetSection("AzureSpeechSettings"));
+        	services.Configure<AzureSpeechSettings>(builder.Configuration.GetSection("AzureSpeechSettings"));
         	// Configure FaceDetectionSettings
-        	services.Configure<FaceDetectionSettings>(updatedConfiguration.GetSection("FaceDetectionSettings"));
+        	services.Configure<FaceDetectionSettings>(builder.Configuration.GetSection("FaceDetectionSettings"));
         	// Configure PayOS
-        	services.Configure<PayOSSettings>(updatedConfiguration.GetSection("PayOSSettings"));
+        	services.Configure<PayOSSettings>(builder.Configuration.GetSection("PayOSSettings"));
             // Configure PayOS
-            services.Configure<PaymentSettings>(updatedConfiguration.GetSection("PaymentSettings"));
+            services.Configure<PaymentSettings>(builder.Configuration.GetSection("PaymentSettings"));
         	//Configure DigitalBorrowSettings
-            services.Configure<DigitalResourceSettings>(updatedConfiguration.GetSection("DigitalResourceSettings"));
+            services.Configure<DigitalResourceSettings>(builder.Configuration.GetSection("DigitalResourceSettings"));
             //Configure AdsScriptSettings
-            services.Configure<AdsScriptSettings>(updatedConfiguration.GetSection("AdsScriptSettings"));
+            services.Configure<AdsScriptSettings>(builder.Configuration.GetSection("AdsScriptSettings"));
             //Configure RedisSettings
-            services.Configure<RedisSettings>(updatedConfiguration.GetSection("RedisSettings"));
+            services.Configure<RedisSettings>(builder.Configuration.GetSection("RedisSettings"));
         	//Configure FFMPEGSettings
-            services.Configure<FFMPEGSettings>(updatedConfiguration.GetSection("FFMPEGSettings"));
-        	
-            #region Development stage
-        
-        	if (env.IsDevelopment()) // Is Development env
-        	{
-        
-        	}
-        	#endregion
-        
-        	#region Production stage
-        
-        	else if (env.IsProduction()) // Is Production env
-        	{
-        
-        	}
-        
-        	#endregion
-        
-        	#region Staging
-        
-        	else if (env.IsStaging()) // Is Staging env
-        	{
-        
-        	}
-        
-        	#endregion
-        
+            services.Configure<FFMPEGSettings>(builder.Configuration.GetSection("FFMPEGSettings"));
+            
         	return services;
         }
 
@@ -189,12 +172,10 @@ namespace FPTU_ELibrary.API.Extensions
                 var payGate = "https://api-merchant.payos.vn";
                 var returnUrl = env.IsDevelopment()
                     ? "http://localhost:3000/payment-return"
-                    // TODO: change to deploy URL
-                    : "https://prep4ielts.vercel.app/payment-return";
+                    : "https://elibrary-capstone.vercel.app/payment-return";
                 var cancelUrl = env.IsDevelopment()
                     ? "http://localhost:3000/payment-cancel"
-                    // TODO: change to deploy URL
-                    : "https://prep4ielts.vercel.app/payment-cancel";
+                    : "https://elibrary-capstone.vercel.app/payment-cancel";
 
                 services.Configure<PayOSSettings>(options =>
                 {

@@ -473,7 +473,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                         li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) ||
                         // In-shelf status and still available
                         (li.Status == nameof(LibraryItemInstanceStatus.InShelf) && inventory.AvailableUnits > 0)
-                    ));
+                    ) && li.LibraryItem.ShelfId != null);
                 // Check if exist any
                 var isAssignable = (await _itemInstanceSvc.Value.AnyAsync(itemInstanceSpec)).Data is true;
                 if (isAssignable)
@@ -922,7 +922,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) ||
                     // In-shelf status and still available
                     (li.Status == nameof(LibraryItemInstanceStatus.InShelf) && inventory.AvailableUnits > 0)
-                ));
+                ) && li.LibraryItem.ShelfId != null);
             // Apply include
             itemInstanceSpec.ApplyInclude(q => q
                 .Include(l => l.LibraryItem)
@@ -2189,7 +2189,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) ||
                     // In shelf status and still available
                     (li.Status == nameof(LibraryItemInstanceStatus.InShelf) && inventory.AvailableUnits > 0)
-                ));
+                ) && li.LibraryItem.ShelfId != null);
             
             // Check all assignable item instances id
             var existAtLeastInstanceMatch = (await _itemInstanceSvc.Value

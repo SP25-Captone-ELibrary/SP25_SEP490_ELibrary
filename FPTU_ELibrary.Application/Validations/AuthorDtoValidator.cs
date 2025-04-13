@@ -15,11 +15,11 @@ public class AuthorDtoValidator : AbstractValidator<AuthorDto>
         var isEng = langEnum == SystemLanguage.English;
 
         // Author Code
-        RuleFor(u => u.AuthorCode)
-            .Matches(@"^[A-Z]{2,4}\d{0,8}$")
-            .WithMessage(isEng 
-                ? "Author code must start with two to four uppercase letters, contain only digits after that, and be less than 10 characters" 
-                : "Mã tác giả phải bắt đầu bằng hai đến bốn chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
+        // RuleFor(u => u.AuthorCode)
+        //     .Matches(@"^[A-Z]{2,4}\d{0,8}$")
+        //     .WithMessage(isEng 
+        //         ? "Author code must start with two to four uppercase letters, contain only digits after that, and be less than 10 characters" 
+        //         : "Mã tác giả phải bắt đầu bằng hai đến bốn chữ cái viết hoa, chỉ chứa các chữ số sau đó và có độ dài nhỏ hơn 10 ký tự");
         // Author image
         RuleFor(e => e.AuthorImage)
             .Must(str => string.IsNullOrEmpty(str) || StringUtils.IsValidUrl(str))

@@ -46,10 +46,13 @@ public class OCRService : IOCRService
             string operationLocation = textHeaders.OperationLocation;
 
             // Retrieve the URI where the recognized text will be stored from the Operation-Location header
-            //using id, not the full url
+            // Using id, not the full url
             const int numberOfCharsInOperationId = 36;
             string operationId = operationLocation.Substring(operationLocation.Length - numberOfCharsInOperationId);
 
+            // Parse operation Id
+            var parsedOperationId = Guid.Parse(operationId);
+            
             ReadOperationResult results;
             const int maxRetries = 10;
             int retries = 0;
@@ -58,7 +61,7 @@ public class OCRService : IOCRService
             do
             {
                 await Task.Delay(delayMilliseconds);
-                results = await _client.GetReadResultAsync(Guid.Parse(operationId));
+                results = await _client.GetReadResultAsync(parsedOperationId);
 
                 retries++;
                 if (retries >= maxRetries)
@@ -88,18 +91,18 @@ public class OCRService : IOCRService
     {
         try
         {
-            var results = await ReadRawFileSteam(imageStream);
-            if (results.ResultCode != ResultCodeConst.SYS_Success0002)
+            var results = (await ReadRawFileSteam(imageStream)).Data as ReadOperationResult;
+            if (results == null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Fail0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
             }
-
-            var textResults = ((ReadOperationResult)results.Data).AnalyzeResult.ReadResults;
+    
+            var textResults = results.AnalyzeResult.ReadResults;
             var extractedText = string.Join(" ", textResults.SelectMany(page => page.Lines.Select(line => line.Text)))
                 .Replace("\r", "")
                 .Replace("\n", " ");
-
+    
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), extractedText);
         }
@@ -109,73 +112,132 @@ public class OCRService : IOCRService
             throw new Exception("Error invoke when process checking create book information");
         }
     }
-
+    
     public async Task<IServiceResult> CheckBookInformationAsync(CheckedItemDto dto)
     {
         try
         {
             var acceptableImage = new List<MatchResultDto>();
-            //read information in book cover
+            
+            // Read information in book cover
             foreach (var image in dto.Images)
             {
-                var result = await ReadFileStreamAsync(image.OpenReadStream());
-                if (result.ResultCode != ResultCodeConst.SYS_Success0002)
+                var extractedText = (await ReadFileStreamAsync(image.OpenReadStream())).Data as string;
+                if (string.IsNullOrEmpty(extractedText))
                 {
-                    return result;
+                    return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
                 }
-
-                //prepare compare data
-                // create base compare fields
-                List<FieldMatchInputDto> compareFields = new List<FieldMatchInputDto>()
+            
+                // Prepare compare data
+                // Create base compare fields
+                List<FieldMatchInputDto> compareFields = new()
                 {
-                    new FieldMatchInputDto()
+                    new()
                     {
-                        FieldName = "Title",
+                        FieldName = nameof(CheckedItemDto.Title),
                         Values = new List<string>() { dto.Title },
                         Weight = _monitor.TitlePercentage
                     },
-                    new FieldMatchInputDto()
+                    new()
                     {
-                        FieldName = "Publisher",
+                        FieldName = nameof(CheckedItemDto.Publisher),
                         Values = new List<string>() { dto.Publisher },
                         Weight = _monitor.PublisherPercentage
                     }
                 };
-                // check if SubTitle is existed
+                
+                // Check whether SubTitle is existed
                 if (dto.SubTitle is not null)
                 {
-                    compareFields.First(cf => cf.FieldName.Equals("Title"))
-                        .Values.Add(dto.SubTitle);
+                    compareFields.First(cf => 
+                            cf.FieldName.Equals(nameof(CheckedItemDto.Title))).Values.Add(dto.SubTitle);
                 }
-
+            
                 // check if GeneralNote is existed
                 compareFields.Add(new FieldMatchInputDto()
                 {
-                    FieldName = "Authors",
+                    FieldName = nameof(CheckedItemDto.Authors),
                     Values = dto.Authors,
                     Weight = _monitor.AuthorNamePercentage
                 });
-                // check if GeneralNote is existed
-                // if (dto.GeneralNote is not null)
-                // {
-                //     compareFields.Add(new FieldMatchInputDto()
-                //     {
-                //         FieldName = "Authors",
-                //         Values = new List<string>() { dto.GeneralNote },
-                //         Weight = _monitor.AuthorNamePercentage
-                //     });
-                // }
-
-                var matchResult =
-                    StringUtils.CalculateFieldMatchScore(result.Data.ToString(), compareFields,
-                        _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
+            
+                // Process calculate field match score
+                var matchResult = StringUtils.CalculateFieldMatchScore(
+                        ocrContent: extractedText,
+                        fields: compareFields, 
+                        confidenceThreshold: _monitor.ConfidenceThreshold,
+                        minFieldThreshold: _monitor.MinFieldThreshold);
+                // Assign image name and match result
                 matchResult.ImageName = image.FileName;
                 acceptableImage.Add(matchResult);
             }
-
+            
             return new ServiceResult(ResultCodeConst.AIService_Success0001,
-                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001)
-                , acceptableImage);
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001), acceptableImage);
+            
+            // // Process all images in parallel if there are multiple images.
+            // var tasks = dto.Images.Select(async image =>
+            // {
+            //     using var stream = image.OpenReadStream();
+            //     var extractedTextResult = await ReadFileStreamAsync(stream);
+            //     var extractedText = extractedTextResult.Data as string;
+            //
+            //     if (string.IsNullOrEmpty(extractedText))
+            //     {
+            //         throw new Exception("The OCR did not extract any text for image: " + image.FileName);
+            //     }
+            //
+            //     // Prepare the fields for comparison.
+            //     var compareFields = new List<FieldMatchInputDto>
+            //     {
+            //         new FieldMatchInputDto
+            //         {
+            //             FieldName = nameof(CheckedItemDto.Title),
+            //             Values = new List<string> { dto.Title },
+            //             Weight = _monitor.TitlePercentage
+            //         },
+            //         new FieldMatchInputDto
+            //         {
+            //             FieldName = nameof(CheckedItemDto.Publisher),
+            //             Values = new List<string> { dto.Publisher },
+            //             Weight = _monitor.PublisherPercentage
+            //         }
+            //     };
+            //
+            //     // Include SubTitle if it exists.
+            //     if (!string.IsNullOrWhiteSpace(dto.SubTitle))
+            //     {
+            //         compareFields.First(cf => cf.FieldName.Equals(nameof(CheckedItemDto.Title)))
+            //             .Values.Add(dto.SubTitle);
+            //     }
+            //
+            //     // Add author information.
+            //     compareFields.Add(new FieldMatchInputDto
+            //     {
+            //         FieldName = nameof(CheckedItemDto.Authors),
+            //         Values = dto.Authors,
+            //         Weight = _monitor.AuthorNamePercentage
+            //     });
+            //
+            //     // Calculate the match score.
+            //     var matchResult = StringUtils.CalculateFieldMatchScore(
+            //         ocrContent: extractedText,
+            //         fields: compareFields,
+            //         confidenceThreshold: _monitor.ConfidenceThreshold,
+            //         minFieldThreshold: _monitor.MinFieldThreshold);
+            //     matchResult.ImageName = image.FileName;
+            //     return matchResult;
+            // });
+            //
+            // // Wait for all image processing tasks to complete.
+            // var acceptableImages = await Task.WhenAll(tasks);
+            //
+            // return new ServiceResult(
+            //     ResultCodeConst.AIService_Success0001,
+            //     await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0001),
+            //     acceptableImages.ToList()
+            // );
         }
         catch (Exception ex)
         {

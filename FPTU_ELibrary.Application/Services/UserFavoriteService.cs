@@ -54,6 +54,16 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                     message: await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0013));
             }
             
+            // Check exist item id
+            var isItemExist = (await _libraryItemService.AnyAsync(li => li.LibraryItemId == libraryItemId)).Data is true;
+            if (!isItemExist)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library item" : "tài liệu"));
+            }
+            
             // Build spec
             var userFavoriteSpec = new BaseSpecification<UserFavorite>(u =>
                 u.UserId == userDto.UserId && u.LibraryItemId == libraryItemId);
@@ -79,6 +89,7 @@ public class UserFavoriteService : GenericService<UserFavorite, UserFavoriteDto,
                 UserId = userDto.UserId,
                 CreatedAt = currentLocalDateTime
             };
+            
             // Process add new entity            
             await _unitOfWork.Repository<UserFavorite, int>().AddAsync(_mapper.Map<UserFavorite>(dto));
             // Save DB            

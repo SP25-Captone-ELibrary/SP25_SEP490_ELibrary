@@ -12,7 +12,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
 
             builder.ToTable("User_Favorite");
 
-            builder.HasIndex(e => new { e.UserId, BookEditionId = e.LibraryItemId }, "UQ_UserFavorite").IsUnique();
+            // builder.HasIndex(e => new { e.UserId, e.LibraryItemId }, "UQ_UserFavorite").IsUnique();
 
             builder.Property(e => e.FavoriteId).HasColumnName("favorite_id");
             builder.Property(e => e.LibraryItemId).HasColumnName("library_item_id");

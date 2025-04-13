@@ -66,14 +66,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 
 	        // Custom errors
 	        var customErrors = new Dictionary<string, string[]>();
-	        // Check exist author code 
-	        var isExistAuthorCode = await _unitOfWork.Repository<Author, int>().AnyAsync(x => x.AuthorCode == dto.AuthorCode);
-	        if (isExistAuthorCode)
-	        {
-		        customErrors.Add(
-			        StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
-			        [await _msgService.GetMessageAsync(ResultCodeConst.Author_Warning0001)]);
-	        }
 	        // Check exist author name
 	        var authorEntity = await _unitOfWork.Repository<Author, int>().GetWithSpecAsync(
 		        new BaseSpecification<Author>(a =>
@@ -100,6 +92,25 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
                 		: "Tên tác giả, ngày sinh, quốc tịch đã tồn tại trong thông tin của tác giả khác");
 	        }
 
+	        // Generate author code
+	        var latestAuthSpec = new BaseSpecification<Author>();
+	        // Add order by
+	        latestAuthSpec.AddOrderByDescending(a => a.AuthorId);
+	        // Retrieve with spec
+			var latestAuthor = await _unitOfWork.Repository<Author, int>().GetWithSpecAsync(latestAuthSpec);
+			if (latestAuthor == null)
+			{
+				// Set default author code
+				dto.AuthorCode = StringUtils.AutoCompleteBarcode(prefix: "AUTH", length: 5, number: 1);
+			}
+			else
+			{
+				// Extract latest number
+				var latestNumber = StringUtils.ExtractNumber(latestAuthor.AuthorCode, prefix: "AUTH", length: 5);
+				// Generate new code
+				dto.AuthorCode = StringUtils.AutoCompleteBarcode(prefix: "AUTH", length: 5, number: latestNumber + 1);
+			}
+			
 	        // Check invoke any errors
 	        if (customErrors.Any())
 	        {
@@ -410,24 +421,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				}
 			}
 			
-            // Check author code empty
-            if (string.IsNullOrEmpty(dto.AuthorCode))
-            {
-	            customErrors.Add(
-                    StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
-                    [isEng ? "Author code is required" : "Vui lòng nhập mã tác giả"]);
-            }
-            // Check exist author code 
-            var isExistAuthorCode = await _unitOfWork.Repository<Author, int>().AnyAsync(a => 
-	            a.AuthorCode == dto.AuthorCode && 
-	            a.AuthorId != existingEntity.AuthorId
-	        );
-            if (isExistAuthorCode) 
-            {
-                customErrors.Add(
-                    StringUtils.ToCamelCase(nameof(Author.AuthorCode)),
-                    [await _msgService.GetMessageAsync(ResultCodeConst.Author_Warning0001)]);
-            }
 			// Invoke any errors
             if (customErrors.Any()) 
             {
@@ -440,7 +433,6 @@ public class AuthorService : GenericService<Author, AuthorDto, int>, IAuthorServ
 				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 			
 			// Update text properties
-			existingEntity.AuthorCode = dto.AuthorCode;
 			existingEntity.AuthorImage = dto.AuthorImage;
 			existingEntity.FullName = dto.FullName;
 			existingEntity.Biography = dto.Biography;

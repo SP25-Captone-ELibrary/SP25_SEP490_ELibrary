@@ -28,4 +28,6 @@ public interface ILibraryItemInstanceService<TDto> : IGenericService<LibraryItem
     // Task<IServiceResult> UpdateLostStatusWithoutSaveChangesAsync(int libraryItemInstanceId);
     Task<IServiceResult> UpdateRangeStatusAndInventoryWithoutSaveChangesAsync(List<int> libraryItemInstanceIds,
         LibraryItemInstanceStatus status, bool isProcessBorrowRequest);
+    Task<IServiceResult> MarkAsLostAsync(int id);
+    Task<IServiceResult> MarkLostAsFoundAsync(int id);
 }

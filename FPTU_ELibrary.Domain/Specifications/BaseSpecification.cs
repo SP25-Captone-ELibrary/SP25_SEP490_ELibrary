@@ -43,6 +43,7 @@ namespace FPTU_ELibrary.Domain.Specifications
             public int Skip { get; private set; }
             public bool IsPagingEnabled { get; private set; }
             public bool AsSplitQuery { get; private set; } = false;
+            public bool IsDistinct { get; set; } = false;
             #endregion
         
             #region Add Specification Properties
