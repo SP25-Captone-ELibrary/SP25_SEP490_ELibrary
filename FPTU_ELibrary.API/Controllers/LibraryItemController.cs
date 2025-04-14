@@ -464,7 +464,7 @@ public class LibraryItemController : ControllerBase
     [HttpGet(APIRoute.LibraryItem.GetAudioPreview, Name = nameof(GetAudioPreview))]
     public async Task<IActionResult> GetAudioPreview([FromRoute] int resourceId)
     {
-        var result = await _libraryResourceService.GetAudioPreview(resourceId);
+        var result = await _libraryResourceService.GetAudioPreviewFromAws(resourceId);
         if (result.ResultCode == ResultCodeConst.SYS_Success0002 && result.Data is not null)
         {
             return File(result.Data, "audio/mpeg", $"audio.mp3");

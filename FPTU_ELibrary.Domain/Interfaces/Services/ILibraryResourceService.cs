@@ -24,5 +24,6 @@ public interface ILibraryResourceService<TDto> : IGenericService<LibraryResource
     Task<IServiceResult<Stream>> GetPdfPreview(int resourceId);
     Task<IServiceResult> GetNumberOfUploadAudioFile(string email, int resourceId);
     Task<IServiceResult> WatermarkAudioAsyncFromAWS(string? s3OriginalAudioName, string email);
+    Task<IServiceResult<Stream>> GetAudioPreviewFromAws(int resourceId);
     // Task<IServiceResult<Stream>> AddAudioWatermark(int resourceId, string resourceLang, string email, int chunkSize);
 }
