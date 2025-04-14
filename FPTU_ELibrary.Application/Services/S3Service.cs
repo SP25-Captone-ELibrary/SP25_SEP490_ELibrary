@@ -49,7 +49,7 @@ public class S3Service : IS3Service
     {
         var s3PathKey = Guid.NewGuid();
         var initiateRequest = new InitiateMultipartUploadRequest
-            { BucketName = _monitor.BucketName, Key = $"original/{s3PathKey}" };
+            { BucketName = _monitor.BucketName, Key = $"original/{s3PathKey}",ContentType = "audio/mpeg"};
         var initiateResponse = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
         string uploadId = initiateResponse.UploadId;
 
@@ -117,6 +117,22 @@ public class S3Service : IS3Service
         await _s3Client.PutObjectAsync(request);
         return new ServiceResult(ResultCodeConst.Cloud_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002), null);
+    }
+    public async Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile)
+    {
+        var fileName = Guid.NewGuid();
+        var request = new PutObjectRequest
+        {
+            BucketName = _monitor.BucketName,
+            Key = $"{(type == AudioResourceType.Original ? "original" : "watermarked")}/{fileName}",
+            InputStream = audioFile,
+            ContentType = "audio/mpeg", //hardcode mp3 type
+            AutoCloseStream = false
+        };
+
+        await _s3Client.PutObjectAsync(request);
+        return new ServiceResult(ResultCodeConst.Cloud_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002), fileName);
     }
 
     public async Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string fileName)

@@ -389,9 +389,10 @@ namespace FPTU_ELibrary.API.Extensions
 				FileFormat = req.FileFormat,
 				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
 				BorrowPrice = req.BorrowPrice,
-				S3OriginalName = req.s3OriginalName,
+				S3OriginalName = req.S3OriginalName,
 				ResourceUrl = "",
-				ResourceType = req.ResourceType
+				ResourceType = req.ResourceType,
+				ProviderPublicId = req.ProviderPublicId
 			};
 		
 		#endregion
