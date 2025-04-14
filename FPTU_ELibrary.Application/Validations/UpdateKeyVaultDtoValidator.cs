@@ -44,7 +44,7 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
     /// </summary>
     private int ValidateClassAndProperty(string fullFormatKey)
     {
-        var parts = fullFormatKey.Split('-');
+        var parts = fullFormatKey.Split(':');
         if (parts.Length != 2) return 1;
 
         string className = parts[0];
@@ -66,7 +66,7 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
     /// </summary>
     private bool BeParsableToPropertyType(UpdateKeyVaultDto dto, string value)
     {
-        var parts = dto.FullFormatKey.Split('-');
+        var parts = dto.FullFormatKey.Split(':');
         if (parts.Length != 2) return false;
 
         string className = parts[0];
