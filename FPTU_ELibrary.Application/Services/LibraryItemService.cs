@@ -2801,11 +2801,15 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         foreach (var libraryItemId in libraryItemIds)
         {
             var item = await _unitOfWork.Repository<LibraryItem,int>().GetByIdAsync(libraryItemId);
-
             if (item is null)
             {
                 return new ServiceResult(ResultCodeConst.SYS_Warning0002,
                     StringUtils.Format(await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002), "item"));
+            }
+
+            if (item.IsTrained)
+            {
+                continue;
             }
             item.IsTrained = true;
             item.TrainedAt = DateTime.Now;

@@ -12,6 +12,7 @@ public class DigitalBorrow
     public DateTime ExpiryDate { get; set; }
     public bool IsExtended { get; set; }
     public int ExtensionCount { get; set; }
+    public string? S3WatermarkedName { get; set; }
     public BorrowDigitalStatus Status { get; set; }
     
     // References

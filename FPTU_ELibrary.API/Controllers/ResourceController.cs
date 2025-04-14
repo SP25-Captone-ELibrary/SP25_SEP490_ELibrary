@@ -12,10 +12,13 @@ namespace FPTU_ELibrary.API.Controllers;
 public class ResourceController : ControllerBase
 {
     private readonly ICloudinaryService _cloudService;
+    private readonly IS3Service _s3Service;
 
-    public ResourceController(ICloudinaryService cloudService)
+    public ResourceController(ICloudinaryService cloudService,
+        IS3Service s3Service)
     {
         _cloudService = cloudService;
+        _s3Service = s3Service;
     }
     
     [Authorize]
@@ -92,6 +95,21 @@ public class ResourceController : ControllerBase
     public async Task<IActionResult> UploadLargeVideoAsync([FromBody] UploadLargeVideoRequest req)
     {
         return Ok(await _cloudService.UploadLargeVideo(req.ProviderIds));
+    }
+    
+    [Authorize]
+    [HttpGet(APIRoute.Resource.GetPartUrls, Name = nameof(GetPartUrls))]
+    public async Task<IActionResult> GetPartUrls([FromQuery] int totalParts)
+    {
+        return Ok(await _s3Service.GenerateMultipartUploadUrls(totalParts));
+    }
+    
+    [Authorize]
+    [HttpPost(APIRoute.Resource.CompleteUploadMultiPart, Name = nameof(CompleteUploadMultiPart))]
+    public async Task<IActionResult> CompleteUploadMultiPart([FromBody] CompleteUploadMultiPartRequest req)
+    {
+        return Ok(await _s3Service.CompleteUploadMultipart(req.S3PathKey,req.UploadId,
+            req.ConvertToTuple()));
     }
     
 }

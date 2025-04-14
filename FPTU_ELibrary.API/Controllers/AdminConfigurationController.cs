@@ -23,7 +23,7 @@ public class AdminConfigurationController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetAllKeyVault()
     {
-        return Ok(await _adminConfigurationService.GetAllKeyVault());
+        return Ok(await _adminConfigurationService.GetAllInAzureConfiguration());
     }
 
     [HttpGet(APIRoute.AdminConfiguration.GetDetail, Name = nameof(GetKeyVault))]
@@ -35,8 +35,8 @@ public class AdminConfigurationController : ControllerBase
 
     [HttpPatch(APIRoute.AdminConfiguration.Update, Name = nameof(UpdateKeyVault))]
     [Authorize]
-    public async Task<IActionResult> UpdateKeyVault([FromBody] UpdateListKeyVaultDto dto)
+    public async Task<IActionResult> UpdateKeyVault([FromBody] UpdateKeyValueAzureConfigurationDto dto)
     {
-        return Ok(await _adminConfigurationService.UpdateKeyVault(dto.ToUpdateKeyVaultDtos()));
+        return Ok(await _adminConfigurationService.UpdateKeyValueAzureConfiguration(dto.Name, dto.Value));
     }
 }

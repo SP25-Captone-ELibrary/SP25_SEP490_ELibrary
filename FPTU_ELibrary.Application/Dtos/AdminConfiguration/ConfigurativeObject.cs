@@ -28,6 +28,11 @@ public class UpdateKeyVaultDto
     public string FullFormatKey { get; set; }
     public string Value { get; set; }
 }
+public class UpdateKeyValueAzureConfigurationDto
+{
+    public string Name { get; set; }
+    public string Value { get; set; }
+}
 public static class UpdateListKeyVaultDtoExtensions
 {
     public static IDictionary<string,string> ToUpdateKeyVaultDtos(this UpdateListKeyVaultDto dto)

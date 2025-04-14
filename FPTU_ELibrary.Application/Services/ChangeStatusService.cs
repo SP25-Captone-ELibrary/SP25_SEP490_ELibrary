@@ -319,7 +319,7 @@ public class ChangeStatusService : BackgroundService
         {
             // Change borrow status to expired
             br.Status = BorrowDigitalStatus.Expired;
-            
+            br.S3WatermarkedName = null;
             // Progress update 
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(br);
             

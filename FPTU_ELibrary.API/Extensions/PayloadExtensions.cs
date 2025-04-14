@@ -389,11 +389,11 @@ namespace FPTU_ELibrary.API.Extensions
 				FileFormat = req.FileFormat,
 				DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
 				BorrowPrice = req.BorrowPrice,
+				S3OriginalName = req.s3OriginalName,
+				ResourceUrl = "",
+				ResourceType = req.ResourceType
 			};
-
-		public static Dictionary<int, string> ToChunkDetail(this CreateLibraryResourceWithLargeFileRequest req)
-			=> req.ChunkDetails.ToDictionary(c => c.PartNumber, c => c.Url);
-
+		
 		#endregion
 		
 		#region Library Item Instance

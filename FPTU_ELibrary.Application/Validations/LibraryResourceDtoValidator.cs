@@ -22,11 +22,11 @@ public class LibraryResourceDtoValidator : AbstractValidator<LibraryResourceDto>
                 : "Loại tệp không hợp lệ");
         
         // PublicId
-        RuleFor(e => e.ProviderPublicId)
-            .Must(str => Guid.TryParse(str, out _))
-            .WithMessage(isEng
-                ? "Invalid provider id"
-                : "Provider id không hợp lệ");
+        // RuleFor(e => e.ProviderPublicId)
+        //     .Must(str => Guid.TryParse(str, out _))
+        //     .WithMessage(isEng
+        //         ? "Invalid provider id"
+        //         : "Provider id không hợp lệ");
         
         // Resource type
         RuleFor(e => e.ResourceType)
