@@ -1,4 +1,5 @@
 using System.Reflection;
+using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using FPTU_ELibrary.Application.Common;
@@ -12,6 +13,7 @@ using FPTU_ELibrary.Application.Validations;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Interfaces.Services;
 using FPTU_ELibrary.Domain.Interfaces.Services.Base;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
 using ConfigurativeObjectDetail = FPTU_ELibrary.Application.Dtos.AdminConfiguration.ConfigurativeObjectDetail;
@@ -26,11 +28,15 @@ public class AdminConfigurationService : IAdminConfigurationService
     private readonly SecretClient _client;
     private const string SRC = "FPTU_ELibrary.Application";
     private const string SETTINGS_FOLDER = "FPTU_ELibrary.Application.Configurations";
+    private readonly ConfigurationClient _newClient;
 
     public AdminConfigurationService(IOptionsMonitor<AzureSettings> monitor,
         ISystemMessageService msgService,
+        IConfiguration configuration,
         ILogger logger)
     {
+        var connectionString = configuration.GetConnectionString("AzureAppConfiguration");
+        _newClient = new ConfigurationClient(connectionString);
         _msgService = msgService;
         _logger = logger;
         _monitor = monitor.CurrentValue;
@@ -163,6 +169,56 @@ public class AdminConfigurationService : IAdminConfigurationService
         return new ServiceResult(ResultCodeConst.SYS_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
     }
+
+    public async Task<IServiceResult> GetAllInAzureConfiguration()
+    {
+        var settings = new Dictionary<string, Dictionary<string, string>>();
+
+        await foreach (ConfigurationSetting setting in _newClient.GetConfigurationSettingsAsync(new SettingSelector { }))
+        {
+            if (string.IsNullOrEmpty(setting.Key) || string.IsNullOrEmpty(setting.Value)) continue;
+
+            var parts = setting.Key.Split(":", 2);
+            if (parts.Length != 2) continue;
+
+            var section = parts[0];
+            var key = parts[1];
+
+            if (!settings.ContainsKey(section))
+                settings[section] = new Dictionary<string, string>();
+
+            settings[section][key] = setting.Value;
+        }
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), settings);
+    }
+
+    public async Task<IServiceResult> UpdateKeyValueAzureConfiguration(string name, string value)
+    {
+        UpdateKeyVaultDto dto = new UpdateKeyVaultDto
+        {
+            FullFormatKey = name,
+            Value = value
+        };
+        // Validate inputs using the generic validator
+        var validationResult = await ValidatorExtensions.ValidateAsync(dto);
+        if (validationResult != null && !validationResult.IsValid)
+        {
+            // Convert ValidationResult to ValidationProblemsDetails.Errors
+            var errors = validationResult.ToProblemDetails().Errors;
+            throw new UnprocessableEntityException("Invalid Validations", errors);
+        }
+        var existing = await _newClient.GetConfigurationSettingAsync(name);
+        var updated = new ConfigurationSetting(name, value);
+        await _newClient.SetConfigurationSettingAsync(updated);
+        Random random = new Random();
+        var updateResetValue = new ConfigurationSetting("AppSettings:RefreshValue", random.Next().ToString());
+        await _newClient.SetConfigurationSettingAsync(updateResetValue);
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003),true);
+    }
+
+
     private Type? GetPropertyTypeFromKey(string className, string propertyName)
     {
         // Load the target assembly
@@ -178,4 +234,6 @@ public class AdminConfigurationService : IAdminConfigurationService
         PropertyInfo? property = classType.GetProperty(propertyName);
         return property?.PropertyType; // Return the exact type
     }
+    
+    
 }

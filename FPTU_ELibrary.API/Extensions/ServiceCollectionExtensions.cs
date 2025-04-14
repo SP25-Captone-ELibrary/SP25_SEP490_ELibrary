@@ -64,24 +64,34 @@ namespace FPTU_ELibrary.API.Extensions
         }
 
         public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
-        	WebApplicationBuilder builder,
-        	IWebHostEnvironment env)
+            WebApplicationBuilder builder,
+            IWebHostEnvironment env)
         {
             #region Development stage
-                    
-                    	if (env.IsDevelopment()) // Is Development env
-                    	{
-                    
-                    	}
-                    	#endregion
-                    
+
+            if (env.IsDevelopment()) // Is Development env
+            {
+                // Retrieve the App Configuration connection string from existing configuration
+                var appConfigConnectionString = builder.Configuration.GetConnectionString("AzureAppConfiguration");
+                builder.Configuration.AddAzureAppConfiguration(option =>
+                {
+                    option.Connect(appConfigConnectionString)
+                        .ConfigureRefresh(refresh =>
+                        {
+                            refresh.Register("AppSettings:RefreshValue", refreshAll: true);
+                        });
+                });
+            }
+
+            #endregion
+
             #region Production stage
-        
+
             else if (env.IsProduction()) // Is Production env
             {
                 // Retrieve the App Configuration connection string from existing configuration
                 var appConfigConnectionString = builder.Configuration.GetConnectionString("AzureAppConfiguration");
-                
+
                 // Add azure app configuration
                 builder.Configuration.AddAzureAppConfiguration(option =>
                 {
@@ -92,60 +102,64 @@ namespace FPTU_ELibrary.API.Extensions
                             refresh.Register("AppSettings:RefreshValue", refreshAll: true);
                         });
                 });
-                
+
                 // Make sure to add Azure App Configuration middleware
                 // so that the refresh token and auto-update are effective across your app
                 builder.Services.AddAzureAppConfiguration();
             }
+
             #endregion
+
             #region Staging
+
             else if (env.IsStaging()) // Is Staging env
             {
             }
+
             #endregion
-            
-            
-        	// Configure AppSettings
-        	services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
-        	// Configure BorrowSettings
-        	services.Configure<BorrowSettings>(builder.Configuration.GetSection("BorrowSettings"));
-        	// Configure ElasticSettings
-        	services.Configure<ElasticSettings>(builder.Configuration.GetSection("ElasticSettings"));
-        	// Configure WebTokenSettings
-        	services.Configure<WebTokenSettings>(builder.Configuration.GetSection("WebTokenSettings"));
-        	// Configure GoogleAuthSettings
-        	services.Configure<GoogleAuthSettings>(builder.Configuration.GetSection("GoogleAuthSettings"));
-        	// Configure FacebookAuthSettings
-        	services.Configure<FacebookAuthSettings>(builder.Configuration.GetSection("FacebookAuthSettings"));
-        	// Configure CloudinarySettings
-        	services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
-        	// Configure AzureSettings
-        	services.Configure<AzureSettings>(builder.Configuration.GetSection("AzureSettings"));
-        	// Configure OCRSettings
-        	services.Configure<AISettings>(builder.Configuration.GetSection("AISettings"));
-        	// Configure CustomVisionSettings
-        	services.Configure<CustomVisionSettings>(builder.Configuration.GetSection("CustomVision"));
-        	// Configure DetectSettings
-        	services.Configure<DetectSettings>(builder.Configuration.GetSection("DetectSettings"));
-        	// Configure AzureSpeechSettings
-        	services.Configure<AzureSpeechSettings>(builder.Configuration.GetSection("AzureSpeechSettings"));
-        	// Configure FaceDetectionSettings
-        	services.Configure<FaceDetectionSettings>(builder.Configuration.GetSection("FaceDetectionSettings"));
-        	// Configure PayOS
-        	services.Configure<PayOSSettings>(builder.Configuration.GetSection("PayOSSettings"));
+
+
+            // Configure AppSettings
+            services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
+            // Configure BorrowSettings
+            services.Configure<BorrowSettings>(builder.Configuration.GetSection("BorrowSettings"));
+            // Configure ElasticSettings
+            services.Configure<ElasticSettings>(builder.Configuration.GetSection("ElasticSettings"));
+            // Configure WebTokenSettings
+            services.Configure<WebTokenSettings>(builder.Configuration.GetSection("WebTokenSettings"));
+            // Configure GoogleAuthSettings
+            services.Configure<GoogleAuthSettings>(builder.Configuration.GetSection("GoogleAuthSettings"));
+            // Configure FacebookAuthSettings
+            services.Configure<FacebookAuthSettings>(builder.Configuration.GetSection("FacebookAuthSettings"));
+            // Configure CloudinarySettings
+            services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+            // Configure AzureSettings
+            services.Configure<AzureSettings>(builder.Configuration.GetSection("AzureSettings"));
+            // Configure OCRSettings
+            services.Configure<AISettings>(builder.Configuration.GetSection("AISettings"));
+            // Configure CustomVisionSettings
+            services.Configure<CustomVisionSettings>(builder.Configuration.GetSection("CustomVision"));
+            // Configure DetectSettings
+            services.Configure<DetectSettings>(builder.Configuration.GetSection("DetectSettings"));
+            // Configure AzureSpeechSettings
+            services.Configure<AzureSpeechSettings>(builder.Configuration.GetSection("AzureSpeechSettings"));
+            // Configure FaceDetectionSettings
+            services.Configure<FaceDetectionSettings>(builder.Configuration.GetSection("FaceDetectionSettings"));
+            // Configure PayOS
+            services.Configure<PayOSSettings>(builder.Configuration.GetSection("PayOSSettings"));
             // Configure PayOS
             services.Configure<PaymentSettings>(builder.Configuration.GetSection("PaymentSettings"));
-        	//Configure DigitalBorrowSettings
+            //Configure DigitalBorrowSettings
             services.Configure<DigitalResourceSettings>(builder.Configuration.GetSection("DigitalResourceSettings"));
             //Configure AdsScriptSettings
             services.Configure<AdsScriptSettings>(builder.Configuration.GetSection("AdsScriptSettings"));
             //Configure RedisSettings
             services.Configure<RedisSettings>(builder.Configuration.GetSection("RedisSettings"));
-        	//Configure FFMPEGSettings
+            //Configure FFMPEGSettings
             services.Configure<FFMPEGSettings>(builder.Configuration.GetSection("FFMPEGSettings"));
             //Configure AWSS3
             services.Configure<AWSStorageSettings>(builder.Configuration.GetSection("AWSStorageSettings"));
-        	return services;
+            return services;
         }
 
         public static IServiceCollection ConfigureAzureSpeech(this IServiceCollection services,
@@ -161,7 +175,7 @@ namespace FPTU_ELibrary.API.Extensions
             return services;
         }
 
-      public static IServiceCollection EstablishApplicationConfiguration(
+        public static IServiceCollection EstablishApplicationConfiguration(
             this IServiceCollection services,
             IConfiguration configuration,
             IWebHostEnvironment env)
@@ -367,8 +381,9 @@ namespace FPTU_ELibrary.API.Extensions
             {
             }
         }
-        
+
         #region KeyVault
+
         //      public static IServiceCollection ConfigureAppSettings(this IServiceCollection services,
         //     IConfiguration configuration,
         //     IWebHostEnvironment env)
@@ -462,6 +477,7 @@ namespace FPTU_ELibrary.API.Extensions
         // {
         //     return Assembly.Load(assemblyName) ?? throw new Exception($"Cannot load assembly {assemblyName}");
         // }
+
         #endregion
     }
 }
