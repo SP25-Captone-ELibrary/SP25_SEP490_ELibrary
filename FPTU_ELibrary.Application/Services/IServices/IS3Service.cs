@@ -9,5 +9,6 @@ public interface IS3Service
     Task<IServiceResult> GenerateMultipartUploadUrls(int totalParts);
     Task<IServiceResult> CompleteUploadMultipart(string s3PathKey, string uploadId, List<(int,string)> parts);
     Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile, string fileName);
+    Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile);
     Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string fileName);
 }

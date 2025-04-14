@@ -525,6 +525,7 @@
 			#endregion
 			
 			public const string PublicUploadImage = Base + "/resources/images/upload";
+			public const string UploadSmallAudio = Base + "/management/resources/small-videos/upload";
 			public const string GetPartUrls= Base +"/management/resources/parts/urls";
 			public const string CompleteUploadMultiPart = Base +"/management/resources/parts/complete";
 

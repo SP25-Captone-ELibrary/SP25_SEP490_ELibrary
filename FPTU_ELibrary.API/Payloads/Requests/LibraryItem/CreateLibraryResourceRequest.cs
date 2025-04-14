@@ -22,7 +22,8 @@ public class CreateLibraryResourceWithLargeFileRequest
     public decimal? ResourceSize { get; set; }
     public int DefaultBorrowDurationDays { get; set; }
     public decimal BorrowPrice { get; set; }
-    public string s3OriginalName { get; set; }
+    public string S3OriginalName { get; set; }
+    public string ProviderPublicId { get; set; } = null!;
 }
 
 public class ChunkDetail

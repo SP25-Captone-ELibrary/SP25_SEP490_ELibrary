@@ -111,5 +111,11 @@ public class ResourceController : ControllerBase
         return Ok(await _s3Service.CompleteUploadMultipart(req.S3PathKey,req.UploadId,
             req.ConvertToTuple()));
     }
+    [Authorize]
+    [HttpPost(APIRoute.Resource.UploadSmallAudio, Name = nameof(UploadSmallAudioAsync))]
+    public async Task<IActionResult> UploadSmallAudioAsync([FromForm] UploadSmallAudioRequest req)
+    {
+        return Ok(   await _s3Service.UploadFileAsync(AudioResourceType.Original, req.File.OpenReadStream()));
+    }
     
 }

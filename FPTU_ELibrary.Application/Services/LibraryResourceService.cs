@@ -124,7 +124,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             // Mapping entities to dto 
             _mapper.Map<IEnumerable<LibraryResourceDto>>(entities));
     }
-    
+
     public override async Task<IServiceResult> GetByIdAsync(int id)
     {
         try
@@ -228,7 +228,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     {
         return await base.GetAllWithSpecAsync(spec);
     }
-    
+
     public async Task<IServiceResult> AddResourceToLibraryItemAsync(int libraryItemId, LibraryResourceDto dto)
     {
         try
@@ -243,9 +243,12 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
                     await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
             }
+
             if (dto.FileFormat.Equals("Video"))
             {
-                dto.ResourceUrl = ((await _s3Service.GetFileUrlAsync(AudioResourceType.Original, dto.S3OriginalName!)).Data as string)!;
+                dto.ResourceUrl =
+                    ((await _s3Service.GetFileUrlAsync(AudioResourceType.Original, dto.S3OriginalName!))
+                        .Data as string)!;
             }
 
             // Validate inputs using the generic validator
@@ -280,27 +283,17 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                         await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0003));
                 }
 
-                // Check resource format
-                if (!dto.ResourceUrl.Contains(dto.ProviderPublicId)) // Invalid resource format
-                {
-                    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
-                        await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
-                }
-
                 // Get file type
                 Enum.TryParse(typeof(FileType), dto.FileFormat, out var fileType);
-                // Check exist resource
-                var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
-                if (checkExistResult.Data is false) return checkExistResult; // Return when not found resource on cloud
             }
-            
+
             // Generate new library item resource
             var libResource = new LibraryItemResource()
             {
                 LibraryItemId = libraryItemId,
                 LibraryResource = _mapper.Map<LibraryResource>(dto)
             };
-            
+
             // Process add new entity
             await _unitOfWork.Repository<LibraryItemResource, int>().AddAsync(libResource);
             // Save to DB
@@ -909,11 +902,10 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                         ? "user has not borrowed this resource"
                         : "người dùng chưa mượn tài nguyên này"));
             }
-            
+
             var userValue = (user.Data as UserDto)!;
             var userBorrows = userValue.DigitalBorrows.FirstOrDefault(db => db.LibraryResource.ResourceId == resourceId
                                                                             && db.Status == BorrowDigitalStatus.Active
-            
                                                                             && db.ExpiryDate.Date > DateTime.Now.Date);
             if (userBorrows is null || userBorrows.S3WatermarkedName.IsNullOrEmpty())
             {
@@ -923,7 +915,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             var returnUrl =
                 await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!);
-            
+
             // Return the part of the stream
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
@@ -934,7 +926,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get digital resource");
         }
-        
     }
 
     #endregion
@@ -971,6 +962,77 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             Math.Ceiling(times ?? 0));
     }
 
+
+    public async Task<IServiceResult<Stream>> GetAudioPreviewFromAws(int resourceId)
+    {
+        string tempAudioPath = Path.Combine(Path.GetTempPath(), $"original_{Path.GetRandomFileName()}.mp3");
+        string trimmedPath = Path.Combine(Path.GetTempPath(), $"preview_{Path.GetRandomFileName()}.mp3");
+
+        try
+        {
+            var sysLang =
+                (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext
+                    .CurrentLanguage);
+            var isEng = sysLang == SystemLanguage.English;
+
+            var baseSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(baseSpec);
+
+            if (resource is null || string.IsNullOrEmpty(resource.S3OriginalName))
+            {
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002));
+            }
+
+            var originAudioResponse =
+                (await _s3Service.GetFileAsync(AudioResourceType.Original, resource.S3OriginalName)).Data as
+                GetObjectResponse;
+
+            if (originAudioResponse == null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult<Stream>(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource in s3" : "tài nguyên trong s3"));
+            }
+
+            // Save original S3 audio to disk
+            await using (var originalAudioStream = originAudioResponse.ResponseStream)
+            await using (var fileStream = new FileStream(tempAudioPath, FileMode.Create, FileAccess.Write))
+            {
+                await originalAudioStream.CopyToAsync(fileStream);
+            }
+
+            // Trim first 15 seconds
+            TimeSpan start = TimeSpan.Zero;
+            TimeSpan end = TimeSpan.FromSeconds(15*60);
+            TrimMp3(tempAudioPath, trimmedPath, start, end);
+
+            var previewBytes = await File.ReadAllBytesAsync(trimmedPath);
+            var previewStream = new MemoryStream(previewBytes);
+
+            return new ServiceResult<Stream>(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), previewStream);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error while processing audio preview");
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempAudioPath)) File.Delete(tempAudioPath);
+                if (File.Exists(trimmedPath)) File.Delete(trimmedPath);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.Warning("Failed to delete temp file: {Message}", cleanupEx.Message);
+            }
+        }
+    }
+
+
     public async Task<IServiceResult> WatermarkAudioAsyncFromAWS(string? s3OriginalAudioName, string email)
     {
         // Determine current system language
@@ -993,7 +1055,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         try
         {
             var originAudioResponse =
-                (await _s3Service.GetFileAsync(AudioResourceType.Original, s3OriginalAudioName)).Data as GetObjectResponse;
+                (await _s3Service.GetFileAsync(AudioResourceType.Original, s3OriginalAudioName)).Data as
+                GetObjectResponse;
             if (originAudioResponse == null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
@@ -1022,7 +1085,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             await using (var conversionStream = new WaveFormatConversionStream(writer.WaveFormat, watermarkReader))
             {
                 int bytesPerSecond = originalAudioReader.WaveFormat.AverageBytesPerSecond;
-                int insertInterval = 15 * 60 * bytesPerSecond; 
+                int insertInterval = 15 * 60 * bytesPerSecond;
                 const int bufferSize = 4096;
                 byte[] buffer = new byte[bufferSize];
                 long totalBytesRead = 0;
@@ -1049,6 +1112,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
                 writer.Flush();
             }
+
             _logger.Information("Converting WAV to mp3");
             await using (var wavReader = new WaveFileReader(tempWavPath))
             await using (var mp3Stream = new FileStream(tempMp3Path, FileMode.Create, FileAccess.ReadWrite))
@@ -1303,11 +1367,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             var isEng = lang == SystemLanguage.English;
             // Get resource
             var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
-            resourceSpec.EnableSplitQuery();
-            resourceSpec.ApplyInclude(q => q
-                .Include(r => r.LibraryResourceUrls)
-                .Include(r => r.LibraryItemResources)
-            );
             var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
             if (resource is null)
             {
@@ -1578,5 +1637,26 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
         // Đảm bảo dữ liệu được ghi
         writer.Flush();
+    }
+
+    private void TrimMp3(string inputPath, string outputPath, TimeSpan? begin, TimeSpan? end)
+    {
+        if (begin.HasValue && end.HasValue && begin > end)
+            throw new ArgumentOutOfRangeException(nameof(end), "end should be greater than begin");
+
+        using (var reader = new Mp3FileReader(inputPath))
+        using (var writer = File.Create(outputPath))
+        {
+            Mp3Frame frame;
+            while ((frame = reader.ReadNextFrame()) != null)
+            {
+                if (reader.CurrentTime >= begin || !begin.HasValue)
+                {
+                    if (reader.CurrentTime <= end || !end.HasValue)
+                        writer.Write(frame.RawData, 0, frame.RawData.Length);
+                    else break;
+                }
+            }
+        }
     }
 }
