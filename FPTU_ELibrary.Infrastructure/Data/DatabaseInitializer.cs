@@ -2550,7 +2550,8 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				        CreatedAt = transactionDate.AddHours(rnd.Next(0, 24)).AddMinutes(rnd.Next(0, 60)),
 				        TransactionCode = GenerateTransactionCode(), 
 				        UserId = users[rnd.Next(users.Count)].UserId,
-				        TransactionStatus = TransactionStatus.Paid
+				        TransactionStatus = TransactionStatus.Paid,
+						TransactionMethod = (i % 2 == 0) ? TransactionMethod.DigitalPayment : TransactionMethod.Cash
 			        });
 		        }
 		        

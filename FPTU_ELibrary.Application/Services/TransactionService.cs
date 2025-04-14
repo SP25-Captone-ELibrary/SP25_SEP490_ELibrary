@@ -173,10 +173,12 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             baseSpec.ApplyInclude(q => q
                 .Include(t => t.User)
                 .Include(t => t.Fine)
+                    .ThenInclude(f => f.FinePolicy)
                 .Include(t => t.LibraryResource)
                 .Include(t => t.LibraryCardPackage)
                 .Include(t => t.PaymentMethod)
                 .Include(t => t.BorrowRequestResources)
+                    .ThenInclude(brr => brr.LibraryResource)
             );
             // Retrieve with spec
             var existingEntity = await _unitOfWork.Repository<Transaction, int>().GetWithSpecAsync(baseSpec);

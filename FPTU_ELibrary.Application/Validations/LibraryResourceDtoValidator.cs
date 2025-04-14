@@ -35,13 +35,13 @@ public class LibraryResourceDtoValidator : AbstractValidator<LibraryResourceDto>
                 ? "Resource type is invalid"
                 : "Loại tài nguyên sách không hợp lệ");
         
-        // Resource Url
-        RuleFor(e => e.ResourceUrl)
-            .Must(str => 
-                !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
-            .WithMessage(isEng
-                ? "Resource URL is invalid"
-                : "Đường dẫn tài nguyên sách không hợp lệ");
+        // // Resource Url
+        // RuleFor(e => e.ResourceUrl)
+        //     .Must(str => 
+        //         !string.IsNullOrEmpty(str) && StringUtils.IsValidUrl(str))
+        //     .WithMessage(isEng
+        //         ? "Resource URL is invalid"
+        //         : "Đường dẫn tài nguyên sách không hợp lệ");
         
         // Resource size
         RuleFor(e => e.ResourceSize)
