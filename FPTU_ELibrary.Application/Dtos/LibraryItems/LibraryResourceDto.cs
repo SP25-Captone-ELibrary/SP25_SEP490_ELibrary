@@ -69,6 +69,7 @@ public static class LibraryResourceDtoExtensions
     {
         return new SecureLibraryResourceDto
         {
+            ResourceId = req.ResourceId,
             ResourceTitle = req.ResourceTitle,
             ResourceType = req.ResourceType,
             ResourceSize = req.ResourceSize,
@@ -76,9 +77,13 @@ public static class LibraryResourceDtoExtensions
             Provider = req.Provider,
             ProviderPublicId = req.ProviderPublicId,
             ProviderMetadata = req.ProviderMetadata,
-            IsDeleted = false,
+            IsDeleted = req.IsDeleted,
             DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
-            BorrowPrice = req.BorrowPrice
+            BorrowPrice = req.BorrowPrice,
+            CreatedAt = req.CreatedAt,
+            UpdatedAt = req.UpdatedAt,
+            CreatedBy = req.CreatedBy,
+            UpdatedBy = req.UpdatedBy
         };
     }
 
@@ -87,6 +92,7 @@ public static class LibraryResourceDtoExtensions
     {
         return req.Select(x => new SecureLibraryResourceDto
         {
+            ResourceId = x.ResourceId,
             ResourceTitle = x.ResourceTitle,
             ResourceType = x.ResourceType,
             ResourceSize = x.ResourceSize,
@@ -94,9 +100,13 @@ public static class LibraryResourceDtoExtensions
             Provider = x.Provider,
             ProviderPublicId = x.ProviderPublicId,
             ProviderMetadata = x.ProviderMetadata,
-            IsDeleted = false,
+            IsDeleted = x.IsDeleted,
             DefaultBorrowDurationDays = x.DefaultBorrowDurationDays,
-            BorrowPrice = x.BorrowPrice
+            BorrowPrice = x.BorrowPrice,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt,
+            CreatedBy = x.CreatedBy,
+            UpdatedBy = x.UpdatedBy
         });
     }
 }
