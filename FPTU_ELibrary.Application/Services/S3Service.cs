@@ -159,7 +159,7 @@ public async Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string
         };
 
         var url = await _s3Client.GetPreSignedURLAsync(request);
-        return new ServiceResult(ResultCodeConst.SYS_Success0002
-            , await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), url);
+        return new ServiceResult(ResultCodeConst.SYS_Success0002,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), url);
     }
 }

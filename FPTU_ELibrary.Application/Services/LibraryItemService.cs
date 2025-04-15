@@ -52,6 +52,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
     private readonly Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> _whTrackingService;
     private readonly Lazy<IReservationQueueService<ReservationQueueDto>> _reservationQueueService;
 
+    private readonly IS3Service _s3Service;
     private readonly ICloudinaryService _cloudService;
     private readonly ICategoryService<CategoryDto> _cateService;
     private readonly IAuthorService<AuthorDto> _authorService;
@@ -76,6 +77,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         Lazy<IWarehouseTrackingDetailService<WarehouseTrackingDetailDto>> whTrackingService,
         Lazy<IReservationQueueService<ReservationQueueDto>> reservationQueueService,
         // Normal service
+        IS3Service s3Service,
         ICloudinaryService cloudService,
         IAuthorService<AuthorDto> authorService,
         ICategoryService<CategoryDto> cateService,
@@ -88,6 +90,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         ILogger logger)
         : base(msgService, unitOfWork, mapper, logger)
     {
+        _s3Service = s3Service;
         _authorService = authorService;
         _userService = userService;
         _cardService = cardService;
@@ -273,15 +276,37 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
                 var lir = listResource[i];
 
                 // Get file type
-                Enum.TryParse(typeof(FileType), lir.FileFormat, out var fileType);
-                // Check exist resource
-                var checkExistResult = await _cloudService.IsExistAsync(lir.ProviderPublicId, (FileType)fileType!);
-                if (checkExistResult.Data is false) // Return when not found resource on cloud
+                if (Enum.TryParse(typeof(FileType), lir.FileFormat, out var fileType))
                 {
-                    // Add error
-                    customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
-                        key: $"libraryResources[{i}].resourceTitle",
-                        msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
+                    // Determine file type
+                    if ((FileType)fileType == FileType.Image)
+                    {
+                        // Check exist resource
+                        var checkExistResult = await _cloudService.IsExistAsync(lir.ProviderPublicId, (FileType)fileType!);
+                        if (checkExistResult.Data is false) // Return when not found resource on cloud
+                        {
+                            // Add error
+                            customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                                key: $"libraryResources[{i}].resourceTitle",
+                                msg: await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
+                        }
+                    }
+                    else if ((FileType)fileType == FileType.Video && (await _s3Service.GetFileUrlAsync(AudioResourceType.Original, lir.S3OriginalName!)).Data is string url)
+                    {
+                        lir.ResourceUrl = url;
+                    }
+                    
+                    // Check not same publicId and resourceUrl
+                    var isDuplicateContent = await _unitOfWork.Repository<LibraryResource, int>().AnyAsync(x =>
+                        x.ProviderPublicId == lir.ProviderPublicId || // With specific public id
+                        x.ResourceUrl == lir.ResourceUrl); // with specific resource url
+                    if (isDuplicateContent) // Not allow to have same resource content
+                    {
+                        // Add error
+                        customErrors = DictionaryUtils.AddOrUpdate(customErrors, 
+                            key: $"libraryResources[{i}].resourceTitle",
+                            msg: await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0003));
+                    }
                 }
             }
 
