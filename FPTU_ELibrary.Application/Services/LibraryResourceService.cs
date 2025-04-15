@@ -918,7 +918,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             }
 
             var returnUrl =
-                await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!);
+                (await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!)).Data as string;
 
             // Return the part of the stream
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
@@ -1008,7 +1008,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             // Trim first 15 seconds
             TimeSpan start = TimeSpan.Zero;
-            TimeSpan end = TimeSpan.FromSeconds(15*60);
+            TimeSpan end = TimeSpan.FromSeconds(5*60);
             TrimMp3(tempAudioPath, trimmedPath, start, end);
 
             var previewBytes = await File.ReadAllBytesAsync(trimmedPath);
