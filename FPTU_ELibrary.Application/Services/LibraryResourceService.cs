@@ -238,19 +238,36 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
-            if (dto.FileFormat.Equals("Video") && dto.S3OriginalName.IsNullOrEmpty())
+            // Get file type
+            if (Enum.TryParse(typeof(FileType), dto.FileFormat, out var fileType))
             {
-                return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+                // Determine file type
+                if ((FileType)fileType == FileType.Image)
+                {
+                    // Check exist resource
+                    var checkExistResult = await _cloudService.IsExistAsync(dto.ProviderPublicId, (FileType)fileType!);
+                    if (checkExistResult.Data is false) // Return when not found resource on cloud
+                    {
+                        return new ServiceResult(ResultCodeConst.Cloud_Warning0003,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Warning0003));
+                    }
+                }
+                else if ((FileType)fileType == FileType.Video)
+                {
+                    if ((await _s3Service.GetFileUrlAsync(AudioResourceType.Original, dto.S3OriginalName!))
+                        .Data is string url)
+                    {
+                        dto.ResourceUrl = url;
+                    }
+                    else
+                    {
+                        // Msg: Fail to upload video
+                        return new ServiceResult(ResultCodeConst.Cloud_Fail0002,
+                            await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Fail0002));
+                    }
+                }
             }
-
-            if (dto.FileFormat.Equals("Video"))
-            {
-                dto.ResourceUrl =
-                    ((await _s3Service.GetFileUrlAsync(AudioResourceType.Original, dto.S3OriginalName!))
-                        .Data as string)!;
-            }
-
+            
             // Validate inputs using the generic validator
             var validationResult = await ValidatorExtensions.ValidateAsync(dto);
             // Check for valid validations
@@ -282,9 +299,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                     return new ServiceResult(ResultCodeConst.LibraryItem_Warning0003,
                         await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0003));
                 }
-
-                // Get file type
-                Enum.TryParse(typeof(FileType), dto.FileFormat, out var fileType);
             }
 
             // Generate new library item resource
