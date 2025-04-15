@@ -107,10 +107,10 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         if (entities.Any()) // Exist data
         {
             // Convert to dto collection 
-            var resourceDtos = _mapper.Map<IEnumerable<LibraryResourceDto>>(entities);
+            var resourceDtos = (_mapper.Map<IEnumerable<LibraryResourceDto>>(entities)).ToListSecureLibraryResourceDto();
 
             // Pagination result 
-            var paginationResultDto = new PaginatedResultDto<LibraryResourceDto>(resourceDtos,
+            var paginationResultDto = new PaginatedResultDto<SecureLibraryResourceDto>(resourceDtos,
                 resourceSpec.PageIndex, resourceSpec.PageSize, totalPage, totalResourceWithSpec);
 
             // Response with pagination 
