@@ -222,7 +222,7 @@
 			#endregion
 			
 			// [GET]
-			public const string GetByIdPublic = Base + "/library-items/resources/{id}";
+			public const string GetByIdPublic = Base + "/library-items/resources/{id}/public";
 		}
 
 		/// <summary>

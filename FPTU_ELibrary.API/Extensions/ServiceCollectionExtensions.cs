@@ -283,7 +283,7 @@ namespace FPTU_ELibrary.API.Extensions
             // Register ReminderService inheriting from BackgroundService
             services.AddHostedService<ReminderService>();
             services.AddHostedService<ChangeStatusService>();
-
+            services.AddHostedService<DigitalBorrowChangeStatus>();
             return services;
         }
 

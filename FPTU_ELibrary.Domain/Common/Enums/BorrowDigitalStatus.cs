@@ -9,5 +9,7 @@ public enum BorrowDigitalStatus
     [Description("Hết hạn")]
     Expired,
     [Description("Đã hủy")]
-    Cancelled
+    Cancelled,
+    [Description("Đang chuẩn bị duyệt")]
+    Prepared
 }

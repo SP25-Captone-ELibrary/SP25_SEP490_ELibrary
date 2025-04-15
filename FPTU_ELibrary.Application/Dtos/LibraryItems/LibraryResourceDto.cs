@@ -43,3 +43,60 @@ public class LibraryResourceDto
     [JsonIgnore]
     public ICollection<BorrowRequestResourceDto> BorrowRequestResources { get; set; } = new List<BorrowRequestResourceDto>();
 }
+
+public class SecureLibraryResourceDto
+{
+    public int ResourceId { get; set; }
+    public string ResourceTitle { get; set; } = null!;
+    public string ResourceType { get; set; } = null!;
+    public decimal? ResourceSize { get; set; }
+    public string FileFormat { get; set; } = null!;
+    public string Provider { get; set; } = null!;
+    public string ProviderPublicId { get; set; } = null!;
+    public string? ProviderMetadata { get; set; }
+    public int DefaultBorrowDurationDays { get; set; }
+    public decimal BorrowPrice { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = null!;
+    public string? UpdatedBy { get; set; }
+    public bool IsDeleted { get; set; }
+}
+
+public static class LibraryResourceDtoExtensions
+{
+    public static SecureLibraryResourceDto ToSecureLibraryResourceDto(this LibraryResourceDto req)
+    {
+        return new SecureLibraryResourceDto
+        {
+            ResourceTitle = req.ResourceTitle,
+            ResourceType = req.ResourceType,
+            ResourceSize = req.ResourceSize,
+            FileFormat = req.FileFormat,
+            Provider = req.Provider,
+            ProviderPublicId = req.ProviderPublicId,
+            ProviderMetadata = req.ProviderMetadata,
+            IsDeleted = false,
+            DefaultBorrowDurationDays = req.DefaultBorrowDurationDays,
+            BorrowPrice = req.BorrowPrice
+        };
+    }
+
+    public static IEnumerable<SecureLibraryResourceDto> ToListSecureLibraryResourceDto(
+        this IEnumerable<LibraryResourceDto> req)
+    {
+        return req.Select(x => new SecureLibraryResourceDto
+        {
+            ResourceTitle = x.ResourceTitle,
+            ResourceType = x.ResourceType,
+            ResourceSize = x.ResourceSize,
+            FileFormat = x.FileFormat,
+            Provider = x.Provider,
+            ProviderPublicId = x.ProviderPublicId,
+            ProviderMetadata = x.ProviderMetadata,
+            IsDeleted = false,
+            DefaultBorrowDurationDays = x.DefaultBorrowDurationDays,
+            BorrowPrice = x.BorrowPrice
+        });
+    }
+}
