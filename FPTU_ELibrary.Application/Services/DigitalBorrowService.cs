@@ -322,11 +322,14 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                 // Vietnam timezone
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
+            // Determine resource type
+            Enum.TryParse(transactionDto.LibraryResource.ResourceType, true, out LibraryResourceType validResourceType);
+            
             // Initialize digital borrow
             var digitalBorrowDto = new DigitalBorrowDto()
             {
                 ResourceId = transactionDto.LibraryResource.ResourceId,
-                Status = BorrowDigitalStatus.Prepared,
+                Status = validResourceType == LibraryResourceType.Ebook ? BorrowDigitalStatus.Active : BorrowDigitalStatus.Prepared,
                 UserId = userDto.UserId,
                 RegisterDate = currentLocalDateTime,
                 ExpiryDate = currentLocalDateTime.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays),
@@ -358,11 +361,13 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
 
-                if (transactionDto.LibraryResource.S3OriginalName != null)
+                if (validResourceType == LibraryResourceType.AudioBook &&
+                    transactionDto.LibraryResource.S3OriginalName != null)
                 {
                     var backgroundTask = Task.Run(() => ProcessWatermarkItemTask(
-                        transactionDto.LibraryResource.S3OriginalName
-                        , email, transactionDto.LibraryResource.ResourceId));
+                        s3OriginName: transactionDto.LibraryResource.S3OriginalName, 
+                        email: email,
+                        resourceId: transactionDto.LibraryResource.ResourceId));
                     var result = new ServiceResult(ResultCodeConst.Borrow_Success0004,
                         await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004));
                     _ = backgroundTask;
@@ -528,8 +533,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     currentLocalDateTime.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays);
             }
 
+            // Determine resource type
+            Enum.TryParse(existingEntity.LibraryResource.ResourceType, true, out LibraryResourceType validResourceType);
+            
             // Change status to active
-            existingEntity.Status = BorrowDigitalStatus.Prepared;
+            existingEntity.Status = validResourceType == LibraryResourceType.Ebook ? BorrowDigitalStatus.Active : BorrowDigitalStatus.Prepared;
             // Mark as extend
             existingEntity.IsExtended = true;
             // Increase extension count
@@ -557,11 +565,14 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     extendDate: currentLocalDateTime,
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
-                if (transactionDto.LibraryResource.S3OriginalName != null)
+                
+                if (validResourceType == LibraryResourceType.AudioBook && 
+                    existingEntity.LibraryResource.S3OriginalName != null)
                 {
                     var backgroundTask = Task.Run(() => ProcessWatermarkItemTask(
-                        transactionDto.LibraryResource.S3OriginalName
-                        , email, transactionDto.LibraryResource.ResourceId));
+                        s3OriginName: existingEntity.LibraryResource.S3OriginalName,
+                        email: email,
+                        resourceId: existingEntity.LibraryResource.ResourceId));
                     var result = new ServiceResult(ResultCodeConst.Borrow_Success0004,
                         await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004));
                     _ = backgroundTask;
@@ -837,27 +848,36 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
 
     private async Task ProcessWatermarkItemTask(string s3OriginName, string email, int resourceId)
     {
+        // Initialize scope
         using var scope = _service.CreateScope();
-        var libraryResourceService = scope.ServiceProvider
-            .GetRequiredService<ILibraryResourceService<LibraryResourceDto>>();
-        var unitOfWork = scope.ServiceProvider
-            .GetRequiredService<IUnitOfWork>();
+        // Inject library resource service
+        var libraryResourceService = scope.ServiceProvider.GetRequiredService<ILibraryResourceService<LibraryResourceDto>>();
+        // Inject unit of work
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        // Inject hub service
         var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<DigitalBorrowHub>>();
+        
+        // Process applying watermark audio
         var s3WatermarkedName =
             (await libraryResourceService.WatermarkAudioAsyncFromAWS(s3OriginName, email)).Data as string;
-        var baseSpec = new BaseSpecification<LibraryResource>
-            (l => l.S3OriginalName == s3OriginName);
+        
+        // Retrieve library resource
+        var baseSpec = new BaseSpecification<LibraryResource>(l =>
+            l.ResourceId == resourceId && l.S3OriginalName == s3OriginName);
         var resource = (await libraryResourceService.GetWithSpecAsync(baseSpec)).Data as LibraryResourceDto;
         if (resource is null)
         {
             await hubContext.Clients.User(email).SendAsync("WatermarkAudioResult",
                 "Error: Cannot find resource to update watermark audio");
         }
-
+        
+        // Retrieve user digital borrow
         var digitalSpec = new BaseSpecification<DigitalBorrow>(db => db.User.Email.Equals(email)
                                                                      && db.LibraryResource.ResourceId == resourceId);
-        digitalSpec.ApplyInclude(q => q.Include(db => db.LibraryResource)
-            .Include(db => db.User));
+        digitalSpec.ApplyInclude(q => q
+            .Include(db => db.LibraryResource)
+            .Include(db => db.User)
+        );
         var digitalBorrow = await unitOfWork.Repository<DigitalBorrow, int>().GetWithSpecAsync(digitalSpec);
         if (digitalBorrow is null)
         {
@@ -866,8 +886,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         }
         else
         {
+            // Assign s3 watermarked name
             digitalBorrow.S3WatermarkedName = s3WatermarkedName;
             digitalBorrow.Status = BorrowDigitalStatus.Active;
+            
+            // Process update
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(digitalBorrow);
             var result = await unitOfWork.SaveChangesAsync();
             if (result > 0)
