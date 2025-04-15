@@ -112,7 +112,6 @@ public class LibraryResourceController : ControllerBase
     }
     #endregion
     
-    [Authorize]
     [HttpGet(APIRoute.LibraryItemResource.GetByIdPublic, Name = nameof(GetBookResourceByIdFromPublicAsync))]
     public async Task<IActionResult> GetBookResourceByIdFromPublicAsync([FromRoute] int id)
     {
