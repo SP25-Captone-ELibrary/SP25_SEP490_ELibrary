@@ -326,7 +326,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             var digitalBorrowDto = new DigitalBorrowDto()
             {
                 ResourceId = transactionDto.LibraryResource.ResourceId,
-                Status = BorrowDigitalStatus.Active,
+                Status = BorrowDigitalStatus.Prepared,
                 UserId = userDto.UserId,
                 RegisterDate = currentLocalDateTime,
                 ExpiryDate = currentLocalDateTime.AddDays(transactionDto.LibraryResource.DefaultBorrowDurationDays),
@@ -529,7 +529,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             }
 
             // Change status to active
-            existingEntity.Status = BorrowDigitalStatus.Active;
+            existingEntity.Status = BorrowDigitalStatus.Prepared;
             // Mark as extend
             existingEntity.IsExtended = true;
             // Increase extension count
@@ -557,7 +557,16 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                     extendDate: currentLocalDateTime,
                     libName: _appSettings.LibraryName,
                     libContact: _appSettings.LibraryContact);
-
+                if (transactionDto.LibraryResource.S3OriginalName != null)
+                {
+                    var backgroundTask = Task.Run(() => ProcessWatermarkItemTask(
+                        transactionDto.LibraryResource.S3OriginalName
+                        , email, transactionDto.LibraryResource.ResourceId));
+                    var result = new ServiceResult(ResultCodeConst.Borrow_Success0004,
+                        await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0004));
+                    _ = backgroundTask;
+                    return result;
+                }
                 // Msg: Extend library digital resource success
                 return new ServiceResult(ResultCodeConst.Borrow_Success0005,
                     await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0005));
@@ -858,6 +867,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         else
         {
             digitalBorrow.S3WatermarkedName = s3WatermarkedName;
+            digitalBorrow.Status = BorrowDigitalStatus.Active;
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(digitalBorrow);
             var result = await unitOfWork.SaveChangesAsync();
             if (result > 0)

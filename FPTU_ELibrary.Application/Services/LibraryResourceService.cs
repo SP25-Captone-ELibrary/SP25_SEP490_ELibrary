@@ -69,7 +69,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         _cloudService = cloudService;
         _libraryItemService = libraryItemService;
     }
-
+    
     public override async Task<IServiceResult> GetAllWithSpecAsync(
         ISpecification<LibraryResource> specification,
         bool tracked = true)
@@ -122,7 +122,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         return new ServiceResult(ResultCodeConst.SYS_Warning0004,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
             // Mapping entities to dto 
-            _mapper.Map<IEnumerable<LibraryResourceDto>>(entities));
+            (_mapper.Map<IEnumerable<LibraryResourceDto>>(entities)).ToListSecureLibraryResourceDto());
     }
 
     public override async Task<IServiceResult> GetByIdAsync(int id)
@@ -152,7 +152,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                _mapper.Map<LibraryResourceDto>(existingEntity));
+                (_mapper.Map<LibraryResourceDto>(existingEntity).ToSecureLibraryResourceDto()));
         }
         catch (Exception ex)
         {
