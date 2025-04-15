@@ -49,7 +49,7 @@ public class S3Service : IS3Service
     {
         var s3PathKey = Guid.NewGuid();
         var initiateRequest = new InitiateMultipartUploadRequest
-            { BucketName = _monitor.BucketName, Key = $"original/{s3PathKey}",ContentType = "audio/mpeg"};
+            { BucketName = _monitor.BucketName, Key = $"original/{s3PathKey}", ContentType = "audio/mpeg" };
         var initiateResponse = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
         string uploadId = initiateResponse.UploadId;
 
@@ -80,7 +80,8 @@ public class S3Service : IS3Service
             });
     }
 
-    public async Task<IServiceResult> CompleteUploadMultipart(string s3PathKey, string uploadId, List<(int, string)> parts)
+    public async Task<IServiceResult> CompleteUploadMultipart(string s3PathKey, string uploadId,
+        List<(int, string)> parts)
     {
         var completeRequest = new CompleteMultipartUploadRequest
         {
@@ -118,6 +119,7 @@ public class S3Service : IS3Service
         return new ServiceResult(ResultCodeConst.Cloud_Success0002,
             await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002), null);
     }
+
     public async Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile)
     {
         var fileName = Guid.NewGuid();
@@ -135,7 +137,19 @@ public class S3Service : IS3Service
             await _msgService.GetMessageAsync(ResultCodeConst.Cloud_Success0002), fileName);
     }
 
-    public async Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string fileName)
+    public async Task<IServiceResult> DeleteFileAsync(AudioResourceType type ,string fileName)
+    {
+        var request = new DeleteObjectRequest()
+        {
+            BucketName = _monitor.BucketName,
+            Key = $"{(type == AudioResourceType.Original ? "original" : "watermarked")}/{fileName}"
+        };
+        await _s3Client.DeleteObjectAsync(request);
+        return new ServiceResult(ResultCodeConst.SYS_Success0004,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0004), true);
+    }
+
+public async Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string fileName)
     {
         var request = new GetPreSignedUrlRequest()
         {

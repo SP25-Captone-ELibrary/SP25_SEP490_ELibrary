@@ -11,4 +11,6 @@ public interface IS3Service
     Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile, string fileName);
     Task<IServiceResult> UploadFileAsync(AudioResourceType type, Stream audioFile);
     Task<IServiceResult> GetFileUrlAsync(AudioResourceType type, string fileName);
+    Task<IServiceResult> DeleteFileAsync(AudioResourceType type, string fileName);
+    
 }

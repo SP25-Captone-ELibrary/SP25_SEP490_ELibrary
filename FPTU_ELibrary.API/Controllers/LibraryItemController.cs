@@ -36,6 +36,7 @@ public class LibraryItemController : ControllerBase
     private readonly IAIDetectionService _aiDetectionService;
     private readonly ILibraryShelfService<LibraryShelfDto> _shelfService;
     private readonly ISearchService _searchService;
+    private readonly IS3Service _s3Service;
     private readonly ILibraryResourceService<LibraryResourceDto> _libraryResourceService;
     private readonly ILibraryItemGroupService<LibraryItemGroupDto> _libraryItemGroupService;
 
@@ -48,6 +49,7 @@ public class LibraryItemController : ControllerBase
         ILibraryShelfService<LibraryShelfDto> shelfService,
         IAIDetectionService aiDetectionService,
         ISearchService searchService,
+        IS3Service s3Service,
         ILibraryResourceService<LibraryResourceDto> libraryResourceService,
         IOptionsMonitor<AppSettings> monitor)
     {
@@ -58,9 +60,10 @@ public class LibraryItemController : ControllerBase
         _aiDetectionService = aiDetectionService;
         _shelfService = shelfService;
         _searchService = searchService;
+        _s3Service = s3Service;
         _libraryResourceService = libraryResourceService;
         _libraryItemGroupService = libraryItemGroupService;
-        
+
         _appSettings = monitor.CurrentValue;
     }
 
@@ -120,7 +123,7 @@ public class LibraryItemController : ControllerBase
     {
         return Ok(await _libraryItemService.AssignItemToGroupAsync(libraryItemId: id, groupId: groupId));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetEnums, Name = nameof(GetLibraryItemEnumsAsync))]
     public async Task<IActionResult> GetLibraryItemEnumsAsync()
@@ -172,7 +175,7 @@ public class LibraryItemController : ControllerBase
             classificationNumber: req.ClassificationNumber,
             authorName: req.AuthorName));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetGroupableItemsById, Name = nameof(GetGroupableItemsByLibraryItemIdAsync))]
     public async Task<IActionResult> GetGroupableItemsByLibraryItemIdAsync(
@@ -186,7 +189,7 @@ public class LibraryItemController : ControllerBase
                 pageSize: specParams.PageSize ?? _appSettings.PageSize),
             libraryItemId: id));
     }
-    
+
     [Authorize]
     [HttpGet(APIRoute.LibraryItem.GetShelf, Name = nameof(GetItemAppropriateShelfAsync))]
     public async Task<IActionResult> GetItemAppropriateShelfAsync([FromRoute] int id,
@@ -481,5 +484,12 @@ public class LibraryItemController : ControllerBase
         return Ok(await _libraryResourceService.GetNumberOfUploadAudioFile(
             email: email ?? string.Empty,
             resourceId: resourceId));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.LibraryItem.GetOriginalAudioFile, Name = nameof(GetOriginalAudioFile))]
+    public async Task<IActionResult> GetOriginalAudioFile([FromRoute] int resourceId)
+    {
+        return Ok( await _libraryResourceService.GetFullOriginalAudio(resourceId));
     }
 }
