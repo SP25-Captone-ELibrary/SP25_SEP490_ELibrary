@@ -1,3 +1,4 @@
+using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -29,6 +30,7 @@ public class DigitalBorrowChangeStatus : BackgroundService
                 using (var scope = _svcScopeFactory.CreateScope())
                 {
                     var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                    var s3Service = scope.ServiceProvider.GetRequiredService<IS3Service>();
                     // Track if there are any changes
                     bool hasChanges = false;
                     
@@ -48,7 +50,7 @@ public class DigitalBorrowChangeStatus : BackgroundService
             await Task.Delay(30000, cancellationToken);
         }
     }
-    private async Task<bool>UpdateDigitalBorrowStatus(IUnitOfWork unitOfWork)
+    private async Task<bool>UpdateDigitalBorrowStatus(IUnitOfWork unitOfWork,IS3Service s3Service = null!)
     {
         bool hasChange = false;
         // Current local datetime
@@ -70,7 +72,7 @@ public class DigitalBorrowChangeStatus : BackgroundService
             
             // Progress update 
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(digitalBorrow);
-            
+            await s3Service.DeleteFileAsync(AudioResourceType.Watermarked, digitalBorrow.S3WatermarkedName!);
             // Mark as changed
             hasChanges = true;
         }

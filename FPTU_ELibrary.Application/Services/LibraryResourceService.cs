@@ -188,7 +188,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                 return new ServiceResult(ResultCodeConst.SYS_Fail0004,
                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0004));
             }
-
+            if(resourceEntity.ResourceType=="Video"&& resourceEntity.S3OriginalName.IsNullOrEmpty())
+            {
+                // Process delete in s3
+                await _s3Service.DeleteFileAsync(AudioResourceType.Original, resourceEntity.S3OriginalName!);
+            }
             // Process add delete entity
             await _unitOfWork.Repository<LibraryResource, int>().DeleteAsync(id);
             // Save to DB
@@ -928,7 +932,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             }
 
             var returnUrl =
-                await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!);
+                (await _s3Service.GetFileUrlAsync(AudioResourceType.Watermarked, userBorrows.S3WatermarkedName!)).Data as string;
 
             // Return the part of the stream
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
@@ -1018,7 +1022,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             // Trim first 15 seconds
             TimeSpan start = TimeSpan.Zero;
-            TimeSpan end = TimeSpan.FromSeconds(15*60);
+            TimeSpan end = TimeSpan.FromSeconds(5*60);
             TrimMp3(tempAudioPath, trimmedPath, start, end);
 
             var previewBytes = await File.ReadAllBytesAsync(trimmedPath);
@@ -1370,6 +1374,34 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         return combinedStream;
     }
 
+    public async Task<IServiceResult> GetFullOriginalAudio(int resourceId)
+    {
+        try
+        {
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Get resource
+            var resourceSpec = new BaseSpecification<LibraryResource>(lr => lr.ResourceId == resourceId);
+            var resource = await _unitOfWork.Repository<LibraryResource, int>().GetWithSpecAsync(resourceSpec);
+            if (resource is null)
+            {
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "resource" : "tài nguyên"));
+            }
+            var returnUrl = (await _s3Service.GetFileUrlAsync(AudioResourceType.Original, resource.S3OriginalName!)).Data as string;
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), returnUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get digital resource");
+        }
+    }
 
     public async Task<IServiceResult<MemoryStream>> GetAudioPreview(int resourceId)
     {

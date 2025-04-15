@@ -117,5 +117,4 @@ public class ResourceController : ControllerBase
     {
         return Ok(   await _s3Service.UploadFileAsync(AudioResourceType.Original, req.File.OpenReadStream()));
     }
-    
 }

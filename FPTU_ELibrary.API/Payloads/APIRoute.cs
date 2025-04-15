@@ -195,6 +195,7 @@
 			public const string GetAudioPreview = Base + "/library-item/resource/{resourceId}/audio/preview";
 			public const string GetFullAudioFileWithWatermark = Base + "/library-items/resource/{resourceId}/audio";
 			public const string CountPartToUpload = Base +"/library-items/resource/{resourceId}/count-part";
+			public const string GetOriginalAudioFile = Base + "management/library-items/resource/{resourceId}/audio/original";
 			public const string CheckEmgu = "emgu/test";
 		}
 
