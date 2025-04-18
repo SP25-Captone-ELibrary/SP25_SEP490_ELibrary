@@ -1,8 +1,5 @@
 ﻿using FluentValidation;
-using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Auth;
-using FPTU_ELibrary.Application.Extensions;
-using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Validations
 {
@@ -15,9 +12,9 @@ namespace FPTU_ELibrary.Application.Validations
 				.WithMessage("Either UserId or EmployeeId must be provided, but not both.");
 
 			// You can also add validations for other properties here, like:
-			RuleFor(rft => rft.CreateDate)
-				.LessThan(rft => rft.ExpiryDate)
-				.WithMessage("CreateDate must be earlier than ExpiryDate.");
+			// RuleFor(rft => rft.CreateDate)
+			// 	.LessThan(rft => rft.ExpiryDate)
+			// 	.WithMessage("CreateDate must be earlier than ExpiryDate.");
 		}
 
 		private bool HasValidUserOrEmployeeId(RefreshTokenDto rfToken)

@@ -557,7 +557,7 @@ public class LibraryItemGroupService : GenericService<LibraryItemGroup, LibraryI
             throw new Exception("Error invoke when process get all item potential group");
         }
     }
-
+    
     private int CombineTitleSubTitleStatus(int titleStatus, int subTitleStatus, bool isSubTitleNull)
     {
         return (titleStatus, subTitleStatus) switch

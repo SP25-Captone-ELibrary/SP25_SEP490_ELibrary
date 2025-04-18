@@ -630,7 +630,7 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 	    }
     }
 
-    public async Task<IServiceResult> CreateSupplementRequestASync(WarehouseTrackingDto dto)
+    public async Task<IServiceResult> CreateSupplementRequestAsync(WarehouseTrackingDto dto)
     {
 	    try
 	    {

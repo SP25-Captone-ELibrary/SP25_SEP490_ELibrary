@@ -15,7 +15,7 @@ public interface IWarehouseTrackingService<TDto> : IGenericService<WarehouseTrac
     Task<IServiceResult> CreateAndImportDetailsAsync(
         TDto dto, IFormFile? trackingDetailsFile, List<IFormFile> coverImageFiles,
         string[]? scanningFields, DuplicateHandle? duplicateHandle);
-    Task<IServiceResult> CreateSupplementRequestASync(TDto dto);
+    Task<IServiceResult> CreateSupplementRequestAsync(TDto dto);
     Task<IServiceResult> CreateStockInWithDetailsAsync(TDto dto);
     Task<IServiceResult> UpdateStatusAsync(int id, WarehouseTrackingStatus status);
     Task<IServiceResult> UpdateInventoryWithoutSaveChanges(int id, TDto dto);
