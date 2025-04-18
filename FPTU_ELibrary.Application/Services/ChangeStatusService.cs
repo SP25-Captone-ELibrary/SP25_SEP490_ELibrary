@@ -46,6 +46,7 @@ public class ChangeStatusService : BackgroundService
                     var monitor1 = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<AppSettings>>();
                     var reservationSvc = scope.ServiceProvider.GetRequiredService<IReservationQueueService<ReservationQueueDto>>();
                     var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();              
+                    var s3Service = scope.ServiceProvider.GetRequiredService<IS3Service>();
                     
                     // Track if there are any changes
                     bool hasChanges = false;
@@ -298,7 +299,7 @@ public class ChangeStatusService : BackgroundService
         return hasChanges;
     }
 
-    private async Task<bool> UpdateAllDigitalBorrowExpiredStatusAsync(IUnitOfWork unitOfWork)
+    private async Task<bool> UpdateAllDigitalBorrowExpiredStatusAsync(IUnitOfWork unitOfWork, IS3Service? s3Service = null)
     {
         // Initialize has changes field
         bool hasChanges = false;
@@ -312,6 +313,8 @@ public class ChangeStatusService : BackgroundService
         var baseSpec = new BaseSpecification<DigitalBorrow>(br =>
             br.ExpiryDate <= currentLocalDateTime && // Exceed than due date (expected return date)
             br.Status == BorrowDigitalStatus.Active); // Is in borrowing status
+        // Apply include resource
+        baseSpec.ApplyInclude(q => q.Include(d => d.LibraryResource));
         // Retrieve all with spec
         var entities = await unitOfWork.Repository<DigitalBorrow, int>()
             .GetAllWithSpecAsync(baseSpec);
@@ -319,9 +322,19 @@ public class ChangeStatusService : BackgroundService
         {
             // Change borrow status to expired
             br.Status = BorrowDigitalStatus.Expired;
-            br.S3WatermarkedName = null;
+            
             // Progress update 
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(br);
+
+            // Only process delete audio resource when exist s3 service and watermarked name
+            if (s3Service != null && br.LibraryResource.ResourceType == nameof(LibraryResourceType.AudioBook) &&
+                !string.IsNullOrEmpty(br.S3WatermarkedName))
+            {
+                // Process delete file
+                await s3Service.DeleteFileAsync(AudioResourceType.Watermarked, br.S3WatermarkedName);
+                // Set water marked to null
+                br.S3WatermarkedName = null;
+            }
             
             // Mark as changed
             hasChanges = true;

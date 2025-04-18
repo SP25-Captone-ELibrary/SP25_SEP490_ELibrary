@@ -152,7 +152,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
-                (_mapper.Map<LibraryResourceDto>(existingEntity).ToSecureLibraryResourceDto()));
+                _mapper.Map<LibraryResourceDto>(existingEntity));
         }
         catch (Exception ex)
         {
@@ -948,7 +948,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
     #endregion
 
-
     public async Task<IServiceResult> GetNumberOfUploadAudioFile(string email, int resourceId)
     {
         // Determine current system language
@@ -979,7 +978,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
             Math.Ceiling(times ?? 0));
     }
-
 
     public async Task<IServiceResult<Stream>> GetAudioPreviewFromAws(int resourceId)
     {
@@ -1050,7 +1048,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-
     public async Task<IServiceResult> WatermarkAudioAsyncFromAWS(string? s3OriginalAudioName, string email)
     {
         // Determine current system language
@@ -1067,7 +1064,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         {
             var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
             return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                isEng ? "user" : "người dùng");
+                StringUtils.Format(errMsg, isEng ? "user" : "người dùng"));
         }
 
         try
@@ -1098,8 +1095,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
 
             await using (var originalAudioReader = new Mp3FileReader(tempAudioPath))
             await using (var writer = new WaveFileWriter(tempWavPath, originalAudioReader.WaveFormat))
-            await using
-                (var watermarkReader = new WaveFileReader(watermarkStream))
+            await using (var watermarkReader = new WaveFileReader(watermarkStream))
             await using (var conversionStream = new WaveFormatConversionStream(writer.WaveFormat, watermarkReader))
             {
                 int bytesPerSecond = originalAudioReader.WaveFormat.AverageBytesPerSecond;
@@ -1321,7 +1317,6 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         return reader.TotalTime.TotalSeconds;
     }
 
-
     private async Task<IServiceResult<Stream>> GetFullLargeFile(int resourceId)
     {
         try
@@ -1473,7 +1468,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         }
     }
 
-    // function to process
+    // Functions to process
     private async Task<MemoryStream> DownloadAndAddWatermark(string pdfUrl, string watermarkText, bool isPreview)
     {
         using HttpClient client = new HttpClient();

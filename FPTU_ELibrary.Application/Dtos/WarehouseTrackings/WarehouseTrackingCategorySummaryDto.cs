@@ -39,8 +39,8 @@ public static class WarehouseTrackingCategorySummaryDtoExtensions
             {
                 Category = category,
                 TotalItem = totalItem,
-                TotalCatalogedItem = totalInstanceItem,
-                TotalInstanceItem = totalCatalogedItem,
+                TotalCatalogedItem = totalCatalogedItem,
+                TotalInstanceItem = totalInstanceItem,
                 TotalCatalogedInstanceItem = totalCatalogedInstanceItem,
                 TotalPrice = totalPrice
             }

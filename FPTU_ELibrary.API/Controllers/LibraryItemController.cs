@@ -11,16 +11,13 @@ using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Authors;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
-using FPTU_ELibrary.Application.Elastic.Params;
 using FPTU_ELibrary.Application.Services.IServices;
 using FPTU_ELibrary.Domain.Interfaces.Services;
-using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Params;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Nest;
 
 namespace FPTU_ELibrary.API.Controllers;
 
@@ -132,8 +129,8 @@ public class LibraryItemController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet(APIRoute.LibraryItem.GetAll, Name = nameof(GetAllBookEditionAsync))]
-    public async Task<IActionResult> GetAllBookEditionAsync([FromQuery] LibraryItemSpecParams specParams)
+    [HttpGet(APIRoute.LibraryItem.GetAll, Name = nameof(GetAllLibraryItemAsync))]
+    public async Task<IActionResult> GetAllLibraryItemAsync([FromQuery] LibraryItemSpecParams specParams)
     {
         return Ok(await _libraryItemService.GetAllWithSpecAsync(new LibraryItemSpecification(
             specParams: specParams,

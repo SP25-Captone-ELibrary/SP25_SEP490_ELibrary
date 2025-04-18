@@ -61,7 +61,7 @@ public class WarehouseTrackingController : ControllerBase
     [HttpPost(APIRoute.WarehouseTracking.CreateSupplementRequest, Name = nameof(CreateSupplementRequestAsync))]
     public async Task<IActionResult> CreateSupplementRequestAsync([FromBody] CreateSupplementRequest req) 
     {
-        return Ok(await _warehouseTrackSvc.CreateSupplementRequestASync(dto: req.ToWarehouseTrackingDto()));
+        return Ok(await _warehouseTrackSvc.CreateSupplementRequestAsync(dto: req.ToWarehouseTrackingDto()));
     }
     
     [Authorize]
