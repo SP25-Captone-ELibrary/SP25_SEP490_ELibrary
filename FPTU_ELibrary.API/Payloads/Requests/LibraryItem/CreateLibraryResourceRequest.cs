@@ -11,7 +11,7 @@ public class CreateLibraryResourceRequest
     public decimal? ResourceSize { get; set; }
     public int DefaultBorrowDurationDays { get; set; }
     public decimal BorrowPrice { get; set; }
-    public string S3OriginalName { get; set; } = null!;
+    public string? S3OriginalName { get; set; } = null!;
 }
 
 public class CreateLibraryResourceWithLargeFileRequest 
@@ -23,7 +23,7 @@ public class CreateLibraryResourceWithLargeFileRequest
     public decimal? ResourceSize { get; set; }
     public int DefaultBorrowDurationDays { get; set; }
     public decimal BorrowPrice { get; set; }
-    public string S3OriginalName { get; set; }
+    public string? S3OriginalName { get; set; }
     public string ProviderPublicId { get; set; } = null!;
 }
 
