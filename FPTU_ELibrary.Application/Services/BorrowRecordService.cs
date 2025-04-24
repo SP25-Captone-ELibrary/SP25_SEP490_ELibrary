@@ -48,6 +48,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
     private readonly ILibraryCardService<LibraryCardDto> _cardSvc;
     private readonly ICategoryService<CategoryDto> _cateSvc;
     private readonly ILibraryItemConditionService<LibraryItemConditionDto> _conditionSvc;
+    private readonly Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> _closureDaySvc;
 
     private readonly AppSettings _appSettings;
     private readonly BorrowSettings _borrowSettings;
@@ -62,6 +63,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
         Lazy<IFineService<FineDto>> fineSvc,
         Lazy<IFinePolicyService<FinePolicyDto>> finePolicySvc,
+        Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> closureDaySvc,
         
         // Normal services
         ICategoryService<CategoryDto> cateSvc,
@@ -90,6 +92,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
         _employeeSvc = employeeSvc;
         _borrowReqSvc = borrowReqSvc;
         _libItemSvc = libItemSvc;
+        _closureDaySvc = closureDaySvc;
         _transactionSvc = transactionSvc;
         _itemInstanceSvc = itemInstanceSvc;
         _reservationQueueSvc = reservationQueueSvc;
@@ -1670,8 +1673,18 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 				{
 					// Set due date based on borrow type
 					case BorrowType.TakeHome:
-						detail.DueDate =
-							currentLocalDateTime.AddDays(longestBorrowDays); // Due date = current date + longest borrow days
+						// Retrieve all existing closure days
+						var closureDayDtoList = (await _closureDaySvc.Value.GetAllAsync()).Data as List<LibraryClosureDayDto>;
+						// Initialize datetime utils with list of library schedules and closure days
+						var dateTimeUtils = new DateTimeUtils(
+							schedules: _appSettings.LibrarySchedule.Schedules,
+							closureDays: closureDayDtoList);
+						// Calculate due date
+						var dueDate = dateTimeUtils.CalculateExpiryOrDueDate(
+							performDate: currentLocalDateTime,
+							daysToExpireOrOverdue: longestBorrowDays);
+						// Assign due date
+						detail.DueDate = dueDate;
 						break;
 					case BorrowType.InLibrary:
 						// Default already set in request body
@@ -2870,6 +2883,7 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 				                    existingBrDetail.Fines.Add(new()
 	                                {
 	                                    FinePolicyId = fineDto.FinePolicyId,
+	                                    FineNote = fine.FineNote,
 	                                    FineAmount = fineAmount ?? 0,
 	                                    Status = FineStatus.Pending,
 	                                    CreatedAt = currentLocalDateTime,

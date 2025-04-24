@@ -134,6 +134,10 @@ namespace FPTU_ELibrary.Infrastructure.Data
 				if (!await _context.LibraryCards.AnyAsync()) await SeedLibraryCardAsync();
 				else _logger.Information("Already seed data for table {0}", "LibraryCard");
 				
+				// [LibraryClosureDays]
+				if (!await _context.LibraryClosureDays.AnyAsync()) await SeedLibraryClosureDayAsync();
+				else _logger.Information("Already seed data for table {0}", "LibraryClosureDay");
+				
 				// [Suppliers]
 				if (!await _context.Suppliers.AnyAsync()) await SeedSupplierAsync();
 				else _logger.Information("Already seed data for table {0}", "Supplier");
@@ -1632,6 +1636,26 @@ namespace FPTU_ELibrary.Infrastructure.Data
 			// Save DB
 			var saveSucc = await _context.SaveChangesAsync() > 0;
 			if(saveSucc) _logger.Information("Seed library item conditions successfully");
+		}
+		
+		//  Summary:
+		//      Seeding closure date
+		private async Task SeedLibraryClosureDayAsync()
+		{
+			List<LibraryClosureDay> closureDays = new()
+			{
+				new LibraryClosureDay { Day = 1, Month = 1, Year = null, VieDescription = "Tết Dương Lịch", EngDescription = "New Year's Day" },
+				new LibraryClosureDay { Day = 30, Month = 4, Year = null, VieDescription = "Ngày Giải phóng miền Nam", EngDescription = "Reunification Day" },
+				new LibraryClosureDay { Day = 1, Month = 5, Year = null, VieDescription = "Ngày Quốc tế Lao động", EngDescription = "International Labor Day" },
+				new LibraryClosureDay { Day = 10, Month = 3, Year = null, VieDescription = "Giỗ Tổ Hùng Vương (mùng 10 tháng 3 Âm lịch)", EngDescription = "Hung Kings Commemoration Day (10th day of 3rd lunar month)" },
+				new LibraryClosureDay { Day = 2, Month = 9, Year = null, VieDescription = "Ngày Quốc khánh", EngDescription = "Independence Day" },
+			};
+			
+			// Add range 
+			await _context.LibraryClosureDays.AddRangeAsync(closureDays);
+			// Save DB
+			var saveSucc = await _context.SaveChangesAsync() > 0;
+			if(saveSucc) _logger.Information("Seed library closure days successfully");
 		}
 		
         //  Summary:

@@ -74,7 +74,7 @@ public class LibraryCardHolderController : ControllerBase
 
     [Authorize]
     [HttpPost(APIRoute.LibraryCardHolder.AddCard, Name = nameof(AddLibraryCardAsync))]
-    public async Task<IActionResult> AddLibraryCardAsync([FromBody] AddLibraryCardAsync req)
+    public async Task<IActionResult> AddLibraryCardAsync([FromBody] AddLibraryCardRequest req)
     {
         var processedByEmail = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
         return Ok(await _libCardSvc.RegisterCardByEmployeeAsync(

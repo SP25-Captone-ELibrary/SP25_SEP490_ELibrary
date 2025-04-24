@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250413184234_Initial Database")]
+    [Migration("20250424083743_Initial Database")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -1093,6 +1093,41 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.ToTable("Library_Card_Package", (string)null);
                 });
 
+            modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryClosureDay", b =>
+                {
+                    b.Property<int>("ClosureDayId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("closure_day_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ClosureDayId"));
+
+                    b.Property<int>("Day")
+                        .HasColumnType("int")
+                        .HasColumnName("day");
+
+                    b.Property<string>("EngDescription")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("eng_description");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int")
+                        .HasColumnName("month");
+
+                    b.Property<string>("VieDescription")
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("vie_description");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("int")
+                        .HasColumnName("year");
+
+                    b.HasKey("ClosureDayId")
+                        .HasName("PK_LibraryClosureDay");
+
+                    b.ToTable("Library_Closure_Day", (string)null);
+                });
+
             modelBuilder.Entity("FPTU_ELibrary.Domain.Entities.LibraryFloor", b =>
                 {
                     b.Property<int>("FloorId")
@@ -1784,7 +1819,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<string>("S3OriginalName")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
-                        .HasColumnName("s3_original_name    ");
+                        .HasColumnName("s3_original_name");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime")
@@ -2947,8 +2982,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
                     b.HasIndex("LibraryItemId");
 
-                    b.HasIndex(new[] { "UserId", "LibraryItemId" }, "UQ_UserFavorite")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("User_Favorite", (string)null);
                 });
@@ -2992,6 +3026,10 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     b.Property<DateTime?>("ExpectedReturnDate")
                         .HasColumnType("datetime")
                         .HasColumnName("expected_return_date");
+
+                    b.Property<string>("FinalizedFile")
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("finalized_file");
 
                     b.Property<string>("ReceiptNumber")
                         .IsRequired()

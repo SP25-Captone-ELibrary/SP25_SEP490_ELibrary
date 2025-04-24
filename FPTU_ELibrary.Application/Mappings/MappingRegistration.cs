@@ -50,6 +50,7 @@ namespace FPTU_ELibrary.Application.Mappings
 			config.NewConfig<LibraryFloor, LibraryFloorDto>();
 			config.NewConfig<LibraryCard, LibraryCardDto>();
 			config.NewConfig<LibraryCardPackage, LibraryCardPackageDto>();
+			config.NewConfig<LibraryClosureDay, LibraryClosureDayDto>();
 			config.NewConfig<RefreshToken, RefreshTokenDto>();
 			config.NewConfig<RolePermission, RolePermissionDto>();
 			config.NewConfig<ReservationQueue, ReservationQueueDto>();

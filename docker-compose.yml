@@ -4,10 +4,11 @@ services:
     container_name: elibrary
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
-      - ASPNETCORE_URLS=http://+:80;https://+:5001
+#      - ASPNETCORE_URLS=http://+:80;https://+:5001
+      - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_HTTPS_PORTS:5001
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=100203
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificates/aspnetapp.pfx
+#      - ASPNETCORE_Kestrel__Certificates__Default__Password=100203
+#      - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificates/aspnetapp.pfx
       - REDIS_URL=127.0.0.1:6379
     build:
       context: .
@@ -15,8 +16,8 @@ services:
     ports:
       - 5000:80
       - 5001:5001
-    volumes:
-      - ./FPTU_ELibrary.API/aspnetapp.pfx:/app/certificates/aspnetapp.pfx:ro
+#    volumes:
+#      - ./FPTU_ELibrary.API/aspnetapp.pfx:/app/certificates/aspnetapp.pfx:ro
     networks:
       - app-net
     depends_on:

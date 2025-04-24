@@ -85,6 +85,7 @@ namespace FPTU_ELibrary.Application
             services.AddScoped<ILibraryZoneService<LibraryZoneDto>, LibraryZoneService>();
             services.AddScoped<ILibrarySectionService<LibrarySectionDto>, LibrarySectionService>();
             services.AddScoped<ILibraryShelfService<LibraryShelfDto>, LibraryShelfService>();
+            services.AddScoped<ILibraryClosureDayService<LibraryClosureDayDto>, LibraryClosureDayService>();
             services.AddScoped<ILibraryCardPackageService<LibraryCardPackageDto>, LibraryCardPackageService>();
             services.AddScoped<ILibraryItemConditionService<LibraryItemConditionDto>, LibraryItemConditionService>();
             services.AddScoped<INotificationService<NotificationDto>, NotificationService>();

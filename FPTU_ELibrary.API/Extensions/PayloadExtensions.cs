@@ -7,6 +7,7 @@ using FPTU_ELibrary.API.Payloads.Requests.Employee;
 using FPTU_ELibrary.API.Payloads.Requests.Fine;
 using FPTU_ELibrary.API.Payloads.Requests.Group;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
+using FPTU_ELibrary.API.Payloads.Requests.LibraryClosureDay;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.API.Payloads.Requests.LibraryItemInstance;
 using FPTU_ELibrary.API.Payloads.Requests.Notification;
@@ -570,6 +571,34 @@ namespace FPTU_ELibrary.API.Extensions
 				Price = req.Price,
 				DurationInMonths = req.DurationInMonths,
 				Description = req.Description,
+			};
+		}
+		#endregion
+
+		#region Library Closure Day
+		// Mapping from typeof(CreateLibraryClosureDay) to typeof(LibraryClosureDayDto)
+		public static LibraryClosureDayDto ToLibraryClosureDayDto(this CreateLibraryClosureDayRequest req)
+		{
+			return new()
+			{
+				Day = req.Day,
+				Month = req.Month,
+				Year = req.Year,
+				EngDescription = req.EngDescription,
+				VieDescription = req.VieDescription,
+			};
+		}
+		
+		// Mapping from typeof(UpdateLibraryClosureDayRequest) to typeof(LibraryClosureDayDto)
+		public static LibraryClosureDayDto ToLibraryClosureDayDto(this UpdateLibraryClosureDayRequest req)
+		{
+			return new()
+			{
+				Day = req.Day,
+				Month = req.Month,
+				Year = req.Year,
+				EngDescription = req.EngDescription,
+				VieDescription = req.VieDescription,
 			};
 		}
 		#endregion

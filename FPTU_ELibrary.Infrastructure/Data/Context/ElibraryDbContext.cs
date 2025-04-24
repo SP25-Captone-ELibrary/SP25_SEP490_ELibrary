@@ -48,6 +48,7 @@ public class ElibraryDbContext : DbContext
     public DbSet<LibrarySection> LibrarySections { get; set; }
     public DbSet<LibraryShelf> LibraryShelves { get; set; }
     public DbSet<LibraryZone> LibraryZones { get; set; }
+    public DbSet<LibraryClosureDay> LibraryClosureDays { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
     public DbSet<PaymentMethod> PaymentMethods { get; set; }

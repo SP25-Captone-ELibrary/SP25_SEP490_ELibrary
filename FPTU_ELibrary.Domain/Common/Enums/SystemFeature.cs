@@ -19,7 +19,7 @@ public enum SystemFeature
     BorrowManagement,
     [Description("/management/transactions")]
     TransactionManagement,
-    [Description("/management/system-configurations")] // Combine with system-messages
+    [Description("/management/system-configurations")] // Combine with system-messages, library closure days
     SystemConfigurationManagement,
     [Description("/management/system-health")]
     SystemHealthManagement,
@@ -41,6 +41,8 @@ public enum SystemFeature
     LibraryCardPackageManagement,
     [Description("/management/conditions")]
     LibraryItemConditionManagement,
+    [Description("/management/closure-days")]
+    LibraryClosureDaysManagement,
     [Description("/management/dashboard")]
     DashboardManagement,
     [Description("/management/notifications")]

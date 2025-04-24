@@ -151,6 +151,11 @@ public class AuthorizationService : IAuthorizationService
         {
             return SystemFeatureEnum.SystemConfigurationManagement;
         } 
+        // [SystemConfigurationManagement] -> Combine with [LibraryClosureDaysManagement]
+        if (requestFeature.Equals(SystemFeatureEnum.LibraryClosureDaysManagement))
+        {
+            return SystemFeatureEnum.SystemConfigurationManagement;
+        }
         #endregion
 
         return null;

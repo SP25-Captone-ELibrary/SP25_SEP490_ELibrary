@@ -993,6 +993,17 @@ namespace FPTU_ELibrary.Application.Common
 		/// </summary>
 		public const string LibraryCard_Fail0006 = "LibraryCard.Fail0006";
 		#endregion
+
+		#region Library Closure Day
+		/// <summary>
+		/// [SUCCESS] The time already exists in the library's closure days list
+		/// </summary>
+		public const string LibraryClosureDay_Warning0001 = "LibraryClosureDay.Warning0001";
+		/// <summary>
+		/// [SUCCESS] Closure datetime is invalid
+		/// </summary>
+		public const string LibraryClosureDay_Warning0002 = "LibraryClosureDay.Warning0002";
+		#endregion
 		
 		#region Supplier
 		/// <summary>

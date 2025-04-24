@@ -418,9 +418,13 @@ public class DashboardService : IDashboardService
                           br.ReturnDate.Value.Date >= validStartDate.Date && br.ReturnDate.Value.Date <= validEndDate.Date);
                 var returnDates = (await _borrowRecDetailSvc.GetAllWithSpecAndSelectorAsync(
                     specification: returnSpec,
-                    selector: s => s.ReturnDate)).Data as List<DateTime>;
+                    selector: s => s.ReturnDate)).Data as List<DateTime?>;
+                var hasValueReturnDates = returnDates?
+                     .Where(dt => dt.HasValue)
+                     .Select(dt => dt!.Value)
+                     .ToList()?? new List<DateTime>();
                 var returnTrends = GetTrendData(
-                    dates: returnDates,
+                    dates: hasValueReturnDates,
                     startDate: validStartDate,
                     endDate: validEndDate,
                     period: period, lang: lang);
