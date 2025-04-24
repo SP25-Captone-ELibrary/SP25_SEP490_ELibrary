@@ -125,7 +125,7 @@ public class VoiceService : IVoiceService
             "vi" => "vi-VN-HoaiMyNeural",
             "en" => "en-US-AriaNeural",
             _ => "en-US-AriaNeural"
-        };
+		};
 
         using var audioStream = AudioOutputStream.CreatePullStream();
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
@@ -166,10 +166,11 @@ public class VoiceService : IVoiceService
     {
         var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
             LanguageContext.CurrentLanguage);
-        _speechConfig.SpeechSynthesisVoiceName = sysLang.ToString()!.ToLower() switch
+        
+        _speechConfig.SpeechSynthesisVoiceName = sysLang switch
         {
-            "VietNamese" => "vi-VN-HoaiMyNeural",
-            "English" => "en-US-AriaNeural",
+            SystemLanguage.Vietnamese => "vi-VN-HoaiMyNeural",
+            SystemLanguage.English => "en-US-AriaNeural",
             _ => "en-US-AriaNeural"
         };
 
@@ -177,7 +178,7 @@ public class VoiceService : IVoiceService
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
         using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
-        var script = sysLang.ToString()!.ToLower().Equals("english")
+        var script = sysLang == SystemLanguage.English
             ? _adsMonitor.En
             : _adsMonitor.Vi;
         var editedScript = StringUtils.Format(script, email);

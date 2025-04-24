@@ -2,7 +2,7 @@ using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.API.Payloads.Requests.LibraryCard;
 
-public class AddLibraryCardAsync : RegisterLibraryCardOnlineRequest
+public class AddLibraryCardRequest : RegisterLibraryCardOnlineRequest
 {
     public Guid UserId { get; set; }
 

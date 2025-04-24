@@ -363,6 +363,21 @@
 			public const string GetAllPublic = Base + "/packages";
 			public const string GetByIdPublic = Base + "/packages/{id}";
 		}
+
+		public static class LibraryClosureDay
+		{
+			#region Management
+			public const string Create = Base + "/management/closure-days";
+			public const string GetAll = Base + "/management/closure-days";
+			public const string GetById = Base + "/management/closure-days/{id}";
+			public const string Update = Base + "/management/closure-days/{id}";
+			public const string Delete = Base + "/management/closure-days/{id}";
+			public const string DeleteRange = Base + "/management/closure-days/delete-range";
+			#endregion
+			
+			public const string GetAllPublic = Base + "/closure-days";
+			public const string GetByIdPublic = Base + "/closure-days/{id}";
+		}
 		
 		/// <summary>
 		/// Library item condition endpoints

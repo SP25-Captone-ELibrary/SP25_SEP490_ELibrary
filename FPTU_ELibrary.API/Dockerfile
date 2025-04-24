@@ -15,8 +15,8 @@ COPY FPTU_ELibrary.Application/FPTU_ELibrary.Application.csproj FPTU_ELibrary.Ap
 COPY FPTU_ELibrary.Domain/FPTU_ELibrary.Domain.csproj FPTU_ELibrary.Domain/
 COPY FPTU_ELibrary.Infrastructure/FPTU_ELibrary.Infrastructure.csproj FPTU_ELibrary.Infrastructure/
 
-RUN mkdir -p /app/certificates
-COPY FPTU_ELibrary.API/aspnetapp.pfx /app/certificates
+RUN #mkdir -p /app/certificates
+#COPY FPTU_ELibrary.API/aspnetapp.pfx /app/certificates
 
 # Restore dependencies
 RUN dotnet restore FPTU_ELibrary.API/FPTU_ELibrary.API.csproj

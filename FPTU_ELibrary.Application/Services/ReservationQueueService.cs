@@ -40,6 +40,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
     private readonly Lazy<ILibraryShelfService<LibraryShelfDto>> _shelfSvc;
     private readonly Lazy<IBorrowRecordService<BorrowRecordDto>> _borrowRecordSvc;
     private readonly Lazy<IBorrowRequestService<BorrowRequestDto>> _borrowRequestSvc;
+    private readonly Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> _closureDaySvc;
     private readonly Lazy<ILibraryItemInventoryService<LibraryItemInventoryDto>> _inventorySvc;
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
     
@@ -56,6 +57,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         Lazy<ILibraryShelfService<LibraryShelfDto>> shelfSvc,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecordSvc,
         Lazy<IBorrowRequestService<BorrowRequestDto>> borrowRequestSvc,
+        Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> closureDaySvc,
         Lazy<ILibraryItemInventoryService<LibraryItemInventoryDto>> inventorySvc,
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
 
@@ -76,6 +78,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         _shelfSvc = shelfSvc;
         _libItemSvc = libItemSvc;
         _inventorySvc = inventorySvc;
+        _closureDaySvc = closureDaySvc;
         _itemInstanceSvc = itemInstanceSvc;
         _borrowRecordSvc = borrowRecordSvc;
         _borrowRequestSvc = borrowRequestSvc;
@@ -1161,8 +1164,19 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     StringUtils.Format(statusErrMsg, customMsg));
             }
             
-            // Process extend pick up date
-            existingEntity.ExpiryDate = existingEntity.ExpiryDate.Value.AddDays(_borrowSettings.ExtendPickUpInDays);
+            // Retrieve all existing closure days
+            var closureDayDtoList = (await _closureDaySvc.Value.GetAllAsync()).Data as List<LibraryClosureDayDto>;
+            // Initialize datetime utils with list of library schedules and closure days
+            var dateTimeUtils = new DateTimeUtils(
+                schedules: _appSettings.LibrarySchedule.Schedules,
+                closureDays: closureDayDtoList);
+            // Calculate pick-up expiry date
+            var expiryDate = dateTimeUtils.CalculateExpiryOrDueDate(
+                performDate: existingEntity.ExpiryDate.Value,
+                daysToExpireOrOverdue: _borrowSettings.PickUpExpirationInDays);
+            
+            // Update new pick up date
+            existingEntity.ExpiryDate = expiryDate;
             // Increase total extend pick up
             existingEntity.TotalExtendPickup++;
             // Process update
@@ -1265,17 +1279,33 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                                             await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0005));
                                     }
 
+                                    // Retrieve all existing closure days
+                                    var closureDayDtoList = (await _closureDaySvc.Value.GetAllAsync()).Data as List<LibraryClosureDayDto>;
+                                    // Initialize datetime utils with list of library schedules and closure days
+                                    var dateTimeUtils = new DateTimeUtils(
+                                        schedules: _appSettings.LibrarySchedule.Schedules,
+                                        closureDays: closureDayDtoList);
+                                    
+                                    // Calculate the best available date (after skip occasional days, weekly day-off, etc.)
+                                    // Add 1 more day allowing library to handle unexpected issue
+                                    var expectedAvailableDate = dateTimeUtils.GetBestDayAfters(
+                                        date: currentLocalDateTime,
+                                        totalDays: 1);
+                                    // Assign expected available date
+                                    reservation.ExpectedAvailableDateMin = currentLocalDateTime;
+                                    reservation.ExpectedAvailableDateMax = expectedAvailableDate;
+                                    
+                                    // Calculate pick-up expiry date
+                                    var expiryDate = dateTimeUtils.CalculateExpiryOrDueDate(
+                                    	performDate: currentLocalDateTime,
+                                    	daysToExpireOrOverdue: _borrowSettings.PickUpExpirationInDays,
+                                        includeSameDay: false);
+                                    // Assign pick up expiry date
+                                    reservation.ExpiryDate = expiryDate;
+                                    
                                     // Process update reservation status
                                     reservation.QueueStatus = ReservationQueueStatus.Assigned;
                                     reservation.LibraryItemInstanceId = itemInstance.LibraryItemInstanceId;
-                                    // Create expected available from-to date for user (add 1 more day allowing library to handle unexpected issue)
-                                    // TODO: Reimplement generating expected available date with more reliable (check for occasions, sunday, etc.)
-                                    var expectedAvailableDate = currentLocalDateTime.AddDays(1);
-                                    reservation.ExpectedAvailableDateMin = expectedAvailableDate;
-                                    reservation.ExpectedAvailableDateMax = expectedAvailableDate;
-                                    // Add pick-up expiry date 
-                                    reservation.ExpiryDate =
-                                        expectedAvailableDate.AddDays(_borrowSettings.PickUpExpirationInDays);
                                     // Set default is notified is false to allow background svc handle remind user about pick up expiry date (before 24 hrs)
                                     reservation.IsNotified = false;
                                     // Add assign date
@@ -1528,17 +1558,33 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
                     await _msgService.GetMessageAsync(ResultCodeConst.Reservation_Fail0004));
             }
 
+            // Retrieve all existing closure days
+            var closureDayDtoList = (await _closureDaySvc.Value.GetAllAsync()).Data as List<LibraryClosureDayDto>;
+            // Initialize datetime utils with list of library schedules and closure days
+            var dateTimeUtils = new DateTimeUtils(
+                schedules: _appSettings.LibrarySchedule.Schedules,
+                closureDays: closureDayDtoList);
+            
+            // Calculate the best available date (after skip occasional days, weekly day-off, etc.)
+            // Add 1 more day allowing library to handle unexpected issue
+            var expectedAvailableDate = dateTimeUtils.GetBestDayAfters(
+                date: currentLocalDateTime,
+                totalDays: 1);
+            // Assign expected available date
+            existingEntity.ExpectedAvailableDateMin = currentLocalDateTime;
+            existingEntity.ExpectedAvailableDateMax = expectedAvailableDate;
+            
+            // Calculate pick-up expiry date
+            var expiryDate = dateTimeUtils.CalculateExpiryOrDueDate(
+                performDate: currentLocalDateTime,
+                daysToExpireOrOverdue: _borrowSettings.PickUpExpirationInDays,
+                includeSameDay: false);
+            // Assign pick up expiry date
+            existingEntity.ExpiryDate = expiryDate;
+            
             // Process update reservation status
             existingEntity.QueueStatus = ReservationQueueStatus.Assigned;
             existingEntity.LibraryItemInstanceId = itemInstance.LibraryItemInstanceId;
-            // Create expected available from-to date for user (add 1 more day allowing library to handle unexpected issue)
-            // TODO: Reimplement generating expected available date with more reliable (check for occasions, sunday, etc.)
-            var expectedAvailableDate = currentLocalDateTime.AddDays(1);
-            existingEntity.ExpectedAvailableDateMin = expectedAvailableDate;
-            existingEntity.ExpectedAvailableDateMax = expectedAvailableDate;
-            // Add pick-up expiry date 
-            existingEntity.ExpiryDate =
-                expectedAvailableDate.AddDays(_borrowSettings.PickUpExpirationInDays);
             // Set default is notified is false to allow background svc handle remind user about pick up expiry date (before 24 hrs)
             existingEntity.IsNotified = false;
             // Assign date

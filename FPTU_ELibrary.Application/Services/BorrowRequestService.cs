@@ -34,6 +34,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
 {
     // Lazy services
     private readonly Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> _itemInstanceSvc;
+    private readonly Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> _closureDaySvc;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _itemSrcSvc;
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<IFineService<FineDto>> _fineSvc;
@@ -56,6 +57,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         Lazy<IFineService<FineDto>> fineSvc,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
         Lazy<IBorrowRecordService<BorrowRecordDto>> borrowRecSvc,
+        Lazy<ILibraryClosureDayService<LibraryClosureDayDto>> closureDaySvc,
         Lazy<ILibraryItemInstanceService<LibraryItemInstanceDto>> itemInstanceSvc,
 
         ILibraryCardService<LibraryCardDto> cardSvc,
@@ -81,6 +83,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
         _inventorySvc = inventorySvc;
         _itemInstanceSvc = itemInstanceSvc;
         _borrowRecSvc = borrowRecSvc;
+        _closureDaySvc = closureDaySvc;
         _reservationQueueSvc = reservationQueueSvc;
 
         _borrowSettings = monitor.CurrentValue;
@@ -894,6 +897,17 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
             // Try to map data response after create reservations
             reservationQueues = createRes.Data as List<ReservationQueueDto>;
             
+            // Retrieve all existing closure days
+            var closureDayDtoList = (await _closureDaySvc.Value.GetAllAsync()).Data as List<LibraryClosureDayDto>;
+            // Initialize datetime utils with list of library schedules and closure days
+            var dateTimeUtils = new DateTimeUtils(
+                schedules: _appSettings.LibrarySchedule.Schedules,
+                closureDays: closureDayDtoList);
+            // Calculate expiry date
+            var expiryDate = dateTimeUtils.CalculateExpiryOrDueDate(
+                performDate: currentLocalDateTime,
+                daysToExpireOrOverdue: _borrowSettings.PickUpExpirationInDays);
+            
             // Progress create request
             var borrowReqDto = new BorrowRequestDto()
             {
@@ -912,7 +926,7 @@ public class BorrowRequestService : GenericService<BorrowRequest, BorrowRequestD
                     : new List<BorrowRequestResourceDto>(),
                 TotalRequestItem = borrowDetails.Count,
                 RequestDate = currentLocalDateTime,
-                ExpirationDate = borrowDetails.Any() ? currentLocalDateTime.AddDays(_borrowSettings.PickUpExpirationInDays) : null,
+                ExpirationDate = borrowDetails.Any() ? expiryDate : null,
                 Status = BorrowRequestStatus.Created,
                 IsReminderSent = false,
             };

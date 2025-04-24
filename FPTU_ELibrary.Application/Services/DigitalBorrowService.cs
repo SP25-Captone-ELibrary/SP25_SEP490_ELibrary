@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
@@ -34,8 +35,9 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
     private readonly Lazy<IUserService<UserDto>> _userSvc;
     private readonly Lazy<ITransactionService<TransactionDto>> _transactionSvc;
     private readonly Lazy<ILibraryResourceService<LibraryResourceDto>> _resourceSvc;
+	private readonly Lazy<IDigitalBorrowService<DigitalBorrowDto>> _digitalBorrowSvc;
 
-    private readonly IEmailService _emailSvc;
+	private readonly IEmailService _emailSvc;
 
     private readonly AppSettings _appSettings;
     private readonly TokenValidationParameters _tokenValidationParams;
@@ -47,6 +49,7 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         Lazy<IUserService<UserDto>> userSvc,
         Lazy<ITransactionService<TransactionDto>> transactionSvc,
         Lazy<ILibraryResourceService<LibraryResourceDto>> resourceSvc,
+        Lazy<IDigitalBorrowService<DigitalBorrowDto>> digitalBorrowSvc,
         IServiceProvider service,
         IEmailService emailSvc,
         IOptionsMonitor<AppSettings> monitor,
@@ -61,7 +64,8 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
         _userSvc = userSvc;
         _resourceSvc = resourceSvc;
         _transactionSvc = transactionSvc;
-        _appSettings = monitor.CurrentValue;
+        _digitalBorrowSvc = digitalBorrowSvc;
+		_appSettings = monitor.CurrentValue;
         _tokenValidationParams = tokenValidationParams;
         _libraryResourceService = libraryResourceService;
         _service = service;
@@ -267,6 +271,11 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
                         : "không tìm thấy bạn đọc"), false);
             }
 
+            // Retrieve all user digital borrows
+            var digitalSpec = new BaseSpecification<DigitalBorrow>(d => d.UserId == userDto.UserId);
+            var userDigitalBorrowIds = (await _digitalBorrowSvc.Value.GetAllWithSpecAndSelectorAsync(digitalSpec, d => d.ResourceId)).Data as List<int>;
+            if (userDigitalBorrowIds == null) userDigitalBorrowIds = new();
+
             var transCode = tokenExtractedData.TransactionCode;
             var transDate = tokenExtractedData.TransactionDate;
             // Retrieve transaction
@@ -274,7 +283,10 @@ public class DigitalBorrowService : GenericService<DigitalBorrow, DigitalBorrowD
             var transSpec = new BaseSpecification<Transaction>(t =>
                 t.TransactionDate != null && // with specific date
                 t.UserId == userDto.UserId && // who request
-                t.ResourceId != null && // payment for specific resource
+                ( 
+                    t.ResourceId != null && // payment for specific resource
+                    !userDigitalBorrowIds.Contains(t.ResourceId ?? 1)
+                ) &&
                 t.TransactionStatus == TransactionStatus.Paid && // must be paid
                 t.TransactionType == TransactionType.DigitalBorrow && // transaction type is lib card register
                 Equals(t.TransactionCode, transCode)); // transaction code

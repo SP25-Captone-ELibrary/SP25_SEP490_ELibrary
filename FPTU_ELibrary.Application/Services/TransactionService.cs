@@ -418,6 +418,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             dto.CreatedBy = createdByEmail;
             dto.UserId = userDto.UserId;
             dto.TransactionStatus = TransactionStatus.Pending;
+            dto.Description = viePaymentDesc;
             
             // Add default transaction method is digital payment as this function only use by user
             dto.TransactionMethod = TransactionMethod.DigitalPayment;
@@ -459,6 +460,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             {
                 // Update payment information (if any)
                 dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                dto.Description = payOsPaymentResp.Item3.Data.Description;
                 
                 // Process create transaction
                 await _unitOfWork.Repository<Transaction, int>().AddAsync(_mapper.Map<Transaction>(dto));
@@ -644,7 +646,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 foreach (var dto in toAddTransactionList)
                 {
                     // Update payment information (if any)
-                    if(dto.Transaction != null) dto.Transaction.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                    if (dto.Transaction != null)
+                    {
+                        dto.Transaction.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                        dto.Transaction.Description = payOsPaymentResp.Item3.Data.Description;
+                    }
                 }
                 
                 // Process add range 
@@ -863,6 +869,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 {
                     // Update payment information (if any)
                     dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                    dto.Description = payOsPaymentResp.Item3.Data.Description;
                 }
                 
                 // Process create transaction

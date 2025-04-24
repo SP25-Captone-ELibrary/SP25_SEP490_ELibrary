@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FPTU_ELibrary.Infrastructure.Migrations
+namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialDatabase : Migration
@@ -159,6 +159,23 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Library_Closure_Day",
+                columns: table => new
+                {
+                    closure_day_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    day = table.Column<int>(type: "int", nullable: false),
+                    month = table.Column<int>(type: "int", nullable: false),
+                    year = table.Column<int>(type: "int", nullable: true),
+                    vie_description = table.Column<string>(type: "nvarchar(255)", nullable: true),
+                    eng_description = table.Column<string>(type: "nvarchar(255)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LibraryClosureDay", x => x.closure_day_id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Library_Floor",
                 columns: table => new
                 {
@@ -231,7 +248,7 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     is_deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     default_borrow_duration_days = table.Column<int>(type: "int", nullable: false),
                     borrow_price = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    s3_original_name = table.Column<string>(name: "s3_original_name    ", type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    s3_original_name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
@@ -442,7 +459,8 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     updated_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     created_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    updated_by = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    finalized_file = table.Column<string>(type: "varchar(2048)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1827,10 +1845,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
                 column: "library_item_id");
 
             migrationBuilder.CreateIndex(
-                name: "UQ_UserFavorite",
+                name: "IX_User_Favorite_user_id",
                 table: "User_Favorite",
-                columns: new[] { "user_id", "library_item_id" },
-                unique: true);
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Warehouse_Tracking_supplier_id",
@@ -1878,6 +1895,9 @@ namespace FPTU_ELibrary.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Digital_Borrow_Extension_History");
+
+            migrationBuilder.DropTable(
+                name: "Library_Closure_Day");
 
             migrationBuilder.DropTable(
                 name: "Library_Item_Author");
