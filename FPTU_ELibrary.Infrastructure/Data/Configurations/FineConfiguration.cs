@@ -77,6 +77,12 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .HasColumnType("decimal(10,2)")
                 .HasColumnName("fine_amount");
             #endregion
+
+            #region Updated at 25/04/2025 by Le Xuan Phuoc
+            builder.Property(e => e.DamagePct)
+                .HasColumnType("decimal(3,2)")
+                .HasColumnName("damage_pct");
+            #endregion
         }
     }
 }

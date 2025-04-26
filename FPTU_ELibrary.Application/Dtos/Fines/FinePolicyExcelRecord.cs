@@ -5,10 +5,22 @@ namespace FPTU_ELibrary.Application.Dtos.Fine;
 public class FinePolicyExcelRecord
 {
     public string FinePolicyTitle { get; set; } = null!;
-    public string? ConditionType { get; set; } 
-    public decimal? FineAmountPerDay { get; set; }
-    public decimal? FixedFineAmount { get; set; }
+    public string? ConditionType { get; set; }
     public string? Description { get; set; }
+    
+    #region Handle Damage
+    public decimal? MinDamagePct { get; set; }
+    public decimal? MaxDamagePct { get; set; }
+    public decimal? ProcessingFee { get; set; }
+    #endregion
+
+    #region Handle Overdue
+    public decimal? DailyRate { get; set; }
+    #endregion
+
+    #region Handle Lost & Damage
+    public decimal? ChargePct { get; set; }
+    #endregion
 }
 
 public class FinePolicyFailedMessage
@@ -28,8 +40,11 @@ public static class FinePolicyExcelRecordExtension
         {
             FinePolicyTitle = req.FinePolicyTitle,
             ConditionType = (FinePolicyConditionType) validEnum!,
-            FineAmountPerDay = req.FineAmountPerDay ?? 0,
-            FixedFineAmount = req.FixedFineAmount,
+            MinDamagePct = req.MinDamagePct,
+            MaxDamagePct = req.MaxDamagePct,
+            ProcessingFee = req.ProcessingFee,
+            DailyRate = req.DailyRate,
+            ChargePct = req.ChargePct,
             Description = req.Description
         };
     }
@@ -39,8 +54,11 @@ public static class FinePolicyExcelRecordExtension
         return finePolicies.Select(e => new FinePolicyExcelRecord()
         {
             ConditionType = e.ConditionType.ToString(),
-            FineAmountPerDay = e.FineAmountPerDay,
-            FixedFineAmount = e.FixedFineAmount,
+            MinDamagePct = e.MinDamagePct,
+            MaxDamagePct = e.MaxDamagePct,
+            ProcessingFee = e.ProcessingFee,
+            DailyRate = e.DailyRate,
+            ChargePct = e.ChargePct,
             Description = e.Description
         }).ToList();
     }

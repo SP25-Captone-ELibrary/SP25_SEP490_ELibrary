@@ -124,6 +124,15 @@ public class WarehouseTrackingController : ControllerBase
     }
 
     [Authorize(Roles = nameof(Role.HeadLibrarian))]
+    [HttpPatch(APIRoute.WarehouseTracking.UpdateSupplementRequestStatus, Name = nameof(UpdateSupplementRequestStatusAsync))]
+    public async Task<IActionResult> UpdateSupplementRequestStatusAsync(
+        [FromRoute] int id,
+        [FromQuery] WarehouseTrackingStatus status)
+    {
+        return Ok(await _warehouseTrackSvc.UpdateSupplementRequestStatuAsync(id, status));
+    }
+
+    [Authorize(Roles = nameof(Role.HeadLibrarian))]
     [HttpPatch(APIRoute.WarehouseTracking.AddStockInFile, Name = nameof(AddWarehouseStockInFileAsync))]
     public async Task<IActionResult> AddWarehouseStockInFileAsync(
         [FromRoute] int id, 

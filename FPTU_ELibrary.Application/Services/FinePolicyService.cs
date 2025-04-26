@@ -143,8 +143,11 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             
             // Update properties
             existingEntity.FinePolicyTitle = dto.FinePolicyTitle;
-            existingEntity.FineAmountPerDay = dto.FineAmountPerDay;
-            existingEntity.FixedFineAmount = dto.FixedFineAmount;
+            existingEntity.FineAmountPerDay = dto.MinDamagePct;
+            existingEntity.FixedFineAmount = dto.MaxDamagePct;
+            existingEntity.ProcessingFee = dto.ProcessingFee;
+            existingEntity.DailyRate = dto.DailyRate;
+            existingEntity.ChargePct = dto.ChargePct;
             existingEntity.Description = dto.Description;
             existingEntity.ConditionType = dto.ConditionType;
             
@@ -315,11 +318,11 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
         var langEnum =
             (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(LanguageContext.CurrentLanguage);
         var isEng = langEnum == SystemLanguage.English;
-        if (finePolicies == null || finePolicies.Length == 0)
+        if (finePolicies.Length == 0)
         {
-            throw new BadRequestException(isEng
-                ? "File is not valid"
-                : "File không hợp lệ");
+            // Msg: Fail to import data
+            return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008));
         }
 
         // Validate import file 
@@ -341,9 +344,9 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             var worksheet = package.Workbook.Worksheets.FirstOrDefault();
             if (worksheet == null)
             {
-                throw new BadRequestException(isEng
-                    ? "Excel file does not contain any worksheet"
-                    : "Không tìm thấy worksheet");
+                // Msg: Fail to import data
+                return new ServiceResult(ResultCodeConst.SYS_Fail0008,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0008));
             }
 
             var processedFinePolicies = new Dictionary<string, int>();
@@ -356,8 +359,11 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 {
                     FinePolicyTitle = worksheet.Cells[row, 1].Value?.ToString() ?? null!,
                     ConditionType = worksheet.Cells[row, 2].Value?.ToString(),
-                    FineAmountPerDay = decimal.Parse(worksheet.Cells[row, 3].Value?.ToString() ?? "0"),
-                    FixedFineAmount = decimal.Parse(worksheet.Cells[row, 4].Value?.ToString() ?? "0"),
+                    MinDamagePct = decimal.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out var validMinDamagePct) ? validMinDamagePct : 0m,
+                    MaxDamagePct = decimal.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out var validMaxDamagePct) ? validMaxDamagePct : 0m,
+                    ProcessingFee = decimal.TryParse(worksheet.Cells[row, 5].Value?.ToString(), out var validProcessingFee) ? validProcessingFee : 0m,
+                    DailyRate = decimal.TryParse(worksheet.Cells[row, 6].Value?.ToString(), out var validDailyRate) ? validDailyRate : 0m,
+                    ChargePct = decimal.TryParse(worksheet.Cells[row, 7].Value?.ToString(), out var valiChargePct) ? valiChargePct : 0m,
                     Description = worksheet.Cells[row, 5].Value?.ToString()
                 };
 
@@ -435,24 +441,64 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
 
     private async Task<bool> DetectWrongRecord(FinePolicyExcelRecord record, SystemLanguage? lang)
     {
-        // I want a regex that allow my condition type could include number
-        
-        var isEng = lang == SystemLanguage.English;
-        if (string.IsNullOrEmpty(record.ConditionType)
-            || string.IsNullOrEmpty(record.FineAmountPerDay.ToString())
-            || !Regex.IsMatch(record.ConditionType,
-            @"^[a-zA-Z0-9\s\p{P}]{1,100}$") 
-            || !Regex.IsMatch(record.FineAmountPerDay.ToString() ?? string.Empty, @"^\d+(\.\d+)?$")
-            || !Regex.IsMatch(record.FineAmountPerDay.ToString() ?? string.Empty, @"^\d+(\.\d+)?$")
-            || record.FineAmountPerDay <= 0
-            || record.FineAmountPerDay < 0
-           )
+        // DAMAGE rules
+        if (record.ConditionType == nameof(FinePolicyConditionType.Damage))
         {
-            return true;
+            if (!record.MinDamagePct.HasValue)
+                return true;
+            if (record.MinDamagePct < 0m || record.MinDamagePct > 1m)
+                return true;
+
+            if (!record.MaxDamagePct.HasValue)
+                return true;
+            if (record.MaxDamagePct < 0m || record.MaxDamagePct > 1m)
+                return true;
+
+            if (!record.ChargePct.HasValue)
+                return true;
+            if (record.ChargePct < 0m || record.ChargePct > 1m)
+                return true;
+
+            if (!record.ProcessingFee.HasValue)
+                return true;
+            if (record.ProcessingFee < 0m)
+                return true;
+
+            if (record.MinDamagePct > record.MaxDamagePct)
+                return true;
+        }
+        // OVERDUE rules
+        else if (record.ConditionType == nameof(FinePolicyConditionType.OverDue))
+        {
+            if (!record.DailyRate.HasValue)
+                return true;
+            if (record.DailyRate < 0m)
+                return true;
+        }
+        // LOST rules
+        else if (record.ConditionType == nameof(FinePolicyConditionType.Lost))
+        {
+            if (!record.ChargePct.HasValue)
+                return true;
+            if (record.ChargePct < 0m || record.ChargePct > 1m)
+                return true;
+
+            if (!record.ProcessingFee.HasValue)
+                return true;
+            if (record.ProcessingFee < 0m)
+                return true;
         }
 
-        return await _unitOfWork.Repository<FinePolicy, int>().AnyAsync(e
-            => e.FinePolicyTitle.ToLower() == record.FinePolicyTitle.ToLower());
+        // finally: check for duplicate title
+        bool exists = await _unitOfWork
+            .Repository<FinePolicy, int>()
+            .AnyAsync(e => e.FinePolicyTitle.ToLower() == record.FinePolicyTitle.ToLower());
+
+        if (exists)
+            return true;
+        
+        // Passed all validations
+        return false;
     }
 
     public override async Task<IServiceResult> GetAllWithSpecAsync(ISpecification<FinePolicy> spec, bool tracked = true)

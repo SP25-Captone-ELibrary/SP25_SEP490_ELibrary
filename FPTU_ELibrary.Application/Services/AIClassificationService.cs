@@ -1035,6 +1035,11 @@ public class AIClassificationService : IAIClassificationService
         Dictionary<Guid, List<(byte[] FileBytes, string FileName)>> trainingDataDic,
         Dictionary<int, List<string>> detailParam, string email)
     {
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
         // Define services that use in background task
         using var scope = _service.CreateScope();
         var libraryItemService = scope.ServiceProvider
@@ -1073,7 +1078,7 @@ public class AIClassificationService : IAIClassificationService
                 Model = AIModel.AzureAIVision,
                 TotalTrainedItem = detailParam.Keys.Count,
                 TrainingStatus = AITrainingStatus.InProgress,
-                TrainDate = DateTime.Now,
+                TrainDate = currentLocalDateTime,
                 TrainBy = email,
                 TrainingDetails = new List<AITrainingDetailDto>()
             };
@@ -1335,6 +1340,11 @@ public class AIClassificationService : IAIClassificationService
     private async Task ExtendProcessTrainingTask(Dictionary<Guid, List<string>> trainingDataDic
         , List<int> listItemIds, string email)
     {
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // Vietnam timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
         // define services that use in background task
         using var scope = _service.CreateScope();
         var libraryItemService = scope.ServiceProvider.GetRequiredService<ILibraryItemService<LibraryItemDto>>();
@@ -1365,13 +1375,14 @@ public class AIClassificationService : IAIClassificationService
                     currentAiConfiguration.TrainingEndpoint, currentAiConfiguration.ProjectId)
             };
             List<TagDto> tags = await GetTagAsync(baseConfig);
+            
             //Create session
             var initSession = new AITrainingSessionDto()
             {
                 Model = AIModel.AzureAIVision,
                 TotalTrainedItem = listItemIds.Count,
                 TrainingStatus = AITrainingStatus.InProgress,
-                TrainDate = DateTime.Now,
+                TrainDate = currentLocalDateTime,
                 TrainBy = email
             };
             var sessionEntity = mapper.Map<AITrainingSessionDto>(initSession);

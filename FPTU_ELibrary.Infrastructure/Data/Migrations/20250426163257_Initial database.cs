@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDatabase : Migration
+    public partial class Initialdatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -99,9 +99,14 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     fine_policy_title = table.Column<string>(type: "nvarchar(255)", nullable: false),
                     condition_type = table.Column<string>(type: "nvarchar(100)", nullable: false),
+                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    min_damage_pct = table.Column<decimal>(type: "decimal(3,2)", nullable: true),
+                    max_damage_pct = table.Column<decimal>(type: "decimal(3,2)", nullable: true),
+                    processing_fee = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    daily_rate = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    charge_pct = table.Column<decimal>(type: "decimal(3,2)", nullable: true),
                     fine_amount_per_day = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    fixed_fine_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    fixed_fine_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1399,6 +1404,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     fine_amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
                     fine_note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    damage_pct = table.Column<decimal>(type: "decimal(3,2)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_at = table.Column<DateTime>(type: "datetime", nullable: true),
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false)

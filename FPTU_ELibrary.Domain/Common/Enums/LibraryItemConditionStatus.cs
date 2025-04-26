@@ -19,7 +19,7 @@ public enum LibraryItemConditionStatus
     /// <summary>
     /// The item is heavily damaged and likely unusable
     /// </summary>
-    [Description("Bị hỏng nặng")]
+    [Description("Bị hư hỏng")]
     Damaged,
 
     /// <summary>
