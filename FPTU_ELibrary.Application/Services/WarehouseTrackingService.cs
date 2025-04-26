@@ -489,6 +489,54 @@ public class WarehouseTrackingService : GenericService<WarehouseTracking, Wareho
 	    }
     }
 
+    public async Task<IServiceResult> UpdateSupplementRequestStatuAsync(int id, WarehouseTrackingStatus status)
+    {
+	    try
+	    {
+		    // Determine current system lang
+		    var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+			    LanguageContext.CurrentLanguage);
+		    var isEng = lang == SystemLanguage.English;
+
+		    // Build specification
+		    var baseSpec = new BaseSpecification<WarehouseTracking>(w => w.TrackingId == id);
+		    // Apply include
+		    baseSpec.ApplyInclude(q => q
+			    .Include(w => w.WarehouseTrackingDetails)
+			    .ThenInclude(wd => wd.LibraryItem)
+			    .ThenInclude(li => li!.LibraryItemInventory)
+		    );
+		    // Check exist warehouse tracking 
+		    var existingEntity = await _unitOfWork.Repository<WarehouseTracking, int>().GetWithSpecAsync(baseSpec);
+		    if (existingEntity == null)
+		    {
+			    var msg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+			    return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+				    StringUtils.Format(msg, isEng ? "warehouse tracking" : "thông tin theo dõi do"));
+		    }
+		    
+		    // Update status
+		    existingEntity.Status = status;
+		    // Process update
+		    await _unitOfWork.Repository<WarehouseTracking, int>().UpdateAsync(existingEntity);
+		    // Save DB
+		    var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+		    if (isSaved)
+		    {
+			    return new ServiceResult(ResultCodeConst.SYS_Success0003,
+				    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+		    }
+
+		    return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+			    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003), false);
+	    }
+	    catch (Exception ex)
+	    {
+		    _logger.Error(ex.Message);
+		    throw new Exception("Error invoke when process update supplement request status");
+	    }
+    }
+	
     public async Task<IServiceResult> UpdateInventoryWithoutSaveChanges(int id, WarehouseTrackingDto dto)
     {
 	    try

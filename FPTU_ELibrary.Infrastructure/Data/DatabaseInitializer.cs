@@ -374,70 +374,60 @@ namespace FPTU_ELibrary.Infrastructure.Data
 		{
 			List<FinePolicy> finePolicies = new()
 			{
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Rách bìa sách nhẹ (dưới 20% hư hỏng)",
-					FixedFineAmount = 8000,
-					FineAmountPerDay = 10000,
-					FinePolicyTitle = "Rách bìa sách nhẹ (dưới 20%)"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Rách bìa sách nặng (trên 20% hư hỏng)",
-					FixedFineAmount = 20000,
-					FineAmountPerDay = 22000,
-					FinePolicyTitle = "Rách bìa sách nặng (trên 20%)"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Mất trang sách nhẹ (dưới 50% trang mất)",
-					FixedFineAmount = 12000,
-					FineAmountPerDay = 14000,
-					FinePolicyTitle = "Mất trang sách nhẹ (dưới 50%)"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Mất trang sách nặng (trên 50% trang mất)",
-					FixedFineAmount = 25000,
-					FineAmountPerDay = 30000,
-					FinePolicyTitle = "Mất trang sách nặng (trên 50%)"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Vẽ bậy lên sách",
-					FixedFineAmount = 15000,
-					FineAmountPerDay = 20000,
-					FinePolicyTitle = "Vẽ bậy lên sách"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Damage,
-					Description = "Sách bị ướt do nước",
-					FixedFineAmount = 18000,
-					FineAmountPerDay = 20000,
-					FinePolicyTitle = "Sách bị ướt"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.Lost,
-					Description = "Mất sách",
-					FineAmountPerDay = 0,
-					FinePolicyTitle = "Mất sách"
-				},
-				new()
-				{
-					ConditionType = FinePolicyConditionType.OverDue,
-					Description = "Trả quá hạn",
-					FixedFineAmount = 5000,
-					FineAmountPerDay = 10000,
-					FinePolicyTitle = "Trả quá hạn"
-				}
+			    // Overdue: 2.000đ/ngày
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.OverDue,
+			        FinePolicyTitle = "Phạt quá hạn",
+			        Description = "2000đ/ngày, không vượt giá bìa",
+			        DailyRate = 2000m
+			    },
+			    // Lost: 100% giá bìa + 30.000đ xử lý
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.Lost,
+			        FinePolicyTitle = "Mất tài liệu",
+			        Description = "100% giá bìa + 30.000đ phí xử lý",
+			        ChargePct = 1.00m,
+			        ProcessingFee = 30000m
+			    },
+			    // Damage tiers
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.Damage,
+			        FinePolicyTitle = "Hư nhẹ (0–10%)",
+			        Description = "5.000đ phí",
+			        MinDamagePct = 0.00m,
+			        MaxDamagePct = 0.10m,
+			        ChargePct = 0.00m,
+			        ProcessingFee = 5000m
+			    },
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.Damage,
+			        FinePolicyTitle = "Hư nhỏ (11–20%)",
+			        Description = "15% giá bìa + 10.000đ phí",
+			        MinDamagePct = 0.11m,
+			        MaxDamagePct = 0.20m,
+			        ChargePct = 0.15m,
+			        ProcessingFee = 10000m
+			    },
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.Damage,
+			        FinePolicyTitle = "Hư trung bình (21–50%)",
+			        Description = "35% giá bìa + 15.000đ phí",
+			        MinDamagePct = 0.21m,
+			        MaxDamagePct = 0.50m,
+			        ChargePct = 0.35m,
+			        ProcessingFee = 15000m
+			    },
+			    new FinePolicy {
+			        ConditionType = FinePolicyConditionType.Damage,
+			        FinePolicyTitle = "Hư nặng/Không sửa (51–100%)",
+			        Description = "100% giá bìa + 25.000đ phí",
+			        MinDamagePct = 0.51m,
+			        MaxDamagePct = 1.00m,
+			        ChargePct = 1.00m,
+			        ProcessingFee = 25000m
+			    }
 			};
+
 			
 			await _context.FinePolicies.AddRangeAsync(finePolicies);	
 			

@@ -18,6 +18,7 @@ public interface IWarehouseTrackingService<TDto> : IGenericService<WarehouseTrac
     Task<IServiceResult> CreateSupplementRequestAsync(TDto dto);
     Task<IServiceResult> CreateStockInWithDetailsAsync(TDto dto);
     Task<IServiceResult> UpdateStatusAsync(int id, WarehouseTrackingStatus status);
+    Task<IServiceResult> UpdateSupplementRequestStatuAsync(int id, WarehouseTrackingStatus status);
     Task<IServiceResult> UpdateInventoryWithoutSaveChanges(int id, TDto dto);
     Task<IServiceResult> RecalculateTotalAndAmountWithoutSaveChangesAsync(int id, int totalItem, decimal totalAmount);
 }

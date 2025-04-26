@@ -22,6 +22,9 @@ public class FineDto
     public string? FineNote { get; set; }
     public FineStatus Status { get; set; }
     
+    // Damage percentage
+    public decimal? DamagePct { get; set; }
+    
     // Datetime
     public DateTime CreatedAt { get; set; }
     public DateTime? ExpiryAt { get; set; }

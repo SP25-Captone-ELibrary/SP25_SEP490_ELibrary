@@ -15,80 +15,123 @@ public class FinePolicyDtoValidator : AbstractValidator<FinePolicyDto>
         // check if the language is English
         var isEng = langEnum == SystemLanguage.English;
 
-        // validate the ConditionType property
+        // ConditionType
         RuleFor(finePolicy => finePolicy.ConditionType)
             .NotNull()
             .WithMessage(isEng
                 ? "Condition type is required"
                 : "Yêu cầu nhập loại điều kiện");
         
-        // validate the FineAmountPerDay property
-        RuleFor(finePolicy => finePolicy.FineAmountPerDay)
-            .InclusiveBetween(1000, 9999999999)
-            .WithMessage(e => 
-            {
-                // Allow fixed fine amount equals to 0 when condition type is Lost
-                if (e.FineAmountPerDay == 0 && e.ConditionType != FinePolicyConditionType.Lost)
-                {
-                    return isEng
-                        ? $"Fine amount per day must greater than 1.000 VND if condition type isn't {nameof(FinePolicyConditionType.Lost)}"
-                        : $"Số tiền phạt mỗi ngày phải ít nhất là  1.000 VND khi loại phí phạt khác '{FinePolicyConditionType.Lost.GetDescription()}'";
-                }
-                if (e.FineAmountPerDay < 1000)
-                {
-                    return isEng
-                        ? "Fine amount per day must be at least 1.000 VND"
-                        : "Số tiền phạt mỗi ngày phải ít nhất là 1.000 VND";
-                }
-                else if (e.FineAmountPerDay > 9999999999)
-                {
-                    return isEng
-                        ? "Fine amount per day exceeds the maximum limit of 9.999.999.999 VND"
-                        : "Số tiền phạt mỗi ngày vượt quá giới hạn tối đa là 9.999.999.999 VND";
-                }
-            
-                // Default message (shouldn't occur because of the Must condition)
-                return isEng
-                    ? "Invalid fine amount per day value"
-                    : "Giá trị số tiền phạt mỗi ngày không hợp lệ";
-            });
-
-        // validate the FixedFineAmount property
-        RuleFor(finePolicy => finePolicy.FixedFineAmount)
-            .InclusiveBetween(1000, 9999999999)
-            .WithMessage(e => 
-            {
-                // Allow fixed fine amount equals to 0 when condition type is Lost
-                if (e.FixedFineAmount == 0 && e.ConditionType != FinePolicyConditionType.Lost)
-                {
-                    return isEng
-                        ? $"Fixed fine amount must greater than 1.000 VND if condition type isn't {nameof(FinePolicyConditionType.Lost)}"
-                        : $"Số tiền phạt cố định phải ít nhất là  1.000 VND khi loại phí phạt khác '{FinePolicyConditionType.Lost.GetDescription()}'";
-                }
-                if (e.FixedFineAmount < 1000)
-                {
-                    return isEng
-                        ? "Fixed fine amount must be at least 1.000 VND"
-                        : "Số tiền phạt cố định phải ít nhất là 1.000 VND";
-                }
-                else if (e.FixedFineAmount > 9999999999)
-                {
-                    return isEng
-                        ? "Fixed fine amount exceeds the maximum limit of 9.999.999.999 VND"
-                        : "Số tiền phạt cố định vượt quá giới hạn tối đa là 9.999.999.999 VND";
-                }
-            
-                // Default message (shouldn't occur because of the Must condition)
-                return isEng
-                    ? "Invalid Fixed fine amount value"
-                    : "Giá trị số tiền phạt cố định không hợp lệ";
-            });
-
-        // validate the Description property
-        RuleFor(finePolicy => finePolicy.Description)
+        // Title
+        RuleFor(x => x.FinePolicyTitle)
+            .NotEmpty()
             .MaximumLength(255)
             .WithMessage(isEng
-                ? "Description must not exceed 255 characters"
-                : "Mô tả không được vượt quá 255 ký tự");
+                ? "Title is required and must not exceed 255 characters."
+                : "Tiêu đề là bắt buộc và không được vượt quá 255 ký tự.");
+
+        // Description
+        RuleFor(x => x.Description)
+            .MaximumLength(255)
+            .WithMessage(isEng
+                ? "Description must not exceed 255 characters."
+                : "Mô tả không được vượt quá 255 ký tự.");
+
+        #region ConditionType is Damage
+        When(x => x.ConditionType == FinePolicyConditionType.Damage, () =>
+        {
+            // MinDamagePct
+            RuleFor(x => x.MinDamagePct)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Minimum damage percentage is required"
+                    : "Tỷ lệ hư hỏng tối thiểu là bắt buộc")
+                .InclusiveBetween(0m, 1m)
+                .WithMessage(isEng
+                    ? "Minimum damage percentage must be between 0% and 100%"
+                    : "Tỷ lệ hư hỏng tối thiểu phải nằm trong khoảng 0% đến 100%");
+
+            // MaxDamagePct
+            RuleFor(x => x.MaxDamagePct)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Maximum damage percentage is required"
+                    : "Tỷ lệ hư hỏng tối đa là bắt buộc")
+                .InclusiveBetween(0m, 1m)
+                .WithMessage(isEng
+                    ? "Maximum damage percentage must be between 0% and 100%"
+                    : "Tỷ lệ hư hỏng tối đa phải nằm trong khoảng 0% đến 100%");
+
+            // ChargePct
+            RuleFor(x => x.ChargePct)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Charge percentage is required"
+                    : "Tỷ lệ tính phí là bắt buộc")
+                .InclusiveBetween(0m, 1m)
+                .WithMessage(isEng
+                    ? "Charge percentage must be between 0% and 100%"
+                    : "Tỷ lệ tính phí phải nằm trong khoảng 0% đến 100%");
+
+            // ProcessingFee
+            RuleFor(x => x.ProcessingFee)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Processing fee is required"
+                    : "Vui lòng nhập phí xử lý")
+                .GreaterThanOrEqualTo(0m)
+                .WithMessage(isEng
+                    ? "Processing fee must be at least 0"
+                    : "Vui lòng nhập phí xử lý");
+
+            // Min ≤ Max
+            RuleFor(x => x)
+                .Must(x => x.MinDamagePct <= x.MaxDamagePct)
+                .When(x => x.MinDamagePct.HasValue && x.MaxDamagePct.HasValue)
+                .WithMessage(isEng
+                    ? "Minimum damage percentage cannot exceed maximum damage percentage."
+                    : "Tỷ lệ hư hỏng tối thiểu không được lớn hơn tỷ lệ hư hỏng tối đa.");
+        });
+        #endregion
+
+        #region ConditionType is Overdue
+        When(x => x.ConditionType == FinePolicyConditionType.OverDue, () =>
+        {
+            RuleFor(x => x.DailyRate)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Daily rate is required for overdue policies"
+                    : "Mức phạt hàng ngày là bắt buộc cho chính sách quá hạn")
+                .GreaterThanOrEqualTo(0m)
+                .WithMessage(isEng
+                    ? "Daily rate must be at least 0"
+                    : "Mức phạt hàng ngày phải lớn hơn hoặc bằng 0");
+        });
+        #endregion
+        
+        #region ConditionType is Lost
+        When(x => x.ConditionType == FinePolicyConditionType.Lost, () =>
+        {
+            RuleFor(x => x.ChargePct)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Replacement fee percentage is required for lost policies"
+                    : "Tỷ lệ tính phí là bắt buộc cho chính sách mất")
+                .InclusiveBetween(0m, 1m)
+                .WithMessage(isEng
+                    ? "Replacement fee percentage must be between 0% and 100%"
+                    : "Tỷ lệ tính phí phải nằm trong khoảng 0% đến 100%");
+
+            RuleFor(x => x.ProcessingFee)
+                .NotNull()
+                .WithMessage(isEng
+                    ? "Processing fee is required for lost policies"
+                    : "Phí xử lý là bắt buộc cho chính sách mất")
+                .GreaterThanOrEqualTo(0m)
+                .WithMessage(isEng
+                    ? "Processing fee must be at least 0"
+                    : "Phí xử lý phải lớn hơn hoặc bằng 0");
+        });
+        #endregion
     }
 }
