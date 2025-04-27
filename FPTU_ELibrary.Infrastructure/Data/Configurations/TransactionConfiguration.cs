@@ -111,5 +111,11 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         //     .OnDelete(DeleteBehavior.ClientSetNull)
         //     .HasConstraintName("FK_Transaction_InvoiceId");
         #endregion
+
+        #region Updated at 27/04/2025 by Le Xuan Phuoc
+        builder.Property(e => e.PaymentLinkId)
+            .HasColumnType("nvarchar(50)")
+            .HasColumnName("payment_link_id");
+        #endregion
     }
 }

@@ -140,6 +140,7 @@ public class FineService : GenericService<Fine, FineDto, int>, IFineService<Fine
                     TransactionMethod = s.TransactionMethod,
                     PaymentMethodId = s.PaymentMethodId,
                     QrCode = s.QrCode,
+                    PaymentLinkId = s.PaymentLinkId,
                     Fine = s.Fine,
                 })).Data as List<Transaction>;
             if (transactions == null || !transactions.Any())

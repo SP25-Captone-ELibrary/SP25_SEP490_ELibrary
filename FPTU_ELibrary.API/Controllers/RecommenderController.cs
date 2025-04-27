@@ -17,7 +17,6 @@ public class RecommenderController : Controller
         _recommenderSvc = recommenderSvc;
     }
     
-    [Authorize]
     [HttpGet(APIRoute.Recommender.GetUserRecommend, Name = nameof(GetUserRecommendAsync))]
     public async Task<IActionResult> GetUserRecommendAsync([FromQuery] RecommendFilterDto filter)
     {

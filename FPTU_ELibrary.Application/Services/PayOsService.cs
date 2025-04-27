@@ -269,6 +269,7 @@ public class PayOsService : IPayOsService
                         confirmRes = await _fineService.ConfirmFineAsync(
                             email: userDto.Email,
                             transactionToken: paymentToken);
+                        // Assign success message
                         break;
                     case TransactionType.DigitalBorrow:
                         confirmRes = await _digitalBorrowService.ConfirmDigitalBorrowAsync(

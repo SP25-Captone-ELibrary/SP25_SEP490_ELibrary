@@ -13,6 +13,7 @@ using iTextSharp.text.pdf;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.SqlServer.Server;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -97,7 +98,8 @@ public class ChangeStatusService : BackgroundService
             _logger.Information("ChangeStatusService task doing background work.");
 
             // Delay 30s for each time execution
-            await Task.Delay(30000, cancellationToken);
+            // await Task.Delay(30000, cancellationToken);
+            await Task.Delay(10000, cancellationToken);
         }
     }
 
@@ -586,6 +588,13 @@ public class ChangeStatusService : BackgroundService
             // SE Asia timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
         
+        // Retrieve random librarian (just temporary createdBy for fine)
+        var employeeSpec = new BaseSpecification<Employee>(e => 
+            e.Role.EnglishName == nameof(Role.Librarian) && 
+            e.Email.Contains(nameof(Role.Librarian).ToLower()));
+        var librarian = await unitOfWork.Repository<Employee, Guid>().GetWithSpecAsync(employeeSpec);
+        if (librarian == null) return false;
+        
         // Build specification
         var baseSpec = new BaseSpecification<BorrowRecordDetail>(brd => 
             brd.Status == BorrowRecordStatus.Overdue && 
@@ -629,6 +638,8 @@ public class ChangeStatusService : BackgroundService
             decimal.TryParse(itemCost?.ToString() ?? "0", out var validItemCost);
             decimal.TryParse(overdueFinePolicy.DailyRate?.ToString() ?? "0", out var validDailyRate);
             
+            if(validItemCost == 0 || validDailyRate == 0) continue;
+            
             // Apply fine calculation formulas for Overdue fine type = min(validDailyRate * overDueDays, validItemCost);
             var fineAmount = Math.Min(validDailyRate * overDueDays, validItemCost);
             
@@ -649,62 +660,92 @@ public class ChangeStatusService : BackgroundService
                     Status = FineStatus.Pending,
                     CreatedAt = currentLocalDateTime,
                     ExpiryAt = currentLocalDateTime.AddDays(borrowSettings.FineExpirationInDays), 
+                    // Temporary assign created by
+                    CreatedBy = librarian.EmployeeId
                 });
+                
+                // Process update entity
+                await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(bRec);
                 
                 // Mark as change
                 hasChanges = true;
             }
             else
             {
-                // Extract all overdue fines
-                var overdueFines = bRec.Fines.Where(f => f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue);
+                // Format amount & date
+                var formattedAmount = fineAmount.ToString("C0", viCulture);
+                var formattedDate   = currentLocalDateTime.ToString("dd/MM/yyyy");
+                
+                // Extract all pending overdue fines
+                var pendingOverdueFines = bRec.Fines.Where(f => 
+                    f.Status == FineStatus.Pending && 
+                    f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue).ToList();
+                // Calculate accumulate paid amount for all paid fines
+                var accumulatedPaid = bRec.Fines
+                    .Where(f => 
+                        f.Status == FineStatus.Paid && 
+                        f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue)
+                    .Sum(f => f.FineAmount);
                 // Check whether fine amount change
-                foreach (var fine in overdueFines)
+                foreach (var fine in pendingOverdueFines)
                 {
-                    // Format amount & date
-                    var formattedAmount = fineAmount.ToString("C0", viCulture);
-                    var formattedDate   = currentLocalDateTime.ToString("dd/MM/yyyy");
-                    
-                    // Determine fine status
-                    switch (fine.Status)
+                    if (fineAmount > fine.FineAmount)
                     {
-                        case FineStatus.Paid:
-                            // Calculate accumulate paid amount
-                            var accumulatedPaid = bRec.Fines
-                            .Where(f => 
-                                f.Status == FineStatus.Paid && 
-                                f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue)
-                            .Sum(f => f.FineAmount);
-                            // Subtract with previous fine amount
-                            if(fineAmount > accumulatedPaid) fineAmount -= accumulatedPaid;
-                            
-                            // Add new fine
-                            bRec.Fines.Add(new ()
-                            {
-                                FinePolicyId = overdueFinePolicy.FinePolicyId,
-                                FineAmount = fineAmount,
-                                FineNote = $"Phí phạt {formattedAmount} tiếp tục được áp dụng vào ngày {formattedDate} cho {overDueDays} ngày quá hạn",
-                                Status = FineStatus.Pending,
-                                CreatedAt = currentLocalDateTime,
-                                ExpiryAt = currentLocalDateTime.AddDays(borrowSettings.FineExpirationInDays), 
-                            });
-                            break;
-                        case FineStatus.Pending:
-                            if (fineAmount > fine.FineAmount)
-                            {
-                                // Update fine amount
-                                fine.FineAmount = fineAmount;
-        
-                                // Append a clear notification for the user
-                                fine.FineNote += $"\n Phí phạt đã được cập nhật thành {formattedAmount} vào ngày {formattedDate} cho {overDueDays} ngày quá hạn";
-                        
-                                // Progress update 
-                                await unitOfWork.Repository<Fine, int>().UpdateAsync(fine);
+                        if(fineAmount == accumulatedPaid + fine.FineAmount) continue;
 
-                                // Mark as changed
-                                hasChanges = true;
-                            }
-                            break;
+                        if (accumulatedPaid > 0)
+                        {
+                            // Update fine amount
+                            fine.FineAmount = fineAmount - accumulatedPaid;
+                        }
+                        else
+                        {
+                            // Update fine amount
+                            fine.FineAmount = fineAmount;
+                        }
+                        
+                        // Append a clear notification for the user
+                        fine.FineNote += $"\n Phí phạt đã được cập nhật thành {formattedAmount} vào ngày {formattedDate} cho {overDueDays} ngày quá hạn";
+                        
+                        // Process update entity
+                        await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(bRec);
+
+                        // Mark as changed
+                        hasChanges = true;
+                    }
+                }
+                
+                if (fineAmount > accumulatedPaid) // Only process when fine amount updated
+                {
+                    // Ensure accumulated paid not exceed than item cost
+                    accumulatedPaid = Math.Min(accumulatedPaid, validItemCost);
+                    // Subtract with previous fine amount
+                    if (accumulatedPaid != 0 && pendingOverdueFines.Count == 0)
+                    {
+                        // Not added more when all paid overdue fines are equals to item cost
+                        if (accumulatedPaid == validItemCost) return false;
+                    
+                        // Update fine amount
+                        fineAmount -= accumulatedPaid;
+                    
+                        // Add new fine
+                        bRec.Fines.Add(new ()
+                        {
+                            FinePolicyId = overdueFinePolicy.FinePolicyId,
+                            FineAmount = fineAmount,
+                            FineNote = $"\n Phí phạt {formattedAmount} tiếp tục được áp dụng vào ngày {formattedDate} cho {overDueDays} ngày quá hạn",
+                            Status = FineStatus.Pending,
+                            CreatedAt = currentLocalDateTime,
+                            ExpiryAt = currentLocalDateTime.AddDays(borrowSettings.FineExpirationInDays), 
+                            // Temporary assign created by
+                            CreatedBy = librarian.EmployeeId
+                        });
+                        
+                        // Process update entity
+                        await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(bRec);
+                        
+                        // Mark as changed
+                        hasChanges = true;
                     }
                 }
             }

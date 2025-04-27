@@ -1829,6 +1829,8 @@ namespace FPTU_ELibrary.Application.Services
                             dto.LibraryCard.TransactionCode = transactionCode.ToString();
                             // Assign payment URL
                             transactionDto.QrCode = payOsResp.Data.QrCode;
+							// Assign payment link id
+							transactionDto.PaymentLinkId = payOsResp.Data.PaymentLinkId;
                         }
                         else
                         {

@@ -460,6 +460,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             {
                 // Update payment information (if any)
                 dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                dto.PaymentLinkId = payOsPaymentResp.Item3.Data.PaymentLinkId;
                 dto.Description = payOsPaymentResp.Item3.Data.Description;
                 
                 // Process create transaction
@@ -649,6 +650,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                     if (dto.Transaction != null)
                     {
                         dto.Transaction.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                        dto.Transaction.PaymentLinkId = payOsPaymentResp.Item3.Data.PaymentLinkId;
                         dto.Transaction.Description = payOsPaymentResp.Item3.Data.Description;
                     }
                 }
@@ -868,6 +870,7 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 {
                     // Update payment information (if any)
                     dto.QrCode = payOsPaymentResp.Item3.Data.QrCode;
+                    dto.PaymentLinkId = payOsPaymentResp.Item3.Data.PaymentLinkId;
                     dto.Description = payOsPaymentResp.Item3.Data.Description;
                 }
                 
