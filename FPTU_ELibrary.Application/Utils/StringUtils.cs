@@ -567,5 +567,16 @@ namespace FPTU_ELibrary.Application.Utils
                 _ => dataType == typeof(Guid) ? PropertyDataType.Guid : PropertyDataType.Unknown
             };
         }
+        public static string[] ConvertDaysToStringArray(int[] days)
+        {
+            // Mảng các tên ngày trong tuần, bắt đầu từ Sunday (0) đến Saturday (6)
+            string[] dayNames = new string[]
+            {
+                "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+            };
+
+            // Dùng LINQ để chuyển đổi từng giá trị trong days thành tên ngày tương ứng
+            return days.Select(day => dayNames[day]).ToArray();
+        }
     }
 }

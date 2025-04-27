@@ -39,4 +39,13 @@ public class AdminConfigurationController : ControllerBase
     {
         return Ok(await _adminConfigurationService.UpdateKeyValueAzureConfiguration(dto.Name, dto.Value));
     }
+    
+    [HttpPatch(APIRoute.AdminConfiguration.UpdateLibrarySchedule, Name = nameof(UpdateLibrarySchedule))]
+    [Authorize]
+    public async Task<IActionResult> UpdateLibrarySchedule(
+        [FromBody] List<WorkDateAndTime> dto)
+    {
+        return Ok(await _adminConfigurationService.UpdateLibraryScheduleAsync(dto));
+    }
+            
 }
