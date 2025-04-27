@@ -894,6 +894,7 @@
 			public const string GetDetail = Base + "/admin-configuration/{name}";
 			// [PUT]
 			public const string Update = Base + "/admin-configuration";
+			public const string UpdateLibrarySchedule = Base + "/admin-configuration/library-schedule";
 		}
 
 		/// <summary>

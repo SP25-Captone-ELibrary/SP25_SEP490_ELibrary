@@ -37,7 +37,7 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
     {
         return Assembly.Load(assemblyName) ?? throw new Exception($"Cannot load assembly {assemblyName}");
     }
-
+    
     /// <summary>
     /// check the existence of the class and property
     /// response: 0 = Available, 1 = Class not found, 2 = Property not found
