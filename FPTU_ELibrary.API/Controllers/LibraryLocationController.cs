@@ -1,4 +1,6 @@
+using FPTU_ELibrary.API.Extensions;
 using FPTU_ELibrary.API.Payloads;
+using FPTU_ELibrary.API.Payloads.Requests.LibraryItem;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Domain.Interfaces.Services;
@@ -55,6 +57,20 @@ public class LibraryLocationController : ControllerBase
                 specParams: specParams,
                 pageIndex: specParams.PageIndex ?? 1,
                 pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.LibraryLocation.GetShelfById, Name = nameof(GetShelfByIdAsync))]
+    public async Task<IActionResult> GetShelfByIdAsync([FromRoute] int shelfId)
+    {
+        return Ok(await _shelfService.GetByIdAsync(shelfId));
+    }
+    
+    [Authorize]
+    [HttpPut(APIRoute.LibraryLocation.UpdateShelf, Name = nameof(UpdateShelfAsync))]
+    public async Task<IActionResult> UpdateShelfAsync([FromRoute] int shelfId, [FromBody] UpdateShelfRequest req)
+    {
+        return Ok(await _shelfService.UpdateAsync(shelfId, req.ToLibraryShelfDto()));
     }
     #endregion
     

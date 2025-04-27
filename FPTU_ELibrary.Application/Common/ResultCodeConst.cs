@@ -866,6 +866,14 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public const string LibraryItem_Warning0031 = "LibraryItem.Warning0031";
         /// <summary>
+        /// [WARNING] Unable to update DDC range, as still existing {0} library items on shelf
+        /// </summary>
+        public const string LibraryItem_Warning0032 = "LibraryItem.Warning0032";
+        /// <summary>
+        /// [WARNING] Unable to update shelf number, as still existing {0} library items on shelf
+        /// </summary>
+        public const string LibraryItem_Warning0033 = "LibraryItem.Warning0033";
+        /// <summary>
 		/// [FAIL] An error occurred while updating the inventory data
 		/// </summary>
 		public const string LibraryItem_Fail0001 = "LibraryItem.Fail0001";
@@ -1082,7 +1090,8 @@ namespace FPTU_ELibrary.Application.Common
         /// </summary>
         public static string AIService_Warning0010 = "AIService.Warning0010";
         /// <summary>
-        /// [WARNING] Required at least 5 items for book series
+        /// [WARNING] Sorry, we could not find any items matching the book cover image you uploaded.
+        /// Please double-check the image or try a different one
         /// </summary>
         public static string AIService_Warning0011 = "AIService.Warning0011";
         #endregion

@@ -1,7 +1,9 @@
+using CloudinaryDotNet.Core;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
 using FPTU_ELibrary.Application.Dtos.Locations;
+using FPTU_ELibrary.Application.Exceptions;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
@@ -100,6 +102,131 @@ public class LibraryShelfService : GenericService<LibraryShelf, LibraryShelfDto,
         }
     }
 
+    public override async Task<IServiceResult> UpdateAsync(int id, LibraryShelfDto dto)
+    {
+        try
+        {
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+            // Determine current system language
+            var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+
+            // Check exist library shelf by id
+            var existingEntity = await _unitOfWork.Repository<LibraryShelf, int>().GetByIdAsync(id);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+                    StringUtils.Format(errMsg, isEng ? "library shelf information" : "thông tin kệ"));
+            }
+
+            // Initialize custom errors
+            var customErrs = new Dictionary<string, string[]>();
+
+            // Build spec
+            var spec = new BaseSpecification<LibraryItemInstance>(ls =>
+                ls.LibraryItem.ShelfId == existingEntity.ShelfId &&
+                ls.Status == nameof(LibraryItemInstanceStatus.InShelf));
+            // Count existing items on shelf
+            var onShelfItems = await _unitOfWork.Repository<LibraryItemInstance, int>().CountAsync(spec);
+
+            // Check for classification number range modification
+            if (!Equals(existingEntity.ClassificationNumberRangeFrom, dto.ClassificationNumberRangeFrom))
+            {
+                if (onShelfItems > 0)
+                {
+                    // Msg: Unable to update DDC range, as still existing {0} library items on shelf
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0032);
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: StringUtils.ToCamelCase(nameof(LibraryShelf.ClassificationNumberRangeFrom)),
+                        msg: StringUtils.Format(errMsg, onShelfItems.ToString()));
+                }
+                
+                // Assign update value
+                existingEntity.ClassificationNumberRangeTo = dto.ClassificationNumberRangeTo;
+            }
+
+            if (!Equals(existingEntity.ClassificationNumberRangeTo, dto.ClassificationNumberRangeTo))
+            {
+                if (onShelfItems > 0)
+                {
+                    // Msg: Unable to update DDC range, as still existing {0} library items on shelf
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0032);
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: StringUtils.ToCamelCase(nameof(LibraryShelf.ClassificationNumberRangeTo)),
+                        msg: StringUtils.Format(errMsg, onShelfItems.ToString()));
+                }
+                
+                // Assign update value
+                existingEntity.ClassificationNumberRangeFrom = dto.ClassificationNumberRangeTo;
+            }
+
+            // Check for shelf number modification
+            if (!Equals(existingEntity.ShelfNumber, dto.ShelfNumber))
+            {
+                if (onShelfItems > 0)
+                {
+                    // Msg: Unable to update shelf number, as still existing {0} library items on shelf
+                    var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.LibraryItem_Warning0033);
+                    // Add error
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: StringUtils.ToCamelCase(nameof(LibraryShelf.ShelfNumber)),
+                        msg: StringUtils.Format(errMsg, onShelfItems.ToString()));
+                }
+                
+                // Assign update value
+                existingEntity.ShelfNumber = dto.ShelfNumber;
+            }
+
+            // Check for description modification
+            if (!Equals(existingEntity.VieShelfName, dto.VieShelfName)) existingEntity.VieShelfName = dto.VieShelfName;
+            if (!Equals(existingEntity.EngShelfName, dto.EngShelfName)) existingEntity.EngShelfName = dto.EngShelfName;
+
+            // Check whether invokes any errors
+            if (customErrs.Any()) throw new UnprocessableEntityException("Invalid data", customErrs);
+
+            // Add modification date
+            existingEntity.UpdateDate = currentLocalDateTime;
+
+            if (!_unitOfWork.Repository<LibraryShelf, int>().HasChanges(existingEntity))
+            {
+                // Mark as update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+
+            // Process save DB
+            var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+            if (isSaved)
+            {
+                // Mark as update successfully
+                return new ServiceResult(ResultCodeConst.SYS_Success0003,
+                    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+            }
+
+            // Mark as update failed
+            return new ServiceResult(ResultCodeConst.SYS_Fail0003,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0003));
+        }
+        catch (UnprocessableEntityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process update library shelf");
+        }
+    }
+    
     public async Task<IServiceResult> GetAllBySectionIdAsync(int sectionId)
     {
         try

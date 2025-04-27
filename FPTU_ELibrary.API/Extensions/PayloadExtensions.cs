@@ -26,6 +26,7 @@ using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Fine;
 using FPTU_ELibrary.Application.Dtos.LibraryCard;
 using FPTU_ELibrary.Application.Dtos.LibraryItems;
+using FPTU_ELibrary.Application.Dtos.Locations;
 using FPTU_ELibrary.Application.Dtos.Notifications;
 using FPTU_ELibrary.Application.Dtos.Payments;
 using FPTU_ELibrary.Application.Dtos.Roles;
@@ -193,7 +194,8 @@ namespace FPTU_ELibrary.API.Extensions
 					Fines = brd.Fines.Select(f => new FineDto()
 					{
 						FinePolicyId = f.FinePolicyId,
-						FineNote = f.FineNote
+						FineNote = f.FineNote,
+						DamagePct = f.DamagePct
 					}).ToList()
 				}).ToList()
 			};
@@ -209,7 +211,8 @@ namespace FPTU_ELibrary.API.Extensions
 					Fines = brd.Fines.Select(f => new FineDto()
 					{
 						FinePolicyId = f.FinePolicyId,
-						FineNote = f.FineNote
+						FineNote = f.FineNote,
+						DamagePct = f.DamagePct
 					}).ToList()
 				}).ToList()
 			};
@@ -364,6 +367,17 @@ namespace FPTU_ELibrary.API.Extensions
 				SubTitle = req.SubTitle,
 				Author = req.Author,
 				TopicalTerms = req.TopicalTerms
+			};
+		
+		// Mapping from typeof(UpdateShelfRequest) to typeof(LibraryShelfDto)
+		public static LibraryShelfDto ToLibraryShelfDto(this UpdateShelfRequest req)
+			=> new()
+			{
+				ShelfNumber = req.ShelfNumber,
+				EngShelfName = req.EngShelfName,
+				VieShelfName = req.VieShelfName,
+				ClassificationNumberRangeFrom = req.ClassificationNumberRangeFrom,
+				ClassificationNumberRangeTo = req.ClassificationNumberRangeTo
 			};
 		#endregion
 
@@ -768,8 +782,11 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				FinePolicyTitle = req.FinePolicyTitle,
 				ConditionType = req.ConditionType,
-				FineAmountPerDay = req.FineAmountPerDay,
-				FixedFineAmount = req.FixedFineAmount,
+				MinDamagePct = req.MinDamagePct,
+				MaxDamagePct = req.MaxDamagePct,
+				ChargePct = req.ChargePct,
+				ProcessingFee = req.ProcessingFee,
+				DailyRate = req.DailyRate,
 				Description = req.Description
 			};
 		}
@@ -780,8 +797,11 @@ namespace FPTU_ELibrary.API.Extensions
 			{
 				FinePolicyTitle = req.FinePolicyTitle,
 				ConditionType = req.ConditionType,
-				FineAmountPerDay = req.FineAmountPerDay,
-				FixedFineAmount = req.FixedFineAmount,
+				MinDamagePct = req.MinDamagePct,
+				MaxDamagePct = req.MaxDamagePct,
+				ChargePct = req.ChargePct,
+				ProcessingFee = req.ProcessingFee,
+				DailyRate = req.DailyRate,
 				Description = req.Description
 			};
 		}

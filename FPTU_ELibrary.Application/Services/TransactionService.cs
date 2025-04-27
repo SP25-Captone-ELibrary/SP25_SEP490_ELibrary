@@ -779,38 +779,37 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             foreach (var fine in pendingFines)
             {
                 // Initialize fine amount
-                decimal? recalculateFineAmount = 0;
+                // decimal? recalculateFineAmount = 0;
 
-                if (fine.ExpiryAt != null && fine.Status == FineStatus.Expired)
-                {
-                    // Count days of expired date compared to created date
-                    var overDueDays = currentLocalDateTime.Subtract(fine.ExpiryAt.Value).Days;
-                    
-                    // Determine policy condition type
-                    switch (fine.FinePolicy.ConditionType)
-                    {
-                        case FinePolicyConditionType.Damage or FinePolicyConditionType.OverDue:
-                            // Recalculate fine amount
-                            recalculateFineAmount = overDueDays > 0 && fine.FinePolicy.FineAmountPerDay != null 
-                                ? fine.FineAmount + (overDueDays * fine.FinePolicy.FineAmountPerDay)
-                                : 0;
-                            break;
-                        case FinePolicyConditionType.Lost:
-                            // Recalculate fine amount with percentage of total amount
-                            recalculateFineAmount = overDueDays > 0
-                                ? fine.FineAmount * (1 + (decimal) _borrowSettings.LostAmountPercentagePerDay / 100)
-                                : fine.FineAmount;
-                            break;
-                    }
-                }
+                // if (fine.ExpiryAt != null && fine.Status == FineStatus.Expired)
+                // {
+                //     // Count days of expired date compared to created date
+                //     var overDueDays = currentLocalDateTime.Subtract(fine.ExpiryAt.Value).Days;
+                //     
+                //     // Determine policy condition type
+                //     switch (fine.FinePolicy.ConditionType)
+                //     {
+                //         case FinePolicyConditionType.Damage or FinePolicyConditionType.OverDue:
+                //             // Recalculate fine amount
+                //             recalculateFineAmount = overDueDays > 0 && fine.FinePolicy.FineAmountPerDay != null 
+                //                 ? fine.FineAmount + (overDueDays * fine.FinePolicy.FineAmountPerDay)
+                //                 : 0;
+                //             break;
+                //         case FinePolicyConditionType.Lost:
+                //             // Recalculate fine amount with percentage of total amount
+                //             recalculateFineAmount = overDueDays > 0
+                //                 ? fine.FineAmount * (1 + (decimal) _borrowSettings.LostAmountPercentagePerDay / 100)
+                //                 : fine.FineAmount;
+                //             break;
+                //     }
+                // }
                 
                 // Add transaction with default value
+                
                 transactionDtos.Add(new ()
                 {
                     TransactionCode = transactionCodeDigits.ToString(),
-                    Amount = recalculateFineAmount != null && recalculateFineAmount > 0 
-                        ? (int)Math.Round(decimal.Parse(recalculateFineAmount.ToString()!))
-                        : (int)Math.Round(fine.FineAmount),
+                    Amount = (int)Math.Round(fine.FineAmount),
                     CreatedAt = currentLocalDateTime,
                     ExpiredAt = expiredAt,
                     CreatedBy = createdByEmail,

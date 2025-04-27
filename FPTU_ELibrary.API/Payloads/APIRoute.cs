@@ -639,7 +639,10 @@
 			#region Management
 			// [GET]
 			public const string GetAllShelves = Base + "/management/location/shelves";
-			public const string GetMapShelfDetailById = Base + "/management/location/shelves/{shelfId}";
+			public const string GetMapShelfDetailById = Base + "/management/location/shelves/{shelfId}/detail";
+			public const string GetShelfById = Base + "/management/location/shelves/{shelfId}";
+			// [PUT]
+			public const string UpdateShelf = Base + "/management/location/shelves/{shelfId}";
 			#endregion
 			
 			#region Map
@@ -793,6 +796,7 @@
 			#region HeadLibrian only
 			// [PATCH]
 			public const string UpdateStatus = Base + "/management/warehouse-trackings/{id}/status";
+			public const string UpdateSupplementRequestStatus = Base + "/management/warehouse-trackings/{id}/supplement-status";
 			public const string AddStockInFile = Base + "/management/warehouse-trackings/{id}/add-stock-in-file";
 			public const string AddSupplementRequestFile = Base + "/management/warehouse-trackings/{id}/add-supplement-request-file";
 			#endregion

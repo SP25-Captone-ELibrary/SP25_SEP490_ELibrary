@@ -1,3 +1,4 @@
+using System.Globalization;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
@@ -28,7 +29,7 @@ public class ChangeStatusService : BackgroundService
         _logger = logger;
         _svcScopeFactory = svcScopeFactory;
     }
-    
+
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.Information("ChangeStatusService is starting.");
@@ -44,13 +45,14 @@ public class ChangeStatusService : BackgroundService
                     var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                     var monitor = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<BorrowSettings>>();
                     var monitor1 = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<AppSettings>>();
-                    var reservationSvc = scope.ServiceProvider.GetRequiredService<IReservationQueueService<ReservationQueueDto>>();
-                    var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();              
+                    var reservationSvc = scope.ServiceProvider
+                        .GetRequiredService<IReservationQueueService<ReservationQueueDto>>();
+                    var emailSvc = scope.ServiceProvider.GetRequiredService<IEmailService>();
                     var s3Service = scope.ServiceProvider.GetRequiredService<IS3Service>();
-                    
+
                     // Track if there are any changes
                     bool hasChanges = false;
-                    
+
                     // Update transaction expired status
                     hasChanges |= await UpdateAllTransactionExpiredStatusAsync(unitOfWork);
                     // Update library card expired status
@@ -61,16 +63,20 @@ public class ChangeStatusService : BackgroundService
                     hasChanges |= await UpdateAllBorrowRecordExpiredStatusAsync(unitOfWork);
                     // Update digital borrow expired status
                     hasChanges |= await UpdateAllDigitalBorrowExpiredStatusAsync(unitOfWork);
+                    // Update overdue fine amount
+                    hasChanges |= await UpdateOverdueFineAsync(
+                        unitOfWork: unitOfWork,
+                        borrowSettings: monitor.CurrentValue);
                     // Update borrow request expired status
                     hasChanges |= await UpdateAllBorrowRequestExpiredStatusAsync(
                         emailSvc: emailSvc,
-                        unitOfWork: unitOfWork, 
+                        unitOfWork: unitOfWork,
                         borrowSettings: monitor.CurrentValue,
                         appSettings: monitor1.CurrentValue);
                     // Update reservation expired status
                     hasChanges |= await UpdateAllReservationExpiredStatusAsync(
                         emailSvc: emailSvc,
-                        reservationSvc: reservationSvc, 
+                        reservationSvc: reservationSvc,
                         unitOfWork: unitOfWork,
                         borrowSettings: monitor.CurrentValue,
                         appSettings: monitor1.CurrentValue);
@@ -78,92 +84,98 @@ public class ChangeStatusService : BackgroundService
                     // hasChanges |= await AssignItemToReservationAsync(
                     //     reservationSvc: reservationSvc,
                     //     unitOfWork: unitOfWork);
-                    
+
                     // Save changes only if at least one update was made
                     if (hasChanges) await unitOfWork.SaveChangesAsync();
                 }
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 _logger.Error(ex, "ChangeStatusService task failed with exception.");
             }
-            
+
             _logger.Information("ChangeStatusService task doing background work.");
-            
+
             // Delay 30s for each time execution
             await Task.Delay(30000, cancellationToken);
         }
     }
 
     #region Library Card Tasks
+
     private async Task<bool> UpdateAllLibraryCardExpiredStatusAsync(IUnitOfWork unitOfWork)
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
-        var baseSpec = new BaseSpecification<LibraryCard>(br => br.ExpiryDate <= currentLocalDateTime // Exp date exceed than current date 
-                                                                  && br.Status == LibraryCardStatus.Active); // In active status
+        var baseSpec = new BaseSpecification<LibraryCard>(br =>
+            br.ExpiryDate <= currentLocalDateTime // Exp date exceed than current date 
+            && br.Status == LibraryCardStatus.Active); // In active status
         var entities = await unitOfWork.Repository<LibraryCard, Guid>()
             .GetAllWithSpecAsync(baseSpec);
         foreach (var libCard in entities)
         {
             libCard.Status = LibraryCardStatus.Expired;
-            
+
             // Progress update 
             await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
-            
+
             // Mark as changed
             hasChanges = true;
         }
 
         return hasChanges;
     }
-    
+
     private async Task<bool> UpdateAllLibraryCardSuspendedStatusAsync(IUnitOfWork unitOfWork)
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
-        var baseSpec = new BaseSpecification<LibraryCard>(lc => lc.SuspensionEndDate != null  // Exp date exceed than current date 
-                                                                && lc.SuspensionEndDate <= currentLocalDateTime
-                                                                && lc.Status == LibraryCardStatus.Suspended); // In suspended status
+        var baseSpec = new BaseSpecification<LibraryCard>(lc =>
+            lc.SuspensionEndDate != null // Exp date exceed than current date 
+            && lc.SuspensionEndDate <= currentLocalDateTime
+            && lc.Status == LibraryCardStatus.Suspended); // In suspended status
         var entities = await unitOfWork.Repository<LibraryCard, Guid>()
             .GetAllWithSpecAsync(baseSpec);
         foreach (var libCard in entities)
         {
             // Default update to active status
             libCard.Status = LibraryCardStatus.Active;
-            
+
             // Check whether card is expired
-            if(libCard.ExpiryDate <= currentLocalDateTime) libCard.Status = LibraryCardStatus.Expired;
-            
+            if (libCard.ExpiryDate <= currentLocalDateTime) libCard.Status = LibraryCardStatus.Expired;
+
             // Set default value
             libCard.TotalMissedPickUp = 0;
             libCard.SuspensionEndDate = null;
-            
+
             // Progress update 
             await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
-            
+
             // Mark as changed
             hasChanges = true;
         }
 
         return hasChanges;
     }
+
     #endregion
-    
+
     #region Borrow Tasks
+
     private async Task<bool> UpdateAllBorrowRequestExpiredStatusAsync(
         IEmailService emailSvc,
         IUnitOfWork unitOfWork,
@@ -171,19 +183,22 @@ public class ChangeStatusService : BackgroundService
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
-        var baseSpec = new BaseSpecification<BorrowRequest>(br => br.ExpirationDate != null && br.ExpirationDate <= currentLocalDateTime // Exp date exceed than current date 
-                                                                  && br.Status == BorrowRequestStatus.Created); // In created status
+        var baseSpec = new BaseSpecification<BorrowRequest>(br => br.ExpirationDate != null &&
+                                                                  br.ExpirationDate <=
+                                                                  currentLocalDateTime // Exp date exceed than current date 
+                                                                  && br.Status ==
+                                                                  BorrowRequestStatus.Created); // In created status
         // Apply include
         baseSpec.ApplyInclude(q => q
             .Include(b => b.BorrowRequestDetails)
-                .ThenInclude(b => b.LibraryItem)
+            .ThenInclude(b => b.LibraryItem)
             .Include(b => b.LibraryCard)
         );
         // Retrieve all with spec
@@ -192,30 +207,31 @@ public class ChangeStatusService : BackgroundService
         foreach (var borrowReq in entities)
         {
             borrowReq.Status = BorrowRequestStatus.Expired;
-            
+
             // Update library card status
             var libCard = await unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(borrowReq.LibraryCardId);
             if (libCard != null)
             {
                 // Increase total missed
                 libCard.TotalMissedPickUp += 1;
-                
+
                 // Change status to suspended if exceed than threshold
                 if (libCard.TotalMissedPickUp >= borrowSettings.TotalMissedPickUpAllow)
                 {
                     libCard.Status = LibraryCardStatus.Suspended;
                     libCard.SuspensionEndDate = currentLocalDateTime.AddDays(borrowSettings.EndSuspensionInDays);
                 }
-                
+
                 // Update card
                 await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
             }
-            
+
             // Update inventory amount after borrow request expired
             foreach (var brd in borrowReq.BorrowRequestDetails)
             {
                 // Retrieve library item inventory
-                var itemInventory = await unitOfWork.Repository<LibraryItemInventory, int>().GetByIdAsync(brd.LibraryItemId);
+                var itemInventory =
+                    await unitOfWork.Repository<LibraryItemInventory, int>().GetByIdAsync(brd.LibraryItemId);
                 if (itemInventory != null)
                 {
                     // Check whether requested units is greater than 0
@@ -230,10 +246,10 @@ public class ChangeStatusService : BackgroundService
                     }
                 }
             }
-            
+
             // Progress update 
             await unitOfWork.Repository<BorrowRequest, int>().UpdateAsync(borrowReq);
-            
+
             // Mark as changed
             hasChanges = true;
         }
@@ -263,7 +279,7 @@ public class ChangeStatusService : BackgroundService
                 }
             }
         }
-        
+
         return false; // Always return false to avoid save change many times
     }
 
@@ -271,12 +287,12 @@ public class ChangeStatusService : BackgroundService
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
         var baseSpec = new BaseSpecification<BorrowRecordDetail>(br =>
             br.DueDate <= currentLocalDateTime && // Exceed than due date (expected return date)
@@ -288,27 +304,28 @@ public class ChangeStatusService : BackgroundService
         {
             // Change borrow status to expired
             brd.Status = BorrowRecordStatus.Overdue;
-            
+
             // Progress update 
             await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(brd);
-            
+
             // Mark as changed
             hasChanges = true;
         }
-        
+
         return hasChanges;
     }
 
-    private async Task<bool> UpdateAllDigitalBorrowExpiredStatusAsync(IUnitOfWork unitOfWork, IS3Service? s3Service = null)
+    private async Task<bool> UpdateAllDigitalBorrowExpiredStatusAsync(IUnitOfWork unitOfWork,
+        IS3Service? s3Service = null)
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
         var baseSpec = new BaseSpecification<DigitalBorrow>(br =>
             br.ExpiryDate <= currentLocalDateTime && // Exceed than due date (expected return date)
@@ -322,7 +339,7 @@ public class ChangeStatusService : BackgroundService
         {
             // Change borrow status to expired
             br.Status = BorrowDigitalStatus.Expired;
-            
+
             // Progress update 
             await unitOfWork.Repository<DigitalBorrow, int>().UpdateAsync(br);
 
@@ -335,49 +352,53 @@ public class ChangeStatusService : BackgroundService
                 // Set water marked to null
                 br.S3WatermarkedName = null;
             }
-            
+
             // Mark as changed
             hasChanges = true;
         }
-        
+
         return hasChanges;
     }
+
     #endregion
 
     #region Transaction
+
     private async Task<bool> UpdateAllTransactionExpiredStatusAsync(IUnitOfWork unitOfWork)
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(
             // Subtract 5 minutes compared to the actual expiration time to avoid paid in third party but failed to save in system
             DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)),
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         // Build specification
-        var baseSpec = new BaseSpecification<Transaction>(t => t.ExpiredAt <= currentLocalDateTime && 
+        var baseSpec = new BaseSpecification<Transaction>(t => t.ExpiredAt <= currentLocalDateTime &&
                                                                t.TransactionStatus == TransactionStatus.Pending);
         var entities = await unitOfWork.Repository<Transaction, int>()
             .GetAllWithSpecAsync(baseSpec);
         foreach (var transaction in entities)
         {
             transaction.TransactionStatus = TransactionStatus.Expired;
-            
+
             // Progress update 
             await unitOfWork.Repository<Transaction, int>().UpdateAsync(transaction);
-            
+
             // Mark as changed
             hasChanges = true;
         }
-        
+
         return hasChanges;
     }
+
     #endregion
-    
+
     #region Reservation Tasks
+
     private async Task<bool> UpdateAllReservationExpiredStatusAsync(
         IEmailService emailSvc,
         IReservationQueueService<ReservationQueueDto> reservationSvc,
@@ -385,17 +406,18 @@ public class ChangeStatusService : BackgroundService
     {
         // Initialize has changes field
         bool hasChanges = false;
-        
+
         // Initialize collection of item instance ids need to be assigned
         var handledReservations = new List<ReservationQueue>();
-        
+
         // Current local datetime
         var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
             // Vietnam timezone
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
         // Build specification
-        var baseSpec = new BaseSpecification<ReservationQueue>(br => br.ExpiryDate <= currentLocalDateTime // Exp date exceed than current date 
-                                                                  && br.QueueStatus == ReservationQueueStatus.Assigned); // In assigned status
+        var baseSpec = new BaseSpecification<ReservationQueue>(br =>
+            br.ExpiryDate <= currentLocalDateTime // Exp date exceed than current date 
+            && br.QueueStatus == ReservationQueueStatus.Assigned); // In assigned status
         // Apply include
         baseSpec.ApplyInclude(q => q
             .Include(r => r.LibraryItemInstance)
@@ -409,32 +431,32 @@ public class ChangeStatusService : BackgroundService
         foreach (var reservation in entities)
         {
             reservation.QueueStatus = ReservationQueueStatus.Expired;
-                        
+
             // Update library card status
             var libCard = await unitOfWork.Repository<LibraryCard, Guid>().GetByIdAsync(reservation.LibraryCardId);
             if (libCard != null)
             {
                 // Increase total missed
                 libCard.TotalMissedPickUp += 1;
-                
+
                 // Change status to suspended if exceed than threshold
                 if (libCard.TotalMissedPickUp >= borrowSettings.TotalMissedPickUpAllow)
                 {
                     libCard.Status = LibraryCardStatus.Suspended;
                     libCard.SuspensionEndDate = currentLocalDateTime.AddDays(borrowSettings.EndSuspensionInDays);
                 }
-                
+
                 // Update card
                 await unitOfWork.Repository<LibraryCard, Guid>().UpdateAsync(libCard);
             }
-            
+
             // Retrieve library item instance
-            var instanceSpec = new BaseSpecification<LibraryItemInstance>(li => 
+            var instanceSpec = new BaseSpecification<LibraryItemInstance>(li =>
                 li.LibraryItemInstanceId == reservation.LibraryItemInstanceId);
             // Apply include
             instanceSpec.ApplyInclude(q => q
                 .Include(l => l.LibraryItem)
-                    .ThenInclude(li => li.LibraryItemInventory!)
+                .ThenInclude(li => li.LibraryItemInventory!)
             );
             // Retrieve with spec
             var itemInstance = await unitOfWork.Repository<LibraryItemInstance, int>().GetWithSpecAsync(instanceSpec);
@@ -451,13 +473,13 @@ public class ChangeStatusService : BackgroundService
                         itemInstance.Status = nameof(LibraryItemInstanceStatus.OutOfShelf);
                         // Reduce request units
                         itemInventory.ReservedUnits--;
-                    
+
                         // Add instance to assigned list
                         handledReservations.Add(reservation);
-                        
+
                         // Process update item instance
                         await unitOfWork.Repository<LibraryItemInstance, int>().UpdateAsync(itemInstance);
-                        
+
                         // Mark as changed
                         hasChanges = true;
                     }
@@ -488,7 +510,7 @@ public class ChangeStatusService : BackgroundService
                             libContact: appSettings.LibraryContact);
                     }
                 }
-                
+
                 // Extract all instance item ids
                 var allItemInstanceIds = handledReservations
                     .Where(r => r.LibraryItemInstanceId != null)
@@ -498,7 +520,7 @@ public class ChangeStatusService : BackgroundService
                 await reservationSvc.AssignInstancesAfterReturnAsync(libraryItemInstanceIds: allItemInstanceIds);
             }
         }
-        
+
         return false; // Always return false to avoid save change many times
     }
 
@@ -507,12 +529,12 @@ public class ChangeStatusService : BackgroundService
         IUnitOfWork unitOfWork)
     {
         // Build item instance spec
-        var instanceSpec = new BaseSpecification<LibraryItemInstance>(li => 
+        var instanceSpec = new BaseSpecification<LibraryItemInstance>(li =>
             (
                 li.Status == nameof(LibraryItemInstanceStatus.OutOfShelf) || // Is in out-of-shelf status
                 li.Status == nameof(LibraryItemInstanceStatus.InShelf) // Is in-shelf status
             ) && // Is in-shelf status
-            li.LibraryItem.Status == LibraryItemStatus.Published &&  // Instance's item has been published yet
+            li.LibraryItem.Status == LibraryItemStatus.Published && // Instance's item has been published yet
             li.IsCirculated == true); // Ensure the instance has been circulated (borrowed) 
         // Retrieve all instance with spec
         var itemInstances = (await unitOfWork.Repository<LibraryItemInstance, int>()
@@ -526,8 +548,9 @@ public class ChangeStatusService : BackgroundService
                 var reserveSpec = new BaseSpecification<ReservationQueue>(r =>
                     r.QueueStatus == ReservationQueueStatus.Pending && // Is pending status
                     r.LibraryItemInstanceId == null && // Not assigned with any instance
-                    r.LibraryItem.LibraryItemInstances.Any(li => 
-                        li.LibraryItemInstanceId == instance.LibraryItemInstanceId) && // Instance exist in reservation's item
+                    r.LibraryItem.LibraryItemInstances.Any(li =>
+                        li.LibraryItemInstanceId ==
+                        instance.LibraryItemInstanceId) && // Instance exist in reservation's item
                     r.ExpiryDate == null && // Not exist expiry date
                     // Exclude all cancellation fields
                     r.CancellationReason == null &&
@@ -542,10 +565,156 @@ public class ChangeStatusService : BackgroundService
                 }
             }
         }
-        
+
         return false; // Always return false to avoid save change many times
     }
+
     #endregion
+
+    #region Fines
+
+    private async Task<bool> UpdateOverdueFineAsync(IUnitOfWork unitOfWork, BorrowSettings borrowSettings)
+    {
+        // Initialize has changes field
+        bool hasChanges = false;
+        
+        // Declare vi currency
+        var viCulture = CultureInfo.GetCultureInfo("vi-VN");
+        
+        // Current local datetime
+        var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+            // SE Asia timezone
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
+        // Build specification
+        var baseSpec = new BaseSpecification<BorrowRecordDetail>(brd => 
+            brd.Status == BorrowRecordStatus.Overdue && 
+            (
+                !brd.Fines.Any() || // Not exist any fine for when overdue
+                brd.Fines.Any(f => 
+                    // Include all record details existing overdue fine
+                    f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue)
+            ) &&
+            brd.ReturnConditionId == null &&
+            brd.ReturnDate == null // Has not been returned yet
+        );
+        
+        // Apply include
+        baseSpec.ApplyInclude(q => q
+            .Include(br => br.Fines)
+                .ThenInclude(br => br.FinePolicy)
+            .Include(br => br.LibraryItemInstance)
+                .ThenInclude(li => li.LibraryItem)
+        );
+       
+        // Retrieve all borrow record details
+        var borrowRecordDetails = (await unitOfWork.Repository<BorrowRecordDetail, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+        if (!borrowRecordDetails.Any()) return false;
+        
+        // Retrieve overdue fine policy
+        var overdueSpec = new BaseSpecification<FinePolicy>(fp => fp.ConditionType == FinePolicyConditionType.OverDue);
+        var overdueFinePolicy = await unitOfWork.Repository<FinePolicy, int>().GetWithSpecAsync(overdueSpec);
+        if (overdueFinePolicy == null) return false;
+        
+        // Iterate each borrow record need to be added overdue fine or accumulate the overdue fine
+        foreach (var bRec in borrowRecordDetails)
+        {
+            // Recalculate overdue days
+            var overDueDays = (currentLocalDateTime.Date - bRec.DueDate.Date).Days;
+            
+            // Extract the item cost
+            var itemCost = bRec.LibraryItemInstance.LibraryItem.EstimatedPrice;
+            
+            // Try parse values to integer
+            decimal.TryParse(itemCost?.ToString() ?? "0", out var validItemCost);
+            decimal.TryParse(overdueFinePolicy.DailyRate?.ToString() ?? "0", out var validDailyRate);
+            
+            // Apply fine calculation formulas for Overdue fine type = min(validDailyRate * overDueDays, validItemCost);
+            var fineAmount = Math.Min(validDailyRate * overDueDays, validItemCost);
+            
+            // Check whether added fines or not
+            var isExistOverdueFine = bRec.Fines.Any(f => f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue);
+            if (!isExistOverdueFine)
+            {
+                // Format amount & date
+                var formattedAmount = fineAmount.ToString("C0", viCulture);
+                var formattedDate   = currentLocalDateTime.ToString("dd/MM/yyyy");
+                
+                // Add new fine
+                bRec.Fines.Add(new ()
+                {
+                    FinePolicyId = overdueFinePolicy.FinePolicyId,
+                    FineAmount = fineAmount,
+                    FineNote = $"Phí phạt {formattedAmount} đã được áp dụng vào ngày {formattedDate} cho {overDueDays} ngày quá hạn",
+                    Status = FineStatus.Pending,
+                    CreatedAt = currentLocalDateTime,
+                    ExpiryAt = currentLocalDateTime.AddDays(borrowSettings.FineExpirationInDays), 
+                });
+                
+                // Mark as change
+                hasChanges = true;
+            }
+            else
+            {
+                // Extract all overdue fines
+                var overdueFines = bRec.Fines.Where(f => f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue);
+                // Check whether fine amount change
+                foreach (var fine in overdueFines)
+                {
+                    // Format amount & date
+                    var formattedAmount = fineAmount.ToString("C0", viCulture);
+                    var formattedDate   = currentLocalDateTime.ToString("dd/MM/yyyy");
+                    
+                    // Determine fine status
+                    switch (fine.Status)
+                    {
+                        case FineStatus.Paid:
+                            // Calculate accumulate paid amount
+                            var accumulatedPaid = bRec.Fines
+                            .Where(f => 
+                                f.Status == FineStatus.Paid && 
+                                f.FinePolicy.ConditionType == FinePolicyConditionType.OverDue)
+                            .Sum(f => f.FineAmount);
+                            // Subtract with previous fine amount
+                            if(fineAmount > accumulatedPaid) fineAmount -= accumulatedPaid;
+                            
+                            // Add new fine
+                            bRec.Fines.Add(new ()
+                            {
+                                FinePolicyId = overdueFinePolicy.FinePolicyId,
+                                FineAmount = fineAmount,
+                                FineNote = $"Phí phạt {formattedAmount} tiếp tục được áp dụng vào ngày {formattedDate} cho {overDueDays} ngày quá hạn",
+                                Status = FineStatus.Pending,
+                                CreatedAt = currentLocalDateTime,
+                                ExpiryAt = currentLocalDateTime.AddDays(borrowSettings.FineExpirationInDays), 
+                            });
+                            break;
+                        case FineStatus.Pending:
+                            if (fineAmount > fine.FineAmount)
+                            {
+                                // Update fine amount
+                                fine.FineAmount = fineAmount;
+        
+                                // Append a clear notification for the user
+                                fine.FineNote += $"\n Phí phạt đã được cập nhật thành {formattedAmount} vào ngày {formattedDate} cho {overDueDays} ngày quá hạn";
+                        
+                                // Progress update 
+                                await unitOfWork.Repository<Fine, int>().UpdateAsync(fine);
+
+                                // Mark as changed
+                                hasChanges = true;
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+        
+        return hasChanges;
+    }
+
+
+#endregion
     
     #region Send Email Handling
     private async Task<bool> SendOverdueReservationPickupEmailAsync(

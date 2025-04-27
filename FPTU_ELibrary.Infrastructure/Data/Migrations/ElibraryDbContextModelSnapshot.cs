@@ -857,6 +857,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("DamagePct")
+                        .HasColumnType("decimal(3,2)")
+                        .HasColumnName("damage_pct");
+
                     b.Property<DateTime?>("ExpiryAt")
                         .HasColumnType("datetime")
                         .HasColumnName("expiry_at");
@@ -901,10 +905,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FinePolicyId"));
 
+                    b.Property<decimal?>("ChargePct")
+                        .HasColumnType("decimal(3, 2)")
+                        .HasColumnName("charge_pct");
+
                     b.Property<string>("ConditionType")
                         .IsRequired()
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("condition_type");
+
+                    b.Property<decimal?>("DailyRate")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("daily_rate");
 
                     b.Property<string>("Description")
                         .HasMaxLength(255)
@@ -923,6 +935,18 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     b.Property<decimal?>("FixedFineAmount")
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("fixed_fine_amount");
+
+                    b.Property<decimal?>("MaxDamagePct")
+                        .HasColumnType("decimal(3, 2)")
+                        .HasColumnName("max_damage_pct");
+
+                    b.Property<decimal?>("MinDamagePct")
+                        .HasColumnType("decimal(3, 2)")
+                        .HasColumnName("min_damage_pct");
+
+                    b.Property<decimal?>("ProcessingFee")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("processing_fee");
 
                     b.HasKey("FinePolicyId")
                         .HasName("PK_FinePolicy_FinePolicyId");

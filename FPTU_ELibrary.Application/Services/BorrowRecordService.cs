@@ -2569,8 +2569,8 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	                                foreach (var fine in lostFines)
 	                                {
 		                                // Retrieve item's estimated price
-		                                var estimatedPrice = recDetail.LibraryItemInstance.LibraryItem.EstimatedPrice;
-		                                if (estimatedPrice == null || estimatedPrice == 0)
+		                                var itemCost = recDetail.LibraryItemInstance.LibraryItem.EstimatedPrice;
+		                                if (itemCost == null || itemCost == 0)
 		                                {
 			                                // Add error
 			                                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
@@ -2582,12 +2582,31 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 	                                    // Retrieve fine policy by id
 	                                    if ((await _finePolicySvc.Value.GetWithSpecAsync(
 		                                        new BaseSpecification<FinePolicy>(f => f.FinePolicyId == fine.FinePolicyId))
-	                                        ).Data is FinePolicyDto fineDto)
+	                                        ).Data is FinePolicyDto finePolicyDto)
 	                                    {
+		                                    // Try parse value to integer
+		                                    decimal.TryParse(itemCost?.ToString() ?? "0", out var validItemCost);
+		                                    decimal.TryParse(finePolicyDto.ChargePct?.ToString() ?? "0", out var validChargePct);
+		                                    decimal.TryParse(finePolicyDto.ProcessingFee?.ToString() ?? "0", out var validProcessingFee);
+
+		                                    // Validate fine calculation fields
+		                                    if (validItemCost == 0 || validChargePct == 0 || validProcessingFee == 0)
+		                                    {
+			                                    // Add error
+                                                customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                                    key: $"lostBorrowRecordDetails[{i}].BorrowRecordDetailId",
+                                                    msg: isEng
+                                                		? "Unknown error invoke when process add fine"
+                                                		: "Lỗi không xác định khi thêm phí phạt mất cho tài liệu");
+		                                    }
+		                                    
+		                                    // Apply calculation formulas for Lost condition type = (itemCost * chargePct) + processingFee
+		                                    var lostFineAmount = (validItemCost * validChargePct) + validProcessingFee;
+		                                    // Process add fine to borrow record detail
 	                                        recDetail.Fines.Add(new()
 	                                        {
-	                                            FinePolicyId = fineDto.FinePolicyId,
-	                                            FineAmount = estimatedPrice ?? decimal.Zero,
+	                                            FinePolicyId = finePolicyDto.FinePolicyId,
+	                                            FineAmount = lostFineAmount,
 	                                            Status = FineStatus.Pending,
 	                                            CreatedAt = currentLocalDateTime,
 	                                            ExpiryAt = currentLocalDateTime.AddDays(_borrowSettings.FineExpirationInDays),
@@ -2838,60 +2857,172 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 				                    break;
 		                    }
 		                    
-		                    // Process add return fields
-		                    existingBrDetail.ReturnConditionId = brDetail.ReturnConditionId;
-		                    existingBrDetail.Status = BorrowRecordStatus.Returned;
-		                    existingBrDetail.ReturnDate = currentLocalDateTime;
-		                    existingBrDetail.ConditionCheckDate = currentLocalDateTime;
-		                    existingBrDetail.ImagePublicIds = !string.IsNullOrEmpty(brDetail.ImagePublicIds) 
-								? brDetail.ImagePublicIds : null;
-		                    // Add processed return by
-		                    existingBrDetail.ProcessedReturnBy = employeeDto.EmployeeId;
+		                    
+		                    // Extract the item cost
+		                    var itemCost = existingBrDetail.LibraryItemInstance.LibraryItem.EstimatedPrice;
 		                    
 		                    // Process add fines for return items
-		                    foreach (var fine in brDetail.Fines)
+		                    var listFines = brDetail.Fines.ToList();
+		                    for (int j = 0; j < listFines.Count; ++j)
 		                    {
+			                    var fine = listFines[j];
+			                    
 			                    // Retrieve fine policy by id
 			                    if ((await _finePolicySvc.Value.GetWithSpecAsync(
 				                        new BaseSpecification<FinePolicy>(f => f.FinePolicyId == fine.FinePolicyId))
-			                        ).Data is FinePolicyDto fineDto)
+			                        ).Data is FinePolicyDto finePolicyDto)
 			                    {
-				                    // Check for existing fine value
-				                    if (fineDto.FixedFineAmount == 0 || fineDto.FineAmountPerDay == 0)
-				                    {
-					                    // Msg: Not found price value for fine policy {0}
-					                    errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0034); 
-					                    return new ServiceResult(ResultCodeConst.Borrow_Warning0034,
-						                    StringUtils.Format(errMsg, $"'{fineDto.FinePolicyTitle}'"));
-				                    }
+				                    // Try parse values to decimal
+				                    decimal.TryParse(itemCost?.ToString() ?? "0", out var validItemCost);
+				                    decimal.TryParse(finePolicyDto.MinDamagePct?.ToString() ?? "0", out var validMinDamagePct);
+				                    decimal.TryParse(finePolicyDto.MaxDamagePct?.ToString() ?? "0", out var validMaxDamagePct);
+				                    decimal.TryParse(finePolicyDto.ChargePct?.ToString() ?? "0", out var validChargePct);
+				                    decimal.TryParse(finePolicyDto.DailyRate?.ToString() ?? "0", out var validDailyRate);
+				                    decimal.TryParse(finePolicyDto.ProcessingFee?.ToString() ?? "0", out var validProcessingFee);
 									
 				                    // Determine fine policy condition type
-				                    decimal? fineAmount;
-									switch (fineDto.ConditionType)
+				                    decimal? fineAmount = null;
+									switch (finePolicyDto.ConditionType)
 				                    {
-					                    case FinePolicyConditionType.Damage or FinePolicyConditionType.OverDue:
-						                    // Assign default (fixed fine amount)
-						                    fineAmount = fineDto.FixedFineAmount;
+					                    case FinePolicyConditionType.Damage:
+						                    if (validItemCost == 0)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+								                    msg: isEng
+									                    ? "Estimated price of item not found. Please update it to process add fine for damage return"
+									                    : "Không tìm thấy giá tiền ước lượng của tài liệu. Vui lòng cập nhật để xử lí hư hỏng tài liệu");
+						                    }
+											
+						                    /*
+											// Check whether damage percentage is null
+						                    if (fine.DamagePct == null)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].damagePct",
+								                    msg: isEng 
+									                    ? "Damage percentage is required for damage fine policy" 
+									                    : "Yêu cầu nhập tỉ lệ hư hỏng");
+						                    }
+						                    else if (fine.DamagePct == 0)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].damagePct",
+								                    msg: isEng 
+									                    ? "Damage percentage must greater than 0" 
+									                    : "Tỉ lệ hư hỏng phải lớn hơn 0");
+						                    }
+						                    else
+						                    {
+												// Validate fine calculation fields for damage fine policy
+                                                if (validProcessingFee == 0)
+                                                {
+                                                    // Add error
+                                                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                                                        key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+                                                        msg: isEng
+                                                            ? "Processing fee must be greater than 0 for damage fine policy"
+                                                            : "Phí xử lý không tồn tại để xử lý hư hỏng tài liệu");
+                                                }
+												
+												// Apply fine calculation formulas for Damage fine type = (itemCost * chargePct) + processingFee
+												// fineAmount = (validItemCost * fine.DamagePct * validChargePct) + validProcessingFee;
+												fineAmount = (validItemCost * validChargePct) + validProcessingFee;
+						                    }*/
+						                    
+						                    // Validate fine calculation fields for damage fine policy
+						                    if (validProcessingFee == 0)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+								                    msg: isEng
+									                    ? "Processing fee must be greater than 0 for damage fine policy"
+									                    : "Phí xử lý không tồn tại để xử lý hư hỏng tài liệu");
+						                    }
+												
+						                    // Apply fine calculation formulas for Damage fine type = (itemCost * chargePct) + processingFee
+						                    // fineAmount = (validItemCost * fine.DamagePct * validChargePct) + validProcessingFee;
+						                    fineAmount = (validItemCost * validChargePct) + validProcessingFee;
+						                    
+						                    break;
+					                    case FinePolicyConditionType.OverDue:
+						                    if (validItemCost == 0)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+								                    msg: isEng
+									                    ? "Estimated price of item not found. Please update it to process add fine for overdue return"
+									                    : "Không tìm thấy giá tiền ước lượng của tài liệu. Vui lòng cập nhật để xử lý trả tài liệu trễ");
+						                    }
+						                    
+						                    // Check whether borrow record detail has been expired
+						                    if (existingBrDetail.Status != BorrowRecordStatus.Overdue)
+						                    {
+							                    // Add error
+							                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+								                    key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+								                    msg: isEng
+														? "Return item has not been expired yet. Cannot add overdue fine policy"
+														: "Tài liệu trả chưa bị quá hạn. Không thể thêm phí phạt quá hạn");
+						                    }
+						                    else
+						                    {
+							                    // Validate fine calculation fields for overdue fine policy
+							                    if (validDailyRate == 0)
+							                    {
+								                    // Add error
+								                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+									                    key: $"{errKey}[{i}].fines[{j}].finePolicyId",
+									                    msg: isEng
+										                    ? "Unknown error invoke when process add fine"
+										                    : "Lỗi không xác định khi thêm phí phạt quá hạn cho tài liệu");
+							                    }
+							                    
+							                    // Count days of expired date compared to created date
+							                    var overDueDays = (currentLocalDateTime.Date - existingBrDetail.DueDate.Date).Days;
+							                    // Recheck for negative subtract
+							                    overDueDays = overDueDays > 0 ? overDueDays : 1;
+							                    
+							                    // Apply fine calculation formulas for Overdue fine type = (itemCost * damagePct * chargePct) + processingFee
+							                    fineAmount = Math.Min(validDailyRate * overDueDays, validItemCost);
+						                    }
+											break;
+					                    case FinePolicyConditionType.Lost:
 						                    break;
 					                    default:
 						                    // Msg: Fine policy is invalid for returning item
 						                    return new ServiceResult(ResultCodeConst.Borrow_Warning0035,
 							                    await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0035));
 				                    }
-				                    
-									// Add fine to record detail
+
+				                    // Add fine to record detail
 				                    existingBrDetail.Fines.Add(new()
-	                                {
-	                                    FinePolicyId = fineDto.FinePolicyId,
-	                                    FineNote = fine.FineNote,
-	                                    FineAmount = fineAmount ?? 0,
-	                                    Status = FineStatus.Pending,
-	                                    CreatedAt = currentLocalDateTime,
-	                                    ExpiryAt = currentLocalDateTime.AddDays(_borrowSettings.FineExpirationInDays),
-	                                    CreatedBy = employeeDto.EmployeeId
-	                                });
+				                    {
+					                    FinePolicyId = finePolicyDto.FinePolicyId,
+					                    FineNote = fine.FineNote,
+					                    FineAmount = fineAmount ?? 0,
+					                    Status = FineStatus.Pending,
+					                    CreatedAt = currentLocalDateTime,
+					                    ExpiryAt = currentLocalDateTime.AddDays(_borrowSettings.FineExpirationInDays),
+					                    CreatedBy = employeeDto.EmployeeId
+				                    });
 			                    }
 		                    }
+		                    
+		                    // Process add return fields
+		                    existingBrDetail.ReturnConditionId = brDetail.ReturnConditionId;
+		                    existingBrDetail.Status = BorrowRecordStatus.Returned;
+		                    existingBrDetail.ReturnDate = currentLocalDateTime;
+		                    existingBrDetail.ConditionCheckDate = currentLocalDateTime;
+		                    existingBrDetail.ImagePublicIds = !string.IsNullOrEmpty(brDetail.ImagePublicIds) 
+			                    ? brDetail.ImagePublicIds : null;
+		                    // Add processed return by
+		                    existingBrDetail.ProcessedReturnBy = employeeDto.EmployeeId;
 		                    
 		                    // Process update borrow record entity
 		                    await _unitOfWork.Repository<BorrowRecord, int>().UpdateAsync(borrowRecEntity);
