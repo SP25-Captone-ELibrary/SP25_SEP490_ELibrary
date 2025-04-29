@@ -153,18 +153,18 @@ namespace FPTU_ELibrary.Application.Services
 						// Generate confirmation code
 						var otpCode = StringUtils.GenerateUniqueCode();
 						// Email subject
-						var emailSubject = "ELibrary - Sign in confirmation email";
+						var emailSubject = "ELibrary - Xác nhận đăng nhập";
 						// Email content
 						var emailContent = $@"
-		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-		                        <h3>Hi {authUser.FirstName} {authUser.LastName},</h3>
-		                        <p>Here's your confirmation code:</p>
-		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
-		                        <p>Use this code to complete sign-in.</p>
-		                        <br />
-		                        <p style='font-size: 16px;'>Thanks,</p>
-		                        <p style='font-size: 16px;'>The ELibrary Team</p>
-		                    </div>";
+						    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+						        <h3>Chào {authUser.FirstName} {authUser.LastName},</h3>
+						        <p>Đây là mã xác nhận của bạn:</p>
+						        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+						        <p>Vui lòng sử dụng mã này để hoàn tất quá trình đăng nhập.</p>
+						        <br />
+						        <p style='font-size: 16px;'>Cảm ơn,</p>
+						        <p style='font-size: 16px;'>{_appSettings.LibraryName}</p>
+						    </div>";
 
 						var isOtpSent = await SendAndSaveOtpAsync(otpCode, authUser, emailSubject, emailContent);
 						if (isOtpSent) // Email sent
@@ -666,18 +666,19 @@ namespace FPTU_ELibrary.Application.Services
 					// Generate confirmation code
 					var otpCode = StringUtils.GenerateUniqueCode();
 					// Email subject
-					var emailSubject = "ELibrary - Sign up confirmation email";
+					var emailSubject = "ELibrary - Xác nhận đăng ký tài khoản";
+
 					// Email content
 					var emailContent = $@"
-		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-		                        <h3>Hi {user.FirstName} {user.LastName},</h3>
-		                        <p>Here's your confirmation code:</p>
-		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
-		                        <p>Use this code to complete sign-up.</p>
-		                        <br />
-		                        <p style='font-size: 16px;'>Thanks,</p>
-		                        <p style='font-size: 16px;'>The ELibrary Team</p>
-		                    </div>";
+					    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+					        <h3>Chào {user.FirstName} {user.LastName},</h3>
+					        <p>Đây là mã xác nhận của bạn:</p>
+					        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+					        <p>Vui lòng sử dụng mã này để hoàn tất quá trình đăng ký.</p>
+					        <br />
+					        <p style='font-size: 16px;'>Cảm ơn,</p>
+					        <p style='font-size: 16px;'>{_appSettings.LibraryName}</p>
+					    </div>";
 
 					var isOtpSent = await SendAndSaveOtpAsync(otpCode, user, emailSubject, emailContent);
 					if (isOtpSent) // Email sent
@@ -899,18 +900,19 @@ namespace FPTU_ELibrary.Application.Services
 				// Generate confirmation code
 				var otpCode = StringUtils.GenerateUniqueCode();
 				// Email subject
-				var emailSubject = "ELibrary - Resend confirmation email";
+				var emailSubject = "ELibrary - Gửi lại email xác nhận";
+
 				// Email content
 				var emailContent = $@"
-	                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-	                        <h3>Hi {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
-	                        <p>Here's your confirmation code:</p>
-	                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
-	                        <p>Use this code to complete the process.</p>
-	                        <br />
-	                        <p style='font-size: 16px;'>Thanks,</p>
-	                        <p style='font-size: 16px;'>The ELibrary Team</p>
-	                    </div>";
+				    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+				        <h3>Chào {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
+				        <p>Đây là mã xác nhận của bạn:</p>
+				        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+				        <p>Vui lòng sử dụng mã này để hoàn tất quá trình.</p>
+				        <br />
+				        <p style='font-size: 16px;'>Cảm ơn,</p>
+				        <p style='font-size: 16px;'>{_appSettings.LibraryName}</p>
+				    </div>";
 
 				var isOtpSent = await SendAndSaveOtpAsync(otpCode, authenticatedUser, emailSubject,emailContent);
 				if (isOtpSent) // Email sent
@@ -1016,18 +1018,18 @@ namespace FPTU_ELibrary.Application.Services
 				// Generate confirmation code
 				var otpCode = StringUtils.GenerateUniqueCode();
 				// Email subject
-				var emailSubject = "ELibrary - recovery password";
+				var emailSubject = "ELibrary - Khôi phục mật khẩu";
 				// Email content
 				var emailContent = $@"
-	                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-	                        <h3>Hi {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
-	                        <p>Here's recovery password confirmation code:</p>
-	                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
-	                        <p>Use this code to complete recovery password.</p>
-	                        <br />
-	                        <p style='font-size: 16px;'>Thanks,</p>
-	                        <p style='font-size: 16px;'>The ELibrary Team</p>
-	                    </div>";
+				    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+				        <h3>Chào {authenticatedUser.FirstName} {authenticatedUser.LastName},</h3>
+				        <p>Đây là mã xác nhận để khôi phục mật khẩu của bạn:</p>
+				        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+				        <p>Vui lòng sử dụng mã này để hoàn thành quy trình khôi phục mật khẩu.</p>
+				        <br />
+				        <p style='font-size: 16px;'>Cảm ơn,</p>
+				        <p style='font-size: 16px;'>{_appSettings.LibraryName}</p>
+				    </div>";
 
 				var isOtpSent = await SendAndSaveOtpAsync(otpCode, authenticatedUser, emailSubject, emailContent);
 				if (isOtpSent) // Email sent
@@ -1566,18 +1568,19 @@ namespace FPTU_ELibrary.Application.Services
 					// Generate confirmation code
 					var otpCode = StringUtils.GenerateUniqueCode();
 					// Email subject
-					var emailSubject = "ELibrary - Regenerate backup codes confirmation email";
+					var emailSubject = "ELibrary - Xác nhận yêu cầu tạo lại mã";
 					// Email content
 					var emailContent = $@"
-		                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
-		                        <h3>Hi {authUser.FirstName} {authUser.LastName},</h3>
-		                        <p>Here's your confirmation code:</p>
-		                        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
-		                        <p>Use this code to complete regenerate backup codes process.</p>
-		                        <br />
-		                        <p style='font-size: 16px;'>Thanks,</p>
-		                        <p style='font-size: 16px;'>The ELibrary Team</p>
-		                    </div>";
+					    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+					        <h3>Chào {authUser.FirstName} {authUser.LastName},</h3>
+					        <p>Đây là mã xác nhận của bạn:</p>
+					        <h1 style='font-weight: bold; color: #2C3E50;'>{otpCode}</h1>
+					        <p>Vui lòng sử dụng mã này để hoàn thành quá trình tạo lại mã dự phòng.</p>
+					        <br />
+					        <p style='font-size: 16px;'>Cảm ơn,</p>
+					        <p style='font-size: 16px;'>{_appSettings.LibraryName}</p>
+					    </div>";
+
 					
 					// Generate MFA backup token
 					var token = await new JwtUtils(_webTokenSettings).GenerateMfaTokenAsync(authUser);

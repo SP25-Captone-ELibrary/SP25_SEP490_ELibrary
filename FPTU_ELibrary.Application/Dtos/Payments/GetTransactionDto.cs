@@ -35,6 +35,9 @@ public class GetTransactionDto
     // Store payment information
     public string? QrCode { get; set; }
     
+    // Payment link ID
+    public string? PaymentLinkId { get; set; }
+    
     // Mapping entities
     public UserDto User { get; set; } = null!;
     public FineDto? Fine { get; set; }
@@ -71,6 +74,7 @@ public static class GetTransactionDtoExtensions
             LibraryCardPackageId = dto.LibraryCardPackageId,
             PaymentMethodId = dto.PaymentMethodId,
             QrCode = dto.QrCode,
+            PaymentLinkId = dto.PaymentLinkId,
             User = dto.User != null! ? dto.User : null!,
             Fine = dto.Fine,
             LibraryResource = dto.LibraryResource,

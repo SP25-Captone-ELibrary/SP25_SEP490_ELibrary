@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using FPTU_ELibrary.Application.Common;
 using FPTU_ELibrary.Application.Configurations;
 using FPTU_ELibrary.Application.Dtos;
@@ -2335,7 +2336,137 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             throw new Exception("Error invoke when process get all items for recommendation");
         }
     }
-    
+
+    public async Task<IServiceResult> GetHighBorrowOrReserveRateItemsAsync(int? pageIndex, int? pageSize)
+    {
+        try
+        {
+            // Pagination
+            int validPageIndex = pageIndex ?? 1;
+            int validPageSize = pageSize ?? _appSettings.PageSize;
+            
+            // Initialize base spec to retrieve building filter when operator is 'includes'
+            List<Expression<Func<LibraryItem, bool>>> includeExpressions = new();
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.Status == LibraryItemStatus.Published);
+            
+            // Enable split query
+            baseSpec.EnableSplitQuery();
+            // Add filter
+            includeExpressions.Add(li => li.LibraryItemInstances.Count(l => l.BorrowRecordDetails.Count > 0) > 0);
+            includeExpressions.Add(li => li.LibraryItemInstances.Count(l => l.ReservationQueues.Count > 0) > 0);
+            includeExpressions.Add(li => li.BorrowRequestDetails.Count > 0);
+            if (includeExpressions.Any())
+            {
+                var resultExpression = includeExpressions.Skip(1).Aggregate(includeExpressions.FirstOrDefault(),
+                    (exp1, exp2) =>
+                    {
+                        if (exp1 != null)
+                        {
+                            // Try to combined body of different expression with 'OR' operator
+                            var body = Expression.OrElse(exp1.Body, Expression.Invoke(exp2, exp1.Parameters));
+                                                    
+                            // Return combined body
+                            return Expression.Lambda<Func<LibraryItem, bool>>(body, exp1.Parameters);
+                        }
+                
+                        return _ => false;
+                    });
+                                        
+                // Apply filter with 'includes'
+                if(resultExpression != null) baseSpec.AddFilter(resultExpression);
+            }
+            
+            // Apply order
+            baseSpec.AddOrderByDescending(li =>
+                // 1) number of direct BorrowRequestDetails
+                li.BorrowRequestDetails.Count()
+                // 2) total BorrowRecordDetails across all instances
+                + li.LibraryItemInstances
+                    .SelectMany(inst => inst.BorrowRecordDetails)
+                    .Count()
+                // 3) total ReservationQueues across all instances
+                + li.LibraryItemInstances
+                    .SelectMany(inst => inst.ReservationQueues)
+                    .Count()
+            );
+            
+            // Count total actual item
+            var totalActualItem = await _unitOfWork.Repository<LibraryItem, int>().CountAsync();
+            
+            // Initialize response item list
+            var responseItems = new List<LibraryItemDto>();
+            // Check exist any items match 
+            var existItemMatch = await _unitOfWork.Repository<LibraryItem, int>().AnyAsync(baseSpec);
+            if (existItemMatch)
+            {
+                // Retrieve all items match filter
+                var itemsMatch = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(baseSpec)).ToList();
+                // Map to dto
+                responseItems = _mapper.Map<List<LibraryItemDto>>(itemsMatch);
+            }
+            
+            // Check whether response items not reach page size threshold
+            if (responseItems.Count < validPageSize)
+            {
+                // Extract all exist item in response items
+                var existingItemIds = responseItems.Select(i => i.LibraryItemId).ToList();
+                // Build spec
+                var additionSpec = new BaseSpecification<LibraryItem>(li => li.Status == LibraryItemStatus.Published);
+                // Add filter
+                additionSpec.AddFilter(li => !existingItemIds.Contains(li.LibraryItemId));
+                // Add order by created date
+                additionSpec.AddOrderByDescending(li => li.CreatedAt);
+                
+                // Retrieve all items with spec
+                var itemsMatch = (await _unitOfWork.Repository<LibraryItem, int>().GetAllWithSpecAsync(additionSpec)).ToList();
+                // Take N items to reach page size threshold
+                var totalToFull = validPageSize - responseItems.Count;
+                // Process take N items
+                itemsMatch = itemsMatch.Take(totalToFull).ToList();
+                // Append to response items list
+                responseItems.AddRange(_mapper.Map<List<LibraryItemDto>>(itemsMatch));
+            }
+
+            if (responseItems.Any())
+            {
+                // Process add pagination result
+                // Count total library items
+                var totalItem = responseItems.Count;
+                // Count total page
+                var totalPage = (int)Math.Ceiling((double)totalActualItem / validPageSize);
+                // Set pagination to specification after count total library item
+                if (validPageIndex > totalPage || validPageIndex < 1) // Exceed total page or page index smaller than 1
+                {
+                    validPageIndex = 1; // Set default to first page
+                }
+                // Apply pagination
+                responseItems = responseItems.Skip((validPageIndex - 1) * validPageSize).Take(validPageSize).ToList();
+                
+                // Pagination result 
+                var paginationResultDto = new PaginatedResultDto<LibraryItemDto>(responseItems,
+                    validPageIndex, validPageSize, totalPage, totalActualItem);
+                
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.SYS_Success0002,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                    data: paginationResultDto);
+            }
+            
+            // Data not found or empty
+            return new ServiceResult(
+                resultCode: ResultCodeConst.SYS_Warning0004,
+                message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
+                data: new List<LibraryItemDto>());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get high borrow or reserve rate items");
+        }
+    }
+
     public async Task<IServiceResult> CheckUnavailableForBorrowRequestAsync(string email, int[] ids)
     {
         try

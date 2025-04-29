@@ -137,8 +137,8 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
             if (existingEntity == null)
             {
                 var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
-                return new ServiceResult(ResultCodeConst.SYS_Warning0002,
-                    StringUtils.Format(errMsg, nameof(FinePolicy).ToLower()));
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                    StringUtils.Format(errMsg, isEng ? "fine policy" : "chính sách"));
             }
             
             // Update properties
@@ -160,6 +160,7 @@ public class FinePolicyService : GenericService<FinePolicy, FinePolicyDto, int>,
                 var errors = validationResult.ToProblemDetails().Errors;
                 throw new UnprocessableEntityException("Invalid validations", errors);
             }
+            
             // Check if there are any differences between the original and the updated entity
             if (!_unitOfWork.Repository<FinePolicy, int>().HasChanges(existingEntity))
             {

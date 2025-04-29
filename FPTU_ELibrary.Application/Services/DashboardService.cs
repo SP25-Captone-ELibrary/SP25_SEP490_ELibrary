@@ -38,6 +38,7 @@ public class DashboardService : IDashboardService
     private readonly IReservationQueueService<ReservationQueueDto> _reservationQueueSvc;
     private readonly ILibraryItemInventoryService<LibraryItemInventoryDto> _inventorySvc;
     private readonly ILibraryItemInstanceService<LibraryItemInstanceDto> _itemInstanceSvc;
+    private readonly IBorrowRequestDetailService<BorrowRequestDetailDto> _borrowReqDetailSvc;
     private readonly IBorrowRecordDetailService<BorrowRecordDetailDto> _borrowRecDetailSvc;
     private readonly IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> _whTrackingDetailSvc;
     private readonly IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto> _extensionHistorySvc;
@@ -60,6 +61,7 @@ public class DashboardService : IDashboardService
         IReservationQueueService<ReservationQueueDto> reservationQueueSvc,
         ILibraryItemInventoryService<LibraryItemInventoryDto> inventorySvc,
         ILibraryItemInstanceService<LibraryItemInstanceDto> itemInstanceSvc,
+        IBorrowRequestDetailService<BorrowRequestDetailDto> borrowReqDetailSvc,
         IBorrowRecordDetailService<BorrowRecordDetailDto> borrowRecDetailSvc,
         IWarehouseTrackingDetailService<WarehouseTrackingDetailDto> whTrackingDetailSvc,
         IBorrowDetailExtensionHistoryService<BorrowDetailExtensionHistoryDto> extensionHistorySvc
@@ -79,6 +81,7 @@ public class DashboardService : IDashboardService
         _whTrackingSvc = whTrackingSvc;
         _itemInstanceSvc = itemInstanceSvc;
         _digitalBorrowSvc = digitalBorrowSvc;
+        _borrowReqDetailSvc = borrowReqDetailSvc;
         _digitalBorrowExtensionSvc = digitalBorrowExtensionSvc;
         _borrowRecDetailSvc = borrowRecDetailSvc;
         _whTrackingDetailSvc = whTrackingDetailSvc;
@@ -257,10 +260,10 @@ public class DashboardService : IDashboardService
                         // Initialize borrowed fail summary 
                         var borrowFailedSummary = new BorrowFailedCategorySummaryDto();
                         
-                        // Add filter
-                        countBorrowFailedSpec.AddFilter(brd => brd.LibraryItem.CategoryId == category.CategoryId);
+                        // Add filter for each category
+                        var borrowFailedForCategorySpec = new BaseSpecification<ReservationQueue>(r => r.IsReservedAfterRequestFailed && r.LibraryItem.CategoryId == category.CategoryId);
                         // Recount total failed
-                        int.TryParse((await _reservationQueueSvc.CountAsync(countBorrowFailedSpec)).Data?.ToString() ?? "0", out totalFailedRes);
+                        int.TryParse((await _reservationQueueSvc.CountAsync(borrowFailedForCategorySpec)).Data?.ToString() ?? "0", out totalFailedRes);
                         // Assign count val
                         borrowFailedSummary.TotalBorrowFailed = totalFailedRes;
                         // Determine total borrow units equal to 0
@@ -719,56 +722,144 @@ public class DashboardService : IDashboardService
             var startLastYear = new DateTime(lastYear, 1, 1);
             var endLastYear = new DateTime(lastYear, 12, 31);
             
-            // Retrieve data for current year (optional filter with transaction type)
-            var transactionSpecCurrent = new BaseSpecification<Transaction>(t => 
-                t.TransactionDate.HasValue && 
-                t.TransactionDate.Value >= startCurrentYear &&
-                t.TransactionDate.Value <= endCurrentYear &&
-                t.TransactionStatus == TransactionStatus.Paid &&
-                (!transactionType.HasValue || t.TransactionType == transactionType.Value));
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
+            // Initialize dashboard financial and transaction detail list
+            var details = new List<DashboardFinancialAndTransactionDetailDto>();
+            // Retrieve all transaction status
+            var transactionStatuses = Enum.GetValues(typeof(TransactionStatus)).Cast<TransactionStatus>().ToList();
+            // Retrieve all transaction type
+            var transactionTypes = Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().ToList();
+            // Iterate each transaction type to retrieve for transaction detail
+            foreach (var tType in transactionTypes)
             {
-                transactionSpecCurrent.AddFilter(db => db.TransactionDate.HasValue &&
-                    db.TransactionDate.Value.Date >= validStartDate.Date &&
-                    db.TransactionDate.Value.Date <= validEndDate.Date);
+                // Initialize detail
+                var detail = new DashboardFinancialAndTransactionDetailDto();
+                
+                // Retrieve data for current year (optional filter with transaction type)
+                var transactionSpecCurrent = new BaseSpecification<Transaction>(t => 
+                    t.TransactionDate.HasValue && 
+                    t.TransactionDate.Value >= startCurrentYear &&
+                    t.TransactionDate.Value <= endCurrentYear &&
+                    t.TransactionStatus == TransactionStatus.Paid &&
+                    t.TransactionType == tType);
+                // Add filter date range (if any)
+                if (startDate != null || endDate != null)
+                {
+                    transactionSpecCurrent.AddFilter(db => db.TransactionDate.HasValue &&
+                        db.TransactionDate.Value.Date >= validStartDate.Date &&
+                        db.TransactionDate.Value.Date <= validEndDate.Date);
+                }
+                var transactionsCurrent = (await _transSvc.GetAllWithSpecAndSelectorAsync(
+                    specification: transactionSpecCurrent,
+                    selector: t => new ValueTuple<DateTime?, decimal>(t.TransactionDate, t.Amount))).Data as List<(DateTime?, decimal)>;
+                
+                // Retrieve transaction data for last year (optional filter with transaction type)
+                var transactionSpecLast = new BaseSpecification<Transaction>(t =>
+                    t.TransactionDate.HasValue &&
+                    t.TransactionDate.Value >= startLastYear &&
+                    t.TransactionDate.Value <= endLastYear &&
+                    t.TransactionStatus == TransactionStatus.Paid &&
+                    t.TransactionType == tType);
+                // Add filter date range (if any)
+                if (startDate != null || endDate != null)
+                {
+                    transactionSpecLast.AddFilter(db => db.TransactionDate.HasValue &&
+                        db.TransactionDate.Value.Date >= validStartDate.Date &&
+                        db.TransactionDate.Value.Date <= validEndDate.Date);
+                }
+                var transactionsLast = (await _transSvc.GetAllWithSpecAndSelectorAsync(
+                    specification: transactionSpecLast,
+                    selector: t => new ValueTuple<DateTime?, decimal>(t.TransactionDate, t.Amount))).Data as List<(DateTime?, Decimal)>;
+                
+                // Process data to generate bar chart data (full timeline)
+                var trendCurrent = GetTransactionTrendData(
+                    transactions: transactionsCurrent,
+                    startDate: startCurrentYear, endDate: endCurrentYear,
+                    period: period, lang: lang);
+                var trendLast = GetTransactionTrendData(
+                    transactions: transactionsLast,
+                    startDate: startCurrentYear, endDate: endCurrentYear,
+                    period: period, lang: lang);
+                
+                // Calculate overall revenue for each period
+                var cateTotalRevenueCurr = trendCurrent?.Sum(t => (decimal)t.Value) ?? 0;
+                var cateTotalRevenueLast = trendLast?.Sum(t => (decimal)t.Value) ?? 0;
+                
+                // Count all by transaction type 
+                var totalTransactions = 0;
+                var countTotalTransactionRes = (await _transSvc.CountAsync(new BaseSpecification<Transaction>(t => 
+                    t.TransactionDate.HasValue &&
+                    t.TransactionDate.Value >= startCurrentYear &&
+                    t.TransactionDate.Value <= endCurrentYear &&
+                    t.TransactionType == tType))).Data;
+                if(countTotalTransactionRes is int validTotalTransactions) { totalTransactions = validTotalTransactions; } 
+                
+                // Iterate each transaction status
+                foreach (var transactionStatus in transactionStatuses)
+                {
+                    // Build spec
+                    var baseSpec = new BaseSpecification<Transaction>(t =>  
+                        t.TransactionDate.HasValue && 
+                        t.TransactionDate.Value >= startCurrentYear && 
+                        t.TransactionDate.Value <= endCurrentYear && 
+                        t.TransactionType == tType && 
+                        t.TransactionStatus == transactionStatus
+                    );
+                    
+                    // Process count
+                    var countTransactionStatusRes = (await _transSvc.CountAsync(baseSpec)).Data;
+                    // Parse to integer
+                    var validInt = countTransactionStatusRes is int validCount ? validCount : 0;
+
+                    if (totalTransactions > 0)
+                    {
+                        // Determine transaction status
+                        switch (transactionStatus)
+                        {
+                            case TransactionStatus.Pending:
+                                // Calculate pending percentage
+                                detail.PendingPercentage = (double)validInt / totalTransactions * 100;
+                                // Format double value
+                                detail.PendingPercentage = Math.Truncate(detail.PendingPercentage * 100) / 100;
+                                break;
+                            case TransactionStatus.Paid:
+                                // Calculate paid percentage
+                                detail.PaidPercentage = (double)validInt / totalTransactions * 100;
+                                // Format double value
+                                detail.PaidPercentage = Math.Truncate(detail.PaidPercentage * 100) / 100;
+                                break;
+                            case TransactionStatus.Expired:
+                                // Calculate expired percentage
+                                detail.ExpiredPercentage = (double)validInt / totalTransactions * 100;
+                                // Format double value
+                                detail.ExpiredPercentage = Math.Truncate(detail.ExpiredPercentage * 100) / 100;
+                                break;
+                            case TransactionStatus.Cancelled:
+                                // Calculate cancelled percentage
+                                detail.CancelledPercentage = (double)validInt / totalTransactions * 100;
+                                // Format double value
+                                detail.CancelledPercentage = Math.Truncate(detail.CancelledPercentage * 100) / 100;
+                                break;
+                        }
+                    }
+                }
+                
+                // Assign detail
+                detail.TransactionType = tType;
+                detail.ThisYear = trendCurrent ?? new();
+                detail.LastYear = trendLast ?? new();
+                detail.TotalRevenueThisYear = cateTotalRevenueCurr;
+                detail.TotalRevenueLastYear = cateTotalRevenueLast;
+                // Append detail
+                details.Add(detail);
             }
-            var transactionsCurrent = (await _transSvc.GetAllWithSpecAndSelectorAsync(
-                specification: transactionSpecCurrent,
-                selector: t => new ValueTuple<DateTime?, decimal>(t.TransactionDate, t.Amount))).Data as List<(DateTime?, decimal)>;
-            
-            // Retrieve transaction data for last year (optional filter with transaction type)
-            var transactionSpecLast = new BaseSpecification<Transaction>(t =>
-                t.TransactionDate.HasValue &&
-                t.TransactionDate.Value >= startLastYear &&
-                t.TransactionDate.Value <= endLastYear &&
-                t.TransactionStatus == TransactionStatus.Paid &&
-                (!transactionType.HasValue || t.TransactionType == transactionType.Value)
-            );
-            // Add filter date range (if any)
-            if (startDate != null || endDate != null)
-            {
-                transactionSpecLast.AddFilter(db => db.TransactionDate.HasValue &&
-                    db.TransactionDate.Value.Date >= validStartDate.Date &&
-                    db.TransactionDate.Value.Date <= validEndDate.Date);
-            }
-            var transactionsLast = (await _transSvc.GetAllWithSpecAndSelectorAsync(
-                specification: transactionSpecLast,
-                selector: t => new ValueTuple<DateTime?, decimal>(t.TransactionDate, t.Amount))).Data as List<(DateTime?, Decimal)>;
-            
-            // Process data to generate bar chart data (full timeline)
-            var trendCurrent = GetTransactionTrendData(
-                transactions: transactionsCurrent,
-                startDate: startCurrentYear, endDate: endCurrentYear,
-                period: period, lang: lang);
-            var trendLast = GetTransactionTrendData(
-                transactions: transactionsLast,
-                startDate: startCurrentYear, endDate: endCurrentYear,
-                period: period, lang: lang);
+
+            // Aggregate trend current with trend last year
+            var aggregatedTrendCurrent = details.SelectMany(d => d.ThisYear).ToList();
+            var aggregatedLastCurrent = details.SelectMany(d => d.LastYear).ToList();
             
             // Calculate overall revenue for each period
-            var totalRevenueCurrent = trendCurrent?.Sum(t => (decimal)t.Value) ?? 0;
-            var totalRevenueLast = trendLast?.Sum(t => (decimal)t.Value) ?? 0;
+            var totalRevenueCurrent = aggregatedTrendCurrent?.Sum(t => (decimal)t.Value) ?? 0;
+            var totalRevenueLast = aggregatedLastCurrent?.Sum(t => (decimal)t.Value) ?? 0;
             
             // Add filter date range
             if (startDate != null || endDate != null)
@@ -819,8 +910,7 @@ public class DashboardService : IDashboardService
                 message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
                 data: new DashboardFinancialAndTransactionDto()
                 {
-                    ThisYear = trendCurrent ?? new(),
-                    LastYear = trendLast ?? new(),
+                    Details = details,
                     TotalRevenueThisYear = totalRevenueCurrent,
                     TotalRevenueLastYear = totalRevenueLast,
                     LatestTransactions = paginationRes
@@ -1272,12 +1362,108 @@ public class DashboardService : IDashboardService
                     topCirculationItemList.Add(topCirculationItem);
                 }
                 
-                // Calculate total available need chart
-                response.AvailableVsNeedChart = new()
+                // Retrieve all categories
+                if ((await _cateSvc.GetAllAsync()).Data is List<CategoryDto> categories && categories.Any())
                 {
-                    AvailableUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.AvailableUnits),
-                    NeedUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.NeedUnits)
-                };
+                    // Iterate each category to process add barchart
+                    foreach (var category in categories)
+                    {
+                        // Initialize available and need barchart
+                        var availableAndBarchart = new AvailableVsNeedChartCategoryDto();
+
+                        // Build count total request spec
+                        var totalRequestSpec = new BaseSpecification<BorrowRequestDetail>(br => br.LibraryItem.CategoryId == category.CategoryId);
+                        // Apply include
+                        totalRequestSpec.ApplyInclude(q => q
+                            .Include(b => b.LibraryItem)
+                            .Include(b => b.BorrowRequest)
+                        );
+                        // Filter request date
+                        if (startDate != null || endDate != null)
+                        {
+                            totalRequestSpec.AddFilter(r => r.BorrowRequest.RequestDate >= validStartDate.Date && 
+                                                            r.BorrowRequest.RequestDate <= validEndDate.Date);
+                        }
+                        // Apply specification and count data
+                        if ((await _borrowReqDetailSvc.CountAsync(totalRequestSpec)).Data is int validRequestNum)
+                            availableAndBarchart.TotalRequest = validRequestNum;
+
+                        // Build count total borrowed spec
+                        var totalBorrowSpec = new BaseSpecification<BorrowRecordDetail>(br => br.LibraryItemInstance.LibraryItem.CategoryId == category.CategoryId);
+                        // Apply include
+                        totalBorrowSpec.ApplyInclude(q => q
+                            .Include(b => b.LibraryItemInstance)
+                            .ThenInclude(b => b.LibraryItem)
+                            .Include(b => b.BorrowRecord)
+                        );
+                        // Filter request date
+                        if (startDate != null || endDate != null)
+                        {
+                            totalBorrowSpec.AddFilter(r => r.BorrowRecord.BorrowDate >= validStartDate.Date && 
+                                                           r.BorrowRecord.BorrowDate <= validEndDate.Date);
+                        }
+                        // Apply specification and count data
+                        if ((await _borrowRecDetailSvc.CountAsync(totalBorrowSpec)).Data is int validBorrowedNum)
+                            availableAndBarchart.TotalBorrowed = validBorrowedNum;
+                        
+                        // Build count total reservation
+                        var totalReserveSpec = new BaseSpecification<ReservationQueue>(r => 
+                            r.LibraryItemInstance != null &&
+                            r.LibraryItemInstance.LibraryItem.CategoryId == category.CategoryId &&
+                            r.IsReservedAfterRequestFailed == false);
+                        // Filter request date
+                        if (startDate != null || endDate != null)
+                        {
+                            totalReserveSpec.AddFilter(r => r.ReservationDate >= validStartDate.Date && 
+                                                            r.ReservationDate <= validEndDate.Date);
+                        }
+                        // Apply specification and count data
+                        if ((await _borrowRecDetailSvc.CountAsync(totalBorrowSpec)).Data is int validReservedNum)
+                            availableAndBarchart.TotalReserved = validReservedNum;
+                        
+                        // Build count total request failed
+                        var totalRequestFailedSpec = new BaseSpecification<ReservationQueue>(r => 
+                            r.LibraryItemInstance != null &&
+                            r.LibraryItemInstance.LibraryItem.CategoryId == category.CategoryId &&
+                            r.IsReservedAfterRequestFailed == true);
+                        // Filter request date
+                        if (startDate != null || endDate != null)
+                        {
+                            totalRequestFailedSpec.AddFilter(r => r.ReservationDate >= validStartDate.Date && 
+                                                                  r.ReservationDate <= validEndDate.Date);
+                        }
+                        // Apply specification and count data
+                        if ((await _reservationQueueSvc.CountAsync(totalRequestFailedSpec)).Data is int validRequestFailedNum)
+                            availableAndBarchart.TotalRequestFailed = validRequestFailedNum;
+                        
+                        // Calculate available units
+                        var availableUnits = topCirculationItemList
+                            .Where(l => l.LibraryItem.CategoryId == category.CategoryId)
+                            .Sum(i => i.AvailableVsNeedChart.AvailableUnits); 
+                        // Calculate need units
+                        var needUnits = topCirculationItemList
+                            .Where(l => l.LibraryItem.CategoryId == category.CategoryId)
+                            .Sum(i => i.AvailableVsNeedChart.NeedUnits); 
+
+                        availableAndBarchart.AvailableUnits = availableUnits;
+                        availableAndBarchart.NeedUnits = needUnits;
+                        // Assign category
+                        availableAndBarchart.Category = category;
+                        // Append to response
+                        response.AvailableVsNeedChartCategories.Add(availableAndBarchart);
+                    }
+                    
+                    // Calculate total available and need units
+                    var totalAvailableUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.AvailableUnits);
+                    var totalNeedUnits = topCirculationItemList.Sum(i => i.AvailableVsNeedChart.NeedUnits);
+                    
+                    // Calculate total available need chart
+                    response.AvailableVsNeedChartSummary = new()
+                    {
+                        AvailableUnits = totalAvailableUnits,
+                        NeedUnits = totalNeedUnits,
+                    };
+                }
                 
                 // Apply sorting 
                 if (spec.Sort != null)

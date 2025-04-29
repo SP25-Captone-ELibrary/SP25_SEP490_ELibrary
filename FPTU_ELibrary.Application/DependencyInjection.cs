@@ -63,6 +63,7 @@ namespace FPTU_ELibrary.Application
 			services.AddScoped<IAuthenticationService<AuthenticateUserDto>, AuthenticationService>();
 			services.AddScoped<IAuditTrailService<AuditTrailDto>, AuditTrailService>();
             services.AddScoped<IBorrowRequestService<BorrowRequestDto>, BorrowRequestService>();
+            services.AddScoped<IBorrowRequestDetailService<BorrowRequestDetailDto>, BorrowRequestDetailService>();
             services.AddScoped<IBorrowRequestResourceService<BorrowRequestResourceDto>, BorrowRequestResourceService>();
             services.AddScoped<IBorrowRecordService<BorrowRecordDto>, BorrowRecordService>();
             services.AddScoped<IBorrowRecordDetailService<BorrowRecordDetailDto>, BorrowRecordDetailService>();

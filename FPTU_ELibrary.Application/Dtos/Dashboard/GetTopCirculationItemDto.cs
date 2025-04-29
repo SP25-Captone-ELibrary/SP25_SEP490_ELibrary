@@ -32,8 +32,18 @@ public class AvailableVsNeedChartItemDto : AvailableVsNeedChartDto
     public double AverageNeedSatisfactionRate { get; set; }
 }
 
+public class AvailableVsNeedChartCategoryDto : AvailableVsNeedChartItemDto
+{
+    public CategoryDto Category { get; set; } = null!;
+    public int TotalRequest { get; set; }
+    public int TotalRequestFailed { get; set; }
+    public int TotalBorrowed { get; set; }
+    public int TotalReserved { get; set; }
+}
+
 public class DashboardTopCirculationItemDto
 {
     public PaginatedResultDto<GetTopCirculationItemDto> TopBorrowItems { get; set; } = null!;
-    public AvailableVsNeedChartDto AvailableVsNeedChart { get; set; } = null!; 
+    public List<AvailableVsNeedChartCategoryDto> AvailableVsNeedChartCategories { get; set; } = new();
+    public AvailableVsNeedChartDto AvailableVsNeedChartSummary { get; set; } = null!;
 }

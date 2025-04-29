@@ -24,9 +24,6 @@ using StopWord;
 
 namespace FPTU_ELibrary.Application.Services;
 
-/// <summary>
-/// 
-/// </summary>
 public class RecommenderService : IRecommenderService
 {
     private readonly IUserService<UserDto> _userSvc;
@@ -68,20 +65,16 @@ public class RecommenderService : IRecommenderService
             var userDto = (await _userSvc.GetWithSpecAsync(userSpec)).Data as UserDto;
             if (userDto == null)
             {
-                // Mark as authentication required to access this feature
-                return new ServiceResult(ResultCodeConst.Auth_Warning0013,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0013));
+                // Retrieve items with high borrow/reserve rates
+                return await _libItemSvc.GetHighBorrowOrReserveRateItemsAsync(filter.PageIndex, filter.PageSize);
             }
             
             // Retrieve all user activities
             var userActivities = (await _libCardSvc.GetAllUserActivityAsync(userDto.UserId)).Data as List<UserProfileActivity>;
             if (userActivities == null || !userActivities.Any())
             {
-                // Data not found or empty
-                return new ServiceResult(
-                    resultCode: ResultCodeConst.SYS_Warning0004,
-                    message: await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004), 
-                    data: new List<LibraryItemDto>());
+                // Retrieve items with high borrow/reserve rates
+                return await _libItemSvc.GetHighBorrowOrReserveRateItemsAsync(filter.PageIndex, filter.PageSize);
             }
             
             // Retrieve all items for recommendation
@@ -183,7 +176,6 @@ public class RecommenderService : IRecommenderService
                 var itemDto = libItems.FirstOrDefault(li => li.LibraryItemId == itemId);
                 if(itemDto != null) recommendedItems.Add(itemDto);
             }
-            // TODO: Improve recommend result (based on availability, rate level, etc.)
             // Group all items to add take limits for each item based on author's name
             var groupedByAuthorIds = recommendedItems
                 .GroupBy(l => l.LibraryItemAuthors.FirstOrDefault()?.Author.FullName ?? "No Author")

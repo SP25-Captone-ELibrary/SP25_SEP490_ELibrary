@@ -31,6 +31,9 @@ public class Transaction
     // Store payment information
     public string? QrCode { get; set; }
     
+    // Payment link ID
+    public string? PaymentLinkId { get; set; }
+    
     // Mapping entities
     public User User { get; set; } = null!;
     public Fine? Fine { get; set; }
