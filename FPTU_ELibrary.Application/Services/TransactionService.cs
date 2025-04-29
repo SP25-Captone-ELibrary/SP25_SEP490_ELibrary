@@ -215,6 +215,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
             
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
             // Check exist user
             var userSpec = new BaseSpecification<User>(u => Equals(u.Email, createdByEmail));
             // Apply including library card
@@ -227,15 +232,48 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             }
             
             // Check whether existing any transaction has pending status
-            var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
-                .AnyAsync(t => t.UserId == userDto.UserId &&
-                    t.TransactionType == dto.TransactionType &&
-                    t.TransactionStatus == TransactionStatus.Pending);
-            if (isExistPendingStatus)
+            var pendingSpec = new BaseSpecification<Transaction>(t => 
+                t.UserId == userDto.UserId &&
+                t.TransactionType == dto.TransactionType &&
+                t.TransactionStatus == TransactionStatus.Pending);
+            var pendingTransaction = await _unitOfWork.Repository<Transaction, int>()
+                .GetWithSpecAsync(pendingSpec);
+            if (pendingTransaction != null)
             {
+                // Initialize payOS payment response
+                var payOsPaymentResponse = new PayOSPaymentResponseDto()
+                {
+                    Code = pendingTransaction.TransactionCode ?? string.Empty,
+                    Desc = pendingTransaction.Description ?? string.Empty,
+                    Data = new()
+                    {
+                        OrderCode = pendingTransaction.TransactionCode ?? string.Empty,
+                        Amount = pendingTransaction.Amount,
+                        PaymentLinkId = pendingTransaction.PaymentLinkId ?? string.Empty,
+                        QrCode = pendingTransaction.QrCode ?? string.Empty,
+                        Status = pendingTransaction.TransactionStatus.ToString().ToUpper(),
+                    }
+                };
+
+                int expiredAtInSeconds = 0;
+                if (pendingTransaction.ExpiredAt != null)
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)pendingTransaction.ExpiredAt).ToUnixTimeSeconds();
+                }
+                else
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes)).ToUnixTimeSeconds();
+                }
+                
                 // Msg: Failed to create payment transaction as existing transaction with pending status
-                return new ServiceResult(ResultCodeConst.Transaction_Warning0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003));
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.Transaction_Warning0003,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003),
+                    data: new PayOSPaymentLinkResponseDto()
+                    {
+                        PayOsResponse  = payOsPaymentResponse,
+                        ExpiredAtOffsetUnixSeconds = expiredAtInSeconds
+                    });
             }
             
             // Initialize payment description
@@ -405,10 +443,6 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                         await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Fail0003));
             }
             
-            // Current local datetime
-            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-                // Vietnam timezone
-                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             // Generate transaction code
             var transactionCodeDigits = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
             // Add necessary properties
@@ -503,6 +537,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                 LanguageContext.CurrentLanguage);
             var isEng = lang == SystemLanguage.English;
 
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
             // Check exist user
             var userSpec = new BaseSpecification<User>(u => Equals(u.Email, createdByEmail));
             // Apply including library card
@@ -515,15 +554,48 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             }
             
             // Check whether existing any transaction has pending status
-            var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
-                .AnyAsync(t => t.UserId == userDto.UserId &&
-                               t.TransactionType == TransactionType.DigitalBorrow &&
-                               t.TransactionStatus == TransactionStatus.Pending);
-            if (isExistPendingStatus)
+            var pendingSpec = new BaseSpecification<Transaction>(t =>
+                t.UserId == userDto.UserId &&
+                t.TransactionType == TransactionType.DigitalBorrow &&
+                t.TransactionStatus == TransactionStatus.Pending);
+            var pendingTransaction = await _unitOfWork.Repository<Transaction, int>()
+                .GetWithSpecAsync(pendingSpec);
+            if (pendingTransaction != null)
             {
+                // Initialize payOS payment response
+                var payOsPaymentResponse = new PayOSPaymentResponseDto()
+                {
+                    Code = pendingTransaction.TransactionCode ?? string.Empty,
+                    Desc = pendingTransaction.Description ?? string.Empty,
+                    Data = new()
+                    {
+                        OrderCode = pendingTransaction.TransactionCode ?? string.Empty,
+                        Amount = pendingTransaction.Amount,
+                        PaymentLinkId = pendingTransaction.PaymentLinkId ?? string.Empty,
+                        QrCode = pendingTransaction.QrCode ?? string.Empty,
+                        Status = pendingTransaction.TransactionStatus.ToString().ToUpper(),
+                    }
+                };
+
+                int expiredAtInSeconds = 0;
+                if (pendingTransaction.ExpiredAt != null)
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)pendingTransaction.ExpiredAt).ToUnixTimeSeconds();
+                }
+                else
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes)).ToUnixTimeSeconds();
+                }
+                
                 // Msg: Failed to create payment transaction as existing transaction with pending status
-                return new ServiceResult(ResultCodeConst.Transaction_Warning0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003));
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.Transaction_Warning0003,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003),
+                    data: new PayOSPaymentLinkResponseDto()
+                    {
+                        PayOsResponse  = payOsPaymentResponse,
+                        ExpiredAtOffsetUnixSeconds = expiredAtInSeconds
+                    });
             }
             
             // Check exist borrow request
@@ -545,10 +617,6 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                         : "lịch sử yêu cầu mượn để tạo thanh toán tài liệu điện tử"));
             }
             
-            // Current local datetime
-            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-                // Vietnam timezone
-                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             // Generate transaction code
             var transactionCodeDigits = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
             var expiredAt = currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes);
@@ -692,6 +760,11 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
     {
         try
         {
+            // Current local datetime
+            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                // Vietnam timezone
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            
             // Determine current system language
             var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
                 LanguageContext.CurrentLanguage);
@@ -709,15 +782,48 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
             }
             
             // Check whether existing any transaction has pending status
-            var isExistPendingStatus = await _unitOfWork.Repository<Transaction, int>()
-                .AnyAsync(t => t.UserId == userDto.UserId &&
-                       t.TransactionType == TransactionType.Fine &&
-                       t.TransactionStatus == TransactionStatus.Pending);
-            if (isExistPendingStatus)
+            var pendingSpec = new BaseSpecification<Transaction>(t => 
+                t.UserId == userDto.UserId &&
+                t.TransactionType == TransactionType.Fine &&
+                t.TransactionStatus == TransactionStatus.Pending);
+            var pendingTransaction = await _unitOfWork.Repository<Transaction, int>()
+                .GetWithSpecAsync(pendingSpec);
+            if (pendingTransaction != null)
             {
+                // Initialize payOS payment response
+                var payOsPaymentResponse = new PayOSPaymentResponseDto()
+                {
+                    Code = pendingTransaction.TransactionCode ?? string.Empty,
+                    Desc = pendingTransaction.Description ?? string.Empty,
+                    Data = new()
+                    {
+                        OrderCode = pendingTransaction.TransactionCode ?? string.Empty,
+                        Amount = pendingTransaction.Amount,
+                        PaymentLinkId = pendingTransaction.PaymentLinkId ?? string.Empty,
+                        QrCode = pendingTransaction.QrCode ?? string.Empty,
+                        Status = pendingTransaction.TransactionStatus.ToString().ToUpper(),
+                    }
+                };
+
+                int expiredAtInSeconds = 0;
+                if (pendingTransaction.ExpiredAt != null)
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)pendingTransaction.ExpiredAt).ToUnixTimeSeconds();
+                }
+                else
+                {
+                    expiredAtInSeconds = (int)((DateTimeOffset)currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes)).ToUnixTimeSeconds();
+                }
+                
                 // Msg: Failed to create payment transaction as existing transaction with pending status
-                return new ServiceResult(ResultCodeConst.Transaction_Warning0003,
-                    await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003));
+                return new ServiceResult(
+                    resultCode: ResultCodeConst.Transaction_Warning0003,
+                    message: await _msgService.GetMessageAsync(ResultCodeConst.Transaction_Warning0003),
+                    data: new PayOSPaymentLinkResponseDto()
+                    {
+                        PayOsResponse  = payOsPaymentResponse,
+                        ExpiredAtOffsetUnixSeconds = expiredAtInSeconds
+                    });
             }
             
             // Check exist borrow record
@@ -740,10 +846,6 @@ public class TransactionService : GenericService<Transaction, TransactionDto, in
                         : "lịch sử mượn để tạo phí thanh toán"));
             }
             
-            // Current local datetime
-            var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-                // Vietnam timezone
-                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             // Generate transaction code
             var transactionCodeDigits = PaymentUtils.GenerateRandomOrderCodeDigits(_paymentSettings.TransactionCodeLength);
             var expiredAt = currentLocalDateTime.AddMinutes(_paymentSettings.TransactionExpiredInMinutes);

@@ -11,7 +11,6 @@ public class CreateFinePolicyRequest
     #region Handle Damage
     public decimal? MinDamagePct { get; set; }
     public decimal? MaxDamagePct { get; set; }
-    public decimal? ChargePct { get; set; }
     public decimal? ProcessingFee { get; set; }
     #endregion
 
@@ -19,7 +18,7 @@ public class CreateFinePolicyRequest
     public decimal? DailyRate { get; set; }
     #endregion
 
-    #region Handle Lost
-    public decimal? ReplacementFeePercentage { get; set; }
+    #region Handle Lost & Damage
+    public decimal? ChargePct { get; set; }
     #endregion
 }
