@@ -6,34 +6,30 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  id-token: write           # required for OIDC login
-  contents: read            # required for checkout & artifacts
-
 jobs:
   build:
     runs-on: windows-latest
-    permissions: contents:read
+    permissions:
+      contents: read # This is required for actions/checkout
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET 8 SDK
+      - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'    # .NET 8 LTS
+          dotnet-version: '8.x' # Update to your desired .NET version (8.x)
 
       - name: Restore dependencies
-        run: dotnet restore FPTU_ELibrary.API/FPTU_ELibrary.API.csproj
+        run: dotnet restore ./FPTU_ELibrary.API/FPTU_ELibrary.API.csproj
 
       - name: Build project
-        run: dotnet build FPTU_ELibrary.API/FPTU_ELibrary.API.csproj --configuration Release --no-restore
+        run: dotnet build ./FPTU_ELibrary.API/FPTU_ELibrary.API.csproj --configuration Release --no-restore
 
-      - name: Publish to folder
-        run: dotnet publish FPTU_ELibrary.API/FPTU_ELibrary.API.csproj --configuration Release --output ./publish
+      - name: Publish project
+        run: dotnet publish ./FPTU_ELibrary.API/FPTU_ELibrary.API.csproj --configuration Release --output ./publish
 
-      - name: Upload artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
@@ -42,25 +38,31 @@ jobs:
   deploy:
     runs-on: windows-latest
     needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: read # This is required for actions/checkout
 
     steps:
-      - name: Download artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-          path: ./app
+          path: ./_net-app
 
-      - name: Azure login via OIDC
+      - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1375FD11475649E2984EFA111628C003 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C6C417F674484AA5AA29662470ECFF95 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0476099C34B045ECA32A31697842FDCF }}
+         client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1375FD11475649E2984EFA111628C003 }}
+         tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C6C417F674484AA5AA29662470ECFF95 }}
+         subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0476099C34B045ECA32A31697842FDCF }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: SEP-ELibrary-WOS
-          slot-name: Production
-          package: ./app
+          app-name: 'SEP-ELibrary-WOS'
+          slot-name: 'Production'
+          package: ./_net-app
