@@ -49,7 +49,7 @@ jobs:
       - name: Download published artifact
         uses: actions/download-artifact@v4
         with:
-          name: published-app
+          name: .net-app
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
