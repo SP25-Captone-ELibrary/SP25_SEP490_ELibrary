@@ -42,14 +42,24 @@ jobs:
     runs-on: windows-latest
     needs: build
     environment:
-      name: Production
+      name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
 
     steps:
-      - name: Download published artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1375FD11475649E2984EFA111628C003 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_C6C417F674484AA5AA29662470ECFF95 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0476099C34B045ECA32A31697842FDCF }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -57,7 +67,6 @@ jobs:
         with:
           app-name: 'SEP-ELibrary-WOS'
           slot-name: 'Production'
-          package: '.'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_D577BCDE60C846FCA89AAE2E36D2CAA3 }}
+          package: .
 
           
