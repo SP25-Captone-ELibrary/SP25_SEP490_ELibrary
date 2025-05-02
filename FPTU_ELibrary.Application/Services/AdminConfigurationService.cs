@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Reflection;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
@@ -175,9 +176,10 @@ public class AdminConfigurationService : IAdminConfigurationService
 
     public async Task<IServiceResult> GetAllInAzureConfiguration()
     {
-        var settings = new Dictionary<string, object>();  // Use object to store deserialized data.
+        var settings = new Dictionary<string, object>(); // Use object to store deserialized data.
 
-        await foreach (ConfigurationSetting setting in _newClient.GetConfigurationSettingsAsync(new SettingSelector { }))
+        await foreach (ConfigurationSetting setting in
+                       _newClient.GetConfigurationSettingsAsync(new SettingSelector { }))
         {
             if (string.IsNullOrEmpty(setting.Key) || string.IsNullOrEmpty(setting.Value)) continue;
 
@@ -241,6 +243,44 @@ public class AdminConfigurationService : IAdminConfigurationService
         return new ServiceResult(ResultCodeConst.SYS_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
     }
+
+    public async Task<IServiceResult> UpdateKeyValueAzureConfiguration(AISettingsDto aiDto)
+    {
+        var validationResult = await ValidatorExtensions.ValidateAsync(aiDto);
+        if (validationResult != null && !validationResult.IsValid)
+        {
+            // Convert ValidationResult to ValidationProblemsDetails.Errors
+            var errors = validationResult.ToProblemDetails().Errors;
+            throw new UnprocessableEntityException("Invalid Validations", errors);
+        }
+        var aiSettingProps = typeof(AISettingsDto).GetProperties()
+            .ToDictionary(p => p.Name, p => p);
+
+        foreach (var propEntry in aiSettingProps)
+        {
+            var propName = propEntry.Key;
+            var propInfo = propEntry.Value;
+            var value = propInfo.GetValue(aiDto);
+
+            // Nếu value null thì bỏ qua không cập nhật
+            if (value == null) continue;
+
+            var configKey = $"AISettings:{propName}";
+
+            var setting = new ConfigurationSetting(configKey, value.ToString());
+            await _newClient.SetConfigurationSettingAsync(setting);
+        }
+
+        // Bắt buộc cập nhật AppSettings:RefreshValue để ép reload config
+        Random random = new Random();
+        var refreshValue = new ConfigurationSetting("AppSettings:RefreshValue", random.Next().ToString());
+        await _newClient.SetConfigurationSettingAsync(refreshValue);
+
+        return new ServiceResult(ResultCodeConst.SYS_Success0003,
+            await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003), true);
+    }
+
+
     public async Task<IServiceResult> UpdateLibraryScheduleAsync(List<WorkDateAndTime> updates)
     {
         // B1: Lấy setting hiện tại
@@ -297,7 +337,7 @@ public class AdminConfigurationService : IAdminConfigurationService
         current.Schedules = groupedSchedules;
 
         // B5: Validate
-        
+
 
         // B6: Ghi lại
         var newJson = JsonConvert.SerializeObject(current, Formatting.Indented);
@@ -305,6 +345,7 @@ public class AdminConfigurationService : IAdminConfigurationService
         return new ServiceResult(ResultCodeConst.SYS_Success0003,
             await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
     }
+
     private static int GetDayOfWeekValue(string day)
     {
         // đảm bảo đúng thứ tự Monday -> Sunday

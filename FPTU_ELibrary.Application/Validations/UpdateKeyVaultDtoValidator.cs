@@ -6,12 +6,13 @@ using FPTU_ELibrary.Domain.Common.Enums;
 
 namespace FPTU_ELibrary.Application.Validations;
 
-public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
+public class UpdateKeyVaultDtoValidator : AbstractValidator<UpdateKeyVaultDto>
 {
     private readonly Assembly _assembly;
     private readonly bool _isEnglish;
     private const string TargetNamespace = "FPTU_ELibrary.Application.Configurations";
     private const string assemblyName = "FPTU_ELibrary.Application";
+
     public UpdateKeyVaultDtoValidator(string langContext)
     {
         _assembly = LoadAssembly(assemblyName);
@@ -31,13 +32,42 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
                 "Vui lòng truyền đúng kiểu dữ liệu",
                 "Please pass the correct data type"
             ));
+        RuleFor(x => x.Value)
+            .Must(BeParsableToPropertyType)
+            .WithMessage(dto => GetMessage("Vui lòng truyền đúng kiểu dữ liệu", "Please pass the correct data type"))
+            .DependentRules(() =>
+            {
+                RuleFor(x => x)
+                    .Must(dto =>
+                    {
+                        var parts = dto.FullFormatKey.Split(':');
+                        if (parts.Length != 2) return true; // Để validator khác xử lý sai format
+                        string propertyName = parts[1];
+
+                        // Chỉ áp dụng giới hạn nếu là các property cần check [0,1]
+                        var keysRequireRangeCheck = new[]
+                            { "AuthorNamePercentage", "TitlePercentage", "PublisherPercentage" };
+                        if (!keysRequireRangeCheck.Contains(propertyName)) return true;
+
+                        if (double.TryParse(dto.Value, out double parsed))
+                        {
+                            return parsed >= 0 && parsed <= 1;
+                        }
+
+                        return false;
+                    })
+                    .WithMessage(dto => GetMessage(
+                        "Giá trị phải nằm trong khoảng từ 0 đến 1",
+                        "Value must be between 0 and 1"
+                    ));
+            });
     }
 
     private Assembly LoadAssembly(string assemblyName)
     {
         return Assembly.Load(assemblyName) ?? throw new Exception($"Cannot load assembly {assemblyName}");
     }
-    
+
     /// <summary>
     /// check the existence of the class and property
     /// response: 0 = Available, 1 = Class not found, 2 = Property not found
@@ -53,12 +83,12 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
         Type classType = _assembly.GetTypes()
             .FirstOrDefault(t => t.IsClass && t.Namespace == TargetNamespace && t.Name == className);
 
-        if (classType == null) return 1; 
+        if (classType == null) return 1;
 
         var property = classType.GetProperty(propertyName);
-        if (property == null) return 2; 
+        if (property == null) return 2;
 
-        return 0; 
+        return 0;
     }
 
     /// <summary>
@@ -75,13 +105,13 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
         Type classType = _assembly.GetTypes()
             .FirstOrDefault(t => t.IsClass && t.Namespace == TargetNamespace && t.Name == className);
 
-        if (classType == null) return false; 
+        if (classType == null) return false;
 
         var property = classType.GetProperty(propertyName);
-        if (property == null) return false; 
+        if (property == null) return false;
 
         Type propertyType = property.PropertyType;
-        
+
         try
         {
             if (propertyType == typeof(int)) int.Parse(value);
@@ -95,7 +125,7 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
         }
         catch
         {
-            return false; 
+            return false;
         }
     }
 
@@ -117,10 +147,10 @@ public class UpdateKeyVaultDtoValidator:AbstractValidator<UpdateKeyVaultDto>
         {
             case 1:
                 return GetMessage($"Không tìm thấy class: {fullFormatKey.Split('-')[0]}",
-                                  $"Class not found: {fullFormatKey.Split('-')[0]}");
+                    $"Class not found: {fullFormatKey.Split('-')[0]}");
             case 2:
                 return GetMessage($"Không tìm thấy property: {fullFormatKey}",
-                                  $"Property not found: {fullFormatKey}");
+                    $"Property not found: {fullFormatKey}");
             default:
                 return "";
         }

@@ -9,6 +9,7 @@ public interface IAdminConfigurationService
     Task<IServiceResult> GetKeyVault(string key);
     Task<IServiceResult> UpdateKeyVault(IDictionary<string,string> keyValues);
     Task<IServiceResult> UpdateKeyValueAzureConfiguration(string name, string value);
+    Task<IServiceResult> UpdateKeyValueAzureConfiguration(AISettingsDto dto);
 
     Task<IServiceResult> UpdateLibraryScheduleAsync(List<WorkDateAndTime> updates);
     Task<IServiceResult> GetAllInAzureConfiguration();

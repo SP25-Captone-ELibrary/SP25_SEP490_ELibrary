@@ -899,6 +899,7 @@
 			// [PUT]
 			public const string Update = Base + "/admin-configuration";
 			public const string UpdateLibrarySchedule = Base + "/admin-configuration/library-schedule";
+			public const string UpdateAISettings = Base + "/admin-configuration/ai-settings";
 		}
 
 		/// <summary>
