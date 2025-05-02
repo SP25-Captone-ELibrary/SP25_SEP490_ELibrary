@@ -57,6 +57,7 @@ namespace FPTU_ELibrary.Application.Validations
 				{ } when typeof(T) == typeof(LibraryItemGroupDto) => (IValidator<T>)new LibraryItemGroupDtoValidator(language),
 				{ } when typeof(T) == typeof(TransactionDto) => (IValidator<T>)new TransactionDtoValidator(language),
 				{ } when typeof(T) == typeof(UpdateKeyVaultDto) => (IValidator<T>)new UpdateKeyVaultDtoValidator(language),
+				{ } when typeof(T) == typeof(AISettingsDto) => (IValidator<T>)new AISettingsDtoValidator(language),
 				{ } when typeof(T) == typeof(AITrainingSessionDto) => (IValidator<T>)new AITrainingSessionDtoValidator(),
 				{ } when typeof(T) == typeof(AITrainingDetailDto) => (IValidator<T>)new AITrainingDetailDtoValidator(),
 				{ } when typeof(T) == typeof(AITrainingImageDto) => (IValidator<T>)new AITrainingImageDtoValidator(),

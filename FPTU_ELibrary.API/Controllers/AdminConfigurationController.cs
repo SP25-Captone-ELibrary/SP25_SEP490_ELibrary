@@ -37,7 +37,7 @@ public class AdminConfigurationController : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateKeyVault([FromBody] UpdateKeyValueAzureConfigurationDto dto)
     {
-        return Ok(await _adminConfigurationService.UpdateKeyValueAzureConfiguration(dto.Name, dto.Value));
+        return Ok(await _adminConfigurationService.UpdateKeyValueAzureConfiguration(dto.Name,dto.Value));
     }
     
     [HttpPatch(APIRoute.AdminConfiguration.UpdateLibrarySchedule, Name = nameof(UpdateLibrarySchedule))]
@@ -46,6 +46,14 @@ public class AdminConfigurationController : ControllerBase
         [FromBody] List<WorkDateAndTime> dto)
     {
         return Ok(await _adminConfigurationService.UpdateLibraryScheduleAsync(dto));
+    }
+    
+    [HttpPatch(APIRoute.AdminConfiguration.UpdateAISettings, Name = nameof(UpdateAISettings))]
+    [Authorize]
+    public async Task<IActionResult> UpdateAISettings(
+        [FromBody] AISettingsDto dto)
+    {
+        return Ok(await _adminConfigurationService.UpdateKeyValueAzureConfiguration(dto));
     }
             
 }
