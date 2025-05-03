@@ -124,7 +124,7 @@ public class VoiceService : IVoiceService
         {
             "vi" => "vi-VN-HoaiMyNeural",
             "en" => "en-US-AriaNeural",
-            _ => "en-US-AriaNeural"
+            _ => "vi-VN-HoaiMyNeural"
 		};
 
         using var audioStream = AudioOutputStream.CreatePullStream();
@@ -171,8 +171,8 @@ public class VoiceService : IVoiceService
         {
             SystemLanguage.Vietnamese => "vi-VN-HoaiMyNeural",
             SystemLanguage.English => "en-US-AriaNeural",
-            _ => "en-US-AriaNeural"
-        };
+            _ => "vi-VN-HoaiMyNeural"
+		};
 
         using var audioStream = AudioOutputStream.CreatePullStream();
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);

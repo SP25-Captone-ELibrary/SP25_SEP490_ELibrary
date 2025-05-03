@@ -601,7 +601,7 @@ public class OCRService : IOCRService
                 StringUtils.CalculateFieldMatchScore(ocrValue, combineCompareFields,
                     _monitor.ConfidenceThreshold, _monitor.MinFieldThreshold);
             response.MatchPercentage = combineMatchResult.TotalPoint;
-            response.OverallPercentage = _monitor.MinFieldThreshold;
+            response.OverallPercentage = _monitor.ConfidenceThreshold;
             return new ServiceResult(ResultCodeConst.SYS_Success0002,
                 await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), response);
         }

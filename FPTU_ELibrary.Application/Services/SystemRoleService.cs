@@ -261,6 +261,12 @@ namespace FPTU_ELibrary.Application.Services
 					.GetAllWithSpecAsync(new BaseSpecification<SystemRole>(
 						sr => sr.RoleType.Equals(roleType.ToString())));
 
+				// Check if role type is User -> Exclude administration
+				if (roleType == RoleType.User)
+				{
+					roles = roles.Where(r => r.EnglishName != nameof(Role.Administration)).ToList();
+				}
+				
 				if (roles.Any()) // Found roles 
 				{
 					return new ServiceResult(ResultCodeConst.SYS_Success0002,

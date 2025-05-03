@@ -1630,7 +1630,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         try
         {
             // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>();
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.Status == LibraryItemStatus.Published);
             // Enable split query
             baseSpec.EnableSplitQuery();
             // Add order descending by create datetime 
@@ -1687,7 +1687,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
         try
         {
             // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>();
+            var baseSpec = new BaseSpecification<LibraryItem>(li => li.Status == LibraryItemStatus.Published);
             // Enable split query
             baseSpec.EnableSplitQuery();
             // Apply include
@@ -1772,7 +1772,8 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             }
             
             // Build spec
-            var baseSpec = new BaseSpecification<LibraryItem>(li => li.CategoryId == categoryId);
+            var baseSpec = new BaseSpecification<LibraryItem>(li => 
+                li.CategoryId == categoryId && li.Status == LibraryItemStatus.Published);
             // Enable split query
             baseSpec.EnableSplitQuery();
             // Apply include
@@ -2045,6 +2046,7 @@ public class LibraryItemService : GenericService<LibraryItem, LibraryItemDto, in
             
             // Build specification to find all items has at least one genre
             var baseSpec = new BaseSpecification<LibraryItem>(li =>
+                li.Status == LibraryItemStatus.Published && // Must be published
                 li.LibraryItemId != id && // Exclude root item
                 (
                     (

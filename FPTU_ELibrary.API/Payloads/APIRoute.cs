@@ -614,8 +614,8 @@
 			public const string UpdateRole = Base + "/management/roles/{id}";
 			//	[PATCH]
 			public const string UpdateRolePermission = Base + "/management/roles/user-permissions";
-			public const string UpdateUserRole = Base + "/management/roles/users";
-			public const string UpdateEmployeeRole = Base + "/management/roles/employees";
+			public const string UpdateUserRole = Base + "/management/roles/users/{userId}";
+			public const string UpdateEmployeeRole = Base + "/management/roles/employees/{employeeId}";
 			//	[DELETE]
 			public const string DeleteRole = Base + "/management/roles/{id}";
 			#endregion

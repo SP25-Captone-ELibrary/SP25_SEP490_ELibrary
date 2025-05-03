@@ -41,6 +41,7 @@ public class AIClassificationService : IAIClassificationService
     private readonly IServiceProvider _service;
     
     private readonly IOCRService _ocrService;
+    private readonly AISettings _aiSettings;
     private readonly CustomVisionSettings _customVisionSettings;
     private readonly ISystemMessageService _msgService;
     private readonly IAIDetectionService _aiDetectionService;
@@ -63,7 +64,8 @@ public class AIClassificationService : IAIClassificationService
         ILibraryItemGroupService<LibraryItemGroupDto> libraryItemGroupService,
         IAITrainingSessionService<AITrainingSessionDto> aiTrainingSessionService,
         IHubContext<AiHub> hubContext,
-        IOptionsMonitor<CustomVisionSettings> monitor)
+        IOptionsMonitor<CustomVisionSettings> monitor,
+        IOptionsMonitor<AISettings> monitor1)
     {
         _logger = logger;
         _service = service;
@@ -76,7 +78,8 @@ public class AIClassificationService : IAIClassificationService
         _aiTrainingSessionService = aiTrainingSessionService;
         _hubContext = hubContext;
         _libraryItemGroupService = libraryItemGroupService;
-        
+
+        _aiSettings = monitor1.CurrentValue;
         _customVisionSettings = monitor.CurrentValue;
         
         _basePredictUrl = string.Format(
@@ -2750,23 +2753,23 @@ public class AIClassificationService : IAIClassificationService
             Dictionary<int, double> itemTotalPoint = new();
             // Initialize item OCR match result
             Dictionary<int, MinimisedMatchResultDto> itemOrcMatchResult = new();
-            
+
             // Process predict item based on given image
             // Open image stream for reading
             await using var imageStream = image.OpenReadStream();
-            
+
             // Wrap image stream with stream content
             using var content = new StreamContent(imageStream);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            
+
             // Set up the HTTP client's prediction key header
             _httpClient.DefaultRequestHeaders.Remove(name: "Prediction-Key");
             _httpClient.DefaultRequestHeaders.Add(name: "Prediction-Key", value: _customVisionSettings.PredictionKey);
-            
+
             // Post the steam content directly to prediction endpoint
             var imageResponse = await _httpClient.PostAsync(requestUri: _basePredictUrl, content: content);
             imageResponse.EnsureSuccessStatusCode();
-            
+
             // Deserialize the JSON response directly from the response stream
             await using var responseStream = await imageResponse.Content.ReadAsStreamAsync();
             var predictionResult = JsonSerializer.Deserialize<PredictResultDto>(responseStream,
@@ -2793,10 +2796,10 @@ public class AIClassificationService : IAIClassificationService
             groupBaseSpec.ApplyInclude(q => q
                 // Include items
                 .Include(x => x.LibraryItems)
-                    // Then include library item authors
-                    .ThenInclude(be => be.LibraryItemAuthors)
-                    // THen include authors
-                    .ThenInclude(ea => ea.Author)
+                // Then include library item authors
+                .ThenInclude(be => be.LibraryItemAuthors)
+                // THen include authors
+                .ThenInclude(ea => ea.Author)
             );
             // Retrieve with group with spec
             var groupDto = (await _libraryItemGroupService.GetWithSpecAsync(groupBaseSpec)).Data as LibraryItemGroupDto;
@@ -2809,7 +2812,9 @@ public class AIClassificationService : IAIClassificationService
             }
 
             // Calculate the similarity
-            var matchObjectsPoint = (await _aiDetectionService.DetectWithEmguAsync(image: image, groupCode: validAiCode)).Data as Dictionary<int, double>;
+            var matchObjectsPoint =
+                (await _aiDetectionService.DetectWithEmguAsync(image: image, groupCode: validAiCode)).Data as
+                Dictionary<int, double>;
             if (matchObjectsPoint == null || !matchObjectsPoint.Any())
             {
                 // Msg: Sorry, we could not find any items matching the book cover image you uploaded.
@@ -2828,7 +2833,7 @@ public class AIClassificationService : IAIClassificationService
                 {
                     mainAuthor.Add(item.LibraryItemAuthors.First().Author.FullName);
                 }
-                
+
                 var coverImage = _httpClient.GetAsync(item.CoverImage).Result;
                 var ocrCheck = new CheckedItemDto()
                 {
@@ -2841,7 +2846,7 @@ public class AIClassificationService : IAIClassificationService
                         new FormFile(
                             baseStream: await coverImage.Content.ReadAsStreamAsync(),
                             baseStreamOffset: 0,
-                            length: coverImage.Content.ReadAsByteArrayAsync().Result.Length, 
+                            length: coverImage.Content.ReadAsByteArrayAsync().Result.Length,
                             name: "file",
                             fileName: item.Title)
                         {
@@ -2850,16 +2855,17 @@ public class AIClassificationService : IAIClassificationService
                         }
                     }
                 };
-                
-                var compareResult = (await _ocrService.CheckBookInformationAsync(ocrCheck)).Data as List<MatchResultDto>;
-                if(compareResult == null || !compareResult.Any())
+
+                var compareResult =
+                    (await _ocrService.CheckBookInformationAsync(ocrCheck)).Data as List<MatchResultDto>;
+                if (compareResult == null || !compareResult.Any())
                 {
                     // Msg: Sorry, we could not find any items matching the book cover image you uploaded.
                     // Please double-check the image or try a different one
                     return new ServiceResult(ResultCodeConst.AIService_Warning0011,
                         await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0011));
                 }
-                
+
                 var firstResVal = compareResult.First();
                 var ocrPoint = firstResVal.TotalPoint;
 
@@ -2881,20 +2887,25 @@ public class AIClassificationService : IAIClassificationService
                 LibraryItemId = bestItemId,
                 ObjectMatchResult = (int)Math.Floor(matchObjectsPoint[bestItemId])
             };
+            
+            // Retrieve confidence threshold
+            var confidenceThreshold = _aiSettings.ConfidenceThreshold;
+            var confidenceThresholdPercentage = confidenceThreshold / 100.0;
             // Check whether OCR result total point is smaller than confidence threshold
-            if (bestItemPredictResponse.OCRResult.TotalPoint < bestItemPredictResponse.OCRResult.ConfidenceThreshold)
+            if (bestItemPredictResponse.OCRResult.TotalPoint < confidenceThreshold ||
+                bestPrediction.Probability < confidenceThresholdPercentage)
             {
                 // Msg: Sorry, we could not find any items matching the book cover image you uploaded.
                 // Please double-check the image or try a different one
                 return new ServiceResult(ResultCodeConst.AIService_Warning0011,
                     await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0011));
             }
-            
+
             // Remove best item id
             itemTotalPoint.Remove(bestItemId);
             // Assign the best item to response
             response.BestItem = bestItemPredictResponse;
-            
+
             // Add other items detail
             foreach (var groupValueLibraryItemId in itemTotalPoint.Keys)
             {
@@ -2909,6 +2920,15 @@ public class AIClassificationService : IAIClassificationService
 
             return new ServiceResult(ResultCodeConst.AIService_Success0004,
                 await _msgService.GetMessageAsync(ResultCodeConst.AIService_Success0004), response);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.Error(ex.Message);
+            
+            // Msg: Sorry, we could not find any items matching the book cover image you uploaded.
+            // Please double-check the image or try a different one
+            return new ServiceResult(ResultCodeConst.AIService_Warning0011,
+                await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0011));
         }
         catch (Exception ex)
         {

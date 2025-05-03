@@ -164,6 +164,36 @@ namespace FPTU_ELibrary.Application.Utils
             return barcodeList;
         }
         
+        //  Summary:
+        //      Appends a new line of text, remove the oldest lines if total exceed max length
+        public static string AppendLineWithMax(this string original, string newLine, int maxLength)
+        {
+            // Split existing
+            var lines = original
+                .Split(new string[] { newLine }, StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+	
+            // Add new line
+            lines.Add(newLine.TrimStart('\n'));
+	
+            // Rebuild into one string
+            string combined = string.Join("\n", lines);
+	
+            // Remove the oldest line (if exceed max length)
+            while (combined.Length > maxLength && lines.Count > 1)
+            {
+                lines.RemoveAt(0);
+                combined = string.Join("\n", lines);
+            }
+
+            if (combined.Length > maxLength)
+            {
+                combined = combined.Substring(combined.Length - maxLength);
+            }
+	
+            return combined;
+        }
+        
         // Validate numeric & datetime
         public static bool IsDecimal(string text) => decimal.TryParse(text, out _);
         public static bool IsNumeric(string text) => int.TryParse(text, out _);
