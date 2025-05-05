@@ -89,16 +89,16 @@ public class RoleController : ControllerBase
     
     [Authorize]
     [HttpPatch(APIRoute.Role.UpdateUserRole, Name = nameof(UpdateUserRoleAsync))]
-    public async Task<IActionResult> UpdateUserRoleAsync([FromBody] UpdateUserRoleRequest req)
+    public async Task<IActionResult> UpdateUserRoleAsync([FromRoute] Guid userId, [FromQuery] int roleId)
     {
-        return Ok(await _userService.UpdateRoleAsync(req.UserId, req.RoleId));
+        return Ok(await _userService.UpdateRoleAsync(userId: userId, roleId: roleId));
     }
-    
+
     [Authorize]
     [HttpPatch(APIRoute.Role.UpdateEmployeeRole, Name = nameof(UpdateEmployeeRoleAsync))]
-    public async Task<IActionResult> UpdateEmployeeRoleAsync([FromBody] UpdateEmployeeRoleRequest req)
+    public async Task<IActionResult> UpdateEmployeeRoleAsync([FromRoute] Guid employeeId, [FromQuery] int roleId)
     {
-        return Ok(await _employeeService.UpdateRoleAsync(req.EmployeeId, req.RoleId));
+        return Ok(await _employeeService.UpdateRoleAsync(employeeId: employeeId, roleId: roleId));
     }
     
     [Authorize]

@@ -16,6 +16,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using Google.Apis.Auth;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Requests;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Util;
@@ -440,22 +441,24 @@ namespace FPTU_ELibrary.Application.Services
 			{
 				// Exchange code for access token
 				var tokenResponse = await ExchangeCodeForAccessTokenAsync(code);
-				
+
 				// Validate the access token
-				GoogleJsonWebSignature.Payload payload = await GoogleJsonWebSignature.ValidateAsync(tokenResponse.IdToken);
-				
+				GoogleJsonWebSignature.Payload payload =
+					await GoogleJsonWebSignature.ValidateAsync(tokenResponse.IdToken);
+
 				// Validate the audience (client ID)
 				if (!payload.Audience.Equals(_googleAuthSettings.ClientId))
 				{
 					throw new BadRequestException("Invalid audience: Client ID mismatch.");
 				}
-				
+
 				// Validate the issuer
-				if (!payload.Issuer.Equals("accounts.google.com") && !payload.Issuer.Equals("https://accounts.google.com"))
+				if (!payload.Issuer.Equals("accounts.google.com") &&
+				    !payload.Issuer.Equals("https://accounts.google.com"))
 				{
 					throw new BadRequestException("Invalid issuer: Not a trusted Google account issuer.");
 				}
-				
+
 				// Validate the expiration time
 				if (payload.ExpirationTimeSeconds == null)
 				{
@@ -464,13 +467,14 @@ namespace FPTU_ELibrary.Application.Services
 				else
 				{
 					DateTime now = DateTime.Now.ToUniversalTime();
-					DateTime expiration = DateTimeOffset.FromUnixTimeSeconds((long)payload.ExpirationTimeSeconds).DateTime;
+					DateTime expiration = DateTimeOffset.FromUnixTimeSeconds((long)payload.ExpirationTimeSeconds)
+						.DateTime;
 					if (now > expiration)
 					{
 						throw new BadRequestException("Invalid token: Token has expired.");
 					}
 				}
-				
+
 				// Initialize authenticated user
 				AuthenticateUserDto? authenticateUser = null!;
 				// Is exist user 
@@ -495,12 +499,12 @@ namespace FPTU_ELibrary.Application.Services
 				else
 				{
 					// Check if account required MFA
-					if (userDto.TwoFactorEnabled) 
+					if (userDto.TwoFactorEnabled)
 					{
 						return new ServiceResult(ResultCodeConst.Auth_Warning0010,
 							await _msgService.GetMessageAsync(ResultCodeConst.Auth_Warning0010), userDto.Email);
 					}
-					
+
 					// Add account details
 					authenticateUser = new AuthenticateUserDto()
 					{
@@ -515,7 +519,7 @@ namespace FPTU_ELibrary.Application.Services
 						IsEmployee = false
 					};
 				}
-				
+
 				// Try to authenticate user
 				return await AuthenticateUserAsync(authenticateUser);
 			}
@@ -534,10 +538,20 @@ namespace FPTU_ELibrary.Application.Services
 				_logger.Error(ex.Message);
 				throw;
 			}
+			catch (TokenResponseException trEx)
+			{
+				_logger.Error(
+					"Token exchange failed: error = {Error}, description = {Desc}, uri = {Uri}",
+					trEx.Error.Error,
+					trEx.Error.ErrorDescription,
+					trEx.Error.ErrorUri);
+				throw new Exception(trEx.Message);
+			}
 			catch (Exception ex)
 			{
 				_logger.Error(ex.Message);
-				throw new Exception("An error occurred during Google sign-in.", ex);
+				throw new Exception(ex.Message);
+				// throw new Exception("An error occurred during Google sign-in.", ex);
 			}
 		}
 		
@@ -2012,14 +2026,14 @@ namespace FPTU_ELibrary.Application.Services
 				RedirectUri = _googleAuthSettings.RedirectUri,
 				GrantType = OpenIdConnectGrantTypes.AuthorizationCode,
 			};
-		
+			
 			// Execute the token exchange
 			var tokenResponse = await tokenRequest.ExecuteAsync(
 				clock: SystemClock.Default,
 				httpClient: _httpClient,
 				taskCancellationToken: CancellationToken.None, 
 				tokenServerUrl: GoogleAuthConsts.OidcTokenUrl);
-		
+			
 			// Return the token response
 			return tokenResponse;
 		}

@@ -27,10 +27,11 @@ namespace FPTU_ELibrary.Infrastructure.Data.Configurations
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Fine_BorrowRecordDetailId");
 
+            builder.Property(e => e.CreatedBy).HasColumnName("created_by");
             builder.HasOne(d => d.CreateByNavigation).WithMany(p => p.FineCreateByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Fine_CreateBY");
+                .HasConstraintName("FK_Fine_CreatedBy");
 
             builder.HasOne(d => d.FinePolicy).WithMany(p => p.Fines)
                 .HasForeignKey(d => d.FinePolicyId)

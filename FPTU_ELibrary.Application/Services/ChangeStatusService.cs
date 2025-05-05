@@ -4,6 +4,7 @@ using FPTU_ELibrary.Application.Dtos;
 using FPTU_ELibrary.Application.Dtos.Borrows;
 using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Services.IServices;
+using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
 using FPTU_ELibrary.Domain.Interfaces;
@@ -705,7 +706,9 @@ public class ChangeStatusService : BackgroundService
                         }
                         
                         // Append a clear notification for the user
-                        fine.FineNote += $"\n Phí phạt đã được cập nhật thành {formattedAmount} vào ngày {formattedDate} cho {overDueDays} ngày quá hạn";
+                        const int maxFineNoteLength = 255;
+                        var newMessage = $"\n Phí phạt đã được cập nhật thành {formattedAmount} vào ngày {formattedDate} cho {overDueDays} ngày quá hạn";
+                        fine.FineNote = string.IsNullOrEmpty(fine.FineNote) ? newMessage : fine.FineNote.AppendLineWithMax(newMessage, maxFineNoteLength);
                         
                         // Process update entity
                         await unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(bRec);
