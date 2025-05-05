@@ -48,11 +48,11 @@ namespace FPTU_ELibrary.API.Extensions
             WebApplicationBuilder builder)
         {
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
+                // .MinimumLevel.Information()
                 .Enrich.FromLogContext()
                 .WriteTo.Debug()
                 .WriteTo.Console()
-                .WriteTo.AzureApp()     
+                // .WriteTo.AzureApp()     
                 .Enrich.WithProperty("Environment", builder.Environment)
                 .ReadFrom.Configuration(builder.Configuration)
                 .CreateLogger();
