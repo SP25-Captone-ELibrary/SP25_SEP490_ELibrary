@@ -16,6 +16,7 @@ using FPTU_ELibrary.Domain.Interfaces.Services.Base;
 using FPTU_ELibrary.Domain.Specifications;
 using FPTU_ELibrary.Domain.Specifications.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 namespace FPTU_ELibrary.Application.Services;
@@ -116,6 +117,73 @@ public class AuditTrailService : ReadOnlyService<AuditTrail, AuditTrailDto, int>
         {
             _logger.Error(ex.Message);
             throw new Exception("Error invoke when process get all audit trail by book id");
+        }
+    }
+
+    public async Task<IServiceResult> GetAllRoleAuditTrailAsync(ISpecification<AuditTrail> spec, bool tracked = true)
+    {
+        try{
+            // Try to parse specification to RoleAuditTrailSpecification
+            var roleAuditTrailSpec = spec as RoleAuditTrailSpecification;
+            // Check if specification is null
+            if (roleAuditTrailSpec == null)
+            {
+                return new ServiceResult(ResultCodeConst.SYS_Fail0002,
+            	    await _msgService.GetMessageAsync(ResultCodeConst.SYS_Fail0002));
+            }		
+            
+            // Count total audits
+            var totalAuditWithSpec = await _unitOfWork.Repository<AuditTrail, int>().CountAsync(roleAuditTrailSpec);
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalAuditWithSpec / roleAuditTrailSpec.PageSize);
+            
+            // Set pagination to specification after count total audits 
+            if (roleAuditTrailSpec.PageIndex > totalPage 
+                || roleAuditTrailSpec.PageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                roleAuditTrailSpec.PageIndex = 1; // Set default to first page
+            }
+            
+            // Apply pagination
+            roleAuditTrailSpec.ApplyPaging(
+                skip: roleAuditTrailSpec.PageSize * (roleAuditTrailSpec.PageIndex - 1), 
+                take: roleAuditTrailSpec.PageSize);
+            
+            // Add order
+            roleAuditTrailSpec.AddOrderBy(a => a.DateUtc);
+            
+            // Retrieve all audit trail with spec
+            var auditEntities = await _unitOfWork.Repository<AuditTrail, int>()
+                .GetAllWithSpecAsync(roleAuditTrailSpec);
+            
+            if (auditEntities.Any()) // Exist data
+            {
+            	// Convert to dto collection 
+                var auditDtos = _mapper.Map<List<AuditTrailDto>>(auditEntities);
+                
+            	// Pagination result 
+            	var paginationResultDto = new PaginatedResultDto<AuditTrailDto>(auditDtos,
+                    roleAuditTrailSpec.PageIndex, roleAuditTrailSpec.PageSize, totalPage, totalAuditWithSpec);
+            	
+            	// Response with pagination 
+            	return new ServiceResult(ResultCodeConst.SYS_Success0002, 
+            		await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002), paginationResultDto);
+            }
+            
+            // Not found any data
+            return new ServiceResult(ResultCodeConst.SYS_Warning0004, 
+            	await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0004),
+            	// Mapping entities to dto 
+            	_mapper.Map<List<AuditTrailDto>>(auditEntities));
+        }
+        catch (ForbiddenException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get all role audit trail");
         }
     }
     
