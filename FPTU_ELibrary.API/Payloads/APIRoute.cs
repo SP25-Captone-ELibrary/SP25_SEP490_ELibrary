@@ -49,9 +49,8 @@
 			#endregion
 
 			#region RoleManagement
-
-			// 
-
+			public const string GetAllRoleByEntityIdAndName = Base + "/management/roles/audits";
+			public const string GetRoleDetailByDateUtc = Base + "/management/roles/audits/detail";
 			#endregion
 		}
 

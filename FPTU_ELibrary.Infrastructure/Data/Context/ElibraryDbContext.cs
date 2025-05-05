@@ -424,10 +424,21 @@ public class ElibraryDbContext : DbContext
 	// Try to trim string if greater than specific length
 	public static string? TrimStringIfTooLong(object? value, int maxLength, string suffix)
 	{
-		if (value is string stringValue && stringValue.Length > maxLength)
-		{
-			return stringValue.Substring(0, maxLength - suffix.Length) + suffix;
-		}
-		return value as string;
+		// if (value is string stringValue && stringValue.Length > maxLength)
+		// {
+		// 	return stringValue.Substring(0, maxLength - suffix.Length) + suffix;
+		// }
+		// return value as string;
+		
+		// Convert null to empty string
+		var str = value?.ToString() ?? string.Empty;
+		
+		if (str.Length <= maxLength)
+			return str;
+		if (suffix.Length >= maxLength)
+			return str.Substring(0, maxLength);
+		
+		// Trim and append suffix
+		return str.Substring(0, maxLength - suffix.Length) + suffix;
 	}
 }

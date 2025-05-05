@@ -622,6 +622,13 @@ namespace FPTU_ELibrary.Application.Services
 					// Progress update user role 
 					employee.RoleId = role.RoleId;
 					
+					// Check entity changes
+					if (!_unitOfWork.Repository<Employee, Guid>().HasChanges(employee))
+					{
+						return new ServiceResult(ResultCodeConst.SYS_Success0003,
+							await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0003));
+					}
+					
 					// Save to DB
 					var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
 					if (isSaved) // Save success

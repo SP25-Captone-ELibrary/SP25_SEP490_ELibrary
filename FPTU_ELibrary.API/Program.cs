@@ -3,7 +3,6 @@ using FPTU_ELibrary.API.Middlewares;
 using FPTU_ELibrary.Application;
 using FPTU_ELibrary.Infrastructure;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services

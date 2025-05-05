@@ -120,19 +120,14 @@ public class VoiceService : IVoiceService
 
     public async Task<IServiceResult> TextToVoice(string lang, string email)
     {
-        _speechConfig.SpeechSynthesisVoiceName = lang.ToLower() switch
-        {
-            "vi" => "vi-VN-HoaiMyNeural",
-            "en" => "en-US-AriaNeural",
-            _ => "vi-VN-HoaiMyNeural"
-		};
+        _speechConfig.SpeechSynthesisVoiceName = SystemLanguage.Vietnamese.GetDescription();
 
         using var audioStream = AudioOutputStream.CreatePullStream();
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
         using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
-        var script = lang.ToLower().Equals("en") ? _adsMonitor.En : _adsMonitor.Vi;
-        var editedScript = StringUtils.Format(script, email);
+        var script = _adsMonitor.Vi;
+		var editedScript = StringUtils.Format(script, email);
         var result = await synthesizer.SpeakTextAsync(editedScript);
 
         if (result.Reason != ResultReason.SynthesizingAudioCompleted)
@@ -166,22 +161,15 @@ public class VoiceService : IVoiceService
     {
         var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
             LanguageContext.CurrentLanguage);
-        
-        _speechConfig.SpeechSynthesisVoiceName = sysLang switch
-        {
-            SystemLanguage.Vietnamese => "vi-VN-HoaiMyNeural",
-            SystemLanguage.English => "en-US-AriaNeural",
-            _ => "vi-VN-HoaiMyNeural"
-		};
+
+        _speechConfig.SpeechSynthesisVoiceName = SystemLanguage.Vietnamese.GetDescription();
 
         using var audioStream = AudioOutputStream.CreatePullStream();
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
         using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
-        var script = sysLang == SystemLanguage.English
-            ? _adsMonitor.En
-            : _adsMonitor.Vi;
-        var editedScript = StringUtils.Format(script, email);
+        var script = _adsMonitor.Vi;
+		var editedScript = StringUtils.Format(script, email);
         var result = await synthesizer.SpeakTextAsync(editedScript);
 
         if (result.Reason != ResultReason.SynthesizingAudioCompleted)

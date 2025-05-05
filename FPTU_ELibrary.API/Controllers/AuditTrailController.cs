@@ -44,4 +44,24 @@ public class AuditTrailController : ControllerBase
     {
         return Ok(await _auditService.GetAuditDetailByDateUtcAndEntityNameAsync(dateUtc, entityName, trailType));        
     }
+    
+    [Authorize]
+    [HttpGet(APIRoute.AuditTrail.GetAllRoleByEntityIdAndName, Name = nameof(GetAllRoleAuditTrailByIdAsync))]
+    public async Task<IActionResult> GetAllRoleAuditTrailByIdAsync([FromQuery] AuditTrailSpecParams specParams)
+    {
+        // Retrieve user email claims
+        // var email = HttpContext.User.FindFirst(x => x.Type == ClaimTypes.Email)?.Value;
+        return Ok(await _auditService.GetAllWithSpecAsync(new AuditTrailSpecification(
+            specParams: specParams,
+            pageIndex: specParams.PageIndex ?? 1,
+            pageSize: specParams.PageSize ?? _appSettings.PageSize)));
+    }
+
+    [Authorize]
+    [HttpGet(APIRoute.AuditTrail.GetRoleDetailByDateUtc, Name = nameof(GetRoleAuditTrailDetailByDateUtcAsync))]
+    public async Task<IActionResult> GetRoleAuditTrailDetailByDateUtcAsync([FromQuery] string dateUtc, 
+        [FromQuery] string entityName, [FromQuery] TrailType trailType)
+    {
+        return Ok(await _auditService.GetAuditDetailByDateUtcAndEntityNameAsync(dateUtc, entityName, trailType));        
+    }
 }
