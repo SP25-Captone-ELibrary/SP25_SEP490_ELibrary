@@ -536,7 +536,7 @@ public class LibraryItemSpecification : BaseSpecification<LibraryItem>
         }
         else
         {
-            AddOrderByDescending(n => n.LibraryItemId);
+            AddOrderByDescending(n => n.CreatedAt);
         }
     }
 

@@ -189,8 +189,18 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
              if (await _unitOfWork.Repository<Category, int>().AnyAsync(new BaseSpecification<Category>(
                      c => c.CategoryId == id && (c.WarehouseTrackingDetails.Any() || c.LibraryItems.Any()))))
              {
-                 return new ServiceResult(ResultCodeConst.SYS_Warning0008,
-                     await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0008));
+                 // Only allow to modify when only total borrow days change
+                 var isPrefixChange = !Equals(existingEntity.Prefix, dto.Prefix);
+                 var isEngChange = !Equals(existingEntity.EnglishName, dto.EnglishName);
+                 var isVieChange = !Equals(existingEntity.VietnameseName, dto.VietnameseName);
+                 var isDescChange = !Equals(existingEntity.Description, dto.Description) && !string.IsNullOrEmpty(dto.Description);
+                 
+                // Return when invoke change in other fields
+                if (isPrefixChange || isEngChange || isVieChange || isDescChange)
+                {
+                     return new ServiceResult(ResultCodeConst.SYS_Warning0008,
+                         await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0008));
+                }
              }
 
              // Update properties
@@ -198,6 +208,7 @@ public class CategoryService : GenericService<Category, CategoryDto, int>,
              existingEntity.EnglishName = dto.EnglishName;
              existingEntity.VietnameseName = dto.VietnameseName;
              existingEntity.Description = dto.Description;
+             existingEntity.TotalBorrowDays = dto.TotalBorrowDays;
              
              // Check if there are any differences between the original and the updated entity
              if (!_unitOfWork.Repository<Category, int>().HasChanges(existingEntity))

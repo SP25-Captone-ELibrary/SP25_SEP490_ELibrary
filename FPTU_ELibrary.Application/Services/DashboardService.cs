@@ -232,7 +232,7 @@ public class DashboardService : IDashboardService
             
             // Count total borrowed
             var totalBorrowedUnits = 0;
-            if ((await _borrowRecDetailSvc.CountAsync()).Data is int totalBorrowedRes) totalBorrowedUnits = totalBorrowedRes;
+            if ((await _borrowRecDetailSvc.CountAsync(new BaseSpecification<BorrowRecordDetail>(brd => brd.Status != BorrowRecordStatus.Returned))).Data is int totalBorrowedRes) totalBorrowedUnits = totalBorrowedRes;
             
             // Count total borrow failed
             var countBorrowFailedSpec = new BaseSpecification<ReservationQueue>(r => r.IsReservedAfterRequestFailed);
@@ -937,7 +937,7 @@ public class DashboardService : IDashboardService
             (DateTime validStartDate, DateTime validEndDate) = GetValidDateRange(startDate, endDate, period, currentLocalDateTime);
             
             // Add spec filter
-            spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Overdue && !brd.Fines.Any());
+            spec.AddFilter(brd => brd.Status == BorrowRecordStatus.Overdue);
             // Add date range filter
             if (startDate != null || endDate != null)
             {
