@@ -41,7 +41,8 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
     private readonly FFMPEGSettings _ffmpegSettings;
     private readonly IVoiceService _voiceService;
     private readonly IS3Service _s3Service;
-    private readonly DigitalResourceSettings _digitalSettings;
+    private readonly DigitalBorrowSettings _monitor;
+    private readonly DigitalBorrowSettings _digitalSettings;
     private readonly ICloudinaryService _cloudService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
 
@@ -54,10 +55,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         IMapper mapper,
         IUserService<UserDto> userService,
         HttpClient client,
-        IOptionsMonitor<DigitalResourceSettings> digitalSettings,
+        IOptionsMonitor<DigitalBorrowSettings> digitalSettings,
         IOptionsMonitor<FFMPEGSettings> ffmpegSettings,
         IVoiceService voiceService,
         IS3Service s3Service,
+        IOptionsMonitor<DigitalBorrowSettings> monitor,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
         _empService = empService;
@@ -65,6 +67,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         _ffmpegSettings = ffmpegSettings.CurrentValue;
         _voiceService = voiceService;
         _s3Service = s3Service;
+        _monitor = monitor.CurrentValue;
         _digitalSettings = digitalSettings.CurrentValue;
         _cloudService = cloudService;
         _libraryItemService = libraryItemService;
@@ -1099,7 +1102,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             await using (var conversionStream = new WaveFormatConversionStream(writer.WaveFormat, watermarkReader))
             {
                 int bytesPerSecond = originalAudioReader.WaveFormat.AverageBytesPerSecond;
-                int insertInterval = 15 * 60 * bytesPerSecond;
+                int insertInterval = _monitor.MinMinutesToAddAds * 60 * bytesPerSecond;
                 const int bufferSize = 4096;
                 byte[] buffer = new byte[bufferSize];
                 long totalBytesRead = 0;
@@ -1120,7 +1123,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
                         totalBytesRead = 0;
                         InsertWatermark(writer, conversionStream);
                         count++;
-                        _logger.Information("Inserted watermark at {Minutes} minutes", 15 * count);
+                        _logger.Information("Inserted watermark at {Minutes} minutes", _monitor.MinMinutesToAddAds * count);
                     }
                 }
 
