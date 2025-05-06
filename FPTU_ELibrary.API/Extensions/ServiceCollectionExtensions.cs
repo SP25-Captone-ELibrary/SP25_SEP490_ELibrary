@@ -150,7 +150,7 @@ namespace FPTU_ELibrary.API.Extensions
             // Configure PayOS
             services.Configure<PaymentSettings>(builder.Configuration.GetSection("PaymentSettings"));
             //Configure DigitalBorrowSettings
-            services.Configure<DigitalResourceSettings>(builder.Configuration.GetSection("DigitalResourceSettings"));
+            services.Configure<DigitalBorrowSettings>(builder.Configuration.GetSection("DigitalBorrowSettings"));
             //Configure AdsScriptSettings
             services.Configure<AdsScriptSettings>(builder.Configuration.GetSection("AdsScriptSettings"));
             //Configure RedisSettings

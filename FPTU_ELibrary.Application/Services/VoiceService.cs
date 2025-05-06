@@ -162,7 +162,7 @@ public class VoiceService : IVoiceService
         var sysLang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
             LanguageContext.CurrentLanguage);
 
-        _speechConfig.SpeechSynthesisVoiceName = SystemLanguage.Vietnamese.GetDescription();
+        _speechConfig.SpeechSynthesisVoiceName = "vi-VN-HoaiMyNeural";
 
         using var audioStream = AudioOutputStream.CreatePullStream();
         using var audioConfig = AudioConfig.FromStreamOutput(audioStream);
