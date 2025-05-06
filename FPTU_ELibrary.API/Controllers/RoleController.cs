@@ -86,6 +86,13 @@ public class RoleController : ControllerBase
     {
         return Ok(await _featureService.GetByIdAsync(featureId));
     }
+
+    [Authorize]
+    [HttpGet(APIRoute.Role.GetRolePermissionById, Name = nameof(GetRolePermissionById))]
+    public async Task<IActionResult> GetRolePermissionById([FromRoute] int rolePermissionId)
+    {
+        return Ok(await _rolePerService.GetByIdAsync(id: rolePermissionId));
+    }
     
     [Authorize]
     [HttpPut(APIRoute.Role.UpdateRole, Name = nameof(UpdateRoleAsync))]

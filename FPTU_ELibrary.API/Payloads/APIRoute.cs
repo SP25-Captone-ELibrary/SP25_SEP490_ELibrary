@@ -604,6 +604,7 @@
 			public const string GetById = Base + "/management/roles/{id}";
 			public const string GetPermissionById = Base + "/management/roles/permissions/{permissionId}";
 			public const string GetFeatureById = Base + "/management/roles/features/{featureId}";
+			public const string GetRolePermissionById = Base + "/management/roles/user-permissions/{rolePermissionId}";
 			public const string GetAllUserRole = Base + "/management/roles/users";
 			public const string GetAllEmployeeRole = Base + "/management/roles/employees";
 			public const string GetAllPermission = Base + "/management/roles/permissions";

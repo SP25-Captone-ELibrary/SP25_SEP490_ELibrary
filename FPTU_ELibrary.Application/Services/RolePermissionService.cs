@@ -4,6 +4,7 @@ using FPTU_ELibrary.Application.Dtos.Auth;
 using FPTU_ELibrary.Application.Dtos.Employees;
 using FPTU_ELibrary.Application.Dtos.Roles;
 using FPTU_ELibrary.Application.Exceptions;
+using FPTU_ELibrary.Application.Extensions;
 using FPTU_ELibrary.Application.Utils;
 using FPTU_ELibrary.Domain.Common.Enums;
 using FPTU_ELibrary.Domain.Entities;
@@ -44,6 +45,45 @@ public class RolePermissionService : GenericService<RolePermission, RolePermissi
         _roleService = roleService;
         _userService = userService;
         _employeeService = employeeService;
+    }
+
+    public override async Task<IServiceResult> GetByIdAsync(int id)
+    {
+        try
+        {
+            // Determine current system lang 
+            var lang = (SystemLanguage?) EnumExtensions.GetValueFromDescription<SystemLanguage>(
+                LanguageContext.CurrentLanguage);
+            var isEng = lang == SystemLanguage.English;
+            
+            // Build spec
+            var baseSpec = new BaseSpecification<RolePermission>(rp => rp.RolePermissionId == id);
+            // Apply include
+            baseSpec.ApplyInclude(q => q
+                .Include(rp => rp.Feature)
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+            );
+            // Retrieve with spec
+            var existingEntity = await _unitOfWork.Repository<RolePermission, int>().GetWithSpecAsync(baseSpec);
+            if (existingEntity == null)
+            {
+                // Not found {0}
+                var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+                return new ServiceResult(ResultCodeConst.SYS_Warning0002, 
+                    StringUtils.Format(errMsg, isEng ? "role permission" : "quyền truy cập"));
+            }
+            
+            // Get data successfully
+            return new ServiceResult(ResultCodeConst.SYS_Success0002,
+                await _msgService.GetMessageAsync(ResultCodeConst.SYS_Success0002),
+                _mapper.Map<RolePermissionDto>(existingEntity));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex.Message);
+            throw new Exception("Error invoke when process get role permission by id");
+        }
     }
 
     public async Task<IServiceResult> CreateRoleWithDefaultPermissionsAsync(string engName, string viName, RoleType roleType)

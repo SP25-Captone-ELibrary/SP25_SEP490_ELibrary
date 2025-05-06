@@ -168,6 +168,13 @@ public class RecommenderService : IRecommenderService
                 .Select(s => s.LibraryItemId)
                 .ToList();
             
+            // Return default recommendation (retrieve from top circulation items)
+            if (!recommendedIds.Any())
+            {
+                // Retrieve items with high borrow/reserve rates
+                return await _libItemSvc.GetHighBorrowOrReserveRateItemsAsync(filter.PageIndex, filter.PageSize);
+            }
+            
             // Initialize recommended item collection
             var recommendedItems = new List<LibraryItemDto>();
             // Iterate each recommended id to retrieve item's detail

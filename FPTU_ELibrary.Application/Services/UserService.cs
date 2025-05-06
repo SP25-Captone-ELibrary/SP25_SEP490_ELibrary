@@ -156,7 +156,6 @@ namespace FPTU_ELibrary.Application.Services
 				var localConfig = new TypeAdapterConfig();
 				localConfig.NewConfig<User, UserDto>()
 					.Ignore(dest => dest.PasswordHash!)
-					.Ignore(dest => dest.RoleId)
 					.Ignore(dest => dest.EmailConfirmed)
 					.Ignore(dest => dest.TwoFactorEnabled)
 					.Ignore(dest => dest.PhoneNumberConfirmed)
@@ -164,9 +163,7 @@ namespace FPTU_ELibrary.Application.Services
 					.Ignore(dest => dest.TwoFactorBackupCodes!)
 					.Ignore(dest => dest.PhoneVerificationCode!)
 					.Ignore(dest => dest.EmailVerificationCode!)
-					.Ignore(dest => dest.PhoneVerificationExpiry!)
-					.Map(dto => dto.Role, src => src.Role)
-					.AfterMapping((src, dest) => { dest.Role.RoleId = 0; });
+					.Ignore(dest => dest.PhoneVerificationExpiry!);
 
 				// Count total users
 				var totalUserWithSpec = await _unitOfWork.Repository<User, Guid>().CountAsync(userSpec);

@@ -562,6 +562,7 @@ public class AIClassificationService : IAIClassificationService
                 li.LibraryItemAuthors.Any() && // Must exist at least one author enabling to train image-based detection
                 li.CutterNumber != null &&  // Must exist cutter number 
                 li.ClassificationNumber != null && // Must exist classification number
+                li.CoverImage != null && // Must exist cover image
                 (
                     !li.IsTrained || // Is not in train status
                     (isTrainingLibraryItems.Any() && !isTrainingLibraryItems.Contains(li.LibraryItemId)) // Filter out all training items
@@ -894,6 +895,20 @@ public class AIClassificationService : IAIClassificationService
             {
                 var untrainedGr = dto.TrainingData[i];
 
+                // Check for total images
+                var imageFileTotal = untrainedGr.ItemsInGroup.Select(it => it.ImageFiles.Count).Sum();
+                var imageUrlTotal = untrainedGr.ItemsInGroup.Select(it => it.ImageUrls.Count).Sum();
+                // Required at least 5 images for each group
+                if (imageFileTotal + imageUrlTotal + untrainedGr.ItemsInGroup.Count < 5)
+                {
+                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        key: $"trainingData[{i}]",
+                        // Msg: Required at least 5 images for each group
+                        msg: isEng 
+                            ? "Required at least 5 images for each group"
+                            : "Yêu cầu ít nhất 5 ảnh cho mỗi nhóm huấn luyện AI");
+                }
+                
                 // Iterate each item in group
                 for (int j = 0; j < untrainedGr.ItemsInGroup.Count; ++j)
                 {
@@ -906,41 +921,41 @@ public class AIClassificationService : IAIClassificationService
                     // Retrieve with spec
                     if ((await _cateService.GetWithSpecAsync(cateSpec)).Data is CategoryDto itemCateDto)
                     {
-                        // Determine category
-                        switch (itemCateDto.EnglishName)
-                        {
-                            case nameof(LibraryItemCategory.SingleBook):
-                                // Required at least 5 images
-                                if (item.ImageFiles.Count < 4)
-                                {
-                                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-                                        key: $"trainingData[{i}].itemsInGroup[{j}]",
-                                        // Msg: Required at least 5 images for single book
-                                        msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0008));
-                                }
-                                break;
-                            case nameof(LibraryItemCategory.BookSeries):
-                                // Required at least 5 items in group to process train book series 
-                                if (untrainedGr.ItemsInGroup.Count < 5)
-                                {
-                                    customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-                                        key: $"trainingData[{i}].itemsInGroup[{j}]",
-                                        // Msg: Required at least 5 images for single book
-                                        msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
-                                    
-                                    throw new UnprocessableEntityException("Invalid data", customErrs);
-                                }
-                                
-                                // Required at least 1 image
-                                // if (item.ImageFiles.Count < 1)
-                                // {
-                                //     customErrs = DictionaryUtils.AddOrUpdate(customErrs,
-                                //         key: $"trainingData[{i}].itemsInGroup[{j}]",
-                                //         // Msg: Required at least 1 image for book series
-                                //         msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
-                                // }
-                                break;
-                        }
+                        // // Determine category
+                        // switch (itemCateDto.EnglishName)
+                        // {
+                        //     case nameof(LibraryItemCategory.SingleBook):
+                        //         // Required at least 5 images
+                        //         if (item.ImageFiles.Count < 4)
+                        //         {
+                        //             customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        //                 key: $"trainingData[{i}].itemsInGroup[{j}]",
+                        //                 // Msg: Required at least 5 images for single book
+                        //                 msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0008));
+                        //         }
+                        //         break;
+                        //     case nameof(LibraryItemCategory.BookSeries):
+                        //         // Required at least 5 items in group to process train book series 
+                        //         if (untrainedGr.ItemsInGroup.Count < 5)
+                        //         {
+                        //             customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        //                 key: $"trainingData[{i}].itemsInGroup[{j}]",
+                        //                 // Msg: Required at least 5 images for single book
+                        //                 msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
+                        //             
+                        //             throw new UnprocessableEntityException("Invalid data", customErrs);
+                        //         }
+                        //         
+                        //         // Required at least 1 image
+                        //         // if (item.ImageFiles.Count < 1)
+                        //         // {
+                        //         //     customErrs = DictionaryUtils.AddOrUpdate(customErrs,
+                        //         //         key: $"trainingData[{i}].itemsInGroup[{j}]",
+                        //         //         // Msg: Required at least 1 image for book series
+                        //         //         msg: await _msgService.GetMessageAsync(ResultCodeConst.AIService_Warning0010));
+                        //         // }
+                        //         break;
+                        // }
                     }
                 }
             }
