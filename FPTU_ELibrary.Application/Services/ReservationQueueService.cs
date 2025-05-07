@@ -93,7 +93,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         try
         {
             // Try to parse specification to ReservationQueueSpecification
-            var reservationSpec = spec as ReservationQueueSpecification;
+             var reservationSpec = spec as ReservationQueueSpecification;
             // Check if specification is null
             if (reservationSpec == null)
             {

@@ -50,9 +50,9 @@ public class ReservationQueueSpecification : BaseSpecification<ReservationQueue>
                 !string.IsNullOrEmpty(a.Author.Nationality) && a.Author.Nationality.Contains(specParams.Search)
             ) ||
             // LibraryItemInstances
-            (
-                r.LibraryItemInstance == null || 
-                    !string.IsNullOrEmpty(r.LibraryItemInstance.Barcode) && r.LibraryItemInstance.Barcode.Contains(specParams.Search)
+            // LibraryItem -> LibraryItemInstances
+            r.LibraryItem.LibraryItemInstances.Any(bec =>
+                !string.IsNullOrEmpty(bec.Barcode) && bec.Barcode.Contains(specParams.Search) 
             )
         )
     )

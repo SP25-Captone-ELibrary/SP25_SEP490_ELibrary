@@ -17,6 +17,8 @@ public class LibraryResourceSpecification : BaseSpecification<LibraryResource>
             (
                 // Resource type
                 (!string.IsNullOrEmpty(br.ResourceType) && br.ResourceType.Contains(specParams.Search)) ||
+                // Resource title
+                (!string.IsNullOrEmpty(br.ResourceTitle) && br.ResourceTitle.Contains(specParams.Search)) ||
                 // Resource URL
                 (!string.IsNullOrEmpty(br.ResourceUrl) && br.ResourceUrl.Contains(specParams.Search)) ||
                 // File format
