@@ -140,5 +140,12 @@ public class WarehouseTrackingDetailConfiguration :
         builder.Property(e => e.NeedUnits).HasColumnName("need_units");
         builder.Property(e => e.AverageNeedSatisfactionRate).HasColumnName("average_need_satisfaction_rate");
         #endregion
+
+        #region Updated at 08/05/2025 by Le Xuan Phuoc
+        builder.Property(e => e.BorrowRequestCount).HasColumnName("borrow_request_count");
+        builder.Property(e => e.TotalSatisfactionUnits).HasColumnName("total_satisfaction_units");
+        builder.Property(e => e.BorrowExtensionRate).HasColumnName("borrow_extension_rate");
+        // builder.Property(e => e.BorrowFailedRate).HasColumnName("borrow_failed_rate");
+        #endregion
     }
 }

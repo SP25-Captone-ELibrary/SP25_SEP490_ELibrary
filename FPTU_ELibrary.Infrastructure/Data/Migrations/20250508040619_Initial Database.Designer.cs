@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ElibraryDbContext))]
-    [Migration("20250426163257_Initial database")]
-    partial class Initialdatabase
+    [Migration("20250508040619_Initial Database")]
+    partial class InitialDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -858,7 +858,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
 
                     b.Property<decimal?>("DamagePct")
                         .HasColumnType("decimal(3,2)")
@@ -2780,6 +2781,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("library_card_package_id");
 
+                    b.Property<string>("PaymentLinkId")
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("payment_link_id");
+
                     b.Property<int?>("PaymentMethodId")
                         .HasColumnType("int")
                         .HasColumnName("payment_method_id");
@@ -3132,12 +3137,20 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("barcode_range_to");
 
+                    b.Property<double?>("BorrowExtensionRate")
+                        .HasColumnType("float")
+                        .HasColumnName("borrow_extension_rate");
+
                     b.Property<int?>("BorrowFailedCount")
                         .HasColumnType("int")
                         .HasColumnName("borrow_failed_count");
 
                     b.Property<double?>("BorrowFailedRate")
                         .HasColumnType("float");
+
+                    b.Property<int?>("BorrowRequestCount")
+                        .HasColumnType("int")
+                        .HasColumnName("borrow_request_count");
 
                     b.Property<int?>("BorrowSuccessCount")
                         .HasColumnType("int")
@@ -3210,6 +3223,10 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .HasColumnType("decimal(18, 2)")
                         .HasDefaultValue(0.0m)
                         .HasColumnName("total_amount");
+
+                    b.Property<int?>("TotalSatisfactionUnits")
+                        .HasColumnType("int")
+                        .HasColumnName("total_satisfaction_units");
 
                     b.Property<int>("TrackingId")
                         .HasColumnType("int")
@@ -3497,7 +3514,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         .WithMany("FineCreateByNavigations")
                         .HasForeignKey("CreatedBy")
                         .IsRequired()
-                        .HasConstraintName("FK_Fine_CreateBY");
+                        .HasConstraintName("FK_Fine_CreatedBy");
 
                     b.HasOne("FPTU_ELibrary.Domain.Entities.FinePolicy", "FinePolicy")
                         .WithMany("Fines")

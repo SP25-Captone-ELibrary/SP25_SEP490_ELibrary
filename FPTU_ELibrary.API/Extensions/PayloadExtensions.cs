@@ -1061,11 +1061,12 @@ namespace FPTU_ELibrary.API.Extensions
 				TotalAmount = req.TotalAmount,
 				SupplementRequestReason = req.SupplementRequestReason,
 				BorrowSuccessCount = req.BorrowSuccessCount,
-				ReserveCount = req.ReserveCount,
 				BorrowFailedCount = req.BorrowFailedCount,
-				BorrowFailedRate = req.BorrowFailedRate,
+				BorrowRequestCount = req.BorrowRequestCount,
+				TotalSatisfactionUnits = req.TotalSatisfactionUnits,
 				AvailableUnits = req.AvailableUnits,
 				NeedUnits = req.NeedUnits,
+				BorrowExtensionRate = req.BorrowExtensionRate,
 				AverageNeedSatisfactionRate = req.AverageNeedSatisfactionRate,
 				StockTransactionType = StockTransactionType.Reorder, // Set default stock transaction type
 				HasGlueBarcode = false // Set default has glue barcode
