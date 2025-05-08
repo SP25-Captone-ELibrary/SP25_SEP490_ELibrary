@@ -94,6 +94,13 @@ public class BorrowRecordController : ControllerBase
             recordWithLostItems: req.ToBorrowRecordWithLostDto(),
             isConfirmMissing: req.IsConfirmMissing));
     }
+    
+    [Authorize]
+    [HttpPut(APIRoute.BorrowRecord.ExtendDetailManagement, Name = nameof(ExtendBorrowRecordDetailManagementAsync))]
+    public async Task<IActionResult> ExtendBorrowRecordDetailManagementAsync([FromRoute] int id, [FromRoute] int borrowRecordDetailId)
+    {
+        return Ok(await _borrowRecSvc.ExtendAsync(borrowRecordId: id, borrowRecordDetailId: borrowRecordDetailId));
+    }
     #endregion
     
     [Authorize]
@@ -113,5 +120,12 @@ public class BorrowRecordController : ControllerBase
             email: email ?? string.Empty, 
             borrowRecordId: id,
             borrowRecordDetailIds: req.BorrowRecordDetailIds));   
+    }
+
+    [Authorize]
+    [HttpPut(APIRoute.BorrowRecord.ExtendDetail, Name = nameof(ExtendBorrowRecordDetailAsync))]
+    public async Task<IActionResult> ExtendBorrowRecordDetailAsync([FromRoute] int id, [FromRoute] int borrowRecordDetailId)
+    {
+        return Ok(await _borrowRecSvc.ExtendAsync(borrowRecordId: id, borrowRecordDetailId: borrowRecordDetailId));
     }
 }

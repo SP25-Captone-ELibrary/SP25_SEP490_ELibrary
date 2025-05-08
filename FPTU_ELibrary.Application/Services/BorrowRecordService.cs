@@ -2372,6 +2372,153 @@ public class BorrowRecordService : GenericService<BorrowRecord, BorrowRecordDto,
 		}
 	}
 
+	public async Task<IServiceResult> ExtendAsync(int borrowRecordId, int borrowRecordDetailId)
+	{
+		try
+		{
+			// Determine current system lang 
+			var lang = (SystemLanguage?)EnumExtensions.GetValueFromDescription<SystemLanguage>(
+				LanguageContext.CurrentLanguage);
+			var isEng = lang == SystemLanguage.English;
+			
+			// Build spec
+			var baseSpec = new BaseSpecification<BorrowRecord>(br => 
+				br.BorrowRecordId == borrowRecordId &&
+				br.BorrowRecordDetails.Any(brd => brd.BorrowRecordDetailId == borrowRecordDetailId));
+			// Apply include
+			baseSpec.ApplyInclude(q => q
+				.Include(br => br.BorrowRecordDetails)
+				.ThenInclude(br => br.LibraryItemInstance)
+				.ThenInclude(l => l.LibraryItem)
+				.Include(br => br.BorrowRecordDetails)
+				.ThenInclude(br => br.Condition)
+				.Include(br => br.LibraryCard)
+				.ThenInclude(c => c.Users)
+			);
+			// Try to retrieve borrow record by id 
+			var borrowRecordEntity = await _unitOfWork.Repository<BorrowRecord, int>().GetWithSpecAsync(baseSpec);
+			if (borrowRecordEntity == null)
+			{
+				// Not found {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(ResultCodeConst.SYS_Warning0002,
+					StringUtils.Format(errMsg, isEng
+						? "borrow record to process extend expiration date"
+						: "lịch sử mượn để tiến hành gia hạn"));
+			}
+			
+			// Validate card
+			var checkCardRes = await _cardSvc.CheckCardValidityAsync(Guid.Parse(borrowRecordEntity.LibraryCardId.ToString()));
+			if (checkCardRes.Data is false) return checkCardRes;
+			
+			// Retrieve record detail by id 
+			var borrowRecordDetailEntity = borrowRecordEntity.BorrowRecordDetails
+				.FirstOrDefault(brd => brd.BorrowRecordDetailId == borrowRecordDetailId);
+			if (borrowRecordDetailEntity == null)
+			{
+				// Msg: Not found {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.SYS_Warning0002);
+				return new ServiceResult(
+					resultCode: ResultCodeConst.SYS_Warning0002,
+					message: StringUtils.Format(errMsg, isEng ? "borrow record detail" : "tài liệu trong lịch sử mượn"));
+			}
+			
+			// Check allow to extend
+			var checkAllowRes = await CheckExtensionAsync(borrowRecordDetailEntity.Status);
+			if (checkAllowRes.Data is false) return checkAllowRes;
+
+			// Check exist any pending reservation by item instance id
+			var isExistPendingReserved = (await _reservationQueueSvc.Value.CheckPendingByItemInstanceIdAsync(
+				borrowRecordDetailEntity.LibraryItemInstanceId)).Data is true;
+			if (isExistPendingReserved && borrowRecordDetailEntity.TotalExtension == 1)
+			{
+				// Msg: Cannot process extend borrow record expiration as this item has already been reserved.
+				// Please return the item by <0> to ensure its continued circulations
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0020);
+				return new ServiceResult(
+					resultCode: ResultCodeConst.Borrow_Warning0020,
+					message: StringUtils.Format(errMsg, $"'{borrowRecordDetailEntity.DueDate:dd/MM/yyyy}'"));
+			}
+			
+			// Current local datetime
+			var currentLocalDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+				// Vietnam timezone
+				TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+			// Validate date allowing to extend
+			var allowExtendDate = borrowRecordDetailEntity.DueDate.Subtract(
+				TimeSpan.FromDays(_borrowSettings.AllowToExtendInDays));
+			// Not allow to extend when exceed or equals to max borrow extension
+			if (borrowRecordDetailEntity.TotalExtension >= _borrowSettings.MaxBorrowExtension)
+			{
+				// Msg: Failed to extend borrow record as {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0007);
+				return new ServiceResult(
+					resultCode: ResultCodeConst.Borrow_Fail0007,
+					message: StringUtils.Format(errMsg, isEng
+						? "reaching the maximum number of extensions"
+						: "đã đạt đến số lần gia hạn tối đa"));
+			}
+			else if (DateTime.Compare(allowExtendDate, currentLocalDateTime) > 0)
+			{
+				// Msg: Cannot process extend borrow record before date {0}
+				var errMsg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Warning0021);
+				return new ServiceResult(
+					resultCode: ResultCodeConst.Borrow_Warning0021,
+					message: StringUtils.Format(errMsg, $"'{allowExtendDate:dd/MM/yyyy}'"));
+			}
+
+			// Extend borrow record
+			borrowRecordDetailEntity.DueDate =
+				borrowRecordDetailEntity.DueDate.AddDays(_borrowSettings.TotalBorrowExtensionInDays);
+			borrowRecordDetailEntity.TotalExtension++;
+			// Add borrow extension history
+			borrowRecordDetailEntity.BorrowDetailExtensionHistories.Add(new ()
+			{
+				ExtensionDate = currentLocalDateTime,
+				NewExpiryDate = borrowRecordDetailEntity.DueDate,
+				ExtensionNumber = borrowRecordDetailEntity.TotalExtension
+			});
+			
+			// Process update
+			await _unitOfWork.Repository<BorrowRecordDetail, int>().UpdateAsync(borrowRecordDetailEntity);
+			// Save DB
+			var isSaved = await _unitOfWork.SaveChangesAsync() > 0;
+			if (isSaved)
+			{
+				// Extract all extended borrow record details
+				var extendedBorrowDetail = borrowRecordEntity.BorrowRecordDetails
+					.Where(br => br.BorrowRecordDetailId == borrowRecordDetailId)
+					.ToList();
+
+				if (borrowRecordEntity.LibraryCard.Users.Any() && borrowRecordEntity.LibraryCard != null!)
+				{
+					// Process send email
+					await SendBorrowExtensionSuccessAsync(
+						email: borrowRecordEntity.LibraryCard.Users.First().Email,
+						libCard: _mapper.Map<LibraryCardDto>(borrowRecordEntity.LibraryCard),
+						borrowRec: _mapper.Map<BorrowRecordDto>(borrowRecordEntity),
+						borrowRecDetails: _mapper.Map<List<BorrowRecordDetailDto>>(extendedBorrowDetail),
+						libName: _appSettings.LibraryName,
+						libContact: _appSettings.LibraryContact);
+				}
+				
+				// Msg: Total {0} Item(s) extended successfully
+				var msg = await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Success0006);
+				return new ServiceResult(ResultCodeConst.Borrow_Success0006,
+					StringUtils.Format(msg, "1"), true);
+			}
+
+			// Failed to extend 
+			return new ServiceResult(ResultCodeConst.Borrow_Fail0006,
+				await _msgService.GetMessageAsync(ResultCodeConst.Borrow_Fail0006), false);
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex.Message);
+			throw new Exception("Error invoke when process extend borrow record");
+		}
+	}
+	
 	public async Task<IServiceResult> ProcessReturnAsync(
 		string processedReturnByEmail, Guid libraryCardId, 
 		BorrowRecordDto recordWithReturnItems,

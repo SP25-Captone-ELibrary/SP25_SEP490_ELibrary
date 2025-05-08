@@ -36,13 +36,11 @@ namespace FPTU_ELibrary.Application.Services;
 public class LibraryResourceService : GenericService<LibraryResource, LibraryResourceDto, int>,
     ILibraryResourceService<LibraryResourceDto>
 {
-    private readonly IEmployeeService<EmployeeDto> _empService;
     private readonly IUserService<UserDto> _userService;
     private readonly FFMPEGSettings _ffmpegSettings;
     private readonly IVoiceService _voiceService;
     private readonly IS3Service _s3Service;
     private readonly DigitalBorrowSettings _monitor;
-    private readonly DigitalBorrowSettings _digitalSettings;
     private readonly ICloudinaryService _cloudService;
     private readonly ILibraryItemService<LibraryItemDto> _libraryItemService;
 
@@ -62,13 +60,11 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
         IOptionsMonitor<DigitalBorrowSettings> monitor,
         ILogger logger) : base(msgService, unitOfWork, mapper, logger)
     {
-        _empService = empService;
         _userService = userService;
         _ffmpegSettings = ffmpegSettings.CurrentValue;
         _voiceService = voiceService;
         _s3Service = s3Service;
         _monitor = monitor.CurrentValue;
-        _digitalSettings = digitalSettings.CurrentValue;
         _cloudService = cloudService;
         _libraryItemService = libraryItemService;
     }
@@ -1558,7 +1554,7 @@ public class LibraryResourceService : GenericService<LibraryResource, LibraryRes
             document.Open();
             PdfContentByte contentByte = writer.DirectContent;
 
-            int pagesToProcess = Math.Min(5, totalPages);
+            int pagesToProcess = Math.Min(_monitor.PagePerLoad, totalPages);
             for (int i = 1; i <= pagesToProcess; i++)
             {
                 document.SetPageSize(reader.GetPageSizeWithRotation(i));

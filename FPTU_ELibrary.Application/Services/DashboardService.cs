@@ -286,6 +286,13 @@ public class DashboardService : IDashboardService
             // Initialize dashboard circulation
             var dashboardCirculation = new DashboardCirculationDto();
             
+            // Initialize total units
+            var totalBorrowingUnits = 0;
+            var totalOverdueUnits = 0;
+            var totalLostUnits = 0;
+            var totalBorrowFailed = 0;
+            var totalRequestUnits = 0;
+            
             // Sum request units
             // Count total request
             var countTotalRequestSpec = new BaseSpecification<BorrowRequestDetail>(r => 
@@ -297,14 +304,11 @@ public class DashboardService : IDashboardService
             }
             if ((await _borrowReqDetailSvc.CountAsync(countTotalRequestSpec)).Data is int totalRequestRes)
             {
+                // Assign to dashboard value
                 dashboardCirculation.TotalRequestUnits = totalRequestRes;
+                // Assign to request units
+                totalRequestUnits = totalRequestRes;
             }
-            
-            // Initialize total borrowed units
-            var totalBorrowingUnits = 0;
-            var totalOverdueUnits = 0;
-            var totalLostUnits = 0;
-            var totalBorrowFailed = 0;
             
             // Count total borrowing
             var countBorrowingSpec = new BaseSpecification<BorrowRecordDetail>(brd => brd.Status == BorrowRecordStatus.Borrowing);
@@ -479,7 +483,7 @@ public class DashboardService : IDashboardService
             if (totalBorrowedUnits > 0)
             {
                 // Calculate borrow failed rate
-                dashboardCirculation.BorrowFailedRates = (double)totalBorrowFailed / (totalBorrowFailed + totalBorrowedUnits) * 100;
+                dashboardCirculation.BorrowFailedRates = (double)totalBorrowFailed / (totalBorrowFailed + totalBorrowedUnits + totalRequestUnits) * 100;
                 // Format double value
                 dashboardCirculation.BorrowFailedRates = Math.Truncate(dashboardCirculation.BorrowFailedRates * 100) / 100;
             }
@@ -513,7 +517,7 @@ public class DashboardService : IDashboardService
                     else
                     {
                         // Calculate borrow failed rate
-                        borrowFailedSummary.BorrowFailedRates = (double)totalFailedRes / (totalFailedRes + totalBorrowedUnits) * 100;
+                        borrowFailedSummary.BorrowFailedRates = (double)totalFailedRes / (totalFailedRes + totalBorrowedUnits + totalRequestUnits) * 100;
                         // Format double value
                         borrowFailedSummary.BorrowFailedRates = Math.Truncate(borrowFailedSummary.BorrowFailedRates * 100) / 100;
                     }
