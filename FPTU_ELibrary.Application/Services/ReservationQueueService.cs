@@ -93,7 +93,7 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
         try
         {
             // Try to parse specification to ReservationQueueSpecification
-            var reservationSpec = spec as ReservationQueueSpecification;
+             var reservationSpec = spec as ReservationQueueSpecification;
             // Check if specification is null
             if (reservationSpec == null)
             {
@@ -416,21 +416,6 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             // Add ascending order 
             baseSpec.AddOrderBy(r => r.ReservationDate);
             
-            // Count total with spec
-            var totalWithSpec = await _unitOfWork.Repository<ReservationQueue, int>().CountAsync(baseSpec);
-            // Count total page
-            var totalPage = (int)Math.Ceiling((double)totalWithSpec / pageSize);
-        
-            // Set pagination to specification after count total resource 
-            if (pageIndex > totalPage
-                || pageIndex < 1) // Exceed total page or page index smaller than 1
-            {
-                pageIndex = 1; // Set default to first page
-            }
-        
-            // Apply pagination
-            baseSpec.ApplyPaging(skip: pageSize * (pageIndex - 1), take: pageSize);
-            
             // Retrieve all with spec
             var entities = (await _unitOfWork.Repository<ReservationQueue, int>()
                 .GetAllWithSpecAsync(baseSpec)).ToList();
@@ -488,6 +473,21 @@ public class ReservationQueueService : GenericService<ReservationQueue, Reservat
             // Convert to dto
             var dtoList = _mapper.Map<List<ReservationQueueDto>>(assignableReservations);
 
+            // Count total with spec
+            var totalWithSpec = dtoList.Count;
+            // Count total page
+            var totalPage = (int)Math.Ceiling((double)totalWithSpec / pageSize);
+        
+            // Set pagination to specification after count total resource 
+            if (pageIndex > totalPage
+                || pageIndex < 1) // Exceed total page or page index smaller than 1
+            {
+                pageIndex = 1; // Set default to first page
+            }
+        
+            // Apply pagination
+            dtoList = dtoList.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+            
             if (dtoList.Any())
             {
                 // Pagination result 

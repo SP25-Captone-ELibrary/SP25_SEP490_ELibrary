@@ -8,13 +8,16 @@ public class GetTopCirculationItemDto
     
     // Circulation summary fields
     public int BorrowSuccessCount { get; set; }
+    public int BorrowRequestCount { get; set; }
     public int BorrowFailedCount { get; set; }
-    public int ReserveCount { get; set; }
-    public int ExtendedBorrowCount { get; set; }
-    public int DigitalBorrowCount { get; set; }
-    
-    public double BorrowFailedRate { get; set; }
+    public int TotalSatisfactionUnits { get; set; }
+    public double SatisfactionRate { get; set; }
     public double BorrowExtensionRate { get; set; }
+    
+    // public int DigitalBorrowCount { get; set; }
+    // public int ExtendedBorrowCount { get; set; }
+    // public int ReserveCount { get; set; }
+    // public double BorrowFailedRate { get; set; }
     
     public AvailableVsNeedChartItemDto AvailableVsNeedChart { get; set; } = null!; 
     public List<TrendDataDto> BorrowTrends { get; set; } = new();
@@ -35,10 +38,12 @@ public class AvailableVsNeedChartItemDto : AvailableVsNeedChartDto
 public class AvailableVsNeedChartCategoryDto : AvailableVsNeedChartItemDto
 {
     public CategoryDto Category { get; set; } = null!;
+    public int TotalInShelf { get; set; }
+    public int TotalOutOfShelf { get; set; }
     public int TotalRequest { get; set; }
-    public int TotalRequestFailed { get; set; }
-    public int TotalBorrowed { get; set; }
     public int TotalReserved { get; set; }
+    // public int TotalBorrowed { get; set; }
+    // public int TotalRequestFailed { get; set; }
 }
 
 public class DashboardTopCirculationItemDto

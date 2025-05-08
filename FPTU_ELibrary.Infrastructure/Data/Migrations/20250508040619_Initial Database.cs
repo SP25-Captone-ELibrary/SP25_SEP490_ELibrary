@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FPTU_ELibrary.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialdatabase : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -1160,12 +1160,15 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     has_glue_barcode = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     supplement_request_reason = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     borrow_success_count = table.Column<int>(type: "int", nullable: true),
-                    reserve_count = table.Column<int>(type: "int", nullable: true),
+                    borrow_request_count = table.Column<int>(type: "int", nullable: true),
                     borrow_failed_count = table.Column<int>(type: "int", nullable: true),
-                    BorrowFailedRate = table.Column<double>(type: "float", nullable: true),
+                    total_satisfaction_units = table.Column<int>(type: "int", nullable: true),
                     available_units = table.Column<int>(type: "int", nullable: true),
                     need_units = table.Column<int>(type: "int", nullable: true),
-                    average_need_satisfaction_rate = table.Column<double>(type: "float", nullable: true)
+                    average_need_satisfaction_rate = table.Column<double>(type: "float", nullable: true),
+                    borrow_extension_rate = table.Column<double>(type: "float", nullable: true),
+                    reserve_count = table.Column<int>(type: "int", nullable: true),
+                    BorrowFailedRate = table.Column<double>(type: "float", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1407,7 +1410,7 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     damage_pct = table.Column<decimal>(type: "decimal(3,2)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime", nullable: false),
                     expiry_at = table.Column<DateTime>(type: "datetime", nullable: true),
-                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1418,8 +1421,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                         principalTable: "Borrow_Record_Detail",
                         principalColumn: "borrow_record_detail_id");
                     table.ForeignKey(
-                        name: "FK_Fine_CreateBY",
-                        column: x => x.CreatedBy,
+                        name: "FK_Fine_CreatedBy",
+                        column: x => x.created_by,
                         principalTable: "Employee",
                         principalColumn: "employee_id");
                     table.ForeignKey(
@@ -1452,7 +1455,8 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                     library_card_package_id = table.Column<int>(type: "int", nullable: true),
                     transaction_method = table.Column<string>(type: "nvarchar(50)", nullable: true),
                     payment_method_id = table.Column<int>(type: "int", nullable: true),
-                    qr_code = table.Column<string>(type: "nvarchar(255)", nullable: true)
+                    qr_code = table.Column<string>(type: "nvarchar(255)", nullable: true),
+                    payment_link_id = table.Column<string>(type: "nvarchar(50)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1641,9 +1645,9 @@ namespace FPTU_ELibrary.Infrastructure.Data.Migrations
                 column: "borrow_record_detail_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Fine_CreatedBy",
+                name: "IX_Fine_created_by",
                 table: "Fine",
-                column: "CreatedBy");
+                column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Fine_fine_policy_id",

@@ -20,8 +20,6 @@ public class DigitalBorrowSpecification : BaseSpecification<DigitalBorrow>
             // Search with terms
             string.IsNullOrEmpty(specParams.Search) ||
             (
-                // Status
-                d.Status.ToString().Contains(specParams.Search) || 
                 // Library resource
                 (!string.IsNullOrEmpty(d.LibraryResource.ResourceTitle) && d.LibraryResource.ResourceTitle.Contains(specParams.Search)) || 
                 (!string.IsNullOrEmpty(d.LibraryResource.ResourceType) && d.LibraryResource.ResourceType.Contains(specParams.Search)) || 
@@ -39,7 +37,7 @@ public class DigitalBorrowSpecification : BaseSpecification<DigitalBorrow>
         Email = email;
         
         // Enable split query
-        EnableSplitQuery();
+        // EnableSplitQuery();
         
         // Apply include
         ApplyInclude(q => q

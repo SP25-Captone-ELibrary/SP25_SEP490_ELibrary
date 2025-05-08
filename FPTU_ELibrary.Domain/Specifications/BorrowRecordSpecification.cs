@@ -37,7 +37,9 @@ public class BorrowRecordSpecification : BaseSpecification<BorrowRecord>
                     // Item Genres
                     !string.IsNullOrEmpty(brd.LibraryItemInstance.LibraryItem.Genres) && brd.LibraryItemInstance.LibraryItem.Genres.Contains(specParams.Search) ||
                     // Item TopicalTerms
-                    !string.IsNullOrEmpty(brd.LibraryItemInstance.LibraryItem.TopicalTerms) && brd.LibraryItemInstance.LibraryItem.TopicalTerms.Contains(specParams.Search)
+                    !string.IsNullOrEmpty(brd.LibraryItemInstance.LibraryItem.TopicalTerms) && brd.LibraryItemInstance.LibraryItem.TopicalTerms.Contains(specParams.Search) ||
+                    // Barcode
+                    !string.IsNullOrEmpty(brd.LibraryItemInstance.Barcode) && brd.LibraryItemInstance.Barcode.Contains(specParams.Search)
                 )
             ))
     {

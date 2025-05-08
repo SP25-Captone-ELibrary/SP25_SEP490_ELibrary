@@ -98,11 +98,13 @@
 			public const string Create = Base + "/management/borrows/records";
 			// [PUT]
 			public const string ProcessReturn = Base + "/mangement/borrows/records/process-return";
+			public const string ExtendDetailManagement = Base + "/management/borrows/records/{id}/extend/{borrowRecordDetailId}";
 			#endregion
 			
 			public const string GetAllFineById = Base + "/borrows/records/{id}/fines";
 			public const string SelfCheckout = Base + "/borrows/records/self-checkout";
 			public const string Extend = Base + "/borrows/records/{id}/extend";
+			public const string ExtendDetail = Base + "/borrows/records/{id}/extend/{borrowRecordDetailId}";
 		}
 
 		/// <summary>

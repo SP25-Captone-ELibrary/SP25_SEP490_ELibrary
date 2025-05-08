@@ -17,6 +17,7 @@ public interface IBorrowRecordService<TDto> : IGenericService<BorrowRecord, TDto
     Task<IServiceResult> ProcessReturnAsync(string processedReturnByEmail, Guid libraryCardId,
         TDto recordWithReturnItems, TDto recordWithLostItems, bool isConfirmMissing);
     Task<IServiceResult> ExtendAsync(string email, int borrowRecordId, List<int> borrowRecordDetailIds);
+    Task<IServiceResult> ExtendAsync(int borrowRecordId, int borrowRecordDetailId);
     Task<IServiceResult> CalculateBorrowReturnSummaryAsync(string email);
     Task<IServiceResult> CountAllActiveRecordByLibCardIdAsync(Guid libraryCardId);
 }
